@@ -1,8 +1,15 @@
+import HeroSection from "@/components/home/HeroSection";
+import SocialProofSection from "@/components/home/SocialProofSection";
+import AboutSection from "@/components/home/AboutSection";
+import MapSection from "@/components/home/MapSection";
+
 export default function Home() {
   return (
-    <div>
-      <h1>Home</h1>
-      <p>Welcome to the Home page.</p>
-    </div>
+    <main>
+      <HeroSection />
+      <SocialProofSection />
+      <AboutSection />
+      <MapSection />
+    </main>
   );
 }
