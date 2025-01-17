@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useState } from "react";
+import ThemeToggle from "./ThemeToggle";
 
 export default function Navigation() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -14,7 +15,7 @@ export default function Navigation() {
   };
 
   return (
-    <nav className="bg-white shadow-md relative z-50">
+    <nav className="bg-white dark:bg-charcoal shadow-md relative z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           <div className="flex items-center">
@@ -25,7 +26,7 @@ export default function Navigation() {
               onClick={closeMobileMenu}
             >
               <span className="text-2xl font-bold text-margarita hover:text-teal transition-colors">
-                SATX Ritas
+                🍹SATX Ritas
               </span>
             </Link>
           </div>
@@ -34,41 +35,42 @@ export default function Navigation() {
           <div className="hidden sm:flex sm:items-center">
             <Link
               href="/rentals"
-              className="px-3 py-2 text-charcoal hover:text-margarita transition-colors"
+              className="px-3 py-2 text-charcoal dark:text-white hover:text-margarita transition-colors"
             >
               Rentals
             </Link>
             <Link
               href="/pricing"
-              className="px-3 py-2 text-charcoal hover:text-margarita transition-colors"
+              className="px-3 py-2 text-charcoal dark:text-white hover:text-margarita transition-colors"
             >
               Pricing
             </Link>
             <Link
               href="/about"
-              className="px-3 py-2 text-charcoal hover:text-margarita transition-colors"
+              className="px-3 py-2 text-charcoal dark:text-white hover:text-margarita transition-colors"
             >
               About
             </Link>
             <Link
               href="/faq"
-              className="px-3 py-2 text-charcoal hover:text-margarita transition-colors"
+              className="px-3 py-2 text-charcoal dark:text-white hover:text-margarita transition-colors"
             >
               FAQ
             </Link>
             <Link
-              href="/contact"
+              href="/order"
               className="ml-4 px-4 py-2 bg-margarita text-white rounded-lg hover:bg-teal transition-colors"
             >
-              Contact Us
+              Order Online
             </Link>
+            <ThemeToggle />
           </div>
 
           {/* Mobile Menu Button */}
           <div className="sm:hidden flex items-center">
             <button
               type="button"
-              className="inline-flex items-center justify-center p-2 rounded-md text-charcoal hover:text-margarita focus:outline-none"
+              className="inline-flex items-center justify-center p-2 rounded-md text-charcoal dark:text-white hover:text-margarita focus:outline-none"
               onClick={toggleMobileMenu}
               aria-expanded="false"
             >
@@ -105,7 +107,7 @@ export default function Navigation() {
 
       {/* Mobile Menu */}
       <div
-        className={`sm:hidden fixed inset-0 bg-white/95 backdrop-blur-sm transition-opacity duration-300 ease-in-out ${
+        className={`sm:hidden fixed inset-0 bg-white/95 dark:bg-charcoal/95 backdrop-blur-sm transition-opacity duration-300 ease-in-out ${
           isMobileMenuOpen
             ? "opacity-100 pointer-events-auto"
             : "opacity-0 pointer-events-none"
@@ -115,39 +117,42 @@ export default function Navigation() {
         <div className="px-4 pt-2 pb-3 space-y-1">
           <Link
             href="/rentals"
-            className="block px-3 py-4 text-base font-medium text-charcoal hover:text-margarita border-b border-gray-200"
+            className="block px-3 py-4 text-base font-medium text-charcoal dark:text-white hover:text-margarita border-b border-gray-200 dark:border-gray-700"
             onClick={closeMobileMenu}
           >
             Rentals
           </Link>
           <Link
             href="/pricing"
-            className="block px-3 py-4 text-base font-medium text-charcoal hover:text-margarita border-b border-gray-200"
+            className="block px-3 py-4 text-base font-medium text-charcoal dark:text-white hover:text-margarita border-b border-gray-200 dark:border-gray-700"
             onClick={closeMobileMenu}
           >
             Pricing
           </Link>
           <Link
             href="/about"
-            className="block px-3 py-4 text-base font-medium text-charcoal hover:text-margarita border-b border-gray-200"
+            className="block px-3 py-4 text-base font-medium text-charcoal dark:text-white hover:text-margarita border-b border-gray-200 dark:border-gray-700"
             onClick={closeMobileMenu}
           >
             About
           </Link>
           <Link
             href="/faq"
-            className="block px-3 py-4 text-base font-medium text-charcoal hover:text-margarita border-b border-gray-200"
+            className="block px-3 py-4 text-base font-medium text-charcoal dark:text-white hover:text-margarita border-b border-gray-200 dark:border-gray-700"
             onClick={closeMobileMenu}
           >
             FAQ
           </Link>
           <Link
-            href="/contact"
+            href="/order"
             className="block px-3 py-4 text-base font-medium text-white bg-margarita hover:bg-teal rounded-lg mt-4 text-center transition-colors"
             onClick={closeMobileMenu}
           >
-            Contact Us
+            Order Online
           </Link>
+          <div className="flex justify-center mt-4 pb-4">
+            <ThemeToggle />
+          </div>
         </div>
       </div>
     </nav>

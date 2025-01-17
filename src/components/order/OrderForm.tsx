@@ -33,7 +33,7 @@ interface OrderFormData {
 
 const calculatePrice = (
   machineType: "single" | "double",
-  mixerType: MixerOption["type"]
+  mixerType: MixerOption["type"],
 ) => {
   const machine = machinePackages.find((m) => m.type === machineType);
   const mixer = machine?.mixerOptions.find((m) => m.type === mixerType);
@@ -62,6 +62,7 @@ export default function OrderForm() {
       }));
     }
   }, [searchParams]);
+
   const [formData, setFormData] = useState<OrderFormData>({
     machineType: "single",
     capacity: 15,
@@ -91,7 +92,7 @@ export default function OrderForm() {
 
   const handlePackageSelect = (
     machineType: "single" | "double",
-    mixerType: MixerOption["type"]
+    mixerType: MixerOption["type"],
   ) => {
     const capacity = machineType === "single" ? 15 : 30;
     const price = calculatePrice(machineType, mixerType);
@@ -107,7 +108,9 @@ export default function OrderForm() {
   };
 
   const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >,
   ) => {
     const { name, value } = e.target;
     if (name.includes(".")) {
@@ -141,6 +144,10 @@ export default function OrderForm() {
     }
   };
 
+  const inputClassName =
+    "w-full px-4 py-3 bg-white dark:bg-white border-2 border-transparent rounded-xl focus:outline-none focus:border-orange/50 transition-colors text-charcoal";
+  const labelClassName = "block text-charcoal dark:text-white font-medium mb-2";
+
   return (
     <div className="max-w-3xl mx-auto px-4 py-8">
       {/* Progress Bar */}
@@ -152,17 +159,17 @@ export default function OrderForm() {
                 className={`w-8 h-8 rounded-full flex items-center justify-center ${
                   steps.findIndex((st) => st.id === step) >= index
                     ? "bg-gradient-to-r from-orange to-pink text-white"
-                    : "bg-light text-charcoal/50"
+                    : "bg-light dark:bg-charcoal/30 text-charcoal/50 dark:text-white/50"
                 }`}
               >
                 {index + 1}
               </div>
               {index < steps.length - 1 && (
                 <div
-                  className={`h-1 w-32 ${
+                  className={`h-1 w-[125px] md:w-[320px] lg:w-[320px] ${
                     steps.findIndex((st) => st.id === step) > index
                       ? "bg-gradient-to-r from-orange to-pink"
-                      : "bg-light"
+                      : "bg-light dark:bg-charcoal/30"
                   }`}
                 />
               )}
@@ -174,7 +181,9 @@ export default function OrderForm() {
             <div
               key={s.id}
               className={`text-sm ${
-                step === s.id ? "text-orange font-medium" : "text-charcoal/50"
+                step === s.id
+                  ? "text-orange font-medium"
+                  : "text-charcoal/50 dark:text-white/50"
               }`}
             >
               {s.label}
@@ -184,18 +193,18 @@ export default function OrderForm() {
       </div>
 
       {/* Form Steps */}
-      <div className="bg-white/90 backdrop-blur-lg rounded-2xl shadow-xl p-8 relative overflow-hidden">
+      <div className="bg-white/90 dark:bg-charcoal/50 backdrop-blur-lg rounded-2xl shadow-xl p-8 relative overflow-hidden">
         {/* Decorative Elements */}
-        <div className="absolute -top-24 -right-24 w-48 h-48 bg-margarita/10 rounded-full blur-2xl" />
-        <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-orange/10 rounded-full blur-2xl" />
+        <div className="absolute -top-24 -right-24 w-48 h-48 bg-margarita/10 dark:bg-margarita/5 rounded-full blur-2xl" />
+        <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-orange/10 dark:bg-orange/5 rounded-full blur-2xl" />
 
         {step === "details" && (
           <div className="space-y-8 relative">
             <div className="text-center mb-8">
-              <h2 className="text-2xl font-bold text-charcoal mb-2">
+              <h2 className="text-2xl font-bold text-charcoal dark:text-white mb-2">
                 Your Rental Details
               </h2>
-              <p className="text-charcoal/70">
+              <p className="text-charcoal/70 dark:text-white/70">
                 Selected: {formData.capacity}L{" "}
                 {formData.machineType === "single" ? "Single" : "Double"} Tank
                 Machine with {mixerDetails[formData.mixerType].label} - $
@@ -207,34 +216,17 @@ export default function OrderForm() {
               <div className="md:col-span-2">
                 <div className="space-y-6 mb-6">
                   <div>
-                    <label className="block text-charcoal font-medium mb-2">
-                      Machine Type
-                    </label>
+                    <label className={labelClassName}>Machine Type</label>
                     <select
                       name="machineType"
                       value={formData.machineType}
-                      onChange={(e) => {
-                        const newMachineType = e.target.value as
-                          | "single"
-                          | "double";
-                        const capacity = newMachineType === "single" ? 15 : 30;
-                        const price = calculatePrice(
-                          newMachineType,
-                          formData.mixerType
-                        );
-                        setFormData((prev) => ({
-                          ...prev,
-                          machineType: newMachineType,
-                          capacity,
-                          price,
-                        }));
-                      }}
-                      className="w-full px-4 py-3 bg-light/50 border-2 border-transparent rounded-xl focus:outline-none focus:border-orange/50 transition-colors"
+                      onChange={handleInputChange}
+                      className={inputClassName}
                     >
                       <option value="single">15L Single Tank Machine</option>
                       <option value="double">30L Double Tank Machine</option>
                     </select>
-                    <p className="mt-2 text-sm text-charcoal/70">
+                    <p className="mt-2 text-sm text-charcoal/70 dark:text-white/70">
                       {formData.machineType === "single"
                         ? "Perfect for smaller gatherings and parties"
                         : "Ideal for larger events and multiple flavors"}
@@ -242,68 +234,50 @@ export default function OrderForm() {
                   </div>
 
                   <div>
-                    <label className="block text-charcoal font-medium mb-2">
-                      Mixer Type
-                    </label>
+                    <label className={labelClassName}>Mixer Type</label>
                     <select
                       name="mixerType"
                       value={formData.mixerType}
-                      onChange={(e) => {
-                        const newMixerType = e.target
-                          .value as MixerOption["type"];
-                        const price = calculatePrice(
-                          formData.machineType,
-                          newMixerType
-                        );
-                        setFormData((prev) => ({
-                          ...prev,
-                          mixerType: newMixerType,
-                          price,
-                        }));
-                      }}
-                      className="w-full px-4 py-3 bg-light/50 border-2 border-transparent rounded-xl focus:outline-none focus:border-orange/50 transition-colors"
+                      onChange={handleInputChange}
+                      className={inputClassName}
                     >
                       <option value="none">No Mixer</option>
                       <option value="kool-aid">Kool-Aid Mixer</option>
                       <option value="margarita">Margarita Mixer</option>
                       <option value="pina-colada">Piña Colada Mixer</option>
                     </select>
-                    <p className="mt-2 text-sm text-charcoal/70">
+                    <p className="mt-2 text-sm text-charcoal/70 dark:text-white/70">
                       {formData.mixerType === "none"
                         ? "Bring your own mixer for complete control over your drinks"
                         : formData.mixerType === "kool-aid"
-                        ? "Non-alcoholic, perfect for family events"
-                        : formData.mixerType === "margarita"
-                        ? "Classic margarita mix, just add tequila"
-                        : "Tropical piña colada mix, just add rum"}
+                          ? "Non-alcoholic, perfect for family events"
+                          : formData.mixerType === "margarita"
+                            ? "Classic margarita mix, just add tequila"
+                            : "Tropical piña colada mix, just add rum"}
                     </p>
                   </div>
                 </div>
 
-                <label className="block text-charcoal font-medium mb-2">
-                  Full Name
-                </label>
+                <label className={labelClassName}>Full Name</label>
                 <input
                   type="text"
                   name="customer.name"
                   value={formData.customer.name}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-3 bg-light/50 border-2 border-transparent rounded-xl focus:outline-none focus:border-orange/50 transition-colors"
+                  className={inputClassName}
                   placeholder="Enter your full name"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-charcoal font-medium mb-2">
-                  Email
-                </label>
+                <label className={labelClassName}>Email</label>
                 <input
                   type="email"
                   name="customer.email"
                   value={formData.customer.email}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-3 bg-light/50 border-2 border-transparent rounded-xl focus:outline-none focus:border-orange/50 transition-colors"
+                  className={inputClassName}
                   placeholder="your@email.com"
                   required
                   pattern="^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$"
@@ -311,15 +285,13 @@ export default function OrderForm() {
               </div>
 
               <div>
-                <label className="block text-charcoal font-medium mb-2">
-                  Phone
-                </label>
+                <label className={labelClassName}>Phone</label>
                 <input
                   type="tel"
                   name="customer.phone"
                   value={formData.customer.phone}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-3 bg-light/50 border-2 border-transparent rounded-xl focus:outline-none focus:border-orange/50 transition-colors"
+                  className={inputClassName}
                   placeholder="(123) 456-7890"
                   required
                   pattern="^(\+?[\d\s\-()]{7,16})?$"
@@ -327,88 +299,76 @@ export default function OrderForm() {
               </div>
 
               <div className="md:col-span-2">
-                <label className="block text-charcoal font-medium mb-2">
-                  Street Address
-                </label>
+                <label className={labelClassName}>Street Address</label>
                 <input
                   type="text"
                   name="customer.address.street"
                   value={formData.customer.address.street}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-3 bg-light/50 border-2 border-transparent rounded-xl focus:outline-none focus:border-orange/50 transition-colors"
+                  className={inputClassName}
                   placeholder="Enter your street address"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-charcoal font-medium mb-2">
-                  City
-                </label>
+                <label className={labelClassName}>City</label>
                 <input
                   type="text"
                   name="customer.address.city"
                   value={formData.customer.address.city}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-3 bg-light/50 border-2 border-transparent rounded-xl focus:outline-none focus:border-orange/50 transition-colors"
+                  className={inputClassName}
                   placeholder="City"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-charcoal font-medium mb-2">
-                  State
-                </label>
+                <label className={labelClassName}>State</label>
                 <input
                   type="text"
                   name="customer.address.state"
                   value={formData.customer.address.state}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-3 bg-light/50 border-2 border-transparent rounded-xl focus:outline-none focus:border-orange/50 transition-colors"
+                  className={inputClassName}
                   placeholder="State"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-charcoal font-medium mb-2">
-                  ZIP Code
-                </label>
+                <label className={labelClassName}>ZIP Code</label>
                 <input
                   type="text"
                   name="customer.address.zipCode"
                   value={formData.customer.address.zipCode}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-3 bg-light/50 border-2 border-transparent rounded-xl focus:outline-none focus:border-orange/50 transition-colors"
+                  className={inputClassName}
                   placeholder="ZIP Code"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-charcoal font-medium mb-2">
-                  Rental Date
-                </label>
+                <label className={labelClassName}>Rental Date</label>
                 <input
                   type="date"
                   name="rentalDate"
                   value={formData.rentalDate}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-3 bg-light/50 border-2 border-transparent rounded-xl focus:outline-none focus:border-orange/50 transition-colors"
+                  className={inputClassName}
                   required
                 />
               </div>
 
               <div className="md:col-span-2">
-                <label className="block text-charcoal font-medium mb-2">
-                  Special Notes
-                </label>
+                <label className={labelClassName}>Special Notes</label>
                 <textarea
                   name="notes"
                   value={formData.notes}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-3 bg-light/50 border-2 border-transparent rounded-xl focus:outline-none focus:border-orange/50 transition-colors"
+                  className={inputClassName}
                   placeholder="Any special requirements or notes for your rental"
                   rows={3}
                 />
@@ -419,18 +379,20 @@ export default function OrderForm() {
 
         {step === "review" && (
           <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-charcoal mb-6">
+            <h2 className="text-2xl font-bold text-charcoal dark:text-white mb-6">
               Review Your Order
             </h2>
             <div className="space-y-4">
-              <div className="bg-light/50 rounded-xl p-6">
-                <h3 className="font-semibold text-lg mb-4">Selected Machine</h3>
-                <p className="text-charcoal/70">
+              <div className="bg-white/80 dark:bg-charcoal/30 rounded-xl p-6">
+                <h3 className="font-semibold text-lg text-charcoal dark:text-white mb-4">
+                  Selected Machine
+                </h3>
+                <p className="text-charcoal/70 dark:text-white/70">
                   {formData.capacity}L{" "}
                   {formData.machineType === "single" ? "Single" : "Double"} Tank
                   Machine
                 </p>
-                <p className="text-charcoal/70">
+                <p className="text-charcoal/70 dark:text-white/70">
                   Mixer Type: {mixerDetails[formData.mixerType].label}
                 </p>
                 <p className="text-xl font-bold text-orange mt-2">
@@ -438,22 +400,32 @@ export default function OrderForm() {
                 </p>
               </div>
 
-              <div className="bg-light/50 rounded-xl p-6">
-                <h3 className="font-semibold text-lg mb-4">Rental Details</h3>
-                <p className="text-charcoal/70">
+              <div className="bg-white/80 dark:bg-charcoal/30 rounded-xl p-6">
+                <h3 className="font-semibold text-lg text-charcoal dark:text-white mb-4">
+                  Rental Details
+                </h3>
+                <p className="text-charcoal/70 dark:text-white/70">
                   Rental Date: {formData.rentalDate}
                 </p>
-                <p className="text-charcoal/70">Return Date: Next day</p>
+                <p className="text-charcoal/70 dark:text-white/70">
+                  Return Date: Next day
+                </p>
               </div>
 
-              <div className="bg-light/50 rounded-xl p-6">
-                <h3 className="font-semibold text-lg mb-4">
+              <div className="bg-white/80 dark:bg-charcoal/30 rounded-xl p-6">
+                <h3 className="font-semibold text-lg text-charcoal dark:text-white mb-4">
                   Contact Information
                 </h3>
-                <p className="text-charcoal/70">{formData.customer.name}</p>
-                <p className="text-charcoal/70">{formData.customer.email}</p>
-                <p className="text-charcoal/70">{formData.customer.phone}</p>
-                <p className="text-charcoal/70">
+                <p className="text-charcoal/70 dark:text-white/70">
+                  {formData.customer.name}
+                </p>
+                <p className="text-charcoal/70 dark:text-white/70">
+                  {formData.customer.email}
+                </p>
+                <p className="text-charcoal/70 dark:text-white/70">
+                  {formData.customer.phone}
+                </p>
+                <p className="text-charcoal/70 dark:text-white/70">
                   {formData.customer.address.street},{" "}
                   {formData.customer.address.city},{" "}
                   {formData.customer.address.state}{" "}
@@ -466,16 +438,16 @@ export default function OrderForm() {
 
         {step === "payment" && (
           <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-charcoal mb-6">
+            <h2 className="text-2xl font-bold text-charcoal dark:text-white mb-6">
               Payment Details
             </h2>
-            <div className="bg-light/50 rounded-xl p-6">
+            <div className="bg-white/80 dark:bg-charcoal/30 rounded-xl p-6">
               <p className="text-center text-xl font-bold text-orange mb-4">
                 Total Amount: ${formData.price}
               </p>
               <div className="text-center">
                 {/* PayPal integration would go here */}
-                <p className="text-charcoal/70 mb-4">
+                <p className="text-charcoal/70 dark:text-white/70 mb-4">
                   Proceed to PayPal to complete your order
                 </p>
                 <button className="px-8 py-3 bg-[#0070BA] text-white rounded-xl font-bold hover:bg-[#003087] transition-colors">
@@ -498,7 +470,7 @@ export default function OrderForm() {
             className={`px-8 py-3 rounded-xl font-bold transition-all duration-300 ${
               step === "details"
                 ? "invisible"
-                : "bg-light text-charcoal hover:bg-light/80 hover:-translate-y-1"
+                : "bg-light dark:bg-charcoal/30 text-charcoal dark:text-white hover:bg-light/80 dark:hover:bg-charcoal/50 hover:-translate-y-1"
             }`}
           >
             Previous

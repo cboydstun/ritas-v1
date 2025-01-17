@@ -1,6 +1,7 @@
 import "./globals.css";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
+import ThemeWrapper from "@/components/ThemeWrapper";
 
 export default function RootLayout({
   children,
@@ -8,11 +9,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body className="flex flex-col min-h-screen bg-white">
-        <Navigation />
-        <main className="flex-grow">{children}</main>
-        <Footer />
+    <html lang="en" className="light">
+      <body className="flex flex-col min-h-screen bg-white dark:bg-charcoal dark:text-white">
+        <ThemeWrapper>
+          <Navigation />
+          <main className="flex-grow">{children}</main>
+          <Footer />
+        </ThemeWrapper>
       </body>
     </html>
   );

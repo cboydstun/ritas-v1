@@ -1,19 +1,19 @@
 export default function SocialProofSection() {
   return (
-    <div className="bg-white py-16">
+    <div className="bg-white dark:bg-charcoal py-16">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold text-charcoal mb-4">
+          <h2 className="text-3xl font-bold text-charcoal dark:text-white mb-4">
             Trusted by San Antonio's Best
           </h2>
-          <p className="text-lg text-charcoal/70">
+          <p className="text-lg text-charcoal/70 dark:text-white/70">
             Join hundreds of satisfied customers who chose SATX Ritas
           </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {/* Testimonial 1 */}
-          <div className="bg-light p-6 rounded-lg">
+          <div className="bg-light dark:bg-charcoal/50 p-6 rounded-lg">
             <div className="flex items-center mb-4">
               <div className="flex text-orange">
                 {[...Array(5)].map((_, i) => (
@@ -28,16 +28,20 @@ export default function SocialProofSection() {
                 ))}
               </div>
             </div>
-            <p className="text-charcoal/80 mb-4">
+            <p className="text-charcoal/80 dark:text-white/80 mb-4">
               "The margaritas were a huge hit at our wedding! Professional
               service and amazing taste. Highly recommend!"
             </p>
-            <div className="font-semibold text-charcoal">Maria R.</div>
-            <div className="text-sm text-charcoal/60">Wedding Reception</div>
+            <div className="font-semibold text-charcoal dark:text-white">
+              Maria R.
+            </div>
+            <div className="text-sm text-charcoal/60 dark:text-white/60">
+              Wedding Reception
+            </div>
           </div>
 
           {/* Testimonial 2 */}
-          <div className="bg-light p-6 rounded-lg">
+          <div className="bg-light dark:bg-charcoal/50 p-6 rounded-lg">
             <div className="flex items-center mb-4">
               <div className="flex text-orange">
                 {[...Array(5)].map((_, i) => (
@@ -52,18 +56,20 @@ export default function SocialProofSection() {
                 ))}
               </div>
             </div>
-            <p className="text-charcoal/80 mb-4">
+            <p className="text-charcoal/80 dark:text-white/80 mb-4">
               "Best corporate event decision ever! The team was punctual,
               professional, and the margaritas were perfect."
             </p>
-            <div className="font-semibold text-charcoal">John D.</div>
-            <div className="text-sm text-charcoal/60">
+            <div className="font-semibold text-charcoal dark:text-white">
+              John D.
+            </div>
+            <div className="text-sm text-charcoal/60 dark:text-white/60">
               Corporate Event Planner
             </div>
           </div>
 
           {/* Testimonial 3 */}
-          <div className="bg-light p-6 rounded-lg">
+          <div className="bg-light dark:bg-charcoal/50 p-6 rounded-lg">
             <div className="flex items-center mb-4">
               <div className="flex text-orange">
                 {[...Array(5)].map((_, i) => (
@@ -78,12 +84,16 @@ export default function SocialProofSection() {
                 ))}
               </div>
             </div>
-            <p className="text-charcoal/80 mb-4">
+            <p className="text-charcoal/80 dark:text-white/80 mb-4">
               "These guys know their margaritas! Setup was quick, cleanup was
               spotless, and the drinks were fantastic."
             </p>
-            <div className="font-semibold text-charcoal">Sarah M.</div>
-            <div className="text-sm text-charcoal/60">Birthday Party Host</div>
+            <div className="font-semibold text-charcoal dark:text-white">
+              Sarah M.
+            </div>
+            <div className="text-sm text-charcoal/60 dark:text-white/60">
+              Birthday Party Host
+            </div>
           </div>
         </div>
 
@@ -91,19 +101,27 @@ export default function SocialProofSection() {
         <div className="mt-16 grid grid-cols-2 md:grid-cols-4 gap-8 items-center">
           <div className="text-center">
             <div className="text-4xl font-bold text-margarita mb-2">500+</div>
-            <div className="text-charcoal/70">Events Served</div>
+            <div className="text-charcoal/70 dark:text-white/70">
+              Events Served
+            </div>
           </div>
           <div className="text-center">
             <div className="text-4xl font-bold text-margarita mb-2">4.9</div>
-            <div className="text-charcoal/70">Average Rating</div>
+            <div className="text-charcoal/70 dark:text-white/70">
+              Average Rating
+            </div>
           </div>
           <div className="text-center">
             <div className="text-4xl font-bold text-margarita mb-2">50k+</div>
-            <div className="text-charcoal/70">Margaritas Served</div>
+            <div className="text-charcoal/70 dark:text-white/70">
+              Margaritas Served
+            </div>
           </div>
           <div className="text-center">
             <div className="text-4xl font-bold text-margarita mb-2">100%</div>
-            <div className="text-charcoal/70">Satisfaction Rate</div>
+            <div className="text-charcoal/70 dark:text-white/70">
+              Satisfaction Rate
+            </div>
           </div>
         </div>
       </div>

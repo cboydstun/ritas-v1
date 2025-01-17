@@ -1,22 +1,22 @@
 export default function AboutSection() {
   return (
-    <div className="bg-light py-16">
+    <div className="bg-light dark:bg-charcoal py-16">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
           <div>
-            <h2 className="text-4xl font-bold text-charcoal mb-6">
+            <h2 className="text-4xl font-bold text-charcoal dark:text-white mb-6">
               San Antonio's Premier
               <span className="block text-margarita">Margarita Service</span>
             </h2>
             <div className="space-y-4">
-              <p className="text-lg text-charcoal/80">
+              <p className="text-lg text-charcoal/80 dark:text-white/80">
                 Founded by San Antonio natives who understand the heart and soul
                 of Tex-Mex culture, SATX Ritas brings the authentic taste of our
                 city to your events. We're more than just a margarita machine
                 rental service – we're your partners in creating unforgettable
                 experiences.
               </p>
-              <p className="text-lg text-charcoal/80">
+              <p className="text-lg text-charcoal/80 dark:text-white/80">
                 Our commitment to quality means using only premium ingredients,
                 professional-grade equipment, and providing exceptional service
                 that keeps our customers coming back event after event.
@@ -27,7 +27,7 @@ export default function AboutSection() {
             <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-6">
               <div className="flex items-start space-x-4">
                 <div className="flex-shrink-0">
-                  <div className="p-2 bg-teal/10 rounded-lg">
+                  <div className="p-2 bg-teal/10 dark:bg-teal/20 rounded-lg">
                     <svg
                       className="w-6 h-6 text-teal"
                       fill="none"
@@ -44,10 +44,10 @@ export default function AboutSection() {
                   </div>
                 </div>
                 <div>
-                  <h3 className="font-semibold text-charcoal">
+                  <h3 className="font-semibold text-charcoal dark:text-white">
                     Premium Ingredients
                   </h3>
-                  <p className="text-charcoal/70">
+                  <p className="text-charcoal/70 dark:text-white/70">
                     Top-shelf liquors and fresh ingredients
                   </p>
                 </div>
@@ -55,7 +55,7 @@ export default function AboutSection() {
 
               <div className="flex items-start space-x-4">
                 <div className="flex-shrink-0">
-                  <div className="p-2 bg-teal/10 rounded-lg">
+                  <div className="p-2 bg-teal/10 dark:bg-teal/20 rounded-lg">
                     <svg
                       className="w-6 h-6 text-teal"
                       fill="none"
@@ -72,10 +72,10 @@ export default function AboutSection() {
                   </div>
                 </div>
                 <div>
-                  <h3 className="font-semibold text-charcoal">
+                  <h3 className="font-semibold text-charcoal dark:text-white">
                     Reliable Service
                   </h3>
-                  <p className="text-charcoal/70">
+                  <p className="text-charcoal/70 dark:text-white/70">
                     On-time setup and professional staff
                   </p>
                 </div>
@@ -83,7 +83,7 @@ export default function AboutSection() {
 
               <div className="flex items-start space-x-4">
                 <div className="flex-shrink-0">
-                  <div className="p-2 bg-teal/10 rounded-lg">
+                  <div className="p-2 bg-teal/10 dark:bg-teal/20 rounded-lg">
                     <svg
                       className="w-6 h-6 text-teal"
                       fill="none"
@@ -100,10 +100,10 @@ export default function AboutSection() {
                   </div>
                 </div>
                 <div>
-                  <h3 className="font-semibold text-charcoal">
+                  <h3 className="font-semibold text-charcoal dark:text-white">
                     Local Business
                   </h3>
-                  <p className="text-charcoal/70">
+                  <p className="text-charcoal/70 dark:text-white/70">
                     Proudly serving San Antonio
                   </p>
                 </div>
@@ -111,7 +111,7 @@ export default function AboutSection() {
 
               <div className="flex items-start space-x-4">
                 <div className="flex-shrink-0">
-                  <div className="p-2 bg-teal/10 rounded-lg">
+                  <div className="p-2 bg-teal/10 dark:bg-teal/20 rounded-lg">
                     <svg
                       className="w-6 h-6 text-teal"
                       fill="none"
@@ -128,10 +128,10 @@ export default function AboutSection() {
                   </div>
                 </div>
                 <div>
-                  <h3 className="font-semibold text-charcoal">
+                  <h3 className="font-semibold text-charcoal dark:text-white">
                     Competitive Pricing
                   </h3>
-                  <p className="text-charcoal/70">
+                  <p className="text-charcoal/70 dark:text-white/70">
                     Transparent, all-inclusive rates
                   </p>
                 </div>
@@ -142,12 +142,12 @@ export default function AboutSection() {
           {/* Image Grid */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-4">
-              <div className="bg-orange/20 rounded-lg h-64"></div>
-              <div className="bg-teal/20 rounded-lg h-48"></div>
+              <div className="bg-orange/20 dark:bg-orange/10 rounded-lg h-64"></div>
+              <div className="bg-teal/20 dark:bg-teal/10 rounded-lg h-48"></div>
             </div>
             <div className="space-y-4 pt-8">
-              <div className="bg-margarita/20 rounded-lg h-48"></div>
-              <div className="bg-pink/20 rounded-lg h-64"></div>
+              <div className="bg-margarita/20 dark:bg-margarita/10 rounded-lg h-48"></div>
+              <div className="bg-pink/20 dark:bg-pink/10 rounded-lg h-64"></div>
             </div>
           </div>
         </div>
