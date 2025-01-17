@@ -5,7 +5,7 @@ export default function AboutSection() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
           <div>
             <h2 className="text-4xl font-bold text-charcoal dark:text-white mb-6">
-              San Antonio `&apos;`s Premier
+              San Antonio&apos;s Premier
               <span className="block text-margarita">Margarita Service</span>
             </h2>
             <div className="space-y-4">
