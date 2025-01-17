@@ -60,7 +60,7 @@ export default function PricingPage() {
               Hassle-free Pickup
             </h3>
             <p className="text-charcoal/70 dark:text-white/70">
-              When your event is over, we'll handle the cleanup and pickup. No
+              When your event is over, we will handle the cleanup and pickup. No
               need to worry about cleaning or returning the machine yourself.
             </p>
           </div>

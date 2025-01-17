@@ -4,7 +4,7 @@ export default function SocialProofSection() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-12">
           <h2 className="text-3xl font-bold text-charcoal dark:text-white mb-4">
-            Trusted by San Antonio's Best
+            Trusted by San Antonio`&apos;`s Best
           </h2>
           <p className="text-lg text-charcoal/70 dark:text-white/70">
             Join hundreds of satisfied customers who chose SATX Ritas
@@ -29,8 +29,8 @@ export default function SocialProofSection() {
               </div>
             </div>
             <p className="text-charcoal/80 dark:text-white/80 mb-4">
-              "The margaritas were a huge hit at our wedding! Professional
-              service and amazing taste. Highly recommend!"
+              The margaritas were a huge hit at our wedding! Professional
+              service and amazing taste. Highly recommend!
             </p>
             <div className="font-semibold text-charcoal dark:text-white">
               Maria R.
@@ -57,8 +57,8 @@ export default function SocialProofSection() {
               </div>
             </div>
             <p className="text-charcoal/80 dark:text-white/80 mb-4">
-              "Best corporate event decision ever! The team was punctual,
-              professional, and the margaritas were perfect."
+              Best corporate event decision ever! The team was punctual,
+              professional, and the margaritas were perfect.
             </p>
             <div className="font-semibold text-charcoal dark:text-white">
               John D.
@@ -85,8 +85,8 @@ export default function SocialProofSection() {
               </div>
             </div>
             <p className="text-charcoal/80 dark:text-white/80 mb-4">
-              "These guys know their margaritas! Setup was quick, cleanup was
-              spotless, and the drinks were fantastic."
+              These guys know their margaritas! Setup was quick, cleanup was
+              spotless, and the drinks were fantastic.
             </p>
             <div className="font-semibold text-charcoal dark:text-white">
               Sarah M.

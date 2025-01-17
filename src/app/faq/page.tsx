@@ -61,7 +61,7 @@ export default function FAQPage() {
               </h3>
               <p className="text-charcoal/80 dark:text-white/80">
                 We recommend booking at least 2-3 weeks in advance, especially
-                for weekend events or peak seasons. However, we'll always try
+                for weekend events or peak seasons. However, we will always try
                 our best to accommodate last-minute requests when possible.
               </p>
             </div>
@@ -80,9 +80,9 @@ export default function FAQPage() {
               </h3>
               <p className="text-charcoal/80 dark:text-white/80">
                 Our machines are commercial-grade frozen drink makers that
-                maintain the perfect slushy consistency. They're fully automatic
-                - once set up, they'll keep your drinks at the ideal temperature
-                and consistency throughout your event.
+                maintain the perfect slushy consistency. They are fully
+                automatic - once set up, they will keep your drinks at the ideal
+                temperature and consistency throughout your event.
               </p>
             </div>
             <div>
@@ -90,9 +90,9 @@ export default function FAQPage() {
                 Do I need special electrical requirements?
               </h3>
               <p className="text-charcoal/80 dark:text-white/80">
-                Our machines operate on standard 110V household power. You'll
+                Our machines operate on standard 110V household power. You will
                 just need a dedicated electrical outlet within 6 feet of where
-                you'd like the machine placed.
+                you would like the machine placed.
               </p>
             </div>
             <div>
@@ -101,7 +101,7 @@ export default function FAQPage() {
               </h3>
               <p className="text-charcoal/80 dark:text-white/80">
                 We provide 24/7 technical support throughout your rental period.
-                If any issues arise, we're just a phone call away and can walk
+                If any issues arise, we are just a phone call away and can walk
                 you through solutions or send a technician if needed.
               </p>
             </div>
@@ -119,7 +119,7 @@ export default function FAQPage() {
                 What about the alcohol?
               </h3>
               <p className="text-charcoal/80 dark:text-white/80">
-                You'll need to provide your own alcohol. During setup, we'll
+                You will need to provide your own alcohol. During setup, we will
                 guide you on the right amount needed for your chosen mixer and
                 provide mixing instructions for the perfect drink consistency.
               </p>
@@ -170,9 +170,9 @@ export default function FAQPage() {
                 What space requirements are needed?
               </h3>
               <p className="text-charcoal/80 dark:text-white/80">
-                You'll need a flat, stable surface near a power outlet. Single
+                You will need a flat, stable surface near a power outlet. Single
                 machines require about 2x2 feet of space, while double machines
-                need 3x2 feet. We'll help determine the best location during
+                need 3x2 feet. We will help determine the best location during
                 delivery.
               </p>
             </div>
@@ -212,7 +212,7 @@ export default function FAQPage() {
               <p className="text-charcoal/80 dark:text-white/80">
                 We understand plans can change. Cancellations made at least 7
                 days before your event receive a full refund. For cancellations
-                within 7 days, we'll work with you to reschedule for a better
+                within 7 days, we will work with you to reschedule for a better
                 date.
               </p>
             </div>
@@ -222,7 +222,7 @@ export default function FAQPage() {
               </h3>
               <p className="text-charcoal/80 dark:text-white/80">
                 Our machines are fully insured, and we handle all maintenance
-                and repairs. You're only responsible for preventing intentional
+                and repairs. You are only responsible for preventing intentional
                 damage or misuse during your rental period.
               </p>
             </div>

@@ -148,8 +148,8 @@ export default function RentalsPage() {
                   What about alcohol?
                 </h3>
                 <p className="text-charcoal/80 dark:text-white/80">
-                  You'll need to provide your own alcohol. We'll guide you on
-                  the right amount needed for your chosen mixer.
+                  You will need to provide your own alcohol. We will guide you
+                  on the right amount needed for your chosen mixer.
                 </p>
               </div>
               <div>
@@ -158,8 +158,8 @@ export default function RentalsPage() {
                 </h3>
                 <p className="text-charcoal/80 dark:text-white/80">
                   Simply select your preferred machine and mixer option above,
-                  then complete the booking form. We'll confirm availability for
-                  your chosen date.
+                  then complete the booking form. We will confirm availability
+                  for your chosen date.
                 </p>
               </div>
             </div>

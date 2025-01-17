@@ -1,4 +1,5 @@
 import OrderForm from "@/components/order/OrderForm";
+import { Suspense } from "react";
 
 export default function OrderPage() {
   return (
@@ -14,7 +15,7 @@ export default function OrderPage() {
         <div className="text-center mb-12">
           <div className="mb-8 inline-block">
             <span className="inline-block px-4 py-2 rounded-full bg-margarita/20 dark:bg-margarita/10 text-charcoal dark:text-white text-sm font-semibold tracking-wide uppercase animate-bounce">
-              🎉 Let's Get Started
+              🎉 Lets Get Started
             </span>
           </div>
           <h1 className="text-5xl md:text-6xl font-extrabold text-charcoal dark:text-white mb-6 tracking-tight">
@@ -24,11 +25,13 @@ export default function OrderPage() {
             </span>
           </h1>
           <p className="text-xl text-charcoal/70 dark:text-white/70 max-w-2xl mx-auto">
-            Fill out the form below to start your booking process. We'll help
+            Fill out the form below to start your booking process. We will help
             you create the perfect frozen drink experience for your event.
           </p>
         </div>
-        <OrderForm />
+        <Suspense fallback={<div className="text-center">Loading form...</div>}>
+          <OrderForm />
+        </Suspense>
       </div>
     </div>
   );

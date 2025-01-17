@@ -33,7 +33,7 @@ interface OrderFormData {
 
 const calculatePrice = (
   machineType: "single" | "double",
-  mixerType: MixerOption["type"],
+  mixerType: MixerOption["type"]
 ) => {
   const machine = machinePackages.find((m) => m.type === machineType);
   const mixer = machine?.mixerOptions.find((m) => m.type === mixerType);
@@ -90,34 +90,34 @@ export default function OrderForm() {
     { id: "payment", label: "Payment" },
   ];
 
-  const handlePackageSelect = (
-    machineType: "single" | "double",
-    mixerType: MixerOption["type"],
-  ) => {
-    const capacity = machineType === "single" ? 15 : 30;
-    const price = calculatePrice(machineType, mixerType);
+  // const handlePackageSelect = (
+  //   machineType: "single" | "double",
+  //   mixerType: MixerOption["type"],
+  // ) => {
+  //   const capacity = machineType === "single" ? 15 : 30;
+  //   const price = calculatePrice(machineType, mixerType);
 
-    setFormData((prev) => ({
-      ...prev,
-      machineType,
-      capacity,
-      mixerType,
-      price,
-    }));
-    setStep("details");
-  };
+  //   setFormData((prev) => ({
+  //     ...prev,
+  //     machineType,
+  //     capacity,
+  //     mixerType,
+  //     price,
+  //   }));
+  //   setStep("details");
+  // };
 
   const handleInputChange = (
     e: React.ChangeEvent<
       HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-    >,
+    >
   ) => {
     const { name, value } = e.target;
     if (name.includes(".")) {
       const [parent, child] = name.split(".");
       if (parent === "customer" && child.includes(".")) {
         // Handle nested address fields
-        const [_, addressField] = child.split(".");
+        const [addressField] = child.split(".");
         setFormData((prev: OrderFormData) => ({
           ...prev,
           customer: {

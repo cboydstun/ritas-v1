@@ -5,15 +5,15 @@ export default function AboutSection() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
           <div>
             <h2 className="text-4xl font-bold text-charcoal dark:text-white mb-6">
-              San Antonio's Premier
+              San Antonio `&apos;`s Premier
               <span className="block text-margarita">Margarita Service</span>
             </h2>
             <div className="space-y-4">
               <p className="text-lg text-charcoal/80 dark:text-white/80">
                 Founded by San Antonio natives who understand the heart and soul
                 of Tex-Mex culture, SATX Ritas brings the authentic taste of our
-                city to your events. We're more than just a margarita machine
-                rental service – we're your partners in creating unforgettable
+                city to your events. We are more than just a margarita machine
+                rental service – we are your partners in creating unforgettable
                 experiences.
               </p>
               <p className="text-lg text-charcoal/80 dark:text-white/80">
