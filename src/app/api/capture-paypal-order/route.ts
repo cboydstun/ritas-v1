@@ -18,6 +18,7 @@ export async function POST(request: Request) {
         const sdk = await import("@paypal/checkout-server-sdk");
 
         const paypalClient = await initializePayPalSDK();
+        // @ts-expect-error: TypeScript does not recognize OrdersCaptureRequest
         const request_ = new sdk.default.orders.OrdersCaptureRequest(orderId);
         const capture = await paypalClient.execute(request_);
 

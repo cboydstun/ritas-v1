@@ -78,12 +78,8 @@ export const PayPalCheckout: React.FC<PayPalCheckoutProps> = ({
       const orderData = await response.json();
       onSuccess(orderData.id);
     } catch (error) {
-      console.error("Error capturing PayPal payment:", error);
-      onError(
-        error instanceof Error ? error : new Error("Failed to capture payment")
-      );
-    } finally {
       setIsPending(false);
+      console.error("Error capturing PayPal payment:", error);
     }
   };
 
@@ -100,9 +96,13 @@ export const PayPalCheckout: React.FC<PayPalCheckoutProps> = ({
         onApprove={async (data) => {
           await onApprove(data);
         }}
-        onError={(err: any) => {
+        onError={(err: Record<string, unknown>) => {
           console.error("PayPal error:", err);
-          onError(new Error(err?.message || "PayPal payment error"));
+          onError(
+            new Error(
+              (err as unknown as Error)?.message || "PayPal payment error"
+            )
+          );
         }}
         disabled={isPending}
         style={{ layout: "vertical" }}

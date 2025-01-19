@@ -496,7 +496,7 @@ export default function OrderForm() {
                       customer: formData.customer,
                       notes: formData.notes,
                     }}
-                    onSuccess={(orderId: string) => {
+                    onSuccess={() => {
                       // Show success message
                       alert(
                         "Payment successful! Your rental has been confirmed."

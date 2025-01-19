@@ -1,5 +1,3 @@
-import paypal from "@paypal/checkout-server-sdk";
-
 // Server-side PayPal initialization
 export const initializePayPalSDK = async () => {
     const clientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID;
@@ -16,8 +14,10 @@ export const initializePayPalSDK = async () => {
     const sdk = await import("@paypal/checkout-server-sdk");
 
     // Create sandbox environment
-    let environment = new sdk.default.core.SandboxEnvironment(clientId, secret);
-    let client = new sdk.default.core.PayPalHttpClient(environment);
+    // @ts-expect-error: TypeScript does not recognize SandboxEnvironment
+    const environment = new sdk.default.core.SandboxEnvironment(clientId, secret);
+    // @ts-expect-error: TypeScript does not recognize PayPalHttpClient
+    const client = new sdk.default.core.PayPalHttpClient(environment);
     return client;
 };
 

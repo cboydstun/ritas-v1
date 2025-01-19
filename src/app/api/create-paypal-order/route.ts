@@ -16,6 +16,7 @@ export async function POST(request: Request) {
         const sdk = await import("@paypal/checkout-server-sdk");
 
         const paypalClient = await initializePayPalSDK();
+        // @ts-expect-error: TypeScript does not recognize OrdersCreateRequest
         const request_ = new sdk.default.orders.OrdersCreateRequest();
 
         request_.prefer("return=representation");
