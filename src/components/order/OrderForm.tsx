@@ -2,6 +2,9 @@
 
 import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
+import { PayPalScriptProvider } from "@paypal/react-paypal-js";
+import { PayPalCheckout } from "@/components/PayPalCheckout";
+import { paypalConfig } from "@/config/paypal";
 import {
   mixerDetails,
   machinePackages,
@@ -40,6 +43,12 @@ const calculatePrice = (
   return mixer?.price ?? 89.95;
 };
 
+const getNextDay = (date: Date) => {
+  const nextDay = new Date(date);
+  nextDay.setDate(nextDay.getDate() + 1);
+  return nextDay;
+};
+
 export default function OrderForm() {
   const searchParams = useSearchParams();
   const [step, setStep] = useState<OrderStep>("details");
@@ -63,7 +72,7 @@ export default function OrderForm() {
     }
   }, [searchParams]);
 
-  const [formData, setFormData] = useState<OrderFormData>({
+  const initialFormState: OrderFormData = {
     machineType: "single",
     capacity: 15,
     mixerType: "none",
@@ -82,7 +91,9 @@ export default function OrderForm() {
       },
     },
     notes: "",
-  });
+  };
+
+  const [formData, setFormData] = useState<OrderFormData>(initialFormState);
 
   const steps: { id: OrderStep; label: string }[] = [
     { id: "details", label: "Your Details" },
@@ -90,29 +101,24 @@ export default function OrderForm() {
     { id: "payment", label: "Payment" },
   ];
 
-  // const handlePackageSelect = (
-  //   machineType: "single" | "double",
-  //   mixerType: MixerOption["type"],
-  // ) => {
-  //   const capacity = machineType === "single" ? 15 : 30;
-  //   const price = calculatePrice(machineType, mixerType);
-
-  //   setFormData((prev) => ({
-  //     ...prev,
-  //     machineType,
-  //     capacity,
-  //     mixerType,
-  //     price,
-  //   }));
-  //   setStep("details");
-  // };
-
   const handleInputChange = (
     e: React.ChangeEvent<
       HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
     >
   ) => {
     const { name, value } = e.target;
+
+    // Update returnDate when rentalDate changes
+    if (name === "rentalDate") {
+      const nextDay = getNextDay(new Date(value));
+      setFormData((prev: OrderFormData) => ({
+        ...prev,
+        rentalDate: value,
+        returnDate: nextDay.toISOString().split("T")[0],
+      }));
+      return;
+    }
+
     if (name.includes(".")) {
       const [parent, child] = name.split(".");
       if (parent === "customer" && child.includes(".")) {
@@ -140,7 +146,40 @@ export default function OrderForm() {
       }
     } else {
       // Handle top-level fields
-      setFormData((prev: OrderFormData) => ({ ...prev, [name]: value }));
+      setFormData((prev: OrderFormData) => {
+        const newData = { ...prev, [name]: value };
+
+        // Update price when machine type or mixer type changes
+        if (name === "machineType" || name === "mixerType") {
+          const newPrice = calculatePrice(
+            name === "machineType"
+              ? (value as "single" | "double")
+              : prev.machineType,
+            name === "mixerType"
+              ? (value as MixerOption["type"])
+              : prev.mixerType
+          );
+          return {
+            ...newData,
+            price: newPrice,
+            capacity:
+              name === "machineType"
+                ? value === "single"
+                  ? 15
+                  : 30
+                : prev.capacity,
+          };
+        }
+
+        return newData;
+      });
+    }
+  };
+
+  const handleNextStep = () => {
+    const currentIndex = steps.findIndex((s) => s.id === step);
+    if (currentIndex < steps.length - 1) {
+      setStep(steps[currentIndex + 1].id);
     }
   };
 
@@ -258,16 +297,17 @@ export default function OrderForm() {
                   </div>
                 </div>
 
-                <label className={labelClassName}>Full Name</label>
-                <input
-                  type="text"
-                  name="customer.name"
-                  value={formData.customer.name}
-                  onChange={handleInputChange}
-                  className={inputClassName}
-                  placeholder="Enter your full name"
-                  required
-                />
+                <div>
+                  <label className={labelClassName}>Full Name</label>
+                  <input
+                    type="text"
+                    name="customer.name"
+                    value={formData.customer.name}
+                    onChange={handleInputChange}
+                    className={inputClassName}
+                    placeholder="Enter your full name"
+                  />
+                </div>
               </div>
 
               <div>
@@ -279,8 +319,6 @@ export default function OrderForm() {
                   onChange={handleInputChange}
                   className={inputClassName}
                   placeholder="your@email.com"
-                  required
-                  pattern="^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$"
                 />
               </div>
 
@@ -293,8 +331,6 @@ export default function OrderForm() {
                   onChange={handleInputChange}
                   className={inputClassName}
                   placeholder="(123) 456-7890"
-                  required
-                  pattern="^(\+?[\d\s\-()]{7,16})?$"
                 />
               </div>
 
@@ -307,7 +343,6 @@ export default function OrderForm() {
                   onChange={handleInputChange}
                   className={inputClassName}
                   placeholder="Enter your street address"
-                  required
                 />
               </div>
 
@@ -320,7 +355,6 @@ export default function OrderForm() {
                   onChange={handleInputChange}
                   className={inputClassName}
                   placeholder="City"
-                  required
                 />
               </div>
 
@@ -333,7 +367,6 @@ export default function OrderForm() {
                   onChange={handleInputChange}
                   className={inputClassName}
                   placeholder="State"
-                  required
                 />
               </div>
 
@@ -346,7 +379,6 @@ export default function OrderForm() {
                   onChange={handleInputChange}
                   className={inputClassName}
                   placeholder="ZIP Code"
-                  required
                 />
               </div>
 
@@ -358,7 +390,7 @@ export default function OrderForm() {
                   value={formData.rentalDate}
                   onChange={handleInputChange}
                   className={inputClassName}
-                  required
+                  min={new Date().toISOString().split("T")[0]}
                 />
               </div>
 
@@ -405,10 +437,14 @@ export default function OrderForm() {
                   Rental Details
                 </h3>
                 <p className="text-charcoal/70 dark:text-white/70">
-                  Rental Date: {formData.rentalDate}
+                  Rental Date:{" "}
+                  {new Date(formData.rentalDate).toLocaleDateString()}
                 </p>
                 <p className="text-charcoal/70 dark:text-white/70">
-                  Return Date: Next day
+                  Return Date:{" "}
+                  {getNextDay(
+                    new Date(formData.rentalDate)
+                  ).toLocaleDateString()}
                 </p>
               </div>
 
@@ -446,13 +482,28 @@ export default function OrderForm() {
                 Total Amount: ${formData.price}
               </p>
               <div className="text-center">
-                {/* PayPal integration would go here */}
-                <p className="text-charcoal/70 dark:text-white/70 mb-4">
-                  Proceed to PayPal to complete your order
-                </p>
-                <button className="px-8 py-3 bg-[#0070BA] text-white rounded-xl font-bold hover:bg-[#003087] transition-colors">
-                  Pay with PayPal
-                </button>
+                <PayPalScriptProvider options={paypalConfig}>
+                  <PayPalCheckout
+                    amount={formData.price}
+                    currency="USD"
+                    onSuccess={(orderId: string) => {
+                      // Show success message
+                      alert(
+                        "Payment successful! Your rental has been confirmed."
+                      );
+                      // Reset form state and step in a single batch
+                      Promise.resolve().then(() => {
+                        setFormData(initialFormState);
+                        setStep("details");
+                      });
+                    }}
+                    onError={(error: Error) => {
+                      // Show error message
+                      alert(`Payment failed: ${error.message}`);
+                      setStep("review");
+                    }}
+                  />
+                </PayPalScriptProvider>
               </div>
             </div>
           </div>
@@ -476,12 +527,7 @@ export default function OrderForm() {
             Previous
           </button>
           <button
-            onClick={() => {
-              const currentIndex = steps.findIndex((s) => s.id === step);
-              if (currentIndex < steps.length - 1) {
-                setStep(steps[currentIndex + 1].id);
-              }
-            }}
+            onClick={handleNextStep}
             className="px-8 py-3 bg-gradient-to-r from-orange to-pink text-white rounded-xl font-bold
               hover:shadow-lg hover:shadow-orange/30 transform hover:-translate-y-1 transition-all duration-300"
           >
