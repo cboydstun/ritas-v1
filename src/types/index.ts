@@ -30,7 +30,9 @@ export interface MargaritaRental {
     mixerType: MixerType;
     price: number;
     rentalDate: Date;
+    rentalTime: string;
     returnDate: Date;
+    returnTime: string;
     customer: Customer;
     payment?: Payment;
     status: RentalStatus;

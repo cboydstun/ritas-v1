@@ -11,7 +11,7 @@ import {
   type MixerOption,
 } from "@/lib/rental-data";
 
-type OrderStep = "details" | "review" | "payment";
+type OrderStep = "delivery" | "details" | "review" | "payment";
 
 interface OrderFormData {
   machineType: "single" | "double";
@@ -19,7 +19,9 @@ interface OrderFormData {
   mixerType: MixerOption["type"];
   price: number;
   rentalDate: string;
+  rentalTime: string;
   returnDate: string;
+  returnTime: string;
   customer: {
     name: string;
     email: string;
@@ -51,7 +53,7 @@ const getNextDay = (date: Date) => {
 
 export default function OrderForm() {
   const searchParams = useSearchParams();
-  const [step, setStep] = useState<OrderStep>("details");
+  const [step, setStep] = useState<OrderStep>("delivery");
 
   // Initialize form with URL parameters
   useEffect(() => {
@@ -78,7 +80,9 @@ export default function OrderForm() {
     mixerType: "none",
     price: 89.95,
     rentalDate: "",
+    rentalTime: "",
     returnDate: "",
+    returnTime: "",
     customer: {
       name: "",
       email: "",
@@ -96,6 +100,7 @@ export default function OrderForm() {
   const [formData, setFormData] = useState<OrderFormData>(initialFormState);
 
   const steps: { id: OrderStep; label: string }[] = [
+    { id: "delivery", label: "Your Delivery" },
     { id: "details", label: "Your Details" },
     { id: "review", label: "Review Order" },
     { id: "payment", label: "Payment" },
@@ -205,7 +210,7 @@ export default function OrderForm() {
               </div>
               {index < steps.length - 1 && (
                 <div
-                  className={`h-1 w-[125px] md:w-[320px] lg:w-[320px] ${
+                  className={`h-1 w-[80px] md:w-[200px] lg:w-[200px] ${
                     steps.findIndex((st) => st.id === step) > index
                       ? "bg-gradient-to-r from-orange to-pink"
                       : "bg-light dark:bg-charcoal/30"
@@ -237,66 +242,131 @@ export default function OrderForm() {
         <div className="absolute -top-24 -right-24 w-48 h-48 bg-margarita/10 dark:bg-margarita/5 rounded-full blur-2xl" />
         <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-orange/10 dark:bg-orange/5 rounded-full blur-2xl" />
 
+        {step === "delivery" && (
+          <div className="space-y-8 relative">
+            <div className="text-center mb-8">
+              <h2 className="text-2xl font-bold text-charcoal dark:text-white mb-2">
+                Select Your Machine
+              </h2>
+              <p className="text-charcoal/70 dark:text-white/70">
+                Choose your perfect frozen drink machine setup
+              </p>
+            </div>
+
+            <div className="space-y-6">
+              <div>
+                <label className={labelClassName}>Machine Type</label>
+                <select
+                  name="machineType"
+                  value={formData.machineType}
+                  onChange={handleInputChange}
+                  className={inputClassName}
+                >
+                  <option value="single">15L Single Tank Machine</option>
+                  <option value="double">30L Double Tank Machine</option>
+                </select>
+                <p className="mt-2 text-sm text-charcoal/70 dark:text-white/70">
+                  {formData.machineType === "single"
+                    ? "Perfect for smaller gatherings and parties"
+                    : "Ideal for larger events and multiple flavors"}
+                </p>
+              </div>
+
+              <div>
+                <label className={labelClassName}>Mixer Type</label>
+                <select
+                  name="mixerType"
+                  value={formData.mixerType}
+                  onChange={handleInputChange}
+                  className={inputClassName}
+                >
+                  <option value="none">No Mixer</option>
+                  <option value="kool-aid">Kool-Aid Mixer</option>
+                  <option value="margarita">Margarita Mixer</option>
+                  <option value="pina-colada">Piña Colada Mixer</option>
+                </select>
+                <p className="mt-2 text-sm text-charcoal/70 dark:text-white/70">
+                  {formData.mixerType === "none"
+                    ? "Bring your own mixer for complete control over your drinks"
+                    : formData.mixerType === "kool-aid"
+                      ? "Non-alcoholic, perfect for family events"
+                      : formData.mixerType === "margarita"
+                        ? "Classic margarita mix, just add tequila"
+                        : "Tropical piña colada mix, just add rum"}
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className={labelClassName}>Delivery Date</label>
+                  <input
+                    type="date"
+                    name="rentalDate"
+                    value={formData.rentalDate}
+                    onChange={handleInputChange}
+                    className={inputClassName}
+                    min={new Date().toISOString().split("T")[0]}
+                  />
+                </div>
+
+                <div>
+                  <label className={labelClassName}>Delivery Time</label>
+                  <input
+                    type="time"
+                    name="rentalTime"
+                    value={formData.rentalTime}
+                    onChange={handleInputChange}
+                    className={inputClassName}
+                  />
+                </div>
+
+                <div>
+                  <label className={labelClassName}>Pick Up Date</label>
+                  <input
+                    type="date"
+                    name="returnDate"
+                    value={formData.returnDate}
+                    onChange={handleInputChange}
+                    className={inputClassName}
+                  />
+                </div>
+
+                <div>
+                  <label className={labelClassName}>Pick Up Time</label>
+                  <input
+                    type="time"
+                    name="returnTime"
+                    value={formData.returnTime}
+                    onChange={handleInputChange}
+                    className={inputClassName}
+                  />
+                </div>
+              </div>
+
+              <div className="mt-6 text-center">
+                <p className="text-xl font-bold text-orange">
+                  Total: ${formData.price}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {step === "details" && (
           <div className="space-y-8 relative">
             <div className="text-center mb-8">
               <h2 className="text-2xl font-bold text-charcoal dark:text-white mb-2">
-                Your Rental Details
+                Your Details
               </h2>
               <p className="text-charcoal/70 dark:text-white/70">
-                Selected: {formData.capacity}L{" "}
+                Tell us where to deliver your {formData.capacity}L{" "}
                 {formData.machineType === "single" ? "Single" : "Double"} Tank
-                Machine with {mixerDetails[formData.mixerType].label} - $
-                {formData.price}
+                Machine
               </p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="md:col-span-2">
-                <div className="space-y-6 mb-6">
-                  <div>
-                    <label className={labelClassName}>Machine Type</label>
-                    <select
-                      name="machineType"
-                      value={formData.machineType}
-                      onChange={handleInputChange}
-                      className={inputClassName}
-                    >
-                      <option value="single">15L Single Tank Machine</option>
-                      <option value="double">30L Double Tank Machine</option>
-                    </select>
-                    <p className="mt-2 text-sm text-charcoal/70 dark:text-white/70">
-                      {formData.machineType === "single"
-                        ? "Perfect for smaller gatherings and parties"
-                        : "Ideal for larger events and multiple flavors"}
-                    </p>
-                  </div>
-
-                  <div>
-                    <label className={labelClassName}>Mixer Type</label>
-                    <select
-                      name="mixerType"
-                      value={formData.mixerType}
-                      onChange={handleInputChange}
-                      className={inputClassName}
-                    >
-                      <option value="none">No Mixer</option>
-                      <option value="kool-aid">Kool-Aid Mixer</option>
-                      <option value="margarita">Margarita Mixer</option>
-                      <option value="pina-colada">Piña Colada Mixer</option>
-                    </select>
-                    <p className="mt-2 text-sm text-charcoal/70 dark:text-white/70">
-                      {formData.mixerType === "none"
-                        ? "Bring your own mixer for complete control over your drinks"
-                        : formData.mixerType === "kool-aid"
-                          ? "Non-alcoholic, perfect for family events"
-                          : formData.mixerType === "margarita"
-                            ? "Classic margarita mix, just add tequila"
-                            : "Tropical piña colada mix, just add rum"}
-                    </p>
-                  </div>
-                </div>
-
                 <div>
                   <label className={labelClassName}>Full Name</label>
                   <input
@@ -382,18 +452,6 @@ export default function OrderForm() {
                 />
               </div>
 
-              <div>
-                <label className={labelClassName}>Rental Date</label>
-                <input
-                  type="date"
-                  name="rentalDate"
-                  value={formData.rentalDate}
-                  onChange={handleInputChange}
-                  className={inputClassName}
-                  min={new Date().toISOString().split("T")[0]}
-                />
-              </div>
-
               <div className="md:col-span-2">
                 <label className={labelClassName}>Special Notes</label>
                 <textarea
@@ -437,14 +495,15 @@ export default function OrderForm() {
                   Rental Details
                 </h3>
                 <p className="text-charcoal/70 dark:text-white/70">
-                  Rental Date:{" "}
-                  {new Date(formData.rentalDate).toLocaleDateString()}
+                  Delivery: {new Date(formData.rentalDate).toLocaleDateString()}{" "}
+                  at {formData.rentalTime}
                 </p>
                 <p className="text-charcoal/70 dark:text-white/70">
-                  Return Date:{" "}
+                  Pick Up:{" "}
                   {getNextDay(
                     new Date(formData.rentalDate)
-                  ).toLocaleDateString()}
+                  ).toLocaleDateString()}{" "}
+                  at {formData.returnTime}
                 </p>
               </div>
 
@@ -492,7 +551,9 @@ export default function OrderForm() {
                       mixerType: formData.mixerType,
                       price: formData.price,
                       rentalDate: new Date(formData.rentalDate),
+                      rentalTime: formData.rentalTime,
                       returnDate: getNextDay(new Date(formData.rentalDate)),
+                      returnTime: formData.returnTime,
                       customer: formData.customer,
                       notes: formData.notes,
                     }}
@@ -504,7 +565,7 @@ export default function OrderForm() {
                       // Reset form state and step in a single batch
                       Promise.resolve().then(() => {
                         setFormData(initialFormState);
-                        setStep("details");
+                        setStep("delivery");
                       });
                     }}
                     onError={(error: Error) => {
@@ -529,7 +590,7 @@ export default function OrderForm() {
               }
             }}
             className={`px-8 py-3 rounded-xl font-bold transition-all duration-300 ${
-              step === "details"
+              step === "delivery"
                 ? "invisible"
                 : "bg-light dark:bg-charcoal/30 text-charcoal dark:text-white hover:bg-light/80 dark:hover:bg-charcoal/50 hover:-translate-y-1"
             }`}
