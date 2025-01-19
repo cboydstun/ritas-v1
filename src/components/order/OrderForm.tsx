@@ -486,6 +486,16 @@ export default function OrderForm() {
                   <PayPalCheckout
                     amount={formData.price}
                     currency="USD"
+                    rentalData={{
+                      machineType: formData.machineType,
+                      capacity: formData.capacity,
+                      mixerType: formData.mixerType,
+                      price: formData.price,
+                      rentalDate: new Date(formData.rentalDate),
+                      returnDate: getNextDay(new Date(formData.rentalDate)),
+                      customer: formData.customer,
+                      notes: formData.notes,
+                    }}
                     onSuccess={(orderId: string) => {
                       // Show success message
                       alert(

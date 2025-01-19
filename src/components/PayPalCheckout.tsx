@@ -1,8 +1,14 @@
 import { useState } from "react";
 import { PayPalButtons } from "@paypal/react-paypal-js";
+import { MargaritaRental } from "@/types";
+
 interface PayPalCheckoutProps {
   amount: number;
   currency?: string;
+  rentalData: Omit<
+    MargaritaRental,
+    "payment" | "status" | "createdAt" | "updatedAt"
+  >;
   onSuccess: (orderId: string) => void;
   onError: (error: Error) => void;
 }
@@ -10,6 +16,7 @@ interface PayPalCheckoutProps {
 export const PayPalCheckout: React.FC<PayPalCheckoutProps> = ({
   amount,
   currency = "USD",
+  rentalData,
   onSuccess,
   onError,
 }) => {
@@ -59,6 +66,7 @@ export const PayPalCheckout: React.FC<PayPalCheckoutProps> = ({
           orderId: data.orderID,
           amount: amount.toFixed(2),
           currency,
+          rentalData,
         }),
       });
 

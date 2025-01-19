@@ -1,13 +1,15 @@
 import { NextResponse } from "next/server";
 import { initializePayPalSDK } from "@/lib/paypal-server";
+import clientPromise from "@/lib/mongodb";
+import { MargaritaRental } from "@/types";
 
 export async function POST(request: Request) {
     try {
-        const { orderId } = await request.json();
+        const { orderId, amount, rentalData } = await request.json();
 
-        if (!orderId) {
+        if (!orderId || !rentalData || !amount) {
             return NextResponse.json(
-                { message: "Missing order ID" },
+                { message: "Missing required data" },
                 { status: 400 }
             );
         }
@@ -20,9 +22,31 @@ export async function POST(request: Request) {
         const capture = await paypalClient.execute(request_);
 
         if (capture.result.status === "COMPLETED") {
+            // Connect to MongoDB
+            const client = await clientPromise;
+            const db = client.db(process.env.MONGODB_DB);
+
+            // Create rental document with payment information
+            const rental: MargaritaRental = {
+                ...rentalData,
+                payment: {
+                    paypalTransactionId: capture.result.id,
+                    amount: parseFloat(amount),
+                    status: "completed",
+                    date: new Date()
+                },
+                status: "confirmed",
+                createdAt: new Date(),
+                updatedAt: new Date()
+            };
+
+            // Save to MongoDB
+            await db.collection('rentals').insertOne(rental);
+
             return NextResponse.json({
                 id: capture.result.id,
                 status: capture.result.status,
+                rental: rental
             });
         } else {
             throw new Error("Payment capture failed");
