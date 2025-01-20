@@ -3,7 +3,7 @@ import type { MixerOption } from "@/lib/rental-data";
 
 export const calculatePrice = (
   machineType: "single" | "double",
-  mixerType: MixerOption["type"]
+  mixerType: MixerOption["type"],
 ): number => {
   const machine = machinePackages.find((m) => m.type === machineType);
   const mixer = machine?.mixerOptions.find((m) => m.type === mixerType);
@@ -38,4 +38,42 @@ export const validateDeliveryTime = (time: string): boolean => {
   const minTimeInMinutes = 8 * 60; // 8:00 AM
   const maxTimeInMinutes = 18 * 60; // 6:00 PM
   return timeInMinutes >= minTimeInMinutes && timeInMinutes <= maxTimeInMinutes;
+};
+
+interface PricingDetails {
+  rentalDays: number;
+  perDayRate: number;
+  deliveryFee: number;
+  subtotal: number;
+  salesTax: number;
+  processingFee: number;
+  total: number;
+}
+
+export const calculatePricing = (
+  price: number,
+  rentalDate: string,
+  returnDate: string,
+): PricingDetails => {
+  const rentalDays = Math.ceil(
+    (new Date(returnDate + "T00:00:00").getTime() -
+      new Date(rentalDate + "T00:00:00").getTime()) /
+      (1000 * 60 * 60 * 24),
+  );
+  const perDayRate = price;
+  const deliveryFee = 20;
+  const subtotal = perDayRate * rentalDays + deliveryFee;
+  const salesTax = subtotal * 0.0825;
+  const processingFee = subtotal * 0.03;
+  const total = subtotal + salesTax + processingFee;
+
+  return {
+    rentalDays,
+    perDayRate,
+    deliveryFee,
+    subtotal,
+    salesTax,
+    processingFee,
+    total,
+  };
 };

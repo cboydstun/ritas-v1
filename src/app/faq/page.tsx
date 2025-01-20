@@ -107,8 +107,8 @@ export default function FAQ() {
                 <p className="text-charcoal/80 dark:text-white/80">
                   We offer premium margarita and piña colada mixes, perfect for
                   adult beverages. For family-friendly events, we also provide
-                  Kool-Aid options. You can also choose to use your own mixers
-                  for complete control over your drinks.
+                  Non-Alcoholic options. You can also choose to use your own
+                  mixers for complete control over your drinks.
                 </p>
               </div>
               <div>

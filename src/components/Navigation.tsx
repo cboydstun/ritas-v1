@@ -59,7 +59,7 @@ export default function Navigation() {
             </Link>
             <Link
               href="/order"
-              className="ml-4 px-4 py-2 bg-margarita text-white rounded-lg hover:bg-teal transition-colors"
+              className="ml-4 px-4 py-2 bg-margarita text-white rounded-lg hover:bg-teal transition-colors animate-wiggle hover:animate-none"
             >
               Order Online
             </Link>
@@ -145,7 +145,7 @@ export default function Navigation() {
           </Link>
           <Link
             href="/order"
-            className="block px-3 py-4 text-base font-medium text-white bg-margarita hover:bg-teal rounded-lg mt-4 text-center transition-colors"
+            className="block px-3 py-4 text-base font-medium text-white bg-margarita hover:bg-teal rounded-lg mt-4 text-center transition-colors animate-wiggle hover:animate-none"
             onClick={closeMobileMenu}
           >
             Order Online

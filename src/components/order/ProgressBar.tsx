@@ -5,13 +5,14 @@ interface ProgressBarProps {
 }
 
 export function ProgressBar({ currentStep }: ProgressBarProps) {
-  const progress = (steps.findIndex((s) => s.id === currentStep) / (steps.length - 1)) * 100;
-  
+  const progress =
+    (steps.findIndex((s) => s.id === currentStep) / (steps.length - 1)) * 100;
+
   return (
     <div className="w-full max-w-4xl mx-auto mb-8 px-4">
       {/* Progress bar */}
       <div className="w-full h-2 bg-light dark:bg-charcoal/30 rounded-full overflow-hidden">
-        <div 
+        <div
           className="h-full bg-gradient-to-r from-orange to-pink transition-all duration-300"
           style={{ width: `${progress}%` }}
         />

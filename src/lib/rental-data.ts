@@ -1,5 +1,5 @@
 export interface MixerOption {
-  type: "none" | "kool-aid" | "margarita" | "pina-colada";
+  type: "none" | "non-alcoholic" | "margarita" | "pina-colada";
   label: string;
   description: string;
 }
@@ -22,9 +22,9 @@ export const mixerDetails: Record<MixerOption["type"], MixerOption> = {
     label: "No Mixer",
     description: "Bring your own mixer for complete control over your drinks",
   },
-  "kool-aid": {
-    type: "kool-aid",
-    label: "Kool-Aid Mixer",
+  "non-alcoholic": {
+    type: "non-alcoholic",
+    label: "Non-Alcoholic Mixer",
     description: "Non-alcoholic, perfect for family events",
   },
   margarita: {
@@ -47,7 +47,7 @@ export const machinePackages: MachinePackage[] = [
     description: "Perfect for smaller gatherings and parties",
     mixerOptions: [
       { type: "none", price: 89.95 },
-      { type: "kool-aid", price: 99.95 },
+      { type: "non-alcoholic", price: 99.95 },
       { type: "margarita", price: 124.95 },
       { type: "pina-colada", price: 124.95 },
     ],
@@ -67,7 +67,7 @@ export const machinePackages: MachinePackage[] = [
     description: "Ideal for larger events and multiple flavors",
     mixerOptions: [
       { type: "none", price: 124.95 },
-      { type: "kool-aid", price: 149.95 },
+      { type: "non-alcoholic", price: 149.95 },
       { type: "margarita", price: 174.95 },
       { type: "pina-colada", price: 174.95 },
     ],

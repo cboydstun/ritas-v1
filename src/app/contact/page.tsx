@@ -3,64 +3,64 @@ import ContactForm from "@/components/contact/ContactForm";
 
 // Add JSON-LD structured data for contact page
 const jsonLd = {
-    "@context": "https://schema.org",
-    "@type": "ContactPage",
-    name: "Contact SATX Rita's Rentals",
-    description:
-      "Contact page for SATX Rita's Rentals - San Antonio's premium frozen drink machine rental service",
-    mainEntity: {
-      "@type": "LocalBusiness",
-      name: "SATX Rita's Rentals",
-      image: "https://satxritas.com/og-image.jpg",
-      telephone: "(210) 555-0123",
-      email: "info@satxritas.com",
-      openingHoursSpecification: [
-        {
-          "@type": "OpeningHoursSpecification",
-          dayOfWeek: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
-          opens: "09:00",
-          closes: "18:00",
-        },
-        {
-          "@type": "OpeningHoursSpecification",
-          dayOfWeek: "Saturday",
-          opens: "10:00",
-          closes: "16:00",
-        },
-      ],
-      areaServed: {
-        "@type": "GeoCircle",
-        geoMidpoint: {
-          "@type": "GeoCoordinates",
-          latitude: 29.4241,
-          longitude: -98.4936,
-        },
-        geoRadius: "50000",
+  "@context": "https://schema.org",
+  "@type": "ContactPage",
+  name: "Contact SATX Rita's Rentals",
+  description:
+    "Contact page for SATX Rita's Rentals - San Antonio's premium frozen drink machine rental service",
+  mainEntity: {
+    "@type": "LocalBusiness",
+    name: "SATX Rita's Rentals",
+    image: "https://satxritas.com/og-image.jpg",
+    telephone: "(210) 555-0123",
+    email: "info@satxritas.com",
+    openingHoursSpecification: [
+      {
+        "@type": "OpeningHoursSpecification",
+        dayOfWeek: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
+        opens: "09:00",
+        closes: "18:00",
       },
-      address: {
-        "@type": "PostalAddress",
-        addressLocality: "San Antonio",
-        addressRegion: "TX",
-        addressCountry: "US",
+      {
+        "@type": "OpeningHoursSpecification",
+        dayOfWeek: "Saturday",
+        opens: "10:00",
+        closes: "16:00",
       },
-      potentialAction: {
-        "@type": "ReserveAction",
-        target: {
-          "@type": "EntryPoint",
-          urlTemplate: "https://satxritas.com/order",
-          inLanguage: "en-US",
-          actionPlatform: [
-            "http://schema.org/DesktopWebPlatform",
-            "http://schema.org/MobileWebPlatform",
-          ],
-        },
-        result: {
-          "@type": "Reservation",
-          name: "Frozen Drink Machine Rental Reservation",
-        },
+    ],
+    areaServed: {
+      "@type": "GeoCircle",
+      geoMidpoint: {
+        "@type": "GeoCoordinates",
+        latitude: 29.4241,
+        longitude: -98.4936,
+      },
+      geoRadius: "50000",
+    },
+    address: {
+      "@type": "PostalAddress",
+      addressLocality: "San Antonio",
+      addressRegion: "TX",
+      addressCountry: "US",
+    },
+    potentialAction: {
+      "@type": "ReserveAction",
+      target: {
+        "@type": "EntryPoint",
+        urlTemplate: "https://satxritas.com/order",
+        inLanguage: "en-US",
+        actionPlatform: [
+          "http://schema.org/DesktopWebPlatform",
+          "http://schema.org/MobileWebPlatform",
+        ],
+      },
+      result: {
+        "@type": "Reservation",
+        name: "Frozen Drink Machine Rental Reservation",
       },
     },
-  };
+  },
+};
 
 // Add metadata with JSON-LD
 export const metadata: Metadata = {

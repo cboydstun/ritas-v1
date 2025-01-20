@@ -1,9 +1,23 @@
 import Image from "next/image";
 import { StepProps } from "../types";
 import { mixerDetails } from "@/lib/rental-data";
-import { getNextDay } from "../utils";
+import { calculatePricing } from "../utils";
 
 export function ReviewStep({ formData }: StepProps) {
+  const {
+    rentalDays,
+    perDayRate,
+    deliveryFee,
+    subtotal,
+    salesTax,
+    processingFee,
+    total,
+  } = calculatePricing(
+    formData.price,
+    formData.rentalDate,
+    formData.returnDate,
+  );
+
   return (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold text-charcoal dark:text-white mb-6">
@@ -29,12 +43,15 @@ export function ReviewStep({ formData }: StepProps) {
           </h3>
           <p className="text-charcoal/70 dark:text-white/70">
             {formData.capacity}L{" "}
-            {formData.machineType === "single" ? "Single" : "Double"} Tank Machine
+            {formData.machineType === "single" ? "Single" : "Double"} Tank
+            Machine
           </p>
           <p className="text-charcoal/70 dark:text-white/70">
             Mixer Type: {mixerDetails[formData.mixerType].label}
           </p>
-          <p className="text-xl font-bold text-orange mt-2">${formData.price}</p>
+          <p className="text-xl font-bold text-orange mt-2">
+            ${perDayRate}/day
+          </p>
         </div>
 
         <div className="bg-white/80 dark:bg-charcoal/30 rounded-xl p-6">
@@ -42,11 +59,13 @@ export function ReviewStep({ formData }: StepProps) {
             Rental Details
           </h3>
           <p className="text-charcoal/70 dark:text-white/70">
-            Delivery: {new Date(formData.rentalDate).toLocaleDateString()} at{" "}
-            {formData.rentalTime}
+            Delivery:{" "}
+            {new Date(formData.rentalDate + "T00:00:00").toLocaleDateString()}{" "}
+            at {formData.rentalTime}
           </p>
           <p className="text-charcoal/70 dark:text-white/70">
-            Pick Up: {getNextDay(new Date(formData.rentalDate)).toLocaleDateString()}{" "}
+            Pick Up:{" "}
+            {new Date(formData.returnDate + "T00:00:00").toLocaleDateString()}{" "}
             at {formData.returnTime}
           </p>
         </div>
@@ -65,14 +84,33 @@ export function ReviewStep({ formData }: StepProps) {
             {formData.customer.phone}
           </p>
           <p className="text-charcoal/70 dark:text-white/70">
-            {formData.customer.address.street}, {formData.customer.address.city},{" "}
-            {formData.customer.address.state} {formData.customer.address.zipCode}
+            {formData.customer.address.street}, {formData.customer.address.city}
+            , {formData.customer.address.state}{" "}
+            {formData.customer.address.zipCode}
           </p>
         </div>
 
-        <p className="text-center text-xl font-bold text-orange mb-4">
-          Total Amount: ${formData.price}
-        </p>
+        <div className="space-y-2">
+          <p className="text-center text-lg text-charcoal/70 dark:text-white/70">
+            Rate: ${perDayRate}/day × {rentalDays} day
+            {rentalDays > 1 ? "s" : ""}
+          </p>
+          <p className="text-center text-lg text-charcoal/70 dark:text-white/70">
+            Delivery Fee: ${deliveryFee.toFixed(2)}
+          </p>
+          <p className="text-center text-lg text-charcoal/70 dark:text-white/70">
+            Subtotal: ${subtotal.toFixed(2)}
+          </p>
+          <p className="text-center text-lg text-charcoal/70 dark:text-white/70">
+            Sales Tax (8.25%): ${salesTax.toFixed(2)}
+          </p>
+          <p className="text-center text-lg text-charcoal/70 dark:text-white/70">
+            Processing Fee (3%): ${processingFee.toFixed(2)}
+          </p>
+          <p className="text-center text-xl font-bold text-orange mb-4">
+            Total Amount: ${total.toFixed(2)}
+          </p>
+        </div>
       </div>
     </div>
   );

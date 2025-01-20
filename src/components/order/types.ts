@@ -27,7 +27,11 @@ export interface OrderFormData {
 
 export interface StepProps {
   formData: OrderFormData;
-  onInputChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => void;
+  onInputChange: (
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >,
+  ) => void;
   error: string | null;
 }
 
@@ -38,5 +42,7 @@ export const steps: { id: OrderStep; label: string }[] = [
   { id: "payment", label: "Payment" },
 ];
 
-export const inputClassName = "w-full px-4 py-3 bg-white dark:bg-white border-2 border-transparent rounded-xl focus:outline-none focus:border-orange/50 transition-colors text-charcoal";
-export const labelClassName = "block text-charcoal dark:text-white font-medium mb-2";
+export const inputClassName =
+  "w-full px-4 py-3 bg-white dark:bg-white border-2 border-transparent rounded-xl focus:outline-none focus:border-orange/50 transition-colors text-charcoal";
+export const labelClassName =
+  "block text-charcoal dark:text-white font-medium mb-2";

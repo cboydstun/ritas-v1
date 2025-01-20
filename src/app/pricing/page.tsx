@@ -4,49 +4,49 @@ import Image from "next/image";
 
 // Add JSON-LD structured data for products
 const jsonLd = {
-    "@context": "https://schema.org",
-    "@type": "ItemList",
-    itemListElement: [
-      {
-        "@type": "Product",
-        name: machinePackages[0].name,
-        description: machinePackages[0].description,
-        image: "https://satxritas.com/og-image.jpg",
-        offers: machinePackages[0].mixerOptions.map((option, index) => ({
-          "@type": "Offer",
-          price: option.price,
-          priceCurrency: "USD",
-          itemCondition: "https://schema.org/NewCondition",
-          availability: "https://schema.org/InStock",
-          name:
-            index === 0
-              ? "Machine Only"
-              : index === 1
-                ? "With Kool-Aid Mixer"
-                : "With Premium Mixers",
-        })),
-      },
-      {
-        "@type": "Product",
-        name: machinePackages[1].name,
-        description: machinePackages[1].description,
-        image: "https://satxritas.com/og-image.jpg",
-        offers: machinePackages[1].mixerOptions.map((option, index) => ({
-          "@type": "Offer",
-          price: option.price,
-          priceCurrency: "USD",
-          itemCondition: "https://schema.org/NewCondition",
-          availability: "https://schema.org/InStock",
-          name:
-            index === 0
-              ? "Machine Only"
-              : index === 1
-                ? "With Kool-Aid Mixer"
-                : "With Premium Mixers",
-        })),
-      },
-    ],
-  };
+  "@context": "https://schema.org",
+  "@type": "ItemList",
+  itemListElement: [
+    {
+      "@type": "Product",
+      name: machinePackages[0].name,
+      description: machinePackages[0].description,
+      image: "https://satxritas.com/og-image.jpg",
+      offers: machinePackages[0].mixerOptions.map((option, index) => ({
+        "@type": "Offer",
+        price: option.price,
+        priceCurrency: "USD",
+        itemCondition: "https://schema.org/NewCondition",
+        availability: "https://schema.org/InStock",
+        name:
+          index === 0
+            ? "Machine Only"
+            : index === 1
+              ? "With Non-Alcoholic Mixer"
+              : "With Premium Mixers",
+      })),
+    },
+    {
+      "@type": "Product",
+      name: machinePackages[1].name,
+      description: machinePackages[1].description,
+      image: "https://satxritas.com/og-image.jpg",
+      offers: machinePackages[1].mixerOptions.map((option, index) => ({
+        "@type": "Offer",
+        price: option.price,
+        priceCurrency: "USD",
+        itemCondition: "https://schema.org/NewCondition",
+        availability: "https://schema.org/InStock",
+        name:
+          index === 0
+            ? "Machine Only"
+            : index === 1
+              ? "With Non-Alcoholic Mixer"
+              : "With Premium Mixers",
+      })),
+    },
+  ],
+};
 
 export const metadata: Metadata = {
   title: "Pricing | SATX Rita's Rentals - Frozen Drink Machine Rentals",
@@ -79,7 +79,7 @@ export default function PricingPage() {
         </div>
         <h1 className="text-5xl md:text-6xl font-extrabold text-charcoal dark:text-white mb-6 tracking-tight">
           Transparent
-          <span className="block text-transparent bg-clip-text bg-gradient-to-r from-margarita via-teal to-orange mt-2">
+          <span className="block text-transparent bg-clip-text bg-gradient-to-r from-margarita via-teal to-orange mt-2 pb-2">
             Pricing & Service
           </span>
         </h1>
@@ -162,7 +162,7 @@ export default function PricingPage() {
                 </p>
                 <p className="flex justify-between items-center py-2 border-b border-charcoal/10 dark:border-white/10">
                   <span className="text-charcoal dark:text-white">
-                    With Kool-Aid Mixer
+                    With Non-Alcoholic Mixer
                   </span>
                   <span className="font-semibold text-charcoal dark:text-white">
                     ${machinePackages[0].mixerOptions[1].price}
@@ -208,7 +208,7 @@ export default function PricingPage() {
                 </p>
                 <p className="flex justify-between items-center py-2 border-b border-charcoal/10 dark:border-white/10">
                   <span className="text-charcoal dark:text-white">
-                    With Kool-Aid Mixer
+                    With Non-Alcoholic Mixer
                   </span>
                   <span className="font-semibold text-charcoal dark:text-white">
                     ${machinePackages[1].mixerOptions[1].price}

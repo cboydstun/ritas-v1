@@ -81,7 +81,11 @@ export default function RentalsPage() {
             >
               <div className="relative">
                 <Image
-                  src={machine.type === "single" ? "/vevor-15l-slushy-2.jpg" : "/vevor-30l-slushy-3.jpg"}
+                  src={
+                    machine.type === "single"
+                      ? "/vevor-15l-slushy-2.jpg"
+                      : "/vevor-30l-slushy-3.jpg"
+                  }
                   alt={machine.name}
                   width={machine.type === "single" ? 800 : 800}
                   height={machine.type === "single" ? 600 : 600}

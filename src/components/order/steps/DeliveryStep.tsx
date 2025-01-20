@@ -55,14 +55,14 @@ export function DeliveryStep({ formData, onInputChange, error }: StepProps) {
             className={inputClassName}
           >
             <option value="none">No Mixer</option>
-            <option value="kool-aid">Kool-Aid Mixer</option>
+            <option value="non-alcoholic">Non-Alcoholic Mixer</option>
             <option value="margarita">Margarita Mixer</option>
             <option value="pina-colada">Piña Colada Mixer</option>
           </select>
           <p className="mt-2 text-sm text-charcoal/70 dark:text-white/70">
             {formData.mixerType === "none"
               ? "Bring your own mixer for complete control over your drinks"
-              : formData.mixerType === "kool-aid"
+              : formData.mixerType === "non-alcoholic"
                 ? "Non-alcoholic, perfect for family events"
                 : formData.mixerType === "margarita"
                   ? "Classic margarita mix, just add tequila"

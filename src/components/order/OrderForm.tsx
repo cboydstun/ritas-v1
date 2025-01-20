@@ -3,7 +3,14 @@
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { type OrderFormData, type OrderStep, steps } from "./types";
-import { calculatePrice, getNextDay, validateDeliveryTime, validateEmail, validatePhone, validateZipCode } from "./utils";
+import {
+  calculatePrice,
+  getNextDay,
+  validateDeliveryTime,
+  validateEmail,
+  validatePhone,
+  validateZipCode,
+} from "./utils";
 import { ProgressBar } from "./ProgressBar";
 import { NavigationButtons } from "./NavigationButtons";
 import { DeliveryStep, DetailsStep, ReviewStep, PaymentStep } from "./steps";
@@ -48,7 +55,9 @@ export default function OrderForm() {
   const [formData, setFormData] = useState<OrderFormData>(getInitialState());
 
   const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >,
   ) => {
     const { name, value } = e.target;
 
@@ -99,13 +108,22 @@ export default function OrderForm() {
       // Update price when machine type or mixer type changes
       if (name === "machineType" || name === "mixerType") {
         const newPrice = calculatePrice(
-          name === "machineType" ? (value as "single" | "double") : prev.machineType,
-          name === "mixerType" ? (value as OrderFormData["mixerType"]) : prev.mixerType
+          name === "machineType"
+            ? (value as "single" | "double")
+            : prev.machineType,
+          name === "mixerType"
+            ? (value as OrderFormData["mixerType"])
+            : prev.mixerType,
         );
         return {
           ...newData,
           price: newPrice,
-          capacity: name === "machineType" ? (value === "single" ? 15 : 30) : prev.capacity,
+          capacity:
+            name === "machineType"
+              ? value === "single"
+                ? 15
+                : 30
+              : prev.capacity,
         };
       }
 

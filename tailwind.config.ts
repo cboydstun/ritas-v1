@@ -9,6 +9,34 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      keyframes: {
+        wave: {
+          "0%, 100%": {
+            transform: "translateY(0)",
+          },
+          "50%": {
+            transform: "translateY(10px)",
+          },
+        },
+        wiggle: {
+          "0%, 100%": {
+            transform: "rotate(-3deg) scale(1)",
+          },
+          "25%": {
+            transform: "rotate(3deg) scale(1.05)",
+          },
+          "50%": {
+            transform: "rotate(-3deg) scale(1)",
+          },
+          "75%": {
+            transform: "rotate(3deg) scale(1.05)",
+          },
+        },
+      },
+      animation: {
+        wave: "wave 10s ease-in-out infinite",
+        wiggle: "wiggle 1s ease-in-out infinite",
+      },
       colors: {
         margarita: "#AADF46", // Primary accent
         teal: "#03B5AA", // Secondary accent
