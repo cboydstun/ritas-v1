@@ -128,12 +128,6 @@ export function DeliveryStep({ formData, onInputChange, error }: StepProps) {
             {error}
           </div>
         )}
-
-        <div className="mt-6 text-center">
-          <p className="text-xl font-bold text-orange">
-            Total: ${formData.price}
-          </p>
-        </div>
       </div>
     </div>
   );
