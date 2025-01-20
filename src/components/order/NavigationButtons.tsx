@@ -1,4 +1,4 @@
-import { type OrderStep, steps } from "./types";
+import { type OrderStep } from "./types";
 
 interface NavigationButtonsProps {
   currentStep: OrderStep;
