@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { mixerDetails, machinePackages } from "@/lib/rental-data";
 import { Metadata } from "next";
 
@@ -78,6 +79,16 @@ export default function RentalsPage() {
               key={machine.type}
               className="relative bg-white/90 dark:bg-charcoal/50 backdrop-blur-sm rounded-2xl shadow-xl overflow-hidden group hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1"
             >
+              <div className="relative">
+                <Image
+                  src={machine.type === "single" ? "/vevor-15l-slushy-2.jpg" : "/vevor-30l-slushy-3.jpg"}
+                  alt={machine.name}
+                  width={machine.type === "single" ? 800 : 800}
+                  height={machine.type === "single" ? 600 : 600}
+                  className="w-full h-full object-cover"
+                  priority
+                />
+              </div>
               <div className="p-8">
                 <h3 className="text-2xl font-bold text-charcoal dark:text-white mb-2">
                   {machine.name}

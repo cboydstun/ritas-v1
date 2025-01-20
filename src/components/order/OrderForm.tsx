@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { PayPalScriptProvider } from "@paypal/react-paypal-js";
 import { PayPalCheckout } from "@/components/PayPalCheckout";
@@ -38,7 +39,7 @@ interface OrderFormData {
 
 const calculatePrice = (
   machineType: "single" | "double",
-  mixerType: MixerOption["type"],
+  mixerType: MixerOption["type"]
 ) => {
   const machine = machinePackages.find((m) => m.type === machineType);
   const mixer = machine?.mixerOptions.find((m) => m.type === mixerType);
@@ -54,50 +55,41 @@ const getNextDay = (date: Date) => {
 export default function OrderForm() {
   const searchParams = useSearchParams();
   const [step, setStep] = useState<OrderStep>("delivery");
+  const [error, setError] = useState<string | null>(null);
 
-  // Initialize form with URL parameters
-  useEffect(() => {
+  // Function to get initial form state, used for both initialization and reset
+  const getInitialState = (): OrderFormData => {
     const machine = searchParams.get("machine") as "single" | "double";
     const mixer = searchParams.get("mixer") as MixerOption["type"];
 
-    if (machine && mixer) {
-      const capacity = machine === "single" ? 15 : 30;
-      const price = calculatePrice(machine, mixer);
-
-      setFormData((prev) => ({
-        ...prev,
-        machineType: machine,
-        capacity,
-        mixerType: mixer,
-        price,
-      }));
-    }
-  }, [searchParams]);
-
-  const initialFormState: OrderFormData = {
-    machineType: "single",
-    capacity: 15,
-    mixerType: "none",
-    price: 89.95,
-    rentalDate: "",
-    rentalTime: "",
-    returnDate: "",
-    returnTime: "",
-    customer: {
-      name: "",
-      email: "",
-      phone: "",
-      address: {
-        street: "",
-        city: "",
-        state: "",
-        zipCode: "",
+    const initialState: OrderFormData = {
+      machineType: machine ?? "single",
+      capacity: machine === "double" ? 30 : 15,
+      mixerType: mixer ?? "none",
+      price: calculatePrice(machine ?? "single", mixer ?? "none"),
+      rentalDate: searchParams.get("rentalDate") ?? "",
+      rentalTime: searchParams.get("rentalTime") ?? "10:00",
+      returnDate: searchParams.get("returnDate") ?? "",
+      returnTime: searchParams.get("returnTime") ?? "10:00",
+      customer: {
+        name: searchParams.get("name") ?? "",
+        email: searchParams.get("email") ?? "",
+        phone: searchParams.get("phone") ?? "",
+        address: {
+          street: searchParams.get("street") ?? "",
+          city: searchParams.get("city") ?? "",
+          state: searchParams.get("state") ?? "",
+          zipCode: searchParams.get("zipCode") ?? "",
+        },
       },
-    },
-    notes: "",
+      notes: searchParams.get("notes") ?? "",
+    };
+
+    return initialState;
   };
 
-  const [formData, setFormData] = useState<OrderFormData>(initialFormState);
+  // Initialize form state with URL parameters if available
+  const [formData, setFormData] = useState<OrderFormData>(getInitialState());
 
   const steps: { id: OrderStep; label: string }[] = [
     { id: "delivery", label: "Your Delivery" },
@@ -109,7 +101,7 @@ export default function OrderForm() {
   const handleInputChange = (
     e: React.ChangeEvent<
       HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-    >,
+    >
   ) => {
     const { name, value } = e.target;
 
@@ -124,69 +116,174 @@ export default function OrderForm() {
       return;
     }
 
-    if (name.includes(".")) {
-      const [parent, child] = name.split(".");
-      if (parent === "customer" && child.includes(".")) {
-        // Handle nested address fields
-        const [addressField] = child.split(".");
-        setFormData((prev: OrderFormData) => ({
-          ...prev,
-          customer: {
-            ...prev.customer,
-            address: {
-              ...prev.customer.address,
-              [addressField]: value,
-            },
+    // Handle nested address fields
+    if (name.startsWith("customer.address.")) {
+      const field = name.split(".")[2]; // Get the address field name
+      setFormData((prev: OrderFormData) => ({
+        ...prev,
+        customer: {
+          ...prev.customer,
+          address: {
+            ...prev.customer.address,
+            [field]: value,
           },
-        }));
-      } else {
-        // Handle customer fields
-        setFormData((prev: OrderFormData) => ({
-          ...prev,
-          customer: {
-            ...prev.customer,
-            [child]: value,
-          },
-        }));
-      }
-    } else {
-      // Handle top-level fields
-      setFormData((prev: OrderFormData) => {
-        const newData = { ...prev, [name]: value };
-
-        // Update price when machine type or mixer type changes
-        if (name === "machineType" || name === "mixerType") {
-          const newPrice = calculatePrice(
-            name === "machineType"
-              ? (value as "single" | "double")
-              : prev.machineType,
-            name === "mixerType"
-              ? (value as MixerOption["type"])
-              : prev.mixerType,
-          );
-          return {
-            ...newData,
-            price: newPrice,
-            capacity:
-              name === "machineType"
-                ? value === "single"
-                  ? 15
-                  : 30
-                : prev.capacity,
-          };
-        }
-
-        return newData;
-      });
+        },
+      }));
+      return;
     }
+
+    // Handle other customer fields
+    if (name.startsWith("customer.")) {
+      const field = name.split(".")[1];
+      setFormData((prev: OrderFormData) => ({
+        ...prev,
+        customer: {
+          ...prev.customer,
+          [field]: value,
+        },
+      }));
+      return;
+    }
+
+    // Handle all other fields
+    setFormData((prev: OrderFormData) => {
+      const newData = { ...prev, [name]: value };
+
+      // Update price when machine type or mixer type changes
+      if (name === "machineType" || name === "mixerType") {
+        const newPrice = calculatePrice(
+          name === "machineType"
+            ? (value as "single" | "double")
+            : prev.machineType,
+          name === "mixerType" ? (value as MixerOption["type"]) : prev.mixerType
+        );
+        return {
+          ...newData,
+          price: newPrice,
+          capacity:
+            name === "machineType"
+              ? value === "single"
+                ? 15
+                : 30
+              : prev.capacity,
+        };
+      }
+
+      return newData;
+    });
+  };
+
+  // Validation functions
+  const validateEmail = (email: string): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  const validatePhone = (phone: string): boolean => {
+    const phoneRegex = /^\(?([0-9]{3})\)?[-. ]?([0-9]{3})[-. ]?([0-9]{4})$/;
+    return phoneRegex.test(phone);
+  };
+
+  const validateZipCode = (zipCode: string): boolean => {
+    const zipRegex = /^\d{5}(-\d{4})?$/;
+    return zipRegex.test(zipCode);
+  };
+
+  const validateDeliveryTime = (time: string): boolean => {
+    if (!time) return false;
+    const [hours, minutes] = time.split(":").map(Number);
+    const timeInMinutes = hours * 60 + minutes;
+    const minTimeInMinutes = 8 * 60; // 8:00 AM
+    const maxTimeInMinutes = 18 * 60; // 6:00 PM
+    return (
+      timeInMinutes >= minTimeInMinutes && timeInMinutes <= maxTimeInMinutes
+    );
   };
 
   const handleNextStep = () => {
     const currentIndex = steps.findIndex((s) => s.id === step);
+
+    // Clear any previous errors
+    setError(null);
+
+    // Validate delivery step
+    if (step === "delivery") {
+      if (!formData.rentalDate) {
+        setError("Please select a delivery date");
+        return;
+      }
+      if (!formData.rentalTime) {
+        setError("Please select a delivery time");
+        return;
+      }
+      if (!validateDeliveryTime(formData.rentalTime)) {
+        setError("Delivery time must be between 8:00 AM and 6:00 PM");
+        return;
+      }
+      if (!formData.returnDate) {
+        setError("Please select a pick up date");
+        return;
+      }
+      if (!formData.returnTime) {
+        setError("Please select a pick up time");
+        return;
+      }
+      if (!validateDeliveryTime(formData.returnTime)) {
+        setError("Pick up time must be between 8:00 AM and 6:00 PM");
+        return;
+      }
+    }
+
+    // Validate details step
+    if (step === "details") {
+      if (!formData.customer.name.trim()) {
+        setError("Please enter your full name");
+        return;
+      }
+      if (!formData.customer.email) {
+        setError("Please enter your email address");
+        return;
+      }
+      if (!validateEmail(formData.customer.email)) {
+        setError("Please enter a valid email address");
+        return;
+      }
+      if (!formData.customer.phone) {
+        setError("Please enter your phone number");
+        return;
+      }
+      if (!validatePhone(formData.customer.phone)) {
+        setError("Please enter a valid phone number (e.g., 123-456-7890)");
+        return;
+      }
+      if (!formData.customer.address.street) {
+        setError("Please enter your street address");
+        return;
+      }
+      if (!formData.customer.address.city) {
+        setError("Please enter your city");
+        return;
+      }
+      if (!formData.customer.address.state) {
+        setError("Please enter your state");
+        return;
+      }
+      if (!formData.customer.address.zipCode) {
+        setError("Please enter your ZIP code");
+        return;
+      }
+      if (!validateZipCode(formData.customer.address.zipCode)) {
+        setError("Please enter a valid ZIP code (e.g., 12345 or 12345-6789)");
+        return;
+      }
+    }
+
     if (currentIndex < steps.length - 1) {
       setStep(steps[currentIndex + 1].id);
     }
   };
+
+  console.log("OrderForm.tsx formData:", formData);
 
   const inputClassName =
     "w-full px-4 py-3 bg-white dark:bg-white border-2 border-transparent rounded-xl focus:outline-none focus:border-orange/50 transition-colors text-charcoal";
@@ -254,6 +351,19 @@ export default function OrderForm() {
             </div>
 
             <div className="space-y-6">
+              <div className="relative w-full h-[40em] mb-4">
+                <Image
+                  src={
+                    formData.machineType === "single"
+                      ? "/vevor-15l-slushy.jpg"
+                      : "/vevor-30l-slushy.webp"
+                  }
+                  alt={`${formData.capacity}L ${formData.machineType === "single" ? "Single" : "Double"} Tank Machine`}
+                  fill
+                  className="object-cover rounded-lg"
+                  priority
+                />
+              </div>
               <div>
                 <label className={labelClassName}>Machine Type</label>
                 <select
@@ -317,6 +427,9 @@ export default function OrderForm() {
                     value={formData.rentalTime}
                     onChange={handleInputChange}
                     className={inputClassName}
+                    min="08:00"
+                    max="18:00"
+                    step="3600"
                   />
                 </div>
 
@@ -339,9 +452,18 @@ export default function OrderForm() {
                     value={formData.returnTime}
                     onChange={handleInputChange}
                     className={inputClassName}
+                    min="08:00"
+                    max="18:00"
+                    step="3600"
                   />
                 </div>
               </div>
+
+              {error && (
+                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative">
+                  {error}
+                </div>
+              )}
 
               <div className="mt-6 text-center">
                 <p className="text-xl font-bold text-orange">
@@ -464,6 +586,11 @@ export default function OrderForm() {
                 />
               </div>
             </div>
+            {error && (
+              <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative">
+                {error}
+              </div>
+            )}
           </div>
         )}
 
@@ -474,6 +601,19 @@ export default function OrderForm() {
             </h2>
             <div className="space-y-4">
               <div className="bg-white/80 dark:bg-charcoal/30 rounded-xl p-6">
+                <div className="relative w-full h-[36em] mb-4">
+                  <Image
+                    src={
+                      formData.machineType === "single"
+                        ? "/vevor-15l-slushy-2.jpg"
+                        : "/vevor-30l-slushy-2.png"
+                    }
+                    alt={`${formData.capacity}L ${formData.machineType === "single" ? "Single" : "Double"} Tank Machine`}
+                    fill
+                    className="object-cover rounded-lg"
+                    priority
+                  />
+                </div>
                 <h3 className="font-semibold text-lg text-charcoal dark:text-white mb-4">
                   Selected Machine
                 </h3>
@@ -501,7 +641,7 @@ export default function OrderForm() {
                 <p className="text-charcoal/70 dark:text-white/70">
                   Pick Up:{" "}
                   {getNextDay(
-                    new Date(formData.rentalDate),
+                    new Date(formData.rentalDate)
                   ).toLocaleDateString()}{" "}
                   at {formData.returnTime}
                 </p>
@@ -527,6 +667,9 @@ export default function OrderForm() {
                   {formData.customer.address.zipCode}
                 </p>
               </div>
+              <p className="text-center text-xl font-bold text-orange mb-4">
+                Total Amount: ${formData.price}
+              </p>
             </div>
           </div>
         )}
@@ -537,9 +680,6 @@ export default function OrderForm() {
               Payment Details
             </h2>
             <div className="bg-white/80 dark:bg-charcoal/30 rounded-xl p-6">
-              <p className="text-center text-xl font-bold text-orange mb-4">
-                Total Amount: ${formData.price}
-              </p>
               <div className="text-center">
                 <PayPalScriptProvider options={paypalConfig}>
                   <PayPalCheckout
@@ -560,11 +700,11 @@ export default function OrderForm() {
                     onSuccess={() => {
                       // Show success message
                       alert(
-                        "Payment successful! Your rental has been confirmed.",
+                        "Payment successful! Your rental has been confirmed."
                       );
                       // Reset form state and step in a single batch
                       Promise.resolve().then(() => {
-                        setFormData(initialFormState);
+                        setFormData(getInitialState());
                         setStep("delivery");
                       });
                     }}

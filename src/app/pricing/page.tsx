@@ -1,5 +1,6 @@
 import { machinePackages } from "@/lib/rental-data";
 import { Metadata } from "next";
+import Image from "next/image";
 
 // Add JSON-LD structured data for products
 const jsonLd = {
@@ -132,6 +133,16 @@ export default function PricingPage() {
           </h2>
           <div className="grid md:grid-cols-2 gap-12">
             <div>
+              <div className="relative mb-6">
+                <Image
+                  src="/vevor-15l-slushy-2.jpg"
+                  alt="Single Tank Frozen Drink Machine"
+                  width={800}
+                  height={600}
+                  className="w-full h-full object-cover rounded-lg"
+                  priority
+                />
+              </div>
               <h3 className="text-2xl font-semibold text-charcoal dark:text-white mb-4">
                 {machinePackages[0].name}
               </h3>
@@ -168,6 +179,16 @@ export default function PricingPage() {
               </div>
             </div>
             <div>
+              <div className="relative mb-6">
+                <Image
+                  src="/vevor-30l-slushy-3.jpg"
+                  alt="Double Tank Frozen Drink Machine"
+                  width={800}
+                  height={600}
+                  className="w-full h-full object-cover rounded-lg"
+                  priority
+                />
+              </div>
               <h3 className="text-2xl font-semibold text-charcoal dark:text-white mb-4">
                 {machinePackages[1].name}
               </h3>
