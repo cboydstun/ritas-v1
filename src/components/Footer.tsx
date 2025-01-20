@@ -56,18 +56,18 @@ export default function Footer() {
               <li>San Antonio, TX</li>
               <li>
                 <a
-                  href="tel:+12105555555"
+                  href="tel:+15122100194"
                   className="hover:text-margarita dark:hover:text-margarita transition-colors"
                 >
-                  (210) 555-5555
+                  (512) 210-0194
                 </a>
               </li>
               <li>
                 <a
-                  href="mailto:info@satxritas.com"
+                  href="mailto:satxbounce@gmail.com"
                   className="hover:text-margarita dark:hover:text-margarita transition-colors"
                 >
-                  info@satxritas.com
+                  satxbounce@gmail.com
                 </a>
               </li>
             </ul>

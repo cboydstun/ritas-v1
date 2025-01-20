@@ -2,11 +2,11 @@ import "./globals.css";
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Rita's Rentals",
+  title: "Ritas Rentals",
   description:
     "Rent top-quality frozen drink machines in San Antonio, TX for your next party or event. Offering margaritas, daiquiris, piña coladas, and more with professional service. Perfect for birthdays, weddings, and corporate events. Visit SATXRitas.com for pricing and booking!",
   openGraph: {
-    title: "SATX Rita's Rentals",
+    title: "SATX Ritas Rentals",
     description:
       "Rent top-quality frozen drink machines in San Antonio, TX for your next party or event. Offering margaritas, daiquiris, piña coladas, and more with professional service. Perfect for birthdays, weddings, and corporate events. Visit SATXRitas.com for pricing and booking!",
     images: [
@@ -14,13 +14,13 @@ export const metadata: Metadata = {
         url: "/og-image.jpg",
         width: 1200,
         height: 630,
-        alt: "Rita's Rentals",
+        alt: "Ritas Rentals",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "SATX Rita's Rentals",
+    title: "SATX Ritas Rentals",
     description:
       "Rent top-quality frozen drink machines in San Antonio, TX for your next party or event. Offering margaritas, daiquiris, piña coladas, and more with professional service. Perfect for birthdays, weddings, and corporate events. Visit SATXRitas.com for pricing and booking!",
     images: ["/og-image.jpg"],

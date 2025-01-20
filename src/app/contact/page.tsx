@@ -5,12 +5,12 @@ import ContactForm from "@/components/contact/ContactForm";
 const jsonLd = {
   "@context": "https://schema.org",
   "@type": "ContactPage",
-  name: "Contact SATX Rita's Rentals",
+  name: "Contact SATX Ritas Rentals",
   description:
-    "Contact page for SATX Rita's Rentals - San Antonio's premium frozen drink machine rental service",
+    "Contact page for SATX Ritas Rentals - San Antonio's premium frozen drink machine rental service",
   mainEntity: {
     "@type": "LocalBusiness",
-    name: "SATX Rita's Rentals",
+    name: "SATX Ritas Rentals",
     image: "https://satxritas.com/og-image.jpg",
     telephone: "(210) 555-0123",
     email: "info@satxritas.com",
@@ -64,9 +64,9 @@ const jsonLd = {
 
 // Add metadata with JSON-LD
 export const metadata: Metadata = {
-  title: "Contact Us | SATX Rita's Rentals - Frozen Drink Machine Rentals",
+  title: "Contact Us | SATX Ritas Rentals - Frozen Drink Machine Rentals",
   description:
-    "Get in touch with SATX Rita's Rentals for premium frozen drink machine rentals in San Antonio. Contact us for bookings, questions, or support. Professional service with flexible scheduling.",
+    "Get in touch with SATX Ritas Rentals for premium frozen drink machine rentals in San Antonio. Contact us for bookings, questions, or support. Professional service with flexible scheduling.",
   alternates: {
     canonical: "https://satxritas.com/contact",
   },

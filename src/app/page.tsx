@@ -8,7 +8,7 @@ import MapSection from "@/components/home/MapSection";
 const jsonLd = {
   "@context": "https://schema.org",
   "@type": "LocalBusiness",
-  name: "SATX Rita's Rentals",
+  name: "SATX Ritas Rentals",
   image: "https://satxritas.com/og-image.jpg",
   description:
     "Premium frozen drink machine rentals in San Antonio, TX. Perfect for parties, weddings, and events.",
@@ -41,7 +41,7 @@ const jsonLd = {
 };
 
 export const metadata: Metadata = {
-  title: "SATX Rita's Rentals | Frozen Drink Machine Rentals in San Antonio",
+  title: "SATX Ritas Rentals | Frozen Drink Machine Rentals in San Antonio",
   description:
     "Premium frozen drink machine rentals in San Antonio, TX. Perfect for parties, weddings, and events. Serving margaritas, daiquiris, and more with professional setup and service.",
   alternates: {

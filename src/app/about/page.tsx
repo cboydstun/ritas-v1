@@ -5,20 +5,20 @@ const jsonLd = {
   "@context": "https://schema.org",
   "@type": "Article",
   headline:
-    "About SATX Rita's Rentals - San Antonio's Premium Frozen Drink Machine Rental Service",
+    "About SATX Ritas Rentals - San Antonio's Premium Frozen Drink Machine Rental Service",
   description:
-    "Learn about SATX Rita's Rentals, our story, values, and commitment to creating unforgettable events in San Antonio with premium frozen drink machines.",
+    "Learn about SATX Ritas Rentals, our story, values, and commitment to creating unforgettable events in San Antonio with premium frozen drink machines.",
   image: "https://satxritas.com/og-image.jpg",
   datePublished: "2024-01-01T00:00:00+00:00",
   dateModified: new Date().toISOString(),
   author: {
     "@type": "Organization",
-    name: "SATX Rita's Rentals",
+    name: "SATX Ritas Rentals",
     url: "https://satxritas.com",
   },
   publisher: {
     "@type": "Organization",
-    name: "SATX Rita's Rentals",
+    name: "SATX Ritas Rentals",
     logo: {
       "@type": "ImageObject",
       url: "https://satxritas.com/og-image.jpg",
@@ -31,9 +31,9 @@ const jsonLd = {
 };
 
 export const metadata: Metadata = {
-  title: "About SATX Rita's Rentals | Our Story & Values",
+  title: "About SATX Ritas Rentals | Our Story & Values",
   description:
-    "Learn about SATX Rita's Rentals, San Antonio's trusted source for premium frozen drink machine rentals. Discover our story, values, and commitment to creating unforgettable events with quality service.",
+    "Learn about SATX Ritas Rentals, San Antonio's trusted source for premium frozen drink machine rentals. Discover our story, values, and commitment to creating unforgettable events with quality service.",
   alternates: {
     canonical: "https://satxritas.com/about",
   },

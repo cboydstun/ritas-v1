@@ -31,7 +31,7 @@ const jsonLd = {
 };
 
 export const metadata: Metadata = {
-  title: "Rentals | SATX Rita's Rentals - Frozen Drink Machine Rentals",
+  title: "Rentals | SATX Ritas Rentals - Frozen Drink Machine Rentals",
   description:
     "Choose from our selection of professional frozen drink machines for your next event in San Antonio. Single and double tank machines available with various mixer options. Includes delivery, setup, and pickup.",
   alternates: {

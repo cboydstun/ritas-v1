@@ -1,11 +1,11 @@
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Frequently Asked Questions | Rita's Frozen Drink Machine Rentals",
+  title: "Frequently Asked Questions | Ritas Frozen Drink Machine Rentals",
   description:
     "Find answers to common questions about our frozen drink machine rentals, including delivery, setup, mixers, payment options, and policies in San Antonio.",
   openGraph: {
-    title: "FAQ - Rita's Frozen Drink Machine Rentals",
+    title: "FAQ - Ritas Frozen Drink Machine Rentals",
     description:
       "Everything you need to know about renting frozen drink machines in San Antonio, from setup to mixers and policies.",
     type: "website",
