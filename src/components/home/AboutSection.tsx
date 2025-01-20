@@ -1,3 +1,5 @@
+import Image from 'next/image';
+
 export default function AboutSection() {
   return (
     <div className="bg-light dark:bg-charcoal py-16">
@@ -142,12 +144,44 @@ export default function AboutSection() {
           {/* Image Grid */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-4">
-              <div className="bg-orange/20 dark:bg-orange/10 rounded-lg h-64"></div>
-              <div className="bg-teal/20 dark:bg-teal/10 rounded-lg h-48"></div>
+              <div className="rounded-lg h-64 overflow-hidden">
+                <Image
+                  src="/margarita-frozen-2.jpg"
+                  alt="Frozen Margarita"
+                  width={400}
+                  height={256}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <div className="rounded-lg h-64 overflow-hidden">
+                <Image
+                  src="/pina-colada-1.jpg"
+                  alt="Piña Colada"
+                  width={400}
+                  height={400}
+                  className="w-full h-full object-cover"
+                />
+              </div>
             </div>
             <div className="space-y-4 pt-8">
-              <div className="bg-margarita/20 dark:bg-margarita/10 rounded-lg h-48"></div>
-              <div className="bg-pink/20 dark:bg-pink/10 rounded-lg h-64"></div>
+              <div className="rounded-lg h-48 overflow-hidden">
+                <Image
+                  src="/blue-hawaiian-1.jpg"
+                  alt="Blue Hawaiian"
+                  width={400}
+                  height={192}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <div className="rounded-lg h-64 overflow-hidden">
+                <Image
+                  src="/straw-daiquiri-1.jpg"
+                  alt="Strawberry Daiquiri"
+                  width={400}
+                  height={256}
+                  className="w-full h-full object-cover"
+                />
+              </div>
             </div>
           </div>
         </div>
