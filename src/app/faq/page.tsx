@@ -23,7 +23,12 @@ export default function FAQ() {
       {/* Main content */}
       <div className="mx-auto max-w-7xl">
         {/* Hero section */}
-        <div className="text-center">
+        <div className="text-center mb-16">
+          <div className="mb-8 inline-block">
+            <span className="inline-block px-4 py-2 rounded-full bg-margarita/20 dark:bg-margarita/10 text-charcoal dark:text-white text-sm font-semibold tracking-wide uppercase animate-bounce">
+              ❓ Got questions?
+            </span>
+          </div>
           <h1 className="text-4xl font-bold tracking-tight text-charcoal dark:text-white sm:text-6xl mb-6">
             Frequently Asked Questions
           </h1>
