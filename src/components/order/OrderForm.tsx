@@ -38,7 +38,7 @@ interface OrderFormData {
 
 const calculatePrice = (
   machineType: "single" | "double",
-  mixerType: MixerOption["type"]
+  mixerType: MixerOption["type"],
 ) => {
   const machine = machinePackages.find((m) => m.type === machineType);
   const mixer = machine?.mixerOptions.find((m) => m.type === mixerType);
@@ -109,7 +109,7 @@ export default function OrderForm() {
   const handleInputChange = (
     e: React.ChangeEvent<
       HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-    >
+    >,
   ) => {
     const { name, value } = e.target;
 
@@ -162,7 +162,7 @@ export default function OrderForm() {
               : prev.machineType,
             name === "mixerType"
               ? (value as MixerOption["type"])
-              : prev.mixerType
+              : prev.mixerType,
           );
           return {
             ...newData,
@@ -501,7 +501,7 @@ export default function OrderForm() {
                 <p className="text-charcoal/70 dark:text-white/70">
                   Pick Up:{" "}
                   {getNextDay(
-                    new Date(formData.rentalDate)
+                    new Date(formData.rentalDate),
                   ).toLocaleDateString()}{" "}
                   at {formData.returnTime}
                 </p>
@@ -560,7 +560,7 @@ export default function OrderForm() {
                     onSuccess={() => {
                       // Show success message
                       alert(
-                        "Payment successful! Your rental has been confirmed."
+                        "Payment successful! Your rental has been confirmed.",
                       );
                       // Reset form state and step in a single batch
                       Promise.resolve().then(() => {

@@ -1,4 +1,63 @@
 import { machinePackages } from "@/lib/rental-data";
+import { Metadata } from "next";
+
+// Add JSON-LD structured data for products
+const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    itemListElement: [
+      {
+        "@type": "Product",
+        name: machinePackages[0].name,
+        description: machinePackages[0].description,
+        image: "https://satxritas.com/og-image.jpg",
+        offers: machinePackages[0].mixerOptions.map((option, index) => ({
+          "@type": "Offer",
+          price: option.price,
+          priceCurrency: "USD",
+          itemCondition: "https://schema.org/NewCondition",
+          availability: "https://schema.org/InStock",
+          name:
+            index === 0
+              ? "Machine Only"
+              : index === 1
+                ? "With Kool-Aid Mixer"
+                : "With Premium Mixers",
+        })),
+      },
+      {
+        "@type": "Product",
+        name: machinePackages[1].name,
+        description: machinePackages[1].description,
+        image: "https://satxritas.com/og-image.jpg",
+        offers: machinePackages[1].mixerOptions.map((option, index) => ({
+          "@type": "Offer",
+          price: option.price,
+          priceCurrency: "USD",
+          itemCondition: "https://schema.org/NewCondition",
+          availability: "https://schema.org/InStock",
+          name:
+            index === 0
+              ? "Machine Only"
+              : index === 1
+                ? "With Kool-Aid Mixer"
+                : "With Premium Mixers",
+        })),
+      },
+    ],
+  };
+
+export const metadata: Metadata = {
+  title: "Pricing | SATX Rita's Rentals - Frozen Drink Machine Rentals",
+  description:
+    "Transparent pricing for frozen drink machine rentals in San Antonio. Professional delivery, setup, and pickup included. Single and double tank machines available with various mixer options.",
+  alternates: {
+    canonical: "https://satxritas.com/pricing",
+  },
+  other: {
+    "script:ld+json": JSON.stringify(jsonLd),
+  },
+};
 
 export default function PricingPage() {
   return (

@@ -1,44 +1,81 @@
-"use client";
-import { useState } from "react";
+import { Metadata } from "next";
+import ContactForm from "@/components/contact/ContactForm";
+
+// Add JSON-LD structured data for contact page
+const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "ContactPage",
+    name: "Contact SATX Rita's Rentals",
+    description:
+      "Contact page for SATX Rita's Rentals - San Antonio's premium frozen drink machine rental service",
+    mainEntity: {
+      "@type": "LocalBusiness",
+      name: "SATX Rita's Rentals",
+      image: "https://satxritas.com/og-image.jpg",
+      telephone: "(210) 555-0123",
+      email: "info@satxritas.com",
+      openingHoursSpecification: [
+        {
+          "@type": "OpeningHoursSpecification",
+          dayOfWeek: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
+          opens: "09:00",
+          closes: "18:00",
+        },
+        {
+          "@type": "OpeningHoursSpecification",
+          dayOfWeek: "Saturday",
+          opens: "10:00",
+          closes: "16:00",
+        },
+      ],
+      areaServed: {
+        "@type": "GeoCircle",
+        geoMidpoint: {
+          "@type": "GeoCoordinates",
+          latitude: 29.4241,
+          longitude: -98.4936,
+        },
+        geoRadius: "50000",
+      },
+      address: {
+        "@type": "PostalAddress",
+        addressLocality: "San Antonio",
+        addressRegion: "TX",
+        addressCountry: "US",
+      },
+      potentialAction: {
+        "@type": "ReserveAction",
+        target: {
+          "@type": "EntryPoint",
+          urlTemplate: "https://satxritas.com/order",
+          inLanguage: "en-US",
+          actionPlatform: [
+            "http://schema.org/DesktopWebPlatform",
+            "http://schema.org/MobileWebPlatform",
+          ],
+        },
+        result: {
+          "@type": "Reservation",
+          name: "Frozen Drink Machine Rental Reservation",
+        },
+      },
+    },
+  };
+
+// Add metadata with JSON-LD
+export const metadata: Metadata = {
+  title: "Contact Us | SATX Rita's Rentals - Frozen Drink Machine Rentals",
+  description:
+    "Get in touch with SATX Rita's Rentals for premium frozen drink machine rentals in San Antonio. Contact us for bookings, questions, or support. Professional service with flexible scheduling.",
+  alternates: {
+    canonical: "https://satxritas.com/contact",
+  },
+  other: {
+    "script:ld+json": JSON.stringify(jsonLd),
+  },
+};
 
 export default function ContactPage() {
-  const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    phone: "",
-    eventDate: "",
-    message: "",
-  });
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    // Form submission logic would go here
-    console.log("Form submitted:", formData);
-    // Reset form
-    setFormData({
-      name: "",
-      email: "",
-      phone: "",
-      eventDate: "",
-      message: "",
-    });
-  };
-
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
-  ) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-  };
-
-  const inputClassName =
-    "w-full px-4 py-2 bg-white dark:bg-white text-charcoal rounded-lg border border-gray-300 focus:ring-2 focus:ring-margarita focus:border-transparent outline-none transition-all";
-  const labelClassName =
-    "block text-sm font-medium text-charcoal dark:text-white mb-1";
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-light via-margarita/10 to-teal/20 dark:from-charcoal dark:via-margarita/5 dark:to-teal/10">
       {/* Decorative Elements */}
@@ -75,88 +112,7 @@ export default function ContactPage() {
             <h2 className="text-2xl font-bold text-charcoal dark:text-white mb-6">
               Send Us a Message
             </h2>
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div>
-                <label htmlFor="name" className={labelClassName}>
-                  Name
-                </label>
-                <input
-                  type="text"
-                  id="name"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleChange}
-                  required
-                  className={inputClassName}
-                  placeholder="Your name"
-                />
-              </div>
-              <div>
-                <label htmlFor="email" className={labelClassName}>
-                  Email
-                </label>
-                <input
-                  type="email"
-                  id="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  required
-                  className={inputClassName}
-                  placeholder="your@email.com"
-                />
-              </div>
-              <div>
-                <label htmlFor="phone" className={labelClassName}>
-                  Phone
-                </label>
-                <input
-                  type="tel"
-                  id="phone"
-                  name="phone"
-                  value={formData.phone}
-                  onChange={handleChange}
-                  required
-                  className={inputClassName}
-                  placeholder="(210) 555-0123"
-                />
-              </div>
-              <div>
-                <label htmlFor="eventDate" className={labelClassName}>
-                  Event Date
-                </label>
-                <input
-                  type="date"
-                  id="eventDate"
-                  name="eventDate"
-                  value={formData.eventDate}
-                  onChange={handleChange}
-                  required
-                  className={inputClassName}
-                />
-              </div>
-              <div>
-                <label htmlFor="message" className={labelClassName}>
-                  Message
-                </label>
-                <textarea
-                  id="message"
-                  name="message"
-                  value={formData.message}
-                  onChange={handleChange}
-                  required
-                  rows={4}
-                  className={inputClassName}
-                  placeholder="Tell us about your event..."
-                />
-              </div>
-              <button
-                type="submit"
-                className="w-full px-6 py-3 bg-gradient-to-r from-margarita to-teal text-white rounded-lg hover:shadow-lg hover:shadow-margarita/30 transform hover:-translate-y-1 transition-all duration-300 font-semibold"
-              >
-                Send Message
-              </button>
-            </form>
+            <ContactForm />
           </div>
 
           {/* Contact Information */}

@@ -1,36 +1,67 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# SATX Ritas Rental Service
+
+A modern web application built with Next.js for managing and processing rental orders with integrated PayPal payments.
+
+## Features
+
+- 📱 Responsive design with dark/light theme support
+- 💳 Secure PayPal payment integration
+- 🗺️ Interactive map section
+- 📝 Order management system
+- 🔒 MongoDB database integration
+- 📄 Dynamic content pages (About, FAQ, Pricing, Contact)
+
+## Tech Stack
+
+- [Next.js 14](https://nextjs.org/) - React framework
+- [Tailwind CSS](https://tailwindcss.com/) - Styling
+- [MongoDB](https://www.mongodb.com/) - Database
+- [PayPal API](https://developer.paypal.com/) - Payment processing
 
 ## Getting Started
 
-First, run the development server:
+1. Clone the repository
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+3. Set up environment variables:
+   Create a `.env.local` file with the following variables:
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+   ```
+   MONGODB_URI=your_mongodb_connection_string
+   PAYPAL_CLIENT_ID=your_paypal_client_id
+   PAYPAL_CLIENT_SECRET=your_paypal_client_secret
+   ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+4. Run the development server:
+   ```bash
+   npm run dev
+   ```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the application.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Project Structure
 
-## Learn More
+- `/src/app/*` - Application pages and API routes
+- `/src/components/*` - Reusable React components
+- `/src/lib/*` - Utility functions and service integrations
+- `/src/types/*` - TypeScript type definitions
+- `/public/*` - Static assets
 
-To learn more about Next.js, take a look at the following resources:
+## API Routes
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- `/api/create-paypal-order` - Creates a new PayPal order
+- `/api/capture-paypal-order` - Captures payment for a PayPal order
+- `/api/save-rental` - Saves rental information to MongoDB
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Deployment
 
-## Deploy on Vercel
+The application is optimized for deployment on [Vercel](https://vercel.com). To deploy:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+1. Push your code to a Git repository
+2. Import the project to Vercel
+3. Configure environment variables in the Vercel dashboard
+4. Deploy!
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+For other deployment options, refer to the [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying).

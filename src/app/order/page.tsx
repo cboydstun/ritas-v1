@@ -1,5 +1,52 @@
 import OrderForm from "@/components/order/OrderForm";
 import { Suspense } from "react";
+import { Metadata } from "next";
+
+// Add JSON-LD structured data for service booking
+const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Service",
+    name: "Frozen Drink Machine Rental Booking",
+    provider: {
+      "@type": "LocalBusiness",
+      name: "SATX Rita's Rentals",
+      image: "https://satxritas.com/og-image.jpg",
+      address: {
+        "@type": "PostalAddress",
+        addressLocality: "San Antonio",
+        addressRegion: "TX",
+        addressCountry: "US",
+      },
+      areaServed: {
+        "@type": "City",
+        name: "San Antonio",
+      },
+    },
+    description:
+      "Professional frozen drink machine rental service including delivery, setup, and pickup. Available for parties, weddings, corporate events, and more.",
+    serviceType: "Equipment Rental",
+    termsOfService: "24-hour standard rental period with flexible scheduling",
+    offers: {
+      "@type": "Offer",
+      availability: "https://schema.org/InStock",
+      areaServed: {
+        "@type": "City",
+        name: "San Antonio",
+      },
+    },
+  };
+
+export const metadata: Metadata = {
+  title: "Book Now | SATX Rita's Rentals - Frozen Drink Machine Rentals",
+  description:
+    "Book your frozen drink machine rental in San Antonio. Easy online booking with flexible scheduling, delivery, and setup included. Perfect for parties and events of any size.",
+  alternates: {
+    canonical: "https://satxritas.com/order",
+  },
+  other: {
+    "script:ld+json": JSON.stringify(jsonLd),
+  },
+};
 
 export default function OrderPage() {
   return (

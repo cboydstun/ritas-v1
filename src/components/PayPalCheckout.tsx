@@ -46,7 +46,7 @@ export const PayPalCheckout: React.FC<PayPalCheckoutProps> = ({
     } catch (error) {
       console.error("Error creating PayPal order:", error);
       onError(
-        error instanceof Error ? error : new Error("Failed to create order")
+        error instanceof Error ? error : new Error("Failed to create order"),
       );
       return "";
     } finally {
@@ -100,8 +100,8 @@ export const PayPalCheckout: React.FC<PayPalCheckoutProps> = ({
           console.error("PayPal error:", err);
           onError(
             new Error(
-              (err as unknown as Error)?.message || "PayPal payment error"
-            )
+              (err as unknown as Error)?.message || "PayPal payment error",
+            ),
           );
         }}
         disabled={isPending}

@@ -1,5 +1,45 @@
 import Link from "next/link";
 import { mixerDetails, machinePackages } from "@/lib/rental-data";
+import { Metadata } from "next";
+
+// Add JSON-LD structured data for rental products
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "ItemList",
+  itemListElement: machinePackages.map((machine, index) => ({
+    "@type": "Product",
+    position: index + 1,
+    name: machine.name,
+    description: machine.description,
+    image: "https://satxritas.com/og-image.jpg",
+    offers: machine.mixerOptions.map((option) => ({
+      "@type": "Offer",
+      price: option.price,
+      priceCurrency: "USD",
+      itemCondition: "https://schema.org/NewCondition",
+      availability: "https://schema.org/InStock",
+      name: mixerDetails[option.type].label,
+      description: mixerDetails[option.type].description,
+    })),
+    additionalProperty: machine.features.map((feature) => ({
+      "@type": "PropertyValue",
+      name: "Feature",
+      value: feature,
+    })),
+  })),
+};
+
+export const metadata: Metadata = {
+  title: "Rentals | SATX Rita's Rentals - Frozen Drink Machine Rentals",
+  description:
+    "Choose from our selection of professional frozen drink machines for your next event in San Antonio. Single and double tank machines available with various mixer options. Includes delivery, setup, and pickup.",
+  alternates: {
+    canonical: "https://satxritas.com/rentals",
+  },
+  other: {
+    "script:ld+json": JSON.stringify(jsonLd),
+  },
+};
 
 export default function RentalsPage() {
   return (
