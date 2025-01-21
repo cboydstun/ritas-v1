@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { initializePayPalSDK } from "@/lib/paypal-server";
 import dbConnect from "@/lib/mongodb";
 import { Rental } from "@/models/rental";
-import mongoose from "mongoose";
 
 export async function POST(request: Request) {
   try {

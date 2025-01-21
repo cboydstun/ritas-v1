@@ -99,6 +99,11 @@ export async function POST(request: Request) {
         { new: true }
       );
 
+      if (!rental) {
+        console.error('No rental found for PayPal order:', orderId);
+        throw new Error("Rental not found for failed payment");
+      }
+
       throw new Error("Payment capture failed");
     }
   } catch (error) {

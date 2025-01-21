@@ -16,7 +16,6 @@ const nextConfig: NextConfig = {
     minimumCacheTTL: 60,
   },
   experimental: {
-    optimizeCss: true,
     optimizePackageImports: ["@headlessui/react", "@heroicons/react"],
   },
   webpack: (config, { dev, isServer }) => {
