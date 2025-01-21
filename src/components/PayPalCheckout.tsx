@@ -25,6 +25,7 @@ export const PayPalCheckout: React.FC<PayPalCheckoutProps> = ({
   const createOrder = async () => {
     try {
       setIsPending(true);
+      
       const response = await fetch("/api/create-paypal-order", {
         method: "POST",
         headers: {
@@ -33,6 +34,7 @@ export const PayPalCheckout: React.FC<PayPalCheckoutProps> = ({
         body: JSON.stringify({
           amount: amount.toFixed(2),
           currency,
+          rentalData,
         }),
       });
 
@@ -57,6 +59,7 @@ export const PayPalCheckout: React.FC<PayPalCheckoutProps> = ({
   const onApprove = async (data: { orderID: string }) => {
     try {
       setIsPending(true);
+      
       const response = await fetch("/api/capture-paypal-order", {
         method: "POST",
         headers: {
@@ -80,6 +83,9 @@ export const PayPalCheckout: React.FC<PayPalCheckoutProps> = ({
     } catch (error) {
       setIsPending(false);
       console.error("Error capturing PayPal payment:", error);
+      onError(
+        error instanceof Error ? error : new Error("Failed to capture payment"),
+      );
     }
   };
 
