@@ -84,30 +84,34 @@ export function ReviewStep({ formData }: StepProps) {
             {formData.customer.phone}
           </p>
           <p className="text-charcoal/70 dark:text-white/70">
-            {formData.customer.address.street}, {formData.customer.address.city}
-            , {formData.customer.address.state}{" "}
+            {formData.customer.address.street},
+            <br />
+            {formData.customer.address.city}, {formData.customer.address.state}{" "}
             {formData.customer.address.zipCode}
           </p>
         </div>
 
-        <div className="space-y-2">
-          <p className="text-center text-lg text-charcoal/70 dark:text-white/70">
+        <div className="bg-white/80 dark:bg-charcoal/30 rounded-xl p-6">
+          <h3 className="font-semibold text-lg text-charcoal dark:text-white mb-4">
+            Pricing Details
+          </h3>
+          <p className=" text-charcoal/70 dark:text-white/70">
             Rate: ${perDayRate}/day × {rentalDays} day
             {rentalDays > 1 ? "s" : ""}
           </p>
-          <p className="text-center text-lg text-charcoal/70 dark:text-white/70">
+          <p className=" text-charcoal/70 dark:text-white/70">
             Delivery Fee: ${deliveryFee.toFixed(2)}
           </p>
-          <p className="text-center text-lg text-charcoal/70 dark:text-white/70">
+          <p className=" text-charcoal/70 dark:text-white/70">
             Subtotal: ${subtotal.toFixed(2)}
           </p>
-          <p className="text-center text-lg text-charcoal/70 dark:text-white/70">
+          <p className=" text-charcoal/70 dark:text-white/70">
             Sales Tax (8.25%): ${salesTax.toFixed(2)}
           </p>
-          <p className="text-center text-lg text-charcoal/70 dark:text-white/70">
+          <p className=" text-charcoal/70 dark:text-white/70">
             Processing Fee (3%): ${processingFee.toFixed(2)}
           </p>
-          <p className="text-center text-xl font-bold text-orange mb-4">
+          <p className="text-xl font-bold text-orange mb-4">
             Total Amount: ${total.toFixed(2)}
           </p>
         </div>
