@@ -1,6 +1,38 @@
 import { StepProps, inputClassName, labelClassName } from "../types";
+import { useState } from "react";
 
 export function DetailsStep({ formData, onInputChange, error }: StepProps) {
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let value = e.target.value.replace(/\D/g, ""); // Remove all non-digits
+
+    if (value.length > 10) {
+      value = value.slice(0, 10); // Limit to 10 digits
+    }
+
+    // Format the phone number as (XXX)-XXX-XXXX
+    if (value.length > 0) {
+      if (value.length <= 3) {
+        value = `(${value}`;
+      } else if (value.length <= 6) {
+        value = `(${value.slice(0, 3)})-${value.slice(3)}`;
+      } else {
+        value = `(${value.slice(0, 3)})-${value.slice(3, 6)}-${value.slice(6)}`;
+      }
+    }
+
+    // Create a synthetic event to maintain compatibility with the existing onInputChange
+    const syntheticEvent = {
+      ...e,
+      target: {
+        ...e.target,
+        value,
+        name: e.target.name,
+      },
+    };
+
+    onInputChange(syntheticEvent);
+  };
+
   return (
     <div className="space-y-8 relative">
       <div className="text-center mb-8">
@@ -46,9 +78,11 @@ export function DetailsStep({ formData, onInputChange, error }: StepProps) {
             type="tel"
             name="customer.phone"
             value={formData.customer.phone}
-            onChange={onInputChange}
+            onChange={handlePhoneChange}
             className={inputClassName}
-            placeholder="(123) 456-7890"
+            placeholder="(123)-456-7890"
+            pattern="\(\d{3}\)-\d{3}-\d{4}"
+            maxLength={14}
           />
         </div>
 
