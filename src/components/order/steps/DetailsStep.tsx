@@ -1,5 +1,4 @@
 import { StepProps, inputClassName, labelClassName } from "../types";
-import { useState } from "react";
 
 export function DetailsStep({ formData, onInputChange, error }: StepProps) {
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {

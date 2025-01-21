@@ -1,22 +1,25 @@
 # SATX Ritas Rental Service
 
-A modern web application built with Next.js for managing and processing rental orders with integrated PayPal payments.
+A modern web application built with Next.js 14 and TypeScript for managing frozen drink machine rentals in San Antonio, TX. Features secure PayPal payment processing and a streamlined rental booking experience.
 
 ## Features
 
-- 📱 Responsive design with dark/light theme support
+- 🎨 Modern, responsive design with dark/light theme support
 - 💳 Secure PayPal payment integration
-- 🗺️ Interactive map section
-- 📝 Order management system
-- 🔒 MongoDB database integration
-- 📄 Dynamic content pages (About, FAQ, Pricing, Contact)
+- 🗺️ Interactive map showing service area
+- 📱 Multi-step rental booking process
+- 🔒 MongoDB database for order management
+- 📄 Informative content pages (About, FAQ, Pricing, Contact)
+- 🌙 Dark/light theme toggle
+- 📝 Contact form for inquiries
 
 ## Tech Stack
 
-- [Next.js 14](https://nextjs.org/) - React framework
-- [Tailwind CSS](https://tailwindcss.com/) - Styling
-- [MongoDB](https://www.mongodb.com/) - Database
-- [PayPal API](https://developer.paypal.com/) - Payment processing
+- [Next.js 15](https://nextjs.org/) - React framework with App Router
+- [TypeScript](https://www.typescriptlang.org/) - Type-safe JavaScript
+- [Tailwind CSS](https://tailwindcss.com/) - Utility-first CSS framework
+- [MongoDB](https://www.mongodb.com/) - NoSQL database
+- [PayPal API](https://developer.paypal.com/) - Secure payment processing
 
 ## Getting Started
 
@@ -43,17 +46,42 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 
 ## Project Structure
 
-- `/src/app/*` - Application pages and API routes
-- `/src/components/*` - Reusable React components
-- `/src/lib/*` - Utility functions and service integrations
-- `/src/types/*` - TypeScript type definitions
-- `/public/*` - Static assets
+```
+src/
+├── app/                    # Next.js 14 App Router pages
+│   ├── api/               # API routes
+│   ├── about/             # About page
+│   ├── contact/           # Contact page
+│   ├── faq/              # FAQ page
+│   ├── order/            # Rental order flow
+│   ├── pricing/          # Pricing information
+│   └── rentals/          # Rental management
+├── components/            # React components
+│   ├── contact/          # Contact form components
+│   ├── home/             # Homepage sections
+│   └── order/            # Order flow components
+├── config/               # Configuration files
+├── lib/                  # Utility functions
+│   ├── mongodb.ts        # MongoDB connection
+│   ├── paypal-server.ts  # PayPal integration
+│   └── rental-data.ts    # Rental data utilities
+└── types/                # TypeScript type definitions
+```
 
 ## API Routes
 
-- `/api/create-paypal-order` - Creates a new PayPal order
-- `/api/capture-paypal-order` - Captures payment for a PayPal order
-- `/api/save-rental` - Saves rental information to MongoDB
+- `/api/create-paypal-order` - Initializes a new PayPal order
+- `/api/capture-paypal-order` - Captures payment after approval
+- `/api/save-rental` - Persists rental information to MongoDB
+
+## Key Components
+
+- `OrderForm` - Multi-step rental booking process
+- `PayPalCheckout` - PayPal payment integration
+- `ThemeToggle` - Dark/light theme switcher
+- `MapSection` - Interactive service area map
+- `Navigation` - Responsive navigation bar
+- `Footer` - Site-wide footer
 
 ## Deployment
 
@@ -65,3 +93,11 @@ The application is optimized for deployment on [Vercel](https://vercel.com). To 
 4. Deploy!
 
 For other deployment options, refer to the [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying).
+
+## Images and Assets
+
+The `/public` directory contains optimized images for:
+
+- Frozen drink machines (VEVOR 15L and 30L models)
+- Popular drink varieties (Margaritas, Piña Coladas, etc.)
+- Favicons and OG images for social sharing
