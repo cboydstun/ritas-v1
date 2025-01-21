@@ -4,7 +4,7 @@ import { paypalConfig } from "@/config/paypal";
 import { StepProps } from "../types";
 import { calculatePricing } from "../utils";
 
-export function PaymentStep({ formData }: StepProps) {
+export default function PaymentStep({ formData }: StepProps) {
   const { total } = calculatePricing(
     formData.price,
     formData.rentalDate,

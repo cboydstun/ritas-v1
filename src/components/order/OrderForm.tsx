@@ -1,8 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { type OrderFormData, type OrderStep, steps } from "./types";
+import dynamic from "next/dynamic";
+import {
+  type OrderFormData,
+  type OrderStep,
+  type StepProps,
+  steps,
+} from "./types";
 import {
   calculatePrice,
   getNextDay,
@@ -13,7 +19,50 @@ import {
 } from "./utils";
 import { ProgressBar } from "./ProgressBar";
 import { NavigationButtons } from "./NavigationButtons";
-import { DeliveryStep, DetailsStep, ReviewStep, PaymentStep } from "./steps";
+
+// Dynamically import step components with proper typing
+const DeliveryStep = dynamic<StepProps>(
+  () => import("./steps/DeliveryStep").then((mod) => mod.default),
+  {
+    loading: () => <StepSkeleton />,
+    ssr: false,
+  },
+);
+
+const DetailsStep = dynamic<StepProps>(
+  () => import("./steps/DetailsStep").then((mod) => mod.default),
+  {
+    loading: () => <StepSkeleton />,
+    ssr: false,
+  },
+);
+
+const ReviewStep = dynamic<StepProps>(
+  () => import("./steps/ReviewStep").then((mod) => mod.default),
+  {
+    loading: () => <StepSkeleton />,
+    ssr: false,
+  },
+);
+
+const PaymentStep = dynamic<StepProps>(
+  () => import("./steps/PaymentStep").then((mod) => mod.default),
+  {
+    loading: () => <StepSkeleton />,
+    ssr: false,
+  },
+);
+
+// Loading skeleton for step components
+const StepSkeleton = () => (
+  <div className="animate-pulse space-y-4">
+    <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
+    <div className="space-y-3">
+      <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded"></div>
+      <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-5/6"></div>
+    </div>
+  </div>
+);
 
 export default function OrderForm() {
   const searchParams = useSearchParams();
@@ -229,38 +278,40 @@ export default function OrderForm() {
         <div className="absolute -top-24 -right-24 w-48 h-48 bg-margarita/10 dark:bg-margarita/5 rounded-full blur-2xl" />
         <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-orange/10 dark:bg-orange/5 rounded-full blur-2xl" />
 
-        {/* Form Steps */}
-        {step === "delivery" && (
-          <DeliveryStep
-            formData={formData}
-            onInputChange={handleInputChange}
-            error={error}
-          />
-        )}
+        {/* Form Steps with Suspense boundary */}
+        <Suspense fallback={<StepSkeleton />}>
+          {step === "delivery" && (
+            <DeliveryStep
+              formData={formData}
+              onInputChange={handleInputChange}
+              error={error}
+            />
+          )}
 
-        {step === "details" && (
-          <DetailsStep
-            formData={formData}
-            onInputChange={handleInputChange}
-            error={error}
-          />
-        )}
+          {step === "details" && (
+            <DetailsStep
+              formData={formData}
+              onInputChange={handleInputChange}
+              error={error}
+            />
+          )}
 
-        {step === "review" && (
-          <ReviewStep
-            formData={formData}
-            onInputChange={handleInputChange}
-            error={error}
-          />
-        )}
+          {step === "review" && (
+            <ReviewStep
+              formData={formData}
+              onInputChange={handleInputChange}
+              error={error}
+            />
+          )}
 
-        {step === "payment" && (
-          <PaymentStep
-            formData={formData}
-            onInputChange={handleInputChange}
-            error={error}
-          />
-        )}
+          {step === "payment" && (
+            <PaymentStep
+              formData={formData}
+              onInputChange={handleInputChange}
+              error={error}
+            />
+          )}
+        </Suspense>
 
         {/* Navigation Buttons */}
         <NavigationButtons

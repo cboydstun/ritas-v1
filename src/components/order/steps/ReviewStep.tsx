@@ -3,7 +3,7 @@ import { StepProps } from "../types";
 import { mixerDetails } from "@/lib/rental-data";
 import { calculatePricing } from "../utils";
 
-export function ReviewStep({ formData }: StepProps) {
+export default function ReviewStep({ formData }: StepProps) {
   const {
     rentalDays,
     perDayRate,

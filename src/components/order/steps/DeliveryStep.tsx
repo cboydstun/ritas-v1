@@ -1,7 +1,11 @@
 import Image from "next/image";
 import { StepProps, inputClassName, labelClassName } from "../types";
 
-export function DeliveryStep({ formData, onInputChange, error }: StepProps) {
+export default function DeliveryStep({
+  formData,
+  onInputChange,
+  error,
+}: StepProps) {
   return (
     <div className="space-y-8 relative">
       <div className="text-center mb-8">

@@ -1,6 +1,10 @@
 import { StepProps, inputClassName, labelClassName } from "../types";
 
-export function DetailsStep({ formData, onInputChange, error }: StepProps) {
+export default function DetailsStep({
+  formData,
+  onInputChange,
+  error,
+}: StepProps) {
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let value = e.target.value.replace(/\D/g, ""); // Remove all non-digits
 
