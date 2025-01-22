@@ -76,7 +76,7 @@ export async function POST(request: Request) {
         // Save the rental
         const savedRental = await rental.save();
 
-        return NextResponse.json({ 
+        return NextResponse.json({
           id: order.result.id,
           rentalId: savedRental._id
         });
@@ -99,8 +99,27 @@ export async function POST(request: Request) {
     return NextResponse.json({ id: order.result.id });
   } catch (error) {
     console.error("Error creating PayPal order:", error);
+    // Log detailed error information
+    if (error instanceof Error) {
+      console.error("Error details:", {
+        name: error.name,
+        message: error.message,
+        stack: error.stack,
+      });
+    }
+
+    // Check if it's a PayPal API error
+    if (error && typeof error === 'object' && 'details' in error) {
+      console.error("PayPal API error details:", error.details);
+    }
+
+    let errorMessage = "Failed to create order";
+    if (error instanceof Error) {
+      errorMessage = `PayPal Error: ${error.message}`;
+    }
+
     return NextResponse.json(
-      { message: error instanceof Error ? error.message : "Failed to create order" },
+      { message: errorMessage },
       { status: 500 },
     );
   }

@@ -70,7 +70,7 @@ export async function POST(request: Request) {
             updatedAt: new Date()
           }
         },
-        { 
+        {
           new: true, // Return the updated document
           runValidators: true // Run schema validators on update
         }
@@ -108,8 +108,28 @@ export async function POST(request: Request) {
     }
   } catch (error) {
     console.error("Error capturing PayPal payment:", error);
+
+    // Log detailed error information
+    if (error instanceof Error) {
+      console.error("Error details:", {
+        name: error.name,
+        message: error.message,
+        stack: error.stack,
+      });
+    }
+
+    // Check if it's a PayPal API error
+    if (error && typeof error === 'object' && 'details' in error) {
+      console.error("PayPal API error details:", error.details);
+    }
+
+    let errorMessage = "Failed to capture payment";
+    if (error instanceof Error) {
+      errorMessage = `PayPal Error: ${error.message}`;
+    }
+
     return NextResponse.json(
-      { message: error instanceof Error ? error.message : "Failed to capture payment" },
+      { message: errorMessage },
       { status: 500 },
     );
   }
