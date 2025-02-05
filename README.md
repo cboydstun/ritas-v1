@@ -1,6 +1,6 @@
 # SATX Ritas Rental Service
 
-A modern web application built with Next.js 14 and TypeScript for managing frozen drink machine rentals in San Antonio, TX. Features secure PayPal payment processing and a streamlined rental booking experience.
+A modern web application built with Next.js 15 and TypeScript for managing frozen drink machine rentals in San Antonio, TX. Features secure PayPal payment processing and a streamlined rental booking experience.
 
 ## Features
 
@@ -32,9 +32,23 @@ A modern web application built with Next.js 14 and TypeScript for managing froze
    Create a `.env.local` file with the following variables:
 
    ```
+   # MongoDB Configuration
    MONGODB_URI=your_mongodb_connection_string
-   PAYPAL_CLIENT_ID=your_paypal_client_id
-   PAYPAL_CLIENT_SECRET=your_paypal_client_secret
+   MONGODB_DB=your_database_name
+
+   # PayPal Configuration
+   NEXT_PUBLIC_PAYPAL_CLIENT_ID=your_paypal_client_id    # Used by PayPal button component
+   PAYPAL_CLIENT_SECRET=your_paypal_client_secret        # Server-side only
+   PAYPAL_LIVE_MODE=false                               # Set to true in production
+
+   # Node Environment
+   NODE_ENV=development                                 # Use 'production' for live deployment
+
+   # Twilio Configuration (for SMS notifications)
+   TWILIO_ACCOUNT_SID=your_twilio_account_sid
+   TWILIO_AUTH_TOKEN=your_twilio_auth_token
+   TWILIO_PHONE_NUMBER=your_twilio_phone_number
+   USER_PHONE_NUMBER=your_notification_phone_number
    ```
 
 4. Run the development server:
@@ -48,40 +62,50 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 
 ```
 src/
-├── app/                    # Next.js 14 App Router pages
+├── app/                    # Next.js 15 App Router pages
 │   ├── api/               # API routes
+│   │   ├── create-paypal-order/    # PayPal order creation
+│   │   └── capture-paypal-order/   # PayPal payment capture
 │   ├── about/             # About page
 │   ├── contact/           # Contact page
-│   ├── faq/              # FAQ page
-│   ├── order/            # Rental order flow
-│   ├── pricing/          # Pricing information
-│   └── rentals/          # Rental management
+│   ├── faq/               # FAQ page
+│   ├── order/             # Rental order flow
+│   ├── pricing/           # Pricing information
+│   └── rentals/           # Rental management
 ├── components/            # React components
-│   ├── contact/          # Contact form components
-│   ├── home/             # Homepage sections
-│   └── order/            # Order flow components
-├── config/               # Configuration files
-├── lib/                  # Utility functions
-│   ├── mongodb.ts        # MongoDB connection
-│   ├── paypal-server.ts  # PayPal integration
-│   └── rental-data.ts    # Rental data utilities
-└── types/                # TypeScript type definitions
+│   ├── contact/           # Contact form components
+│   ├── home/              # Homepage sections
+│   │   ├── AboutSection   # Home page about section
+│   │   ├── HeroSection   # Hero banner
+│   │   ├── MapSection    # Service area map
+│   │   └── SocialProof   # Customer testimonials
+│   └── order/             # Order flow components
+│       ├── steps/         # Multi-step form components
+│       └── types.ts       # Order type definitions
+├── config/                # Configuration files
+├── lib/                   # Utility functions
+│   ├── mongodb.ts         # MongoDB connection
+│   ├── paypal-server.ts   # PayPal integration
+│   └── rental-data.ts     # Rental data utilities
+├── models/                # MongoDB models
+└── types/                 # TypeScript type definitions
 ```
 
 ## API Routes
 
-- `/api/create-paypal-order` - Initializes a new PayPal order
-- `/api/capture-paypal-order` - Captures payment after approval
-- `/api/save-rental` - Persists rental information to MongoDB
+- `/api/create-paypal-order` - Initializes a new PayPal order with rental details
+- `/api/capture-paypal-order` - Captures and processes approved PayPal payments
 
 ## Key Components
 
-- `OrderForm` - Multi-step rental booking process
-- `PayPalCheckout` - PayPal payment integration
-- `ThemeToggle` - Dark/light theme switcher
-- `MapSection` - Interactive service area map
-- `Navigation` - Responsive navigation bar
-- `Footer` - Site-wide footer
+- `OrderForm` - Multi-step rental booking process with validation
+- `PayPalCheckout` - Secure PayPal payment integration
+- `ThemeToggle` - Dark/light theme switcher with system preference detection
+- `MapSection` - Interactive service area map with delivery zone highlighting
+- `Navigation` - Responsive navigation bar with mobile menu
+- `Footer` - Site-wide footer with social links and contact information
+- `ContactForm` - Validated contact form with email integration
+- `ThemeWrapper` - Theme context provider for consistent styling
 
 ## Deployment
 
