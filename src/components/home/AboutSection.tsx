@@ -150,7 +150,8 @@ export default function AboutSection() {
                   alt="Frozen Margarita"
                   width={400}
                   height={256}
-                  className="w-full h-full object-cover"
+                  className="w-full h-auto object-cover"
+                  priority
                 />
               </div>
               <div className="rounded-lg h-64 overflow-hidden">
@@ -159,7 +160,7 @@ export default function AboutSection() {
                   alt="Piña Colada"
                   width={400}
                   height={400}
-                  className="w-full h-full object-cover"
+                  className="w-full h-auto object-cover"
                 />
               </div>
             </div>
@@ -170,7 +171,7 @@ export default function AboutSection() {
                   alt="Blue Hawaiian"
                   width={400}
                   height={192}
-                  className="w-full h-full object-cover"
+                  className="w-full h-auto object-cover"
                 />
               </div>
               <div className="rounded-lg h-64 overflow-hidden">
@@ -179,7 +180,7 @@ export default function AboutSection() {
                   alt="Strawberry Daiquiri"
                   width={400}
                   height={256}
-                  className="w-full h-full object-cover"
+                  className="w-full h-auto object-cover"
                 />
               </div>
             </div>
