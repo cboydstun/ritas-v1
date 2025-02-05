@@ -125,8 +125,16 @@ export default function OrdersTable() {
     const dateRange = getDateRange(dateFilter);
     if (dateRange) {
       filtered = filtered.filter((order) => {
-        const rentalDate = new Date(order.rentalDate);
-        return rentalDate >= dateRange.start && rentalDate <= dateRange.end;
+        try {
+          const rentalDate = new Date(order.rentalDate);
+          return (
+            !isNaN(rentalDate.getTime()) &&
+            rentalDate >= dateRange.start &&
+            rentalDate <= dateRange.end
+          );
+        } catch {
+          return false; // Exclude invalid dates from filter results
+        }
       });
     }
 
@@ -166,7 +174,13 @@ export default function OrdersTable() {
           case "createdAt":
           case "rentalDate": {
             const date = order[sortConfig.key];
-            return date ? new Date(date).getTime() : 0;
+            if (!date) return 0;
+            try {
+              const parsedDate = new Date(date);
+              return !isNaN(parsedDate.getTime()) ? parsedDate.getTime() : 0;
+            } catch {
+              return 0;
+            }
           }
           default: {
             const value = order[sortConfig.key as keyof MargaritaRental];
@@ -416,7 +430,17 @@ export default function OrdersTable() {
                 className="hover:bg-light dark:hover:bg-charcoal transition-colors"
               >
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                  {new Date(order.createdAt!).toLocaleDateString()}
+                  {(() => {
+                    try {
+                      const date = new Date(order.rentalDate);
+                      if (isNaN(date.getTime())) {
+                        return order.rentalDate; // Return the raw string if date is invalid
+                      }
+                      return date.toLocaleDateString();
+                    } catch {
+                      return order.rentalDate; // Return the raw string if parsing fails
+                    }
+                  })()}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                   {order.customer.name}
@@ -425,9 +449,17 @@ export default function OrdersTable() {
                   {order.machineType} ({order.capacity}L)
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                  {new Date(
-                    order.rentalDate + "T12:00:00"
-                  ).toLocaleDateString()}
+                  {(() => {
+                    try {
+                      const date = new Date(order.rentalDate);
+                      if (isNaN(date.getTime())) {
+                        return order.rentalDate; // Return the raw string if date is invalid
+                      }
+                      return date.toLocaleDateString();
+                    } catch {
+                      return order.rentalDate; // Return the raw string if parsing fails
+                    }
+                  })()}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <select
