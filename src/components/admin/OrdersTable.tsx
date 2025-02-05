@@ -156,39 +156,39 @@ export default function OrdersTable() {
     if (!sortConfig) return filteredOrders;
 
     return [...filteredOrders].sort((a, b) => {
-      let aValue: any;
-      let bValue: any;
+      // Get comparable values based on sort key
+      const getComparableValue = (order: MargaritaRental): string | number => {
+        switch (sortConfig.key) {
+          case "customer":
+            return order.customer.name.toLowerCase();
+          case "payment":
+            return order.payment?.status || "pending";
+          case "createdAt":
+          case "rentalDate": {
+            const date = order[sortConfig.key];
+            return date ? new Date(date).getTime() : 0;
+          }
+          default: {
+            const value = order[sortConfig.key as keyof MargaritaRental];
+            return value ? String(value) : "";
+          }
+        }
+      };
 
-      // Handle nested properties and special cases
-      switch (sortConfig.key) {
-        case "customer":
-          aValue = a.customer.name.toLowerCase();
-          bValue = b.customer.name.toLowerCase();
-          break;
-        case "payment":
-          aValue = a.payment?.status || "pending";
-          bValue = b.payment?.status || "pending";
-          break;
-        case "createdAt":
-        case "rentalDate":
-          // Handle potentially undefined dates
-          const aDate = a[sortConfig.key] as string | Date | undefined;
-          const bDate = b[sortConfig.key] as string | Date | undefined;
-          aValue = aDate ? new Date(aDate).getTime() : 0;
-          bValue = bDate ? new Date(bDate).getTime() : 0;
-          break;
-        default:
-          aValue = a[sortConfig.key as keyof MargaritaRental];
-          bValue = b[sortConfig.key as keyof MargaritaRental];
-      }
+      const aValue = getComparableValue(a);
+      const bValue = getComparableValue(b);
 
-      if (aValue < bValue) {
-        return sortConfig.direction === "asc" ? -1 : 1;
-      }
-      if (aValue > bValue) {
-        return sortConfig.direction === "asc" ? 1 : -1;
-      }
-      return 0;
+      return sortConfig.direction === "asc"
+        ? aValue < bValue
+          ? -1
+          : aValue > bValue
+            ? 1
+            : 0
+        : aValue > bValue
+          ? -1
+          : aValue < bValue
+            ? 1
+            : 0;
     });
   }, [filteredOrders, sortConfig]);
 
