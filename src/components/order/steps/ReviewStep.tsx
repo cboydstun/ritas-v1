@@ -19,7 +19,7 @@ export default function ReviewStep({
   } = calculatePricing(
     formData.price,
     formData.rentalDate,
-    formData.returnDate
+    formData.returnDate,
   );
 
   return (
@@ -64,12 +64,12 @@ export default function ReviewStep({
           </h3>
           <p className="text-charcoal/70 dark:text-white/70">
             Delivery:{" "}
-            {new Date(formData.rentalDate + "T00:00:00").toLocaleDateString()}{" "}
+            {new Date(formData.rentalDate + "T12:00:00").toLocaleDateString()}{" "}
             at {formData.rentalTime}
           </p>
           <p className="text-charcoal/70 dark:text-white/70">
             Pick Up:{" "}
-            {new Date(formData.returnDate + "T00:00:00").toLocaleDateString()}{" "}
+            {new Date(formData.returnDate + "T12:00:00").toLocaleDateString()}{" "}
             at {formData.returnTime}
           </p>
         </div>

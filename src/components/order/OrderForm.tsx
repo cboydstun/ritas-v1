@@ -26,7 +26,7 @@ const DeliveryStep = dynamic<StepProps>(
   {
     loading: () => <StepSkeleton />,
     ssr: false,
-  }
+  },
 );
 
 const DetailsStep = dynamic<StepProps>(
@@ -34,7 +34,7 @@ const DetailsStep = dynamic<StepProps>(
   {
     loading: () => <StepSkeleton />,
     ssr: false,
-  }
+  },
 );
 
 const ReviewStep = dynamic<StepProps>(
@@ -42,7 +42,7 @@ const ReviewStep = dynamic<StepProps>(
   {
     loading: () => <StepSkeleton />,
     ssr: false,
-  }
+  },
 );
 
 const PaymentStep = dynamic<StepProps>(
@@ -50,7 +50,7 @@ const PaymentStep = dynamic<StepProps>(
   {
     loading: () => <StepSkeleton />,
     ssr: false,
-  }
+  },
 );
 
 // Loading skeleton for step components
@@ -107,7 +107,7 @@ export default function OrderForm() {
   const handleInputChange = (
     e: React.ChangeEvent<
       HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-    >
+    >,
   ) => {
     const { name, value } = e.target;
 
@@ -163,7 +163,7 @@ export default function OrderForm() {
             : prev.machineType,
           name === "mixerType"
             ? (value as OrderFormData["mixerType"])
-            : prev.mixerType
+            : prev.mixerType,
         );
         return {
           ...newData,

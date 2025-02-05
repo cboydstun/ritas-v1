@@ -30,7 +30,7 @@ export interface StepProps {
   onInputChange: (
     e: React.ChangeEvent<
       HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-    >
+    >,
   ) => void;
   error: string | null;
   agreedToTerms?: boolean;

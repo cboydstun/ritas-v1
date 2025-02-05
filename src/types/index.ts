@@ -30,13 +30,14 @@ export interface Payment {
 }
 
 export interface MargaritaRental {
+  _id?: string; // MongoDB document ID
   machineType: MachineType;
   capacity: 15 | 30;
   mixerType: MixerType;
   price: number;
-  rentalDate: Date;
+  rentalDate: string;
   rentalTime: string;
-  returnDate: Date;
+  returnDate: string;
   returnTime: string;
   customer: Customer;
   payment?: Payment;
@@ -44,4 +45,5 @@ export interface MargaritaRental {
   notes?: string;
   createdAt?: Date;
   updatedAt?: Date;
+  paypalOrderId?: string;
 }
