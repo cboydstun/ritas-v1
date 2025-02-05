@@ -121,12 +121,13 @@ export default function OrdersTable() {
   const filteredOrders = useMemo(() => {
     let filtered = orders;
 
-    // Apply date filter
+    // Apply rental date filter
     const dateRange = getDateRange(dateFilter);
     if (dateRange) {
       filtered = filtered.filter((order) => {
         try {
-          const rentalDate = new Date(order.rentalDate);
+          // Append T00:00:00 to interpret the date in local timezone
+          const rentalDate = new Date(order.rentalDate + "T00:00:00");
           return (
             !isNaN(rentalDate.getTime()) &&
             rentalDate >= dateRange.start &&
@@ -171,12 +172,22 @@ export default function OrdersTable() {
             return order.customer.name.toLowerCase();
           case "payment":
             return order.payment?.status || "pending";
-          case "createdAt":
-          case "rentalDate": {
+          case "createdAt": {
             const date = order[sortConfig.key];
             if (!date) return 0;
             try {
               const parsedDate = new Date(date);
+              return !isNaN(parsedDate.getTime()) ? parsedDate.getTime() : 0;
+            } catch {
+              return 0;
+            }
+          }
+          case "rentalDate": {
+            const date = order[sortConfig.key];
+            if (!date) return 0;
+            try {
+              // Append T00:00:00 to interpret the date in local timezone
+              const parsedDate = new Date(date + "T00:00:00");
               return !isNaN(parsedDate.getTime()) ? parsedDate.getTime() : 0;
             } catch {
               return 0;
@@ -432,13 +443,13 @@ export default function OrdersTable() {
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                   {(() => {
                     try {
-                      const date = new Date(order.rentalDate);
+                      const date = new Date(order.createdAt!);
                       if (isNaN(date.getTime())) {
-                        return order.rentalDate; // Return the raw string if date is invalid
+                        return "N/A";
                       }
                       return date.toLocaleDateString();
                     } catch {
-                      return order.rentalDate; // Return the raw string if parsing fails
+                      return "N/A";
                     }
                   })()}
                 </td>
@@ -451,7 +462,8 @@ export default function OrdersTable() {
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                   {(() => {
                     try {
-                      const date = new Date(order.rentalDate);
+                      // Append T00:00:00 to interpret the date in local timezone
+                      const date = new Date(order.rentalDate + "T00:00:00");
                       if (isNaN(date.getTime())) {
                         return order.rentalDate; // Return the raw string if date is invalid
                       }
