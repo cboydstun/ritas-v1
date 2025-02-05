@@ -30,9 +30,11 @@ export interface StepProps {
   onInputChange: (
     e: React.ChangeEvent<
       HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-    >,
+    >
   ) => void;
   error: string | null;
+  agreedToTerms?: boolean;
+  setAgreedToTerms?: (value: boolean) => void;
 }
 
 export const steps: { id: OrderStep; label: string }[] = [

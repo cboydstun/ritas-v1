@@ -26,7 +26,7 @@ const DeliveryStep = dynamic<StepProps>(
   {
     loading: () => <StepSkeleton />,
     ssr: false,
-  },
+  }
 );
 
 const DetailsStep = dynamic<StepProps>(
@@ -34,7 +34,7 @@ const DetailsStep = dynamic<StepProps>(
   {
     loading: () => <StepSkeleton />,
     ssr: false,
-  },
+  }
 );
 
 const ReviewStep = dynamic<StepProps>(
@@ -42,7 +42,7 @@ const ReviewStep = dynamic<StepProps>(
   {
     loading: () => <StepSkeleton />,
     ssr: false,
-  },
+  }
 );
 
 const PaymentStep = dynamic<StepProps>(
@@ -50,7 +50,7 @@ const PaymentStep = dynamic<StepProps>(
   {
     loading: () => <StepSkeleton />,
     ssr: false,
-  },
+  }
 );
 
 // Loading skeleton for step components
@@ -68,6 +68,7 @@ export default function OrderForm() {
   const searchParams = useSearchParams();
   const [step, setStep] = useState<OrderStep>("delivery");
   const [error, setError] = useState<string | null>(null);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   // Function to get initial form state, used for both initialization and reset
   const getInitialState = (): OrderFormData => {
@@ -106,7 +107,7 @@ export default function OrderForm() {
   const handleInputChange = (
     e: React.ChangeEvent<
       HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-    >,
+    >
   ) => {
     const { name, value } = e.target;
 
@@ -162,7 +163,7 @@ export default function OrderForm() {
             : prev.machineType,
           name === "mixerType"
             ? (value as OrderFormData["mixerType"])
-            : prev.mixerType,
+            : prev.mixerType
         );
         return {
           ...newData,
@@ -183,6 +184,11 @@ export default function OrderForm() {
   const handleNextStep = () => {
     // Clear any previous errors
     setError(null);
+
+    // Reset agreedToTerms when moving away from review step
+    if (step !== "review") {
+      setAgreedToTerms(false);
+    }
 
     // Validate delivery step
     if (step === "delivery") {
@@ -265,6 +271,9 @@ export default function OrderForm() {
   const handlePreviousStep = () => {
     const currentIndex = steps.findIndex((s) => s.id === step);
     if (currentIndex > 0) {
+      if (step === "review") {
+        setAgreedToTerms(false);
+      }
       setStep(steps[currentIndex - 1].id);
     }
   };
@@ -301,6 +310,8 @@ export default function OrderForm() {
               formData={formData}
               onInputChange={handleInputChange}
               error={error}
+              agreedToTerms={agreedToTerms}
+              setAgreedToTerms={setAgreedToTerms}
             />
           )}
 
@@ -318,6 +329,7 @@ export default function OrderForm() {
           currentStep={step}
           onPrevious={handlePreviousStep}
           onNext={handleNextStep}
+          isNextDisabled={step === "review" && !agreedToTerms}
         />
       </div>
     </div>

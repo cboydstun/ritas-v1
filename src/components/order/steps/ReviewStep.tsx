@@ -3,7 +3,11 @@ import { StepProps } from "../types";
 import { mixerDetails } from "@/lib/rental-data";
 import { calculatePricing } from "../utils";
 
-export default function ReviewStep({ formData }: StepProps) {
+export default function ReviewStep({
+  formData,
+  agreedToTerms = false,
+  setAgreedToTerms = () => {},
+}: StepProps) {
   const {
     rentalDays,
     perDayRate,
@@ -15,7 +19,7 @@ export default function ReviewStep({ formData }: StepProps) {
   } = calculatePricing(
     formData.price,
     formData.rentalDate,
-    formData.returnDate,
+    formData.returnDate
   );
 
   return (
@@ -114,6 +118,22 @@ export default function ReviewStep({ formData }: StepProps) {
           <p className="text-xl font-bold text-orange mb-4">
             Total Amount: ${total.toFixed(2)}
           </p>
+          <div className="flex items-center space-x-2 mt-4">
+            <input
+              type="checkbox"
+              id="agreeTerms"
+              checked={agreedToTerms}
+              onChange={(e) => setAgreedToTerms(e.target.checked)}
+              className="w-4 h-4 text-orange rounded focus:ring-orange"
+            />
+            <label
+              htmlFor="agreeTerms"
+              className="text-charcoal/70 dark:text-white/70"
+            >
+              I confirm all the information above is correct and agree to
+              communications regarding my rental.
+            </label>
+          </div>
         </div>
       </div>
     </div>
