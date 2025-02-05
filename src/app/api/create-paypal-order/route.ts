@@ -59,18 +59,18 @@ export async function POST(request: Request) {
               street: rentalData.customer.address.street,
               city: rentalData.customer.address.city,
               state: rentalData.customer.address.state,
-              zipCode: rentalData.customer.address.zipCode
-            }
+              zipCode: rentalData.customer.address.zipCode,
+            },
           },
-          notes: rentalData.notes || '',
+          notes: rentalData.notes || "",
           paypalOrderId: order.result.id,
-          status: 'pending',
+          status: "pending",
           payment: {
             paypalTransactionId: order.result.id,
             amount: parseFloat(amount),
-            status: 'pending',
-            date: new Date()
-          }
+            status: "pending",
+            date: new Date(),
+          },
         });
 
         // Save the rental
@@ -78,7 +78,7 @@ export async function POST(request: Request) {
 
         return NextResponse.json({
           id: order.result.id,
-          rentalId: savedRental._id
+          rentalId: savedRental._id,
         });
       } catch (dbError) {
         console.error("Error saving rental:", dbError);
@@ -86,7 +86,7 @@ export async function POST(request: Request) {
           console.error("Error details:", {
             name: dbError.name,
             message: dbError.message,
-            stack: dbError.stack
+            stack: dbError.stack,
           });
         }
         // Even if saving the rental fails, return the PayPal order ID
@@ -109,7 +109,7 @@ export async function POST(request: Request) {
     }
 
     // Check if it's a PayPal API error
-    if (error && typeof error === 'object' && 'details' in error) {
+    if (error && typeof error === "object" && "details" in error) {
       console.error("PayPal API error details:", error.details);
     }
 
@@ -118,9 +118,6 @@ export async function POST(request: Request) {
       errorMessage = `PayPal Error: ${error.message}`;
     }
 
-    return NextResponse.json(
-      { message: errorMessage },
-      { status: 500 },
-    );
+    return NextResponse.json({ message: errorMessage }, { status: 500 });
   }
 }

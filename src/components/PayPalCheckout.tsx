@@ -25,7 +25,7 @@ export const PayPalCheckout: React.FC<PayPalCheckoutProps> = ({
   const createOrder = async () => {
     try {
       setIsPending(true);
-      
+
       const response = await fetch("/api/create-paypal-order", {
         method: "POST",
         headers: {
@@ -59,7 +59,7 @@ export const PayPalCheckout: React.FC<PayPalCheckoutProps> = ({
   const onApprove = async (data: { orderID: string }) => {
     try {
       setIsPending(true);
-      
+
       const response = await fetch("/api/capture-paypal-order", {
         method: "POST",
         headers: {

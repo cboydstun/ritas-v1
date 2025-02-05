@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 
 if (!process.env.MONGODB_URI) {
   throw new Error('Invalid environment variable: "MONGODB_URI"');
@@ -25,7 +25,7 @@ declare global {
 if (!global.mongoose) {
   global.mongoose = {
     conn: null,
-    promise: null
+    promise: null,
   };
 }
 
@@ -57,19 +57,19 @@ async function dbConnect() {
     global.mongoose.conn = await global.mongoose.promise;
 
     // Set up connection error handling
-    global.mongoose.conn.connection.on('error', (error) => {
-      console.error('MongoDB connection error:', error);
+    global.mongoose.conn.connection.on("error", (error) => {
+      console.error("MongoDB connection error:", error);
     });
 
-    global.mongoose.conn.connection.on('disconnected', () => {
-      console.warn('MongoDB disconnected');
+    global.mongoose.conn.connection.on("disconnected", () => {
+      console.warn("MongoDB disconnected");
       global.mongoose.conn = null;
       global.mongoose.promise = null;
     });
 
     return global.mongoose.conn;
   } catch (error) {
-    console.error('Error connecting to MongoDB:', error);
+    console.error("Error connecting to MongoDB:", error);
     global.mongoose.promise = null;
     throw error;
   }
