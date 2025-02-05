@@ -83,8 +83,8 @@ export default function RentalsPage() {
                 <Image
                   src={
                     machine.type === "single"
-                      ? "/vevor-15l-slushy-2.jpg"
-                      : "/vevor-30l-slushy-3.jpg"
+                      ? "/vevor-15l-slushy-3.webp"
+                      : "/vevor-30l-slushy-4.webp"
                   }
                   alt={machine.name}
                   width={machine.type === "single" ? 800 : 800}

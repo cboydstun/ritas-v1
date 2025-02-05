@@ -18,12 +18,12 @@ export default function DeliveryStep({
       </div>
 
       <div className="space-y-6">
-        <div className="relative w-full h-[40em] mb-4">
+        <div className="relative w-full aspect-square mb-4">
           <Image
             src={
               formData.machineType === "single"
                 ? "/vevor-15l-slushy.jpg"
-                : "/vevor-30l-slushy.webp"
+                : "/vevor-30l-slushy.png"
             }
             alt={`${formData.capacity}L ${formData.machineType === "single" ? "Single" : "Double"} Tank Machine`}
             fill

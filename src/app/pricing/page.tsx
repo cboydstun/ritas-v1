@@ -137,7 +137,7 @@ export default function PricingPage() {
               <div>
                 <div className="relative mb-6">
                   <Image
-                    src="/vevor-15l-slushy-2.jpg"
+                    src="/vevor-15l-slushy-3.webp"
                     alt="Single Tank Frozen Drink Machine"
                     width={800}
                     height={600}
@@ -183,7 +183,7 @@ export default function PricingPage() {
               <div>
                 <div className="relative mb-6">
                   <Image
-                    src="/vevor-30l-slushy-3.jpg"
+                    src="/vevor-30l-slushy-4.webp"
                     alt="Double Tank Frozen Drink Machine"
                     width={800}
                     height={600}

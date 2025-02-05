@@ -15,7 +15,7 @@ export default function ReviewStep({ formData }: StepProps) {
   } = calculatePricing(
     formData.price,
     formData.rentalDate,
-    formData.returnDate,
+    formData.returnDate
   );
 
   return (
@@ -25,7 +25,7 @@ export default function ReviewStep({ formData }: StepProps) {
       </h2>
       <div className="space-y-4">
         <div className="bg-white/80 dark:bg-charcoal/30 rounded-xl p-6">
-          <div className="relative w-full h-[36em] mb-4">
+          <div className="relative w-full aspect-square mb-4">
             <Image
               src={
                 formData.machineType === "single"
