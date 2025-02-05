@@ -12,6 +12,7 @@ export interface AdminOrderResponse {
 export interface OrderTableColumn {
     key: keyof MargaritaRental | "actions";
     label: string;
+    sortable?: boolean;
     formatter?: (value: MargaritaRental[keyof MargaritaRental]) => string | ReactNode;
 }
 

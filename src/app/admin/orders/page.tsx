@@ -12,14 +12,6 @@ export default function AdminOrdersPage() {
           <h1 className="text-2xl font-bold text-gray-800 dark:text-white">
             Order Management
           </h1>
-          <div className="flex gap-2">
-            <button
-              className="px-4 py-2 bg-teal-600 text-white rounded hover:bg-teal-700 transition-colors"
-              onClick={() => window.location.reload()}
-            >
-              Refresh
-            </button>
-          </div>
         </div>
         <Suspense fallback={<div>Loading orders...</div>}>
           <OrdersTable />

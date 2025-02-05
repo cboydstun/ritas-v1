@@ -1,6 +1,6 @@
 "use client";
 
-import { MargaritaRental } from "@/types/index";
+import { MargaritaRental, MachineType, MixerType } from "@/types/index";
 import { useState } from "react";
 
 interface EditOrderModalProps {
@@ -16,6 +16,13 @@ export default function EditOrderModal({
 }: EditOrderModalProps) {
   const [formData, setFormData] = useState({
     notes: order.notes || "",
+    machineType: order.machineType,
+    capacity: order.capacity,
+    mixerType: order.mixerType,
+    rentalDate: new Date(order.rentalDate).toISOString().split("T")[0],
+    rentalTime: order.rentalTime,
+    returnDate: new Date(order.returnDate).toISOString().split("T")[0],
+    returnTime: order.returnTime,
     customer: {
       name: order.customer.name,
       email: order.customer.email,
@@ -31,7 +38,21 @@ export default function EditOrderModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await onSave(order._id!, formData);
+
+    // Prepare data for submission
+    const updatedData: Partial<MargaritaRental> = {
+      notes: formData.notes,
+      machineType: formData.machineType,
+      capacity: formData.capacity,
+      mixerType: formData.mixerType,
+      rentalDate: new Date(formData.rentalDate),
+      rentalTime: formData.rentalTime,
+      returnDate: new Date(formData.returnDate),
+      returnTime: formData.returnTime,
+      customer: formData.customer,
+    };
+
+    await onSave(order._id!, updatedData);
     onClose();
   };
 
@@ -43,6 +64,144 @@ export default function EditOrderModal({
         </h2>
         <form onSubmit={handleSubmit}>
           <div className="space-y-4">
+            {/* Machine Details */}
+            <div>
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                Machine Details
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Machine Type
+                  </label>
+                  <select
+                    value={formData.machineType}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        machineType: e.target.value as MachineType,
+                      })
+                    }
+                    className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm"
+                  >
+                    <option value="single">Single</option>
+                    <option value="double">Double</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Capacity (L)
+                  </label>
+                  <select
+                    value={formData.capacity}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        capacity: parseInt(e.target.value) as 15 | 30,
+                      })
+                    }
+                    className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm"
+                  >
+                    <option value="15">15L</option>
+                    <option value="30">30L</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Mixer Type
+                  </label>
+                  <select
+                    value={formData.mixerType}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        mixerType: e.target.value as MixerType,
+                      })
+                    }
+                    className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm"
+                  >
+                    <option value="none">None</option>
+                    <option value="non-alcoholic">Non-Alcoholic</option>
+                    <option value="margarita">Margarita</option>
+                    <option value="pina-colada">Piña Colada</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* Rental Details */}
+            <div>
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                Rental Details
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Rental Date
+                  </label>
+                  <input
+                    type="date"
+                    value={formData.rentalDate}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        rentalDate: e.target.value,
+                      })
+                    }
+                    className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Rental Time
+                  </label>
+                  <input
+                    type="time"
+                    value={formData.rentalTime}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        rentalTime: e.target.value,
+                      })
+                    }
+                    className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Return Date
+                  </label>
+                  <input
+                    type="date"
+                    value={formData.returnDate}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        returnDate: e.target.value,
+                      })
+                    }
+                    className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Return Time
+                  </label>
+                  <input
+                    type="time"
+                    value={formData.returnTime}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        returnTime: e.target.value,
+                      })
+                    }
+                    className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm"
+                  />
+                </div>
+              </div>
+            </div>
+
             {/* Customer Information */}
             <div>
               <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
