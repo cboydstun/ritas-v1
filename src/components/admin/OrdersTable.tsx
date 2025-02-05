@@ -425,7 +425,9 @@ export default function OrdersTable() {
                   {order.machineType} ({order.capacity}L)
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                  {new Date(order.rentalDate).toLocaleDateString()}
+                  {new Date(
+                    order.rentalDate + "T12:00:00"
+                  ).toLocaleDateString()}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <select

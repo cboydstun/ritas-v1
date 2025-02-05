@@ -19,9 +19,9 @@ export default function EditOrderModal({
     machineType: order.machineType,
     capacity: order.capacity,
     mixerType: order.mixerType,
-    rentalDate: new Date(order.rentalDate).toISOString().split("T")[0],
+    rentalDate: order.rentalDate,
     rentalTime: order.rentalTime,
-    returnDate: new Date(order.returnDate).toISOString().split("T")[0],
+    returnDate: order.returnDate,
     returnTime: order.returnTime,
     customer: {
       name: order.customer.name,
@@ -45,9 +45,9 @@ export default function EditOrderModal({
       machineType: formData.machineType,
       capacity: formData.capacity,
       mixerType: formData.mixerType,
-      rentalDate: new Date(formData.rentalDate),
+      rentalDate: formData.rentalDate,
       rentalTime: formData.rentalTime,
-      returnDate: new Date(formData.returnDate),
+      returnDate: formData.returnDate,
       returnTime: formData.returnTime,
       customer: formData.customer,
     };

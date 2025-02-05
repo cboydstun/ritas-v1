@@ -35,9 +35,9 @@ export interface MargaritaRental {
   capacity: 15 | 30;
   mixerType: MixerType;
   price: number;
-  rentalDate: Date;
+  rentalDate: string;
   rentalTime: string;
-  returnDate: Date;
+  returnDate: string;
   returnTime: string;
   customer: Customer;
   payment?: Payment;
