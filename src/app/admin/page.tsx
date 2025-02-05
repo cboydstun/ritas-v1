@@ -38,7 +38,7 @@ export default function AdminDashboard() {
           pendingOrders: 0,
           completedOrders: 0,
           totalRevenue: 0,
-        }
+        },
       );
 
       setStats(stats);

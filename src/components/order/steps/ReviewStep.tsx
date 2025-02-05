@@ -19,7 +19,7 @@ export default function ReviewStep({
   } = calculatePricing(
     formData.price,
     formData.rentalDate,
-    formData.returnDate
+    formData.returnDate,
   );
 
   return (

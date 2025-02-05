@@ -8,7 +8,7 @@ export default function PaymentStep({ formData }: StepProps) {
   const { total } = calculatePricing(
     formData.price,
     formData.rentalDate,
-    formData.returnDate
+    formData.returnDate,
   );
 
   return (
