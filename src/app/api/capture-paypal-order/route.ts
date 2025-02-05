@@ -39,7 +39,7 @@ export async function POST(request: Request) {
           if (rental) {
             // Parse the rental date and time
             const [year, month, day] = rental.rentalDate.split("-");
-            const [hour, minute] = rental.rentalTime.split(":");
+            const [hour] = rental.rentalTime.split(":");
             const rentalDateTime = new Date(
               parseInt(year),
               parseInt(month) - 1,
