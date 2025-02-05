@@ -25,8 +25,9 @@ export function NavigationButtons({
       </button>
       <button
         onClick={onNext}
-        className="px-8 py-3 bg-gradient-to-r from-orange to-pink text-white rounded-xl font-bold
-          hover:shadow-lg hover:shadow-orange/30 transform hover:-translate-y-1 transition-all duration-300"
+        className={`px-8 py-3 bg-gradient-to-r from-orange to-pink text-white rounded-xl font-bold
+   hover:shadow-lg hover:shadow-orange/30 transform hover:-translate-y-1 transition-all duration-300
+   ${currentStep === "payment" ? "hidden" : ""}`}
       >
         {currentStep === "payment" ? "Complete Order" : "Next Step"}
       </button>

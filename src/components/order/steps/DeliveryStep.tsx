@@ -38,7 +38,7 @@ export default function DeliveryStep({
             name="machineType"
             value={formData.machineType}
             onChange={onInputChange}
-            className={inputClassName}
+            className={`${inputClassName} border-2 border-margarita focus:border-margarita`}
           >
             <option value="single">15L Single Tank Machine</option>
             <option value="double">30L Double Tank Machine</option>
@@ -56,7 +56,7 @@ export default function DeliveryStep({
             name="mixerType"
             value={formData.mixerType}
             onChange={onInputChange}
-            className={inputClassName}
+            className={`${inputClassName} ${!formData.mixerType ? "border-2 border-margarita focus:border-margarita focus:ring-2" : ""}`}
           >
             <option value="none">No Mixer</option>
             <option value="non-alcoholic">Non-Alcoholic Mixer</option>
@@ -82,7 +82,7 @@ export default function DeliveryStep({
               name="rentalDate"
               value={formData.rentalDate}
               onChange={onInputChange}
-              className={inputClassName}
+              className={`${inputClassName} ${!formData.rentalDate ? "border-2 border-margarita focus:border-margarita focus:ring-2" : ""}`}
               min={new Date().toISOString().split("T")[0]}
             />
           </div>
