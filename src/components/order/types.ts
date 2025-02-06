@@ -1,11 +1,11 @@
-import { MixerOption } from "@/lib/rental-data";
+import { MixerType } from "@/lib/rental-data";
 
 export type OrderStep = "delivery" | "details" | "review" | "payment";
 
 export interface OrderFormData {
   machineType: "single" | "double";
   capacity: 15 | 30;
-  mixerType: MixerOption["type"];
+  selectedMixers: MixerType[];
   price: number;
   rentalDate: string;
   rentalTime: string;

@@ -1,6 +1,6 @@
 import Image from "next/image";
 import { StepProps } from "../types";
-import { mixerDetails } from "@/lib/rental-data";
+import { mixerDetails, MixerType } from "@/lib/rental-data";
 import { calculatePricing } from "../utils";
 
 export default function ReviewStep({
@@ -28,7 +28,7 @@ export default function ReviewStep({
         Review Your Order
       </h2>
       <div className="space-y-4">
-        <div className="bg-white/80 dark:bg-charcoal/30 rounded-xl p-6">
+        <div className="bg-white/80 dark:bg-charcoal/30 rounded-xl">
           <div className="relative w-full aspect-square mb-4">
             <Image
               src={
@@ -50,15 +50,60 @@ export default function ReviewStep({
             {formData.machineType === "single" ? "Single" : "Double"} Tank
             Machine
           </p>
-          <p className="text-charcoal/70 dark:text-white/70">
-            Mixer Type: {mixerDetails[formData.mixerType].label}
-          </p>
+          <div className="text-charcoal/70 dark:text-white/70">
+            <p className="mb-2">Selected Mixers:</p>
+            {formData.selectedMixers.length === 0 ? (
+              <p>No mixers selected - Bring your own mixer</p>
+            ) : formData.machineType === "single" ? (
+              // Single Tank Display
+              <ul className="list-disc list-inside">
+                {formData.selectedMixers[0] && (
+                  <li>
+                    {
+                      mixerDetails[formData.selectedMixers[0] as MixerType]
+                        .label
+                    }
+                  </li>
+                )}
+              </ul>
+            ) : (
+              // Double Tank Display
+              <div className="space-y-2">
+                <div>
+                  <p className="font-medium">Tank 1:</p>
+                  {formData.selectedMixers[0] ? (
+                    <p className="ml-4">
+                      {
+                        mixerDetails[formData.selectedMixers[0] as MixerType]
+                          .label
+                      }
+                    </p>
+                  ) : (
+                    <p className="ml-4">No mixer - Bring your own</p>
+                  )}
+                </div>
+                <div>
+                  <p className="font-medium">Tank 2:</p>
+                  {formData.selectedMixers[1] ? (
+                    <p className="ml-4">
+                      {
+                        mixerDetails[formData.selectedMixers[1] as MixerType]
+                          .label
+                      }
+                    </p>
+                  ) : (
+                    <p className="ml-4">No mixer - Bring your own</p>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
           <p className="text-xl font-bold text-orange mt-2">
             ${perDayRate}/day
           </p>
         </div>
 
-        <div className="bg-white/80 dark:bg-charcoal/30 rounded-xl p-6">
+        <div className="bg-white/80 dark:bg-charcoal/30 rounded-xl">
           <h3 className="font-semibold text-lg text-charcoal dark:text-white mb-4">
             Rental Details
           </h3>
@@ -74,7 +119,7 @@ export default function ReviewStep({
           </p>
         </div>
 
-        <div className="bg-white/80 dark:bg-charcoal/30 rounded-xl p-6">
+        <div className="bg-white/80 dark:bg-charcoal/30 rounded-xl">
           <h3 className="font-semibold text-lg text-charcoal dark:text-white mb-4">
             Contact Information
           </h3>
@@ -95,7 +140,7 @@ export default function ReviewStep({
           </p>
         </div>
 
-        <div className="bg-white/80 dark:bg-charcoal/30 rounded-xl p-6">
+        <div className="bg-white/80 dark:bg-charcoal/30 rounded-xl">
           <h3 className="font-semibold text-lg text-charcoal dark:text-white mb-4">
             Pricing Details
           </h3>
@@ -131,7 +176,7 @@ export default function ReviewStep({
               className="text-charcoal/70 dark:text-white/70"
             >
               I confirm all the information above is correct and agree to
-              communications regarding my rental.
+              communications.
             </label>
           </div>
         </div>

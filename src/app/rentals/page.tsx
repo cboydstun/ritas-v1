@@ -13,15 +13,35 @@ const jsonLd = {
     name: machine.name,
     description: machine.description,
     image: "https://satxritas.com/og-image.jpg",
-    offers: machine.mixerOptions.map((option) => ({
-      "@type": "Offer",
-      price: option.price,
-      priceCurrency: "USD",
-      itemCondition: "https://schema.org/NewCondition",
-      availability: "https://schema.org/InStock",
-      name: mixerDetails[option.type].label,
-      description: mixerDetails[option.type].description,
-    })),
+    offers: [
+      {
+        "@type": "Offer",
+        price: machine.basePrice,
+        priceCurrency: "USD",
+        itemCondition: "https://schema.org/NewCondition",
+        availability: "https://schema.org/InStock",
+        name: "Machine Only",
+        description: "Machine rental without mixers",
+      },
+      {
+        "@type": "Offer",
+        price: machine.basePrice + mixerDetails["non-alcoholic"].price,
+        priceCurrency: "USD",
+        itemCondition: "https://schema.org/NewCondition",
+        availability: "https://schema.org/InStock",
+        name: mixerDetails["non-alcoholic"].label,
+        description: mixerDetails["non-alcoholic"].description,
+      },
+      {
+        "@type": "Offer",
+        price: machine.basePrice + mixerDetails["margarita"].price,
+        priceCurrency: "USD",
+        itemCondition: "https://schema.org/NewCondition",
+        availability: "https://schema.org/InStock",
+        name: mixerDetails["margarita"].label,
+        description: mixerDetails["margarita"].description,
+      },
+    ],
     additionalProperty: machine.features.map((feature) => ({
       "@type": "PropertyValue",
       name: "Feature",
@@ -106,33 +126,79 @@ export default function RentalsPage() {
                   <h4 className="text-lg font-semibold text-charcoal dark:text-white">
                     Mixer Options:
                   </h4>
-                  {machine.mixerOptions.map((option) => (
-                    <div
-                      key={option.type}
-                      className="flex items-center justify-between p-4 rounded-lg bg-light dark:bg-charcoal/30 hover:bg-margarita/10 dark:hover:bg-margarita/5 transition-colors"
-                    >
-                      <div>
-                        <h5 className="font-semibold text-charcoal dark:text-white">
-                          {mixerDetails[option.type].label}
-                        </h5>
-                        <p className="text-sm text-charcoal/70 dark:text-white/70">
-                          {mixerDetails[option.type].description}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-2xl font-bold text-charcoal dark:text-white">
-                          ${option.price}
-                        </p>
-                        <Link
-                          href={`/order?machine=${machine.type}&mixer=${option.type}`}
-                          className="inline-block mt-2 px-4 py-2 bg-gradient-to-r from-teal to-margarita text-white text-sm font-semibold rounded-lg
-                            hover:shadow-lg hover:shadow-teal/30 transform hover:-translate-y-1 transition-all duration-300"
-                        >
-                          Select
-                        </Link>
-                      </div>
+                  {/* Machine Only Option */}
+                  <div className="flex items-center justify-between p-4 rounded-lg bg-light dark:bg-charcoal/30 hover:bg-margarita/10 dark:hover:bg-margarita/5 transition-colors">
+                    <div>
+                      <h5 className="font-semibold text-charcoal dark:text-white">
+                        Machine Only
+                      </h5>
+                      <p className="text-sm text-charcoal/70 dark:text-white/70">
+                        Machine rental without mixers
+                      </p>
                     </div>
-                  ))}
+                    <div className="text-right">
+                      <p className="text-2xl font-bold text-charcoal dark:text-white">
+                        ${machine.basePrice}
+                      </p>
+                      <Link
+                        href={`/order?machine=${machine.type}&mixer=machine-only`}
+                        className="inline-block mt-2 px-4 py-2 bg-gradient-to-r from-teal to-margarita text-white text-sm font-semibold rounded-lg
+                          hover:shadow-lg hover:shadow-teal/30 transform hover:-translate-y-1 transition-all duration-300"
+                      >
+                        Select
+                      </Link>
+                    </div>
+                  </div>
+
+                  {/* Non-Alcoholic Option */}
+                  <div className="flex items-center justify-between p-4 rounded-lg bg-light dark:bg-charcoal/30 hover:bg-margarita/10 dark:hover:bg-margarita/5 transition-colors">
+                    <div>
+                      <h5 className="font-semibold text-charcoal dark:text-white">
+                        {mixerDetails["non-alcoholic"].label}
+                      </h5>
+                      <p className="text-sm text-charcoal/70 dark:text-white/70">
+                        {mixerDetails["non-alcoholic"].description}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-2xl font-bold text-charcoal dark:text-white">
+                        $
+                        {machine.basePrice +
+                          mixerDetails["non-alcoholic"].price}
+                      </p>
+                      <Link
+                        href={`/order?machine=${machine.type}&mixer=non-alcoholic`}
+                        className="inline-block mt-2 px-4 py-2 bg-gradient-to-r from-teal to-margarita text-white text-sm font-semibold rounded-lg
+                          hover:shadow-lg hover:shadow-teal/30 transform hover:-translate-y-1 transition-all duration-300"
+                      >
+                        Select
+                      </Link>
+                    </div>
+                  </div>
+
+                  {/* Premium Mixer Option */}
+                  <div className="flex items-center justify-between p-4 rounded-lg bg-light dark:bg-charcoal/30 hover:bg-margarita/10 dark:hover:bg-margarita/5 transition-colors">
+                    <div>
+                      <h5 className="font-semibold text-charcoal dark:text-white">
+                        {mixerDetails["margarita"].label}
+                      </h5>
+                      <p className="text-sm text-charcoal/70 dark:text-white/70">
+                        {mixerDetails["margarita"].description}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-2xl font-bold text-charcoal dark:text-white">
+                        ${machine.basePrice + mixerDetails["margarita"].price}
+                      </p>
+                      <Link
+                        href={`/order?machine=${machine.type}&mixer=margarita`}
+                        className="inline-block mt-2 px-4 py-2 bg-gradient-to-r from-teal to-margarita text-white text-sm font-semibold rounded-lg
+                          hover:shadow-lg hover:shadow-teal/30 transform hover:-translate-y-1 transition-all duration-300"
+                      >
+                        Select
+                      </Link>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Features */}

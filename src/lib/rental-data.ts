@@ -1,7 +1,13 @@
-export interface MixerOption {
-  type: "none" | "non-alcoholic" | "margarita" | "pina-colada";
+export type MixerType =
+  | "non-alcoholic"
+  | "margarita"
+  | "pina-colada"
+  | "strawberry-daiquiri";
+
+export interface MixerDetails {
   label: string;
   description: string;
+  price: number;
 }
 
 export interface MachinePackage {
@@ -9,33 +15,31 @@ export interface MachinePackage {
   capacity: 15 | 30;
   name: string;
   description: string;
-  mixerOptions: {
-    type: MixerOption["type"];
-    price: number;
-  }[];
+  basePrice: number;
+  maxMixers: number;
   features: string[];
 }
 
-export const mixerDetails: Record<MixerOption["type"], MixerOption> = {
-  none: {
-    type: "none",
-    label: "No Mixer",
-    description: "Bring your own mixer for complete control over your drinks",
-  },
+export const mixerDetails: Record<MixerType, MixerDetails> = {
   "non-alcoholic": {
-    type: "non-alcoholic",
     label: "Non-Alcoholic Mixer",
     description: "Non-alcoholic, perfect for family events",
+    price: 14.95,
   },
   margarita: {
-    type: "margarita",
     label: "Margarita Mixer",
     description: "Classic margarita mix, just add tequila",
+    price: 19.95,
   },
   "pina-colada": {
-    type: "pina-colada",
     label: "Piña Colada Mixer",
     description: "Tropical piña colada mix, just add rum",
+    price: 24.95,
+  },
+  "strawberry-daiquiri": {
+    label: "Strawberry Daiquiri Mixer",
+    description: "Sweet strawberry daiquiri mix, just add rum",
+    price: 24.95,
   },
 };
 
@@ -45,12 +49,8 @@ export const machinePackages: MachinePackage[] = [
     capacity: 15,
     name: "15L Single Tank Machine",
     description: "Perfect for smaller gatherings and parties",
-    mixerOptions: [
-      { type: "none", price: 89.95 },
-      { type: "non-alcoholic", price: 99.95 },
-      { type: "margarita", price: 124.95 },
-      { type: "pina-colada", price: 124.95 },
-    ],
+    basePrice: 89.95,
+    maxMixers: 1,
     features: [
       "15L Capacity",
       "Single Tank System",
@@ -65,12 +65,8 @@ export const machinePackages: MachinePackage[] = [
     capacity: 30,
     name: "30L Double Tank Machine",
     description: "Ideal for larger events and multiple flavors",
-    mixerOptions: [
-      { type: "none", price: 124.95 },
-      { type: "non-alcoholic", price: 149.95 },
-      { type: "margarita", price: 174.95 },
-      { type: "pina-colada", price: 174.95 },
-    ],
+    basePrice: 124.95,
+    maxMixers: 2,
     features: [
       "30L Total Capacity",
       "Dual Tank System",

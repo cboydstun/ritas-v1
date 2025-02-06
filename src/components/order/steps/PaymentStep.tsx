@@ -28,7 +28,7 @@ export default function PaymentStep({ formData }: StepProps) {
               rentalData={{
                 machineType: formData.machineType,
                 capacity: formData.capacity,
-                mixerType: formData.mixerType,
+                selectedMixers: formData.selectedMixers,
                 price: formData.price,
                 rentalDate: formData.rentalDate,
                 rentalTime: formData.rentalTime,

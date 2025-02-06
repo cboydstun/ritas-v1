@@ -1,5 +1,9 @@
 export type MachineType = "single" | "double";
-export type MixerType = "none" | "non-alcoholic" | "margarita" | "pina-colada";
+export type MixerType =
+  | "non-alcoholic"
+  | "margarita"
+  | "pina-colada"
+  | "strawberry-daiquiri";
 export type PaymentStatus = "pending" | "completed" | "failed" | "refunded";
 export type RentalStatus =
   | "pending"
@@ -33,7 +37,7 @@ export interface MargaritaRental {
   _id?: string; // MongoDB document ID
   machineType: MachineType;
   capacity: 15 | 30;
-  mixerType: MixerType;
+  selectedMixers: MixerType[];
   price: number;
   rentalDate: string;
   rentalTime: string;

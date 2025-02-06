@@ -1,4 +1,4 @@
-import { machinePackages } from "@/lib/rental-data";
+import { machinePackages, mixerDetails } from "@/lib/rental-data";
 import { Metadata } from "next";
 import Image from "next/image";
 
@@ -12,38 +12,66 @@ const jsonLd = {
       name: machinePackages[0].name,
       description: machinePackages[0].description,
       image: "https://satxritas.com/og-image.jpg",
-      offers: machinePackages[0].mixerOptions.map((option, index) => ({
-        "@type": "Offer",
-        price: option.price,
-        priceCurrency: "USD",
-        itemCondition: "https://schema.org/NewCondition",
-        availability: "https://schema.org/InStock",
-        name:
-          index === 0
-            ? "Machine Only"
-            : index === 1
-              ? "With Non-Alcoholic Mixer"
-              : "With Premium Mixers",
-      })),
+      offers: [
+        {
+          "@type": "Offer",
+          price: machinePackages[0].basePrice,
+          priceCurrency: "USD",
+          itemCondition: "https://schema.org/NewCondition",
+          availability: "https://schema.org/InStock",
+          name: "Machine Only",
+        },
+        {
+          "@type": "Offer",
+          price:
+            machinePackages[0].basePrice + mixerDetails["non-alcoholic"].price,
+          priceCurrency: "USD",
+          itemCondition: "https://schema.org/NewCondition",
+          availability: "https://schema.org/InStock",
+          name: "With Non-Alcoholic Mixer",
+        },
+        {
+          "@type": "Offer",
+          price: machinePackages[0].basePrice + mixerDetails["margarita"].price,
+          priceCurrency: "USD",
+          itemCondition: "https://schema.org/NewCondition",
+          availability: "https://schema.org/InStock",
+          name: "With Premium Mixers",
+        },
+      ],
     },
     {
       "@type": "Product",
       name: machinePackages[1].name,
       description: machinePackages[1].description,
       image: "https://satxritas.com/og-image.jpg",
-      offers: machinePackages[1].mixerOptions.map((option, index) => ({
-        "@type": "Offer",
-        price: option.price,
-        priceCurrency: "USD",
-        itemCondition: "https://schema.org/NewCondition",
-        availability: "https://schema.org/InStock",
-        name:
-          index === 0
-            ? "Machine Only"
-            : index === 1
-              ? "With Non-Alcoholic Mixer"
-              : "With Premium Mixers",
-      })),
+      offers: [
+        {
+          "@type": "Offer",
+          price: machinePackages[1].basePrice,
+          priceCurrency: "USD",
+          itemCondition: "https://schema.org/NewCondition",
+          availability: "https://schema.org/InStock",
+          name: "Machine Only",
+        },
+        {
+          "@type": "Offer",
+          price:
+            machinePackages[1].basePrice + mixerDetails["non-alcoholic"].price,
+          priceCurrency: "USD",
+          itemCondition: "https://schema.org/NewCondition",
+          availability: "https://schema.org/InStock",
+          name: "With Non-Alcoholic Mixer",
+        },
+        {
+          "@type": "Offer",
+          price: machinePackages[1].basePrice + mixerDetails["margarita"].price,
+          priceCurrency: "USD",
+          itemCondition: "https://schema.org/NewCondition",
+          availability: "https://schema.org/InStock",
+          name: "With Premium Mixers",
+        },
+      ],
     },
   ],
 };
@@ -159,7 +187,7 @@ export default function PricingPage() {
                       Machine Only
                     </span>
                     <span className="font-semibold text-charcoal dark:text-white">
-                      ${machinePackages[0].mixerOptions[0].price}
+                      ${machinePackages[0].basePrice}
                     </span>
                   </p>
                   <p className="flex justify-between items-center py-2 border-b border-charcoal/10 dark:border-white/10">
@@ -167,7 +195,9 @@ export default function PricingPage() {
                       With Non-Alcoholic Mixer
                     </span>
                     <span className="font-semibold text-charcoal dark:text-white">
-                      ${machinePackages[0].mixerOptions[1].price}
+                      $
+                      {machinePackages[0].basePrice +
+                        mixerDetails["non-alcoholic"].price}
                     </span>
                   </p>
                   <p className="flex justify-between items-center py-2 border-b border-charcoal/10 dark:border-white/10">
@@ -175,7 +205,9 @@ export default function PricingPage() {
                       With Premium Mixers
                     </span>
                     <span className="font-semibold text-charcoal dark:text-white">
-                      ${machinePackages[0].mixerOptions[2].price}
+                      $
+                      {machinePackages[0].basePrice +
+                        mixerDetails["margarita"].price}
                     </span>
                   </p>
                 </div>
@@ -205,7 +237,7 @@ export default function PricingPage() {
                       Machine Only
                     </span>
                     <span className="font-semibold text-charcoal dark:text-white">
-                      ${machinePackages[1].mixerOptions[0].price}
+                      ${machinePackages[1].basePrice}
                     </span>
                   </p>
                   <p className="flex justify-between items-center py-2 border-b border-charcoal/10 dark:border-white/10">
@@ -213,7 +245,9 @@ export default function PricingPage() {
                       With Non-Alcoholic Mixer
                     </span>
                     <span className="font-semibold text-charcoal dark:text-white">
-                      ${machinePackages[1].mixerOptions[1].price}
+                      $
+                      {machinePackages[1].basePrice +
+                        mixerDetails["non-alcoholic"].price}
                     </span>
                   </p>
                   <p className="flex justify-between items-center py-2 border-b border-charcoal/10 dark:border-white/10">
@@ -221,7 +255,9 @@ export default function PricingPage() {
                       With Premium Mixers
                     </span>
                     <span className="font-semibold text-charcoal dark:text-white">
-                      ${machinePackages[1].mixerOptions[2].price}
+                      $
+                      {machinePackages[1].basePrice +
+                        mixerDetails["margarita"].price}
                     </span>
                   </p>
                 </div>

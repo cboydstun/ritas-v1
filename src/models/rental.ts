@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { MachineType, MixerType, PaymentStatus, RentalStatus } from "@/types";
+import { MachineType, PaymentStatus, RentalStatus } from "@/types";
 
 const addressSchema = new mongoose.Schema({
   street: { type: String, required: true },
@@ -39,15 +39,30 @@ const rentalSchema = new mongoose.Schema(
       required: true,
       enum: [15, 30],
     },
-    mixerType: {
-      type: String,
-      required: true,
+    selectedMixers: {
+      type: [String],
       enum: [
-        "none",
         "non-alcoholic",
         "margarita",
         "pina-colada",
-      ] as MixerType[],
+        "strawberry-daiquiri",
+      ],
+      validate: [
+        {
+          validator: function (
+            this: mongoose.Document & { machineType: MachineType },
+            mixers: string[],
+          ) {
+            // Single tank can have 0 or 1 mixer
+            if (this.machineType === "single") {
+              return mixers.length <= 1;
+            }
+            // Double tank can have 0 to 2 mixers
+            return mixers.length <= 2;
+          },
+          message: "Selected mixers exceed machine capacity",
+        },
+      ],
     },
     price: {
       type: Number,
@@ -122,7 +137,7 @@ export const Rental =
 export type RentalDocument = mongoose.Document & {
   machineType: MachineType;
   capacity: 15 | 30;
-  mixerType: MixerType;
+  selectedMixers: string[];
   price: number;
   rentalDate: string;
   rentalTime: string;
