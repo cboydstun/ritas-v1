@@ -1,6 +1,6 @@
 # SATX Ritas Rental Service
 
-A modern web application built with Next.js 15 and TypeScript for managing frozen drink machine rentals in San Antonio, TX. Features secure PayPal payment processing and a streamlined rental booking experience.
+A modern web application built with Next.js and TypeScript for managing frozen drink machine rentals in San Antonio, TX. Features secure PayPal payment processing and a streamlined rental booking experience.
 
 ## Features
 
@@ -15,11 +15,12 @@ A modern web application built with Next.js 15 and TypeScript for managing froze
 
 ## Tech Stack
 
-- [Next.js 15](https://nextjs.org/) - React framework with App Router
+- [Next.js](https://nextjs.org/) - React framework with App Router
 - [TypeScript](https://www.typescriptlang.org/) - Type-safe JavaScript
 - [Tailwind CSS](https://tailwindcss.com/) - Utility-first CSS framework
 - [MongoDB](https://www.mongodb.com/) - NoSQL database
 - [PayPal API](https://developer.paypal.com/) - Secure payment processing
+- [Twilio](https://www.twilio.com/) - SMS notifications
 
 ## Getting Started
 
@@ -49,6 +50,10 @@ A modern web application built with Next.js 15 and TypeScript for managing froze
    TWILIO_AUTH_TOKEN=your_twilio_auth_token
    TWILIO_PHONE_NUMBER=your_twilio_phone_number
    USER_PHONE_NUMBER=your_notification_phone_number
+
+   # Admin Panel Credentials
+   ADMIN_USERNAME=admin
+   ADMIN_PASSWORD=your-secure-password
    ```
 
 4. Run the development server:
@@ -62,17 +67,20 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 
 ```
 src/
-├── app/                    # Next.js 15 App Router pages
+├── app/                    # Next.js App Router pages and API routes
 │   ├── api/               # API routes
+│   │   ├── admin/        # Admin API endpoints
 │   │   ├── create-paypal-order/    # PayPal order creation
 │   │   └── capture-paypal-order/   # PayPal payment capture
 │   ├── about/             # About page
+│   ├── admin/            # Admin dashboard
 │   ├── contact/           # Contact page
 │   ├── faq/               # FAQ page
 │   ├── order/             # Rental order flow
 │   ├── pricing/           # Pricing information
 │   └── rentals/           # Rental management
 ├── components/            # React components
+│   ├── admin/            # Admin dashboard components
 │   ├── contact/           # Contact form components
 │   ├── home/              # Homepage sections
 │   │   ├── AboutSection   # Home page about section
@@ -95,6 +103,7 @@ src/
 
 - `/api/create-paypal-order` - Initializes a new PayPal order with rental details
 - `/api/capture-paypal-order` - Captures and processes approved PayPal payments
+- `/api/admin/orders` - Admin endpoints for order management
 
 ## Key Components
 
@@ -106,6 +115,8 @@ src/
 - `Footer` - Site-wide footer with social links and contact information
 - `ContactForm` - Validated contact form with email integration
 - `ThemeWrapper` - Theme context provider for consistent styling
+- `OrdersTable` - Admin dashboard for managing rental orders
+- `EditOrderModal` - Modal for editing order details in admin panel
 
 ## Deployment
 
