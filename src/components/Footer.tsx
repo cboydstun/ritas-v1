@@ -24,18 +24,18 @@ export default function Footer() {
             <ul className="space-y-2">
               <li>
                 <Link
-                  href="/rentals"
+                  href="/pricing"
                   className="text-charcoal dark:text-white/80 hover:text-margarita dark:hover:text-margarita transition-colors"
                 >
-                  Our Machines
+                  Pricing
                 </Link>
               </li>
               <li>
                 <Link
-                  href="/pricing"
+                  href="/about"
                   className="text-charcoal dark:text-white/80 hover:text-margarita dark:hover:text-margarita transition-colors"
                 >
-                  Rental Pricing
+                  About
                 </Link>
               </li>
               <li>

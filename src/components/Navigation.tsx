@@ -34,12 +34,6 @@ export default function Navigation() {
           {/* Desktop Navigation Links */}
           <div className="hidden sm:flex sm:items-center">
             <Link
-              href="/rentals"
-              className="px-3 py-2 text-charcoal dark:text-white hover:text-margarita transition-colors"
-            >
-              Rentals
-            </Link>
-            <Link
               href="/pricing"
               className="px-3 py-2 text-charcoal dark:text-white hover:text-margarita transition-colors"
             >
@@ -115,13 +109,6 @@ export default function Navigation() {
         style={{ marginTop: "64px" }}
       >
         <div className="px-4 pt-2 pb-3 space-y-1">
-          <Link
-            href="/rentals"
-            className="block px-3 py-4 text-base font-medium text-charcoal dark:text-white hover:text-margarita border-b border-gray-200 dark:border-gray-700"
-            onClick={closeMobileMenu}
-          >
-            Rentals
-          </Link>
           <Link
             href="/pricing"
             className="block px-3 py-4 text-base font-medium text-charcoal dark:text-white hover:text-margarita border-b border-gray-200 dark:border-gray-700"

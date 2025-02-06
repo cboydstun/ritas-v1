@@ -71,12 +71,12 @@ export default function HeroSection() {
             </Link>
 
             <Link
-              href="/rentals"
+              href="/pricing"
               className="group px-8 py-4 bg-gradient-to-r from-teal to-margarita text-white text-lg font-bold rounded-xl
                 hover:shadow-lg hover:shadow-teal/30 transform hover:-translate-y-1 transition-all duration-300
                 relative overflow-hidden"
             >
-              <span className="relative z-10">View Rentals</span>
+              <span className="relative z-10">View Pricing</span>
               <div className="absolute inset-0 bg-gradient-to-r from-margarita to-teal opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
             </Link>
           </div>

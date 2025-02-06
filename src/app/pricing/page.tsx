@@ -1,5 +1,6 @@
 import { machinePackages, mixerDetails } from "@/lib/rental-data";
 import { Metadata } from "next";
+import Link from "next/link";
 import Image from "next/image";
 
 // Add JSON-LD structured data for products
@@ -15,7 +16,15 @@ const jsonLd = {
       offers: [
         {
           "@type": "Offer",
-          price: machinePackages[0].basePrice,
+          price: Number(
+            (
+              machinePackages[0].basePrice +
+              20 + // Delivery fee
+              (machinePackages[0].basePrice + 20) * 0.0825 + // Sales tax
+              (machinePackages[0].basePrice + 20) * 0.03
+            ) // Processing fee
+              .toFixed(2)
+          ),
           priceCurrency: "USD",
           itemCondition: "https://schema.org/NewCondition",
           availability: "https://schema.org/InStock",
@@ -23,20 +32,95 @@ const jsonLd = {
         },
         {
           "@type": "Offer",
-          price:
-            machinePackages[0].basePrice + mixerDetails["non-alcoholic"].price,
+          price: Number(
+            (
+              machinePackages[0].basePrice +
+              mixerDetails["non-alcoholic"].price +
+              20 + // Delivery fee
+              (machinePackages[0].basePrice +
+                mixerDetails["non-alcoholic"].price +
+                20) *
+                0.0825 + // Sales tax
+              (machinePackages[0].basePrice +
+                mixerDetails["non-alcoholic"].price +
+                20) *
+                0.03
+            ) // Processing fee
+              .toFixed(2)
+          ),
           priceCurrency: "USD",
           itemCondition: "https://schema.org/NewCondition",
           availability: "https://schema.org/InStock",
-          name: "With Non-Alcoholic Mixer",
+          name: mixerDetails["non-alcoholic"].label,
         },
         {
           "@type": "Offer",
-          price: machinePackages[0].basePrice + mixerDetails["margarita"].price,
+          price: Number(
+            (
+              machinePackages[0].basePrice +
+              mixerDetails["margarita"].price +
+              20 + // Delivery fee
+              (machinePackages[0].basePrice +
+                mixerDetails["margarita"].price +
+                20) *
+                0.0825 + // Sales tax
+              (machinePackages[0].basePrice +
+                mixerDetails["margarita"].price +
+                20) *
+                0.03
+            ) // Processing fee
+              .toFixed(2)
+          ),
           priceCurrency: "USD",
           itemCondition: "https://schema.org/NewCondition",
           availability: "https://schema.org/InStock",
-          name: "With Premium Mixers",
+          name: mixerDetails["margarita"].label,
+        },
+        {
+          "@type": "Offer",
+          price: Number(
+            (
+              machinePackages[0].basePrice +
+              mixerDetails["pina-colada"].price +
+              20 + // Delivery fee
+              (machinePackages[0].basePrice +
+                mixerDetails["pina-colada"].price +
+                20) *
+                0.0825 + // Sales tax
+              (machinePackages[0].basePrice +
+                mixerDetails["pina-colada"].price +
+                20) *
+                0.03
+            ) // Processing fee
+              .toFixed(2)
+          ),
+          priceCurrency: "USD",
+          itemCondition: "https://schema.org/NewCondition",
+          availability: "https://schema.org/InStock",
+          name: mixerDetails["pina-colada"].label,
+        },
+        {
+          "@type": "Offer",
+          price: Number(
+            (
+              machinePackages[0].basePrice +
+              mixerDetails["strawberry-daiquiri"].price +
+              20 + // Delivery fee
+              (machinePackages[0].basePrice +
+                mixerDetails["strawberry-daiquiri"].price +
+                20) *
+                0.0825 + // Sales tax
+              (machinePackages[0].basePrice +
+                mixerDetails["strawberry-daiquiri"].price +
+                20) *
+                0.03
+            ) // Processing fee
+              .toFixed(2)
+          ),
+          priceCurrency: "USD",
+          itemCondition: "https://schema.org/NewCondition",
+          availability: "https://schema.org/InStock",
+          name: mixerDetails["strawberry-daiquiri"].label,
         },
       ],
     },
@@ -48,7 +132,15 @@ const jsonLd = {
       offers: [
         {
           "@type": "Offer",
-          price: machinePackages[1].basePrice,
+          price: Number(
+            (
+              machinePackages[1].basePrice +
+              20 + // Delivery fee
+              (machinePackages[1].basePrice + 20) * 0.0825 + // Sales tax
+              (machinePackages[1].basePrice + 20) * 0.03
+            ) // Processing fee
+              .toFixed(2)
+          ),
           priceCurrency: "USD",
           itemCondition: "https://schema.org/NewCondition",
           availability: "https://schema.org/InStock",
@@ -56,20 +148,91 @@ const jsonLd = {
         },
         {
           "@type": "Offer",
-          price:
-            machinePackages[1].basePrice + mixerDetails["non-alcoholic"].price,
+          price: Number(
+            (
+              machinePackages[1].basePrice +
+              mixerDetails["non-alcoholic"].price * 2 +
+              20 + // Delivery fee
+              (machinePackages[1].basePrice +
+                mixerDetails["non-alcoholic"].price * 2 +
+                20) *
+                0.0825 + // Sales tax
+              (machinePackages[1].basePrice +
+                mixerDetails["non-alcoholic"].price * 2 +
+                20) *
+                0.03
+            ).toFixed(2)
+          ),
           priceCurrency: "USD",
           itemCondition: "https://schema.org/NewCondition",
           availability: "https://schema.org/InStock",
-          name: "With Non-Alcoholic Mixer",
+          name: `2x ${mixerDetails["non-alcoholic"].label}`,
         },
         {
           "@type": "Offer",
-          price: machinePackages[1].basePrice + mixerDetails["margarita"].price,
+          price: Number(
+            (
+              machinePackages[1].basePrice +
+              mixerDetails["margarita"].price * 2 +
+              20 + // Delivery fee
+              (machinePackages[1].basePrice +
+                mixerDetails["margarita"].price * 2 +
+                20) *
+                0.0825 + // Sales tax
+              (machinePackages[1].basePrice +
+                mixerDetails["margarita"].price * 2 +
+                20) *
+                0.03
+            ).toFixed(2)
+          ),
           priceCurrency: "USD",
           itemCondition: "https://schema.org/NewCondition",
           availability: "https://schema.org/InStock",
-          name: "With Premium Mixers",
+          name: `2x ${mixerDetails["margarita"].label}`,
+        },
+        {
+          "@type": "Offer",
+          price: Number(
+            (
+              machinePackages[1].basePrice +
+              mixerDetails["pina-colada"].price * 2 +
+              20 + // Delivery fee
+              (machinePackages[1].basePrice +
+                mixerDetails["pina-colada"].price * 2 +
+                20) *
+                0.0825 + // Sales tax
+              (machinePackages[1].basePrice +
+                mixerDetails["pina-colada"].price * 2 +
+                20) *
+                0.03
+            ).toFixed(2)
+          ),
+          priceCurrency: "USD",
+          itemCondition: "https://schema.org/NewCondition",
+          availability: "https://schema.org/InStock",
+          name: `2x ${mixerDetails["pina-colada"].label}`,
+        },
+        {
+          "@type": "Offer",
+          price: Number(
+            (
+              machinePackages[1].basePrice +
+              mixerDetails["strawberry-daiquiri"].price * 2 +
+              20 + // Delivery fee
+              (machinePackages[1].basePrice +
+                mixerDetails["strawberry-daiquiri"].price * 2 +
+                20) *
+                0.0825 + // Sales tax
+              (machinePackages[1].basePrice +
+                mixerDetails["strawberry-daiquiri"].price * 2 +
+                20) *
+                0.03
+            ).toFixed(2)
+          ),
+          priceCurrency: "USD",
+          itemCondition: "https://schema.org/NewCondition",
+          availability: "https://schema.org/InStock",
+          name: `2x ${mixerDetails["strawberry-daiquiri"].label}`,
         },
       ],
     },
@@ -113,8 +276,9 @@ export default function PricingPage() {
             </span>
           </h1>
           <p className="text-xl text-charcoal/80 dark:text-white/80 max-w-2xl mx-auto px-4">
-            All-inclusive pricing with no hidden fees. Every rental includes
-            professional delivery, setup, and pickup.
+            Transparent pricing with flat-rate delivery ($20), sales tax
+            (8.25%), and credit card processing fee (3%). Every rental includes
+            professional setup and pickup.
           </p>
         </div>
 
@@ -182,34 +346,131 @@ export default function PricingPage() {
                   {machinePackages[0].capacity}L of frozen beverages.
                 </p>
                 <div className="space-y-3">
-                  <p className="flex justify-between items-center py-2 border-b border-charcoal/10 dark:border-white/10">
-                    <span className="text-charcoal dark:text-white">
-                      Machine Only
-                    </span>
-                    <span className="font-semibold text-charcoal dark:text-white">
-                      ${machinePackages[0].basePrice}
-                    </span>
-                  </p>
-                  <p className="flex justify-between items-center py-2 border-b border-charcoal/10 dark:border-white/10">
-                    <span className="text-charcoal dark:text-white">
-                      With Non-Alcoholic Mixer
-                    </span>
-                    <span className="font-semibold text-charcoal dark:text-white">
-                      $
-                      {machinePackages[0].basePrice +
-                        mixerDetails["non-alcoholic"].price}
-                    </span>
-                  </p>
-                  <p className="flex justify-between items-center py-2 border-b border-charcoal/10 dark:border-white/10">
-                    <span className="text-charcoal dark:text-white">
-                      With Premium Mixers
-                    </span>
-                    <span className="font-semibold text-charcoal dark:text-white">
-                      $
-                      {machinePackages[0].basePrice +
-                        mixerDetails["margarita"].price}
-                    </span>
-                  </p>
+                  <Link href="/order?machine=single" className="block">
+                    <p className="flex justify-between items-center py-2 border-b border-charcoal/10 dark:border-white/10 hover:bg-margarita/10 dark:hover:bg-margarita/5 rounded-lg px-3 transition-colors">
+                      <span className="text-charcoal dark:text-white">
+                        Machine Only
+                      </span>
+                      <span className="font-semibold text-charcoal dark:text-white">
+                        $
+                        {(
+                          machinePackages[0].basePrice +
+                          20 + // Delivery fee
+                          (machinePackages[0].basePrice + 20) * 0.0825 + // Sales tax
+                          (machinePackages[0].basePrice + 20) * 0.03
+                        ) // Processing fee
+                          .toFixed(2)}
+                      </span>
+                    </p>
+                  </Link>
+                  <Link
+                    href="/order?machine=single&mixer=non-alcoholic"
+                    className="block"
+                  >
+                    <p className="flex justify-between items-center py-2 border-b border-charcoal/10 dark:border-white/10 hover:bg-margarita/10 dark:hover:bg-margarita/5 rounded-lg px-3 transition-colors">
+                      <span className="text-charcoal dark:text-white">
+                        {mixerDetails["non-alcoholic"].label}
+                      </span>
+                      <span className="font-semibold text-charcoal dark:text-white">
+                        $
+                        {(
+                          machinePackages[0].basePrice +
+                          mixerDetails["non-alcoholic"].price +
+                          20 + // Delivery fee
+                          (machinePackages[0].basePrice +
+                            mixerDetails["non-alcoholic"].price +
+                            20) *
+                            0.0825 + // Sales tax
+                          (machinePackages[0].basePrice +
+                            mixerDetails["non-alcoholic"].price +
+                            20) *
+                            0.03
+                        ) // Processing fee
+                          .toFixed(2)}
+                      </span>
+                    </p>
+                  </Link>
+                  <Link
+                    href="/order?machine=single&mixer=margarita"
+                    className="block"
+                  >
+                    <p className="flex justify-between items-center py-2 border-b border-charcoal/10 dark:border-white/10 hover:bg-margarita/10 dark:hover:bg-margarita/5 rounded-lg px-3 transition-colors">
+                      <span className="text-charcoal dark:text-white">
+                        {mixerDetails["margarita"].label}
+                      </span>
+                      <span className="font-semibold text-charcoal dark:text-white">
+                        $
+                        {(
+                          machinePackages[0].basePrice +
+                          mixerDetails["margarita"].price +
+                          20 + // Delivery fee
+                          (machinePackages[0].basePrice +
+                            mixerDetails["margarita"].price +
+                            20) *
+                            0.0825 + // Sales tax
+                          (machinePackages[0].basePrice +
+                            mixerDetails["margarita"].price +
+                            20) *
+                            0.03
+                        ) // Processing fee
+                          .toFixed(2)}
+                      </span>
+                    </p>
+                  </Link>
+                  <Link
+                    href="/order?machine=single&mixer=pina-colada"
+                    className="block"
+                  >
+                    <p className="flex justify-between items-center py-2 border-b border-charcoal/10 dark:border-white/10 hover:bg-margarita/10 dark:hover:bg-margarita/5 rounded-lg px-3 transition-colors">
+                      <span className="text-charcoal dark:text-white">
+                        {mixerDetails["pina-colada"].label}
+                      </span>
+                      <span className="font-semibold text-charcoal dark:text-white">
+                        $
+                        {(
+                          machinePackages[0].basePrice +
+                          mixerDetails["pina-colada"].price +
+                          20 + // Delivery fee
+                          (machinePackages[0].basePrice +
+                            mixerDetails["pina-colada"].price +
+                            20) *
+                            0.0825 + // Sales tax
+                          (machinePackages[0].basePrice +
+                            mixerDetails["pina-colada"].price +
+                            20) *
+                            0.03
+                        ) // Processing fee
+                          .toFixed(2)}
+                      </span>
+                    </p>
+                  </Link>
+                  <Link
+                    href="/order?machine=single&mixer=strawberry-daiquiri"
+                    className="block"
+                  >
+                    <p className="flex justify-between items-center py-2 border-b border-charcoal/10 dark:border-white/10 hover:bg-margarita/10 dark:hover:bg-margarita/5 rounded-lg px-3 transition-colors">
+                      <span className="text-charcoal dark:text-white">
+                        {mixerDetails["strawberry-daiquiri"].label}
+                      </span>
+                      <span className="font-semibold text-charcoal dark:text-white">
+                        $
+                        {(
+                          machinePackages[0].basePrice +
+                          mixerDetails["strawberry-daiquiri"].price +
+                          20 + // Delivery fee
+                          (machinePackages[0].basePrice +
+                            mixerDetails["strawberry-daiquiri"].price +
+                            20) *
+                            0.0825 + // Sales tax
+                          (machinePackages[0].basePrice +
+                            mixerDetails["strawberry-daiquiri"].price +
+                            20) *
+                            0.03
+                        ) // Processing fee
+                          .toFixed(2)}
+                      </span>
+                    </p>
+                  </Link>
                 </div>
               </div>
               <div>
@@ -232,34 +493,131 @@ export default function PricingPage() {
                   {machinePackages[1].capacity}L of frozen beverages.
                 </p>
                 <div className="space-y-3">
-                  <p className="flex justify-between items-center py-2 border-b border-charcoal/10 dark:border-white/10">
-                    <span className="text-charcoal dark:text-white">
-                      Machine Only
-                    </span>
-                    <span className="font-semibold text-charcoal dark:text-white">
-                      ${machinePackages[1].basePrice}
-                    </span>
-                  </p>
-                  <p className="flex justify-between items-center py-2 border-b border-charcoal/10 dark:border-white/10">
-                    <span className="text-charcoal dark:text-white">
-                      With Non-Alcoholic Mixer
-                    </span>
-                    <span className="font-semibold text-charcoal dark:text-white">
-                      $
-                      {machinePackages[1].basePrice +
-                        mixerDetails["non-alcoholic"].price}
-                    </span>
-                  </p>
-                  <p className="flex justify-between items-center py-2 border-b border-charcoal/10 dark:border-white/10">
-                    <span className="text-charcoal dark:text-white">
-                      With Premium Mixers
-                    </span>
-                    <span className="font-semibold text-charcoal dark:text-white">
-                      $
-                      {machinePackages[1].basePrice +
-                        mixerDetails["margarita"].price}
-                    </span>
-                  </p>
+                  <Link href="/order?machine=double" className="block">
+                    <p className="flex justify-between items-center py-2 border-b border-charcoal/10 dark:border-white/10 hover:bg-margarita/10 dark:hover:bg-margarita/5 rounded-lg px-3 transition-colors">
+                      <span className="text-charcoal dark:text-white">
+                        Machine Only
+                      </span>
+                      <span className="font-semibold text-charcoal dark:text-white">
+                        $
+                        {(
+                          machinePackages[1].basePrice +
+                          20 + // Delivery fee
+                          (machinePackages[1].basePrice + 20) * 0.0825 + // Sales tax
+                          (machinePackages[1].basePrice + 20) * 0.03
+                        ) // Processing fee
+                          .toFixed(2)}
+                      </span>
+                    </p>
+                  </Link>
+                  <Link
+                    href="/order?machine=double&mixer=non-alcoholic"
+                    className="block"
+                  >
+                    <p className="flex justify-between items-center py-2 border-b border-charcoal/10 dark:border-white/10 hover:bg-margarita/10 dark:hover:bg-margarita/5 rounded-lg px-3 transition-colors">
+                      <span className="text-charcoal dark:text-white">
+                        2x {mixerDetails["non-alcoholic"].label}
+                      </span>
+                      <span className="font-semibold text-charcoal dark:text-white">
+                        $
+                        {(
+                          machinePackages[1].basePrice +
+                          mixerDetails["non-alcoholic"].price * 2 +
+                          20 + // Delivery fee
+                          (machinePackages[1].basePrice +
+                            mixerDetails["non-alcoholic"].price * 2 +
+                            20) *
+                            0.0825 + // Sales tax
+                          (machinePackages[1].basePrice +
+                            mixerDetails["non-alcoholic"].price * 2 +
+                            20) *
+                            0.03
+                        ) // Processing fee
+                          .toFixed(2)}
+                      </span>
+                    </p>
+                  </Link>
+                  <Link
+                    href="/order?machine=double&mixer=margarita"
+                    className="block"
+                  >
+                    <p className="flex justify-between items-center py-2 border-b border-charcoal/10 dark:border-white/10 hover:bg-margarita/10 dark:hover:bg-margarita/5 rounded-lg px-3 transition-colors">
+                      <span className="text-charcoal dark:text-white">
+                        2x {mixerDetails["margarita"].label}
+                      </span>
+                      <span className="font-semibold text-charcoal dark:text-white">
+                        $
+                        {(
+                          machinePackages[1].basePrice +
+                          mixerDetails["margarita"].price * 2 +
+                          20 + // Delivery fee
+                          (machinePackages[1].basePrice +
+                            mixerDetails["margarita"].price * 2 +
+                            20) *
+                            0.0825 + // Sales tax
+                          (machinePackages[1].basePrice +
+                            mixerDetails["margarita"].price * 2 +
+                            20) *
+                            0.03
+                        ) // Processing fee
+                          .toFixed(2)}
+                      </span>
+                    </p>
+                  </Link>
+                  <Link
+                    href="/order?machine=double&mixer=pina-colada"
+                    className="block"
+                  >
+                    <p className="flex justify-between items-center py-2 border-b border-charcoal/10 dark:border-white/10 hover:bg-margarita/10 dark:hover:bg-margarita/5 rounded-lg px-3 transition-colors">
+                      <span className="text-charcoal dark:text-white">
+                        2x {mixerDetails["pina-colada"].label}
+                      </span>
+                      <span className="font-semibold text-charcoal dark:text-white">
+                        $
+                        {(
+                          machinePackages[1].basePrice +
+                          mixerDetails["pina-colada"].price * 2 +
+                          20 + // Delivery fee
+                          (machinePackages[1].basePrice +
+                            mixerDetails["pina-colada"].price * 2 +
+                            20) *
+                            0.0825 + // Sales tax
+                          (machinePackages[1].basePrice +
+                            mixerDetails["pina-colada"].price * 2 +
+                            20) *
+                            0.03
+                        ) // Processing fee
+                          .toFixed(2)}
+                      </span>
+                    </p>
+                  </Link>
+                  <Link
+                    href="/order?machine=double&mixer=strawberry-daiquiri"
+                    className="block"
+                  >
+                    <p className="flex justify-between items-center py-2 border-b border-charcoal/10 dark:border-white/10 hover:bg-margarita/10 dark:hover:bg-margarita/5 rounded-lg px-3 transition-colors">
+                      <span className="text-charcoal dark:text-white">
+                        2x {mixerDetails["strawberry-daiquiri"].label}
+                      </span>
+                      <span className="font-semibold text-charcoal dark:text-white">
+                        $
+                        {(
+                          machinePackages[1].basePrice +
+                          mixerDetails["strawberry-daiquiri"].price * 2 +
+                          20 + // Delivery fee
+                          (machinePackages[1].basePrice +
+                            mixerDetails["strawberry-daiquiri"].price * 2 +
+                            20) *
+                            0.0825 + // Sales tax
+                          (machinePackages[1].basePrice +
+                            mixerDetails["strawberry-daiquiri"].price * 2 +
+                            20) *
+                            0.03
+                        ) // Processing fee
+                          .toFixed(2)}
+                      </span>
+                    </p>
+                  </Link>
                 </div>
               </div>
             </div>

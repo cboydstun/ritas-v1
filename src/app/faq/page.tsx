@@ -1,4 +1,11 @@
 import { Metadata } from "next";
+import { mixerDetails } from "@/lib/rental-data";
+
+// Get all mixer names except "non-alcoholic" for the mixer options text
+const alcoholicMixers = Object.entries(mixerDetails)
+  .filter(([key]) => key !== "non-alcoholic")
+  .map(([_, details]) => details.label)
+  .join(", ");
 
 export const metadata: Metadata = {
   title: "Frequently Asked Questions | Ritas Frozen Drink Machine Rentals",
@@ -53,21 +60,23 @@ export default function FAQ() {
             <div className="space-y-6">
               <div>
                 <h3 className="text-xl font-semibold text-charcoal dark:text-white mb-2">
-                  How long is the rental period?
+                  What's included with my rental?
                 </h3>
                 <p className="text-charcoal/80 dark:text-white/80">
-                  Standard rental period is 24 hours. Extended rental periods
-                  are available upon request. We will coordinate pickup timing
-                  during your booking.
+                  Each rental includes the machine of your choice, any selected
+                  mixers, a salt rimmer for your glasses, and a table for setup.
+                  We handle all delivery, setup, and pickup for you.
                 </p>
               </div>
               <div>
                 <h3 className="text-xl font-semibold text-charcoal dark:text-white mb-2">
-                  Need it longer?
+                  How long is the rental period?
                 </h3>
                 <p className="text-charcoal/80 dark:text-white/80">
-                  Extended rentals are available upon request. Contact us for
-                  special pricing on multi-day rentals.
+                  Each rental includes free overnight use by default. We'll
+                  deliver and set up your machine on the day of your event, and
+                  return the next day to pick everything up. Extended rental
+                  periods are available upon request.
                 </p>
               </div>
               <div>
@@ -110,10 +119,10 @@ export default function FAQ() {
                   What mixer options are available?
                 </h3>
                 <p className="text-charcoal/80 dark:text-white/80">
-                  We offer premium margarita and piña colada mixes, perfect for
-                  adult beverages. For family-friendly events, we also provide
-                  Non-Alcoholic options. You can also choose to use your own
-                  mixers for complete control over your drinks.
+                  We offer premium mixers including {alcoholicMixers}. For
+                  family-friendly events, we also provide{" "}
+                  {mixerDetails["non-alcoholic"].label}. You can also choose to
+                  use your own mixers for complete control over your drinks.
                 </p>
               </div>
               <div>
@@ -121,9 +130,10 @@ export default function FAQ() {
                   How many drinks can each machine make?
                 </h3>
                 <p className="text-charcoal/80 dark:text-white/80">
-                  Our 15L single tank machine serves approximately 100 drinks,
-                  while our 30L double tank machine can serve up to 200 drinks.
-                  These are estimates based on 5oz servings.
+                  Our 15L single tank machine (nearly 4 gallons) provides 50-60
+                  8oz servings. The 30L double tank machine doubles this
+                  capacity to 100-120 servings, with the added benefit of
+                  offering two different flavors.
                 </p>
               </div>
             </div>
@@ -146,10 +156,10 @@ export default function FAQ() {
                   Do you provide delivery?
                 </h3>
                 <p className="text-charcoal/80 dark:text-white/80">
-                  Yes! We provide delivery, professional setup, and pickup
-                  throughout the San Antonio metropolitan area. Our team will
-                  handle all the heavy lifting and ensure everything is working
-                  perfectly.
+                  Yes! We handle everything for you - delivery, professional
+                  setup, and next-day pickup throughout the San Antonio
+                  metropolitan area. Our team will handle all the heavy lifting
+                  and ensure everything is working perfectly.
                 </p>
               </div>
               <div>
@@ -159,8 +169,8 @@ export default function FAQ() {
                 <p className="text-charcoal/80 dark:text-white/80">
                   You will need a flat, stable surface near a power outlet.
                   Single machines require about 2x2 feet of space, while double
-                  machines need 3x2 feet. We will help determine the best
-                  location during delivery.
+                  machines need 3x2 feet. We provide a table with your rental
+                  and will help determine the best location during delivery.
                 </p>
               </div>
               <div>

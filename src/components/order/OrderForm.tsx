@@ -27,7 +27,7 @@ const DeliveryStep = dynamic<StepProps>(
   {
     loading: () => <StepSkeleton />,
     ssr: false,
-  },
+  }
 );
 
 const DetailsStep = dynamic<StepProps>(
@@ -35,7 +35,7 @@ const DetailsStep = dynamic<StepProps>(
   {
     loading: () => <StepSkeleton />,
     ssr: false,
-  },
+  }
 );
 
 const ReviewStep = dynamic<StepProps>(
@@ -43,7 +43,7 @@ const ReviewStep = dynamic<StepProps>(
   {
     loading: () => <StepSkeleton />,
     ssr: false,
-  },
+  }
 );
 
 const PaymentStep = dynamic<StepProps>(
@@ -51,7 +51,7 @@ const PaymentStep = dynamic<StepProps>(
   {
     loading: () => <StepSkeleton />,
     ssr: false,
-  },
+  }
 );
 
 // Loading skeleton for step components
@@ -71,42 +71,40 @@ export default function OrderForm() {
   const [error, setError] = useState<string | null>(null);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
 
-  // Function to get initial form state, used for both initialization and reset
-  const getInitialState = (): OrderFormData => {
-    const machine = searchParams.get("machine") as "single" | "double";
-    const initialState: OrderFormData = {
-      machineType: machine ?? "single",
-      capacity: machine === "double" ? 30 : 15,
-      selectedMixers: [],
-      price: calculatePrice(machine ?? "single", []),
-      rentalDate: searchParams.get("rentalDate") ?? "",
-      rentalTime: searchParams.get("rentalTime") ?? "10:00",
-      returnDate: searchParams.get("returnDate") ?? "",
-      returnTime: searchParams.get("returnTime") ?? "10:00",
-      customer: {
-        name: searchParams.get("name") ?? "",
-        email: searchParams.get("email") ?? "",
-        phone: searchParams.get("phone") ?? "",
-        address: {
-          street: searchParams.get("street") ?? "",
-          city: searchParams.get("city") ?? "",
-          state: searchParams.get("state") ?? "",
-          zipCode: searchParams.get("zipCode") ?? "",
-        },
+  // Get initial machine type and mixer from URL once
+  const initialMachineType =
+    (searchParams.get("machine") as "single" | "double") || "single";
+  const initialMixer = searchParams.get("mixer");
+  const initialSelectedMixers = initialMixer ? [initialMixer as MixerType] : [];
+
+  // Initialize form state with URL parameters
+  const [formData, setFormData] = useState<OrderFormData>({
+    machineType: initialMachineType,
+    capacity: initialMachineType === "double" ? 30 : 15,
+    selectedMixers: initialSelectedMixers,
+    price: calculatePrice(initialMachineType, initialSelectedMixers),
+    rentalDate: "",
+    rentalTime: "10:00",
+    returnDate: "",
+    returnTime: "10:00",
+    customer: {
+      name: "",
+      email: "",
+      phone: "",
+      address: {
+        street: "",
+        city: "",
+        state: "",
+        zipCode: "",
       },
-      notes: searchParams.get("notes") ?? "",
-    };
-
-    return initialState;
-  };
-
-  // Initialize form state with URL parameters if available
-  const [formData, setFormData] = useState<OrderFormData>(getInitialState());
+    },
+    notes: "",
+  });
 
   const handleInputChange = (
     e: React.ChangeEvent<
       HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-    >,
+    >
   ) => {
     const { name, value } = e.target;
 
@@ -162,7 +160,7 @@ export default function OrderForm() {
             : prev.machineType,
           name === "selectedMixers"
             ? (value as unknown as MixerType[])
-            : prev.selectedMixers,
+            : prev.selectedMixers
         );
         return {
           ...newData,

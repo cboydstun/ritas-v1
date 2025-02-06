@@ -1,7 +1,22 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
+// Define permanent redirects
+const PERMANENT_REDIRECTS: Record<string, string> = {
+  // Add permanent redirects here as needed
+  // "/old-page": "/new-page",
+  // "/legacy": "/modern",
+};
+
 export function middleware(request: NextRequest) {
+  // Check for permanent redirects
+  const pathname = request.nextUrl.pathname;
+  const redirectTo = PERMANENT_REDIRECTS[pathname];
+  if (redirectTo) {
+    const url = new URL(redirectTo, request.url);
+    return NextResponse.redirect(url, { status: 301 });
+  }
+
   // Check if the request is for an admin route
   if (request.nextUrl.pathname.startsWith("/admin")) {
     // For now, we'll use basic auth
