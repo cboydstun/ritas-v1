@@ -45,7 +45,7 @@ export async function POST(request: Request) {
         const rental = new Rental({
           machineType: rentalData.machineType,
           capacity: rentalData.capacity,
-          mixerType: rentalData.mixerType,
+          selectedMixers: rentalData.selectedMixers,
           price: rentalData.price,
           rentalDate: rentalData.rentalDate,
           rentalTime: rentalData.rentalTime,
