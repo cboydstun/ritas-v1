@@ -4,7 +4,7 @@ import { mixerDetails } from "@/lib/rental-data";
 // Get all mixer names except "non-alcoholic" for the mixer options text
 const alcoholicMixers = Object.entries(mixerDetails)
   .filter(([key]) => key !== "non-alcoholic")
-  .map(([_, details]) => details.label)
+  .map(([, details]) => details.label)
   .join(", ");
 
 export const metadata: Metadata = {
@@ -60,7 +60,7 @@ export default function FAQ() {
             <div className="space-y-6">
               <div>
                 <h3 className="text-xl font-semibold text-charcoal dark:text-white mb-2">
-                  What's included with my rental?
+                  What is included with my rental?
                 </h3>
                 <p className="text-charcoal/80 dark:text-white/80">
                   Each rental includes the machine of your choice, any selected
@@ -73,7 +73,7 @@ export default function FAQ() {
                   How long is the rental period?
                 </h3>
                 <p className="text-charcoal/80 dark:text-white/80">
-                  Each rental includes free overnight use by default. We'll
+                  Each rental includes free overnight use by default. We will
                   deliver and set up your machine on the day of your event, and
                   return the next day to pick everything up. Extended rental
                   periods are available upon request.
