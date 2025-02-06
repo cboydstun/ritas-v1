@@ -32,6 +32,27 @@ export async function POST(request: Request) {
     return NextResponse.json(savedRental, { status: 201 });
   } catch (error) {
     console.error("Error creating order:", error);
+
+    // Enhanced error logging for schema validation issues
+    if (error instanceof Error) {
+      console.error("Error details:", {
+        name: error.name,
+        message: error.message,
+        stack: error.stack,
+      });
+
+      // Check for validation errors (e.g., missing required fields or invalid mixer selections)
+      if (error.name === "ValidationError") {
+        return NextResponse.json(
+          {
+            message: "Invalid rental data",
+            details: error.message
+          },
+          { status: 400 },
+        );
+      }
+    }
+
     return NextResponse.json(
       { message: "Failed to create order" },
       { status: 500 },

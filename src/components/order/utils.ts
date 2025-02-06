@@ -1,13 +1,21 @@
-import { machinePackages } from "@/lib/rental-data";
-import type { MixerOption } from "@/lib/rental-data";
+import { machinePackages, mixerDetails, MixerType } from "@/lib/rental-data";
 
 export const calculatePrice = (
   machineType: "single" | "double",
-  mixerType: MixerOption["type"],
+  selectedMixers: MixerType[],
 ): number => {
+  // Get base price based on machine type
   const machine = machinePackages.find((m) => m.type === machineType);
-  const mixer = machine?.mixerOptions.find((m) => m.type === mixerType);
-  return mixer?.price ?? 89.95;
+  if (!machine) return 89.95; // Default to single tank price
+
+  let totalPrice = machine.basePrice;
+
+  // Add price for each selected mixer
+  selectedMixers.forEach((mixer) => {
+    totalPrice += mixerDetails[mixer].price;
+  });
+
+  return totalPrice;
 };
 
 export const getNextDay = (date: Date): Date => {

@@ -38,7 +38,7 @@ export default function OrdersTable() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [editingOrder, setEditingOrder] = useState<MargaritaRental | null>(
-    null,
+    null
   );
   const [sortConfig, setSortConfig] = useState<SortConfig>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -54,6 +54,7 @@ export default function OrdersTable() {
     { key: "createdAt", label: "Order Date", sortable: true },
     { key: "customer", label: "Customer", sortable: true },
     { key: "machineType", label: "Machine", sortable: true },
+    { key: "selectedMixers", label: "Mixers", sortable: true },
     { key: "rentalDate", label: "Rental Date", sortable: true },
     { key: "status", label: "Status", sortable: true },
     { key: "payment", label: "Payment", sortable: true },
@@ -66,7 +67,7 @@ export default function OrdersTable() {
   }, [orders]);
 
   const getDateRange = (
-    filter: DateFilter,
+    filter: DateFilter
   ): { start: Date; end: Date } | null => {
     if (filter === "all") return null;
 
@@ -142,7 +143,7 @@ export default function OrdersTable() {
     // Apply machine filter
     if (machineFilter !== "all") {
       filtered = filtered.filter(
-        (order) => order.machineType === machineFilter,
+        (order) => order.machineType === machineFilter
       );
     }
 
@@ -154,7 +155,7 @@ export default function OrdersTable() {
     // Apply payment status filter
     if (paymentStatusFilter !== "all") {
       filtered = filtered.filter(
-        (order) => order.payment?.status === paymentStatusFilter,
+        (order) => order.payment?.status === paymentStatusFilter
       );
     }
 
@@ -247,7 +248,7 @@ export default function OrdersTable() {
 
   const handleStatusChange = async (
     orderId: string,
-    newStatus: RentalStatus,
+    newStatus: RentalStatus
   ) => {
     try {
       const response = await fetch(`/api/admin/orders/${orderId}`, {
@@ -265,7 +266,7 @@ export default function OrdersTable() {
 
   const handlePaymentStatusChange = async (
     orderId: string,
-    newStatus: PaymentStatus,
+    newStatus: PaymentStatus
   ) => {
     try {
       const response = await fetch(`/api/admin/orders/${orderId}`, {
@@ -280,7 +281,7 @@ export default function OrdersTable() {
       await fetchOrders(); // Refresh orders
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Failed to update payment status",
+        err instanceof Error ? err.message : "Failed to update payment status"
       );
     }
   };
@@ -306,7 +307,7 @@ export default function OrdersTable() {
 
   const handleSaveEdit = async (
     orderId: string,
-    data: Partial<MargaritaRental>,
+    data: Partial<MargaritaRental>
   ) => {
     try {
       const response = await fetch(`/api/admin/orders/${orderId}`, {
@@ -459,6 +460,19 @@ export default function OrdersTable() {
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                   {order.machineType} ({order.capacity}L)
                 </td>
+                <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-100">
+                  {order.selectedMixers?.length > 0 ? (
+                    <div className="space-y-1">
+                      {order.selectedMixers.map((mixer, index) => (
+                        <div key={index} className="leading-tight">
+                          {mixer}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    "None"
+                  )}
+                </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                   {(() => {
                     try {
@@ -479,7 +493,7 @@ export default function OrdersTable() {
                     onChange={(e) =>
                       handleStatusChange(
                         order._id!.toString(),
-                        e.target.value as RentalStatus,
+                        e.target.value as RentalStatus
                       )
                     }
                     className="text-sm rounded border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
@@ -497,7 +511,7 @@ export default function OrdersTable() {
                     onChange={(e) =>
                       handlePaymentStatusChange(
                         order._id!.toString(),
-                        e.target.value as PaymentStatus,
+                        e.target.value as PaymentStatus
                       )
                     }
                     className="text-sm rounded border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
@@ -579,7 +593,7 @@ export default function OrdersTable() {
           <button
             onClick={() =>
               setCurrentPage((prev) =>
-                Math.min(prev + 1, Math.ceil(sortedOrders.length / pageSize)),
+                Math.min(prev + 1, Math.ceil(sortedOrders.length / pageSize))
               )
             }
             disabled={currentPage >= Math.ceil(sortedOrders.length / pageSize)}

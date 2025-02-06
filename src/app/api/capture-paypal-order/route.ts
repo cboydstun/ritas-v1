@@ -63,7 +63,7 @@ export async function POST(request: Request) {
                 `Time: ${formattedTime}\n` +
                 `Address: ${rental.customer.address.street}, ${rental.customer.address.city}, ${rental.customer.address.state} ${rental.customer.address.zipCode}\n` +
                 `Machine: ${rental.machineType}\n` +
-                `Mixer: ${rental.mixerType}\n` +
+                `Mixers: ${rental.selectedMixers.join(", ") || "None"}\n` +
                 `Customer: ${rental.customer.name}\n` +
                 `Phone: ${rental.customer.phone}\n` +
                 `Total: $${amount}`,

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, Suspense } from "react";
+import { MixerType } from "@/lib/rental-data";
 import { useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import {
@@ -73,13 +74,11 @@ export default function OrderForm() {
   // Function to get initial form state, used for both initialization and reset
   const getInitialState = (): OrderFormData => {
     const machine = searchParams.get("machine") as "single" | "double";
-    const mixer = searchParams.get("mixer") as OrderFormData["mixerType"];
-
     const initialState: OrderFormData = {
       machineType: machine ?? "single",
       capacity: machine === "double" ? 30 : 15,
-      mixerType: mixer ?? "none",
-      price: calculatePrice(machine ?? "single", mixer ?? "none"),
+      selectedMixers: [],
+      price: calculatePrice(machine ?? "single", []),
       rentalDate: searchParams.get("rentalDate") ?? "",
       rentalTime: searchParams.get("rentalTime") ?? "10:00",
       returnDate: searchParams.get("returnDate") ?? "",
@@ -156,14 +155,14 @@ export default function OrderForm() {
       const newData = { ...prev, [name]: value };
 
       // Update price when machine type or mixer type changes
-      if (name === "machineType" || name === "mixerType") {
+      if (name === "machineType" || name === "selectedMixers") {
         const newPrice = calculatePrice(
           name === "machineType"
             ? (value as "single" | "double")
             : prev.machineType,
-          name === "mixerType"
-            ? (value as OrderFormData["mixerType"])
-            : prev.mixerType,
+          name === "selectedMixers"
+            ? (value as unknown as MixerType[])
+            : prev.selectedMixers,
         );
         return {
           ...newData,
