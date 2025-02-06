@@ -460,10 +460,18 @@ export default function OrdersTable() {
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                   {order.machineType} ({order.capacity}L)
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                  {order.selectedMixers?.length > 0
-                    ? order.selectedMixers.join(", ")
-                    : "None"}
+                <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-100">
+                  {order.selectedMixers?.length > 0 ? (
+                    <div className="space-y-1">
+                      {order.selectedMixers.map((mixer, index) => (
+                        <div key={index} className="leading-tight">
+                          {mixer}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    "None"
+                  )}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                   {(() => {
