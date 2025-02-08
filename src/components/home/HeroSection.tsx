@@ -1,10 +1,22 @@
 import Link from "next/link";
+import Image from "next/image";
 
 export default function HeroSection() {
   return (
     <div className="relative min-h-[90vh] flex items-center overflow-hidden bg-gradient-to-br from-light via-margarita/10 to-teal/20 dark:from-charcoal dark:via-margarita/5 dark:to-teal/10">
+      {/* Hero Image */}
+      <div className="absolute inset-0 pointer-events-none">
+        <Image
+          src="/hero-image.jpg"
+          alt="Frozen margarita machine with drinks"
+          fill
+          priority
+          className="object-cover opacity-30"
+        />
+      </div>
+
       {/* Content - Moved to top for faster LCP */}
-      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
+      <div className="relative z-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
         <div className="text-center">
           <div className="mb-8 inline-block">
             <span className="inline-block px-4 py-2 rounded-full bg-margarita/20 text-charcoal dark:text-white text-sm font-semibold tracking-wide uppercase animate-bounce">
@@ -12,7 +24,7 @@ export default function HeroSection() {
             </span>
           </div>
 
-          <h1 className="text-6xl md:text-7xl font-extrabold text-charcoal dark:text-white mb-6 tracking-tight will-change-transform">
+          <h1 className="text-5xl sm:text-6xl md:text-7xl font-extrabold text-charcoal dark:text-white mb-6 tracking-tight will-change-transform">
             Frozen Drink Machines
             <span className="block text-transparent bg-clip-text bg-gradient-to-r from-margarita via-teal to-orange mt-2 pb-4">
               in San Antonio
@@ -20,7 +32,7 @@ export default function HeroSection() {
             for Margaritas & More!
           </h1>
 
-          <p className="text-xl md:text-2xl text-charcoal/80 dark:text-white/80 mb-12 max-w-2xl mx-auto leading-relaxed">
+          <p className="text-lg sm:text-xl md:text-2xl text-charcoal/80 dark:text-white/80 mb-12 max-w-2xl mx-auto leading-relaxed">
             Bringing the taste of San Antonio to your next event. Commercial
             margarita machine rentals for parties, weddings, and corporate
             events.
