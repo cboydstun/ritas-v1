@@ -38,8 +38,8 @@ const config: Config = {
         wiggle: "wiggle 1s ease-in-out infinite",
       },
       colors: {
-        margarita: "#AADF46", // Primary accent
-        teal: "#03B5AA", // Secondary accent
+        margarita: "#4B7A0A", // Much darker, high contrast version for accessibility
+        teal: "#026B62", // Much darker, high contrast version for accessibility
         orange: "#FF9F40", // Tertiary accent
         pink: "#FF6F91", // Highlight
         light: "#F7F7F7", // Light background

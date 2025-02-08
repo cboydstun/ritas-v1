@@ -6,7 +6,7 @@ export default function MapSection() {
           <h2 className="text-3xl font-bold text-charcoal dark:text-white mb-4">
             Service Area
           </h2>
-          <p className="text-lg text-charcoal/70 dark:text-white/70">
+          <p className="text-lg text-charcoal/80 dark:text-white/80">
             Proudly serving San Antonio and surrounding areas
           </p>
         </div>
@@ -36,12 +36,14 @@ export default function MapSection() {
                     d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
                   />
                 </svg>
-                <span className="text-charcoal/60 dark:text-white/60">
+                <span className="text-charcoal/80 dark:text-white/80">
                   <iframe
                     src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d286869.7536512927!2d-98.59373990853682!3d29.46675923764449!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x865c58af04d00eaf%3A0x856e13b10a016bc!2sSan%20Antonio%2C%20TX!5e1!3m2!1sen!2sus!4v1737150488930!5m2!1sen!2sus"
                     width="800"
                     height="600"
                     loading="lazy"
+                    title="Map of SATX Ritas service area in San Antonio"
+                    allow="fullscreen"
                   ></iframe>
                 </span>
               </div>

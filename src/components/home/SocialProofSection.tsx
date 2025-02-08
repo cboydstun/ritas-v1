@@ -55,7 +55,7 @@ export default function SocialProofSection() {
           <h2 className="text-2xl sm:text-3xl font-bold text-charcoal dark:text-white mb-2 sm:mb-4">
             Trusted by San Antonio&apos;s Best
           </h2>
-          <p className="text-base sm:text-lg text-charcoal/70 dark:text-white/70">
+          <p className="text-base sm:text-lg text-charcoal/80 dark:text-white/80">
             Join hundreds of satisfied customers who chose SATX Ritas
           </p>
         </div>
@@ -66,7 +66,7 @@ export default function SocialProofSection() {
             <div className="text-2xl sm:text-4xl font-bold text-margarita mb-1 sm:mb-2">
               {reviews.length * 8}
             </div>
-            <div className="text-sm sm:text-base text-charcoal/70 dark:text-white/70">
+            <div className="text-sm sm:text-base text-charcoal/80 dark:text-white/80">
               Happy Customers
             </div>
           </div>
@@ -74,7 +74,7 @@ export default function SocialProofSection() {
             <div className="text-2xl sm:text-4xl font-bold text-margarita mb-1 sm:mb-2">
               {averageRating}
             </div>
-            <div className="text-sm sm:text-base text-charcoal/70 dark:text-white/70">
+            <div className="text-sm sm:text-base text-charcoal/80 dark:text-white/80">
               Average Rating
             </div>
           </div>
@@ -82,7 +82,7 @@ export default function SocialProofSection() {
             <div className="text-2xl sm:text-4xl font-bold text-margarita mb-1 sm:mb-2">
               {reviews.filter((r) => r.rating >= 4).length}
             </div>
-            <div className="text-sm sm:text-base text-charcoal/70 dark:text-white/70">
+            <div className="text-sm sm:text-base text-charcoal/80 dark:text-white/80">
               5-Star Reviews
             </div>
           </div>
@@ -90,11 +90,11 @@ export default function SocialProofSection() {
             <div className="text-2xl sm:text-4xl font-bold text-margarita mb-1 sm:mb-2">
               {Math.round(
                 (reviews.filter((r) => r.rating >= 4).length / reviews.length) *
-                  100 || 0,
+                  100 || 0
               )}
               %
             </div>
-            <div className="text-sm sm:text-base text-charcoal/70 dark:text-white/70">
+            <div className="text-sm sm:text-base text-charcoal/80 dark:text-white/80">
               Satisfaction Rate
             </div>
           </div>
@@ -103,7 +103,7 @@ export default function SocialProofSection() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-8">
           {isLoading ? (
             <div className="col-span-full text-center py-8">
-              <div className="text-base sm:text-lg text-charcoal/70 dark:text-white/70">
+              <div className="text-base sm:text-lg text-charcoal/80 dark:text-white/80">
                 Loading reviews...
               </div>
             </div>
@@ -138,7 +138,7 @@ export default function SocialProofSection() {
                   <div className="font-semibold text-sm sm:text-base text-charcoal dark:text-white">
                     {review.authorName}
                   </div>
-                  <div className="text-xs sm:text-sm text-charcoal/60 dark:text-white/60">
+                  <div className="text-xs sm:text-sm text-charcoal/80 dark:text-white/80">
                     {new Date(review.time).toLocaleDateString()}
                   </div>
                 </div>
@@ -154,7 +154,7 @@ export default function SocialProofSection() {
                   >
                     Previous
                   </button>
-                  <span className="text-sm sm:text-base text-charcoal/70 dark:text-white/70">
+                  <span className="text-sm sm:text-base text-charcoal/80 dark:text-white/80">
                     Page {currentPage} of {totalPages}
                   </span>
                   <button
