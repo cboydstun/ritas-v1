@@ -1,11 +1,19 @@
 import "./globals.css";
 import { Metadata } from "next";
+import { Poppins } from "next/font/google";
+
+const poppins = Poppins({
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700"],
+  display: "swap",
+  preload: true,
+});
 
 export const metadata: Metadata = {
   metadataBase: new URL(
     process.env.NODE_ENV === "production"
       ? "https://satxritas.com"
-      : "http://localhost:3000",
+      : "http://localhost:3000"
   ),
   title: "Ritas Rentals",
   description:
@@ -69,19 +77,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="light">
-      <head>
-        <link
-          rel="preconnect"
-          href="https://fonts.googleapis.com"
-          crossOrigin="anonymous"
-        />
-        <link
-          rel="preconnect"
-          href="https://fonts.gstatic.com"
-          crossOrigin="anonymous"
-        />
-      </head>
-      <body className="flex flex-col min-h-screen bg-white dark:bg-charcoal dark:text-white">
+      <body
+        className={`${poppins.className} flex flex-col min-h-screen bg-white dark:bg-charcoal dark:text-white`}
+      >
         <ThemeWrapper>
           <Navigation />
           <main className="flex-grow">{children}</main>
