@@ -1,5 +1,6 @@
 import { Metadata } from "next";
 import { mixerDetails } from "@/lib/rental-data";
+import Link from "next/link";
 
 // Get all mixer names except "non-alcoholic" for the mixer options text
 const alcoholicMixers = Object.entries(mixerDetails)
@@ -89,6 +90,15 @@ export default function FAQ() {
                   continues smoothly.
                 </p>
               </div>
+
+              <div className="text-center mt-8">
+                <Link
+                  href="/pricing"
+                  className="inline-block px-8 py-4 bg-margarita hover:bg-margarita/90 text-white font-semibold rounded-lg transition-colors text-lg"
+                >
+                  Pricing
+                </Link>
+              </div>
             </div>
           </section>
 
@@ -135,6 +145,15 @@ export default function FAQ() {
                   capacity to 100-120 servings, with the added benefit of
                   offering two different flavors.
                 </p>
+              </div>
+
+              <div className="text-center mt-8">
+                <Link
+                  href="/order"
+                  className="inline-block px-8 py-4 bg-margarita hover:bg-margarita/90 text-white font-semibold rounded-lg transition-colors text-lg"
+                >
+                  Start Your Order
+                </Link>
               </div>
             </div>
           </section>
@@ -183,6 +202,15 @@ export default function FAQ() {
                   should also be on a stable, level surface.
                 </p>
               </div>
+
+              <div className="text-center mt-8">
+                <Link
+                  href="/about"
+                  className="inline-block px-8 py-4 bg-margarita hover:bg-margarita/90 text-white font-semibold rounded-lg transition-colors text-lg"
+                >
+                  About Us
+                </Link>
+              </div>
             </div>
           </section>
 
@@ -228,6 +256,15 @@ export default function FAQ() {
                   and repairs. You are only responsible for preventing
                   intentional damage or misuse during your rental period.
                 </p>
+              </div>
+
+              <div className="text-center mt-8">
+                <Link
+                  href="/order"
+                  className="inline-block px-8 py-4 bg-margarita hover:bg-margarita/90 text-white font-semibold rounded-lg transition-colors text-lg"
+                >
+                  Start Your Order
+                </Link>
               </div>
             </div>
           </section>

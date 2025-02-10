@@ -1,4 +1,5 @@
 import { Metadata } from "next";
+import Link from "next/link";
 
 // Add JSON-LD structured data for Article
 const jsonLd = {
@@ -173,6 +174,15 @@ export default function AboutPage() {
                 </div>
               </div>
             </div>
+
+            <div className="text-center mt-8">
+              <Link
+                href="/order"
+                className="inline-block px-8 py-4 bg-margarita hover:bg-margarita/90 text-white font-semibold rounded-lg transition-colors text-lg"
+              >
+                Start Your Order
+              </Link>
+            </div>
           </div>
 
           {/* Service Area */}
@@ -192,6 +202,14 @@ export default function AboutPage() {
                 professionally served with the authentic flavor of San Antonio
                 hospitality.
               </p>
+            </div>
+            <div className="text-center mt-8">
+              <Link
+                href="/about"
+                className="inline-block px-8 py-4 bg-margarita hover:bg-margarita/90 text-white font-semibold rounded-lg transition-colors text-lg"
+              >
+                About Us
+              </Link>
             </div>
           </div>
         </div>

@@ -455,6 +455,14 @@ export default function PricingPage() {
                 </div>
               </div>
             </div>
+            <div className="text-center mt-8">
+              <Link
+                href="/about"
+                className="inline-block px-8 py-4 bg-margarita hover:bg-margarita/90 text-white font-semibold rounded-lg transition-colors text-lg"
+              >
+                About Us
+              </Link>
+            </div>
           </div>
         </div>
       </div>
