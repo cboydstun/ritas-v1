@@ -46,7 +46,7 @@ export async function POST(request: Request) {
         return NextResponse.json(
           {
             message: "Invalid rental data",
-            details: error.message
+            details: error.message,
           },
           { status: 400 },
         );

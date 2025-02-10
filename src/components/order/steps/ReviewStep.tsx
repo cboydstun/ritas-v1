@@ -1,25 +1,23 @@
 import Image from "next/image";
 import { StepProps } from "../types";
 import { mixerDetails, MixerType } from "@/lib/rental-data";
-import { calculatePricing } from "../utils";
+import { calculatePrice, formatPrice } from "@/lib/pricing";
 
 export default function ReviewStep({
   formData,
   agreedToTerms = false,
   setAgreedToTerms = () => {},
 }: StepProps) {
-  const {
-    rentalDays,
-    perDayRate,
-    deliveryFee,
-    subtotal,
-    salesTax,
-    processingFee,
-    total,
-  } = calculatePricing(
-    formData.price,
-    formData.rentalDate,
-    formData.returnDate,
+  const priceBreakdown = calculatePrice(
+    formData.machineType,
+    formData.selectedMixers[0] as MixerType,
+  );
+
+  const perDayRate = priceBreakdown.basePrice + priceBreakdown.mixerPrice;
+  const rentalDays = Math.ceil(
+    (new Date(formData.returnDate).getTime() -
+      new Date(formData.rentalDate).getTime()) /
+      (1000 * 60 * 60 * 24),
   );
 
   return (
@@ -99,7 +97,7 @@ export default function ReviewStep({
             )}
           </div>
           <p className="text-xl font-bold text-orange mt-2">
-            ${perDayRate}/day
+            ${formatPrice(perDayRate)}/day
           </p>
         </div>
 
@@ -145,23 +143,23 @@ export default function ReviewStep({
             Pricing Details
           </h3>
           <p className=" text-charcoal/70 dark:text-white/70">
-            Rate: ${perDayRate}/day × {rentalDays} day
+            Rate: ${formatPrice(perDayRate)}/day × {rentalDays} day
             {rentalDays > 1 ? "s" : ""}
           </p>
           <p className=" text-charcoal/70 dark:text-white/70">
-            Delivery Fee: ${deliveryFee.toFixed(2)}
+            Delivery Fee: ${formatPrice(priceBreakdown.deliveryFee)}
           </p>
           <p className=" text-charcoal/70 dark:text-white/70">
-            Subtotal: ${subtotal.toFixed(2)}
+            Subtotal: ${formatPrice(perDayRate + priceBreakdown.deliveryFee)}
           </p>
           <p className=" text-charcoal/70 dark:text-white/70">
-            Sales Tax (8.25%): ${salesTax.toFixed(2)}
+            Sales Tax (8.25%): ${formatPrice(priceBreakdown.salesTax)}
           </p>
           <p className=" text-charcoal/70 dark:text-white/70">
-            Processing Fee (3%): ${processingFee.toFixed(2)}
+            Processing Fee (3%): ${formatPrice(priceBreakdown.processingFee)}
           </p>
           <p className="text-xl font-bold text-orange mb-4">
-            Total Amount: ${total.toFixed(2)}
+            Total Amount: ${formatPrice(priceBreakdown.total)}
           </p>
           <div className="flex items-center space-x-2 mt-4">
             <input

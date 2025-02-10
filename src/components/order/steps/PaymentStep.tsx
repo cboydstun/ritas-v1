@@ -2,14 +2,22 @@ import { PayPalScriptProvider } from "@paypal/react-paypal-js";
 import { PayPalCheckout } from "@/components/PayPalCheckout";
 import { paypalConfig } from "@/config/paypal";
 import { StepProps } from "../types";
-import { calculatePricing } from "../utils";
+import { MixerType } from "@/lib/rental-data";
+import { calculatePrice, formatPrice } from "@/lib/pricing";
 
 export default function PaymentStep({ formData }: StepProps) {
-  const { total } = calculatePricing(
-    formData.price,
-    formData.rentalDate,
-    formData.returnDate,
+  const priceBreakdown = calculatePrice(
+    formData.machineType,
+    formData.selectedMixers[0] as MixerType,
   );
+
+  const rentalDays = Math.ceil(
+    (new Date(formData.returnDate).getTime() -
+      new Date(formData.rentalDate).getTime()) /
+      (1000 * 60 * 60 * 24),
+  );
+
+  const total = priceBreakdown.total * rentalDays;
 
   return (
     <div className="space-y-6">
@@ -18,7 +26,7 @@ export default function PaymentStep({ formData }: StepProps) {
       </h2>
       <div className="bg-white/80 dark:bg-charcoal/30 rounded-xl p-6">
         <p className="text-center text-xl font-bold text-orange mb-6">
-          Total Amount: ${total.toFixed(2)}
+          Total Amount: ${formatPrice(total)}
         </p>
         <div className="text-center">
           <PayPalScriptProvider options={paypalConfig}>

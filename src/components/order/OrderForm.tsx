@@ -11,13 +11,13 @@ import {
   steps,
 } from "./types";
 import {
-  calculatePrice,
   getNextDay,
   validateDeliveryTime,
   validateEmail,
   validatePhone,
   validateZipCode,
 } from "./utils";
+import { calculatePrice } from "@/lib/pricing";
 import { ProgressBar } from "./ProgressBar";
 import { NavigationButtons } from "./NavigationButtons";
 
@@ -27,7 +27,7 @@ const DeliveryStep = dynamic<StepProps>(
   {
     loading: () => <StepSkeleton />,
     ssr: false,
-  }
+  },
 );
 
 const DetailsStep = dynamic<StepProps>(
@@ -35,7 +35,7 @@ const DetailsStep = dynamic<StepProps>(
   {
     loading: () => <StepSkeleton />,
     ssr: false,
-  }
+  },
 );
 
 const ReviewStep = dynamic<StepProps>(
@@ -43,7 +43,7 @@ const ReviewStep = dynamic<StepProps>(
   {
     loading: () => <StepSkeleton />,
     ssr: false,
-  }
+  },
 );
 
 const PaymentStep = dynamic<StepProps>(
@@ -51,7 +51,7 @@ const PaymentStep = dynamic<StepProps>(
   {
     loading: () => <StepSkeleton />,
     ssr: false,
-  }
+  },
 );
 
 // Loading skeleton for step components
@@ -82,7 +82,7 @@ export default function OrderForm() {
     machineType: initialMachineType,
     capacity: initialMachineType === "double" ? 30 : 15,
     selectedMixers: initialSelectedMixers,
-    price: calculatePrice(initialMachineType, initialSelectedMixers),
+    price: calculatePrice(initialMachineType, initialSelectedMixers[0]).total,
     rentalDate: "",
     rentalTime: "10:00",
     returnDate: "",
@@ -104,7 +104,7 @@ export default function OrderForm() {
   const handleInputChange = (
     e: React.ChangeEvent<
       HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-    >
+    >,
   ) => {
     const { name, value } = e.target;
 
@@ -159,9 +159,9 @@ export default function OrderForm() {
             ? (value as "single" | "double")
             : prev.machineType,
           name === "selectedMixers"
-            ? (value as unknown as MixerType[])
-            : prev.selectedMixers
-        );
+            ? (value as unknown as MixerType[])[0]
+            : prev.selectedMixers[0],
+        ).total;
         return {
           ...newData,
           price: newPrice,

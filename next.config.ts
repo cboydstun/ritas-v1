@@ -4,8 +4,6 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   compress: true,
-  optimizeFonts: true,
-  swcMinify: true,
   staticPageGenerationTimeout: 120,
   compiler: {
     removeConsole: process.env.NODE_ENV === "production",
@@ -20,6 +18,12 @@ const nextConfig: NextConfig = {
   },
   experimental: {
     optimizePackageImports: ["@headlessui/react", "@heroicons/react"],
+    turbo: {
+      moduleIdStrategy: "deterministic",
+      rules: {
+        // Add any webpack loaders if needed
+      },
+    },
   },
   webpack: (config, { dev, isServer }) => {
     // Production optimizations

@@ -90,7 +90,7 @@ export default function SocialProofSection() {
             <div className="text-2xl sm:text-4xl font-bold text-margarita mb-1 sm:mb-2">
               {Math.round(
                 (reviews.filter((r) => r.rating >= 4).length / reviews.length) *
-                  100 || 0
+                  100 || 0,
               )}
               %
             </div>
