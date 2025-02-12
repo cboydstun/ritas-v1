@@ -1,6 +1,7 @@
 import "./globals.css";
 import { Metadata } from "next";
 import { Poppins } from "next/font/google";
+import { AxiomWebVitals } from "next-axiom";
 
 const poppins = Poppins({
   subsets: ["latin"],
@@ -77,6 +78,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="light">
+      <AxiomWebVitals />
       <body
         className={`${poppins.className} flex flex-col min-h-screen bg-white dark:bg-charcoal dark:text-white`}
       >

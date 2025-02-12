@@ -1,10 +1,20 @@
 import type { NextConfig } from "next";
+import { withAxiom } from "next-axiom";
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   compress: true,
   staticPageGenerationTimeout: 120,
+  experimental: {
+    optimizePackageImports: ["@headlessui/react", "@heroicons/react"],
+    turbo: {
+      moduleIdStrategy: "deterministic",
+      rules: {
+        // Add any webpack loaders if needed
+      },
+    },
+  },
   compiler: {
     removeConsole: process.env.NODE_ENV === "production",
   },
@@ -15,15 +25,6 @@ const nextConfig: NextConfig = {
     formats: ["image/avif", "image/webp"],
     deviceSizes: [640, 750, 828, 1080, 1200, 1920],
     minimumCacheTTL: 60,
-  },
-  experimental: {
-    optimizePackageImports: ["@headlessui/react", "@heroicons/react"],
-    turbo: {
-      moduleIdStrategy: "deterministic",
-      rules: {
-        // Add any webpack loaders if needed
-      },
-    },
   },
   webpack: (config, { dev, isServer }) => {
     // Production optimizations
@@ -57,4 +58,4 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+export default withAxiom(nextConfig);

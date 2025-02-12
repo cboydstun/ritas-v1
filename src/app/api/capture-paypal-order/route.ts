@@ -4,12 +4,17 @@ import dbConnect from "@/lib/mongodb";
 import { Rental } from "@/models/rental";
 import twilio from "twilio";
 import nodemailer from "nodemailer";
+import { withAxiom, AxiomRequest, LogLevel } from "next-axiom";
 
-export async function POST(request: Request) {
+export const POST = withAxiom(async (request: AxiomRequest) => {
+  const log = request.log.with({ scope: "capture-paypal-order" });
+  
   try {
     const { orderId, amount, rentalData } = await request.json();
+    log.info("Received capture request", { orderId, amount });
 
     if (!orderId || !amount) {
+      log.warn("Missing required data", { orderId, amount });
       return NextResponse.json(
         { message: "Missing required data" },
         { status: 400 },
@@ -18,11 +23,17 @@ export async function POST(request: Request) {
 
     // Import PayPal SDK dynamically
     const sdk = await import("@paypal/checkout-server-sdk");
+    log.debug("PayPal SDK imported");
 
     const paypalClient = await initializePayPalSDK();
     // @ts-expect-error: TypeScript does not recognize OrdersCaptureRequest
     const request_ = new sdk.default.orders.OrdersCaptureRequest(orderId);
     const capture = await paypalClient.execute(request_);
+    log.info("PayPal capture executed", { 
+      orderId,
+      captureId: capture.result.id,
+      status: capture.result.status 
+    });
 
     if (capture.result.status === "COMPLETED") {
       // Send SMS notification if Twilio credentials are configured
@@ -71,22 +82,33 @@ export async function POST(request: Request) {
               from: fromPhone,
               to: toPhone,
             });
+            log.info("SMS notification sent", { orderId });
           }
         } catch (smsError) {
-          console.error("Error sending SMS:", smsError);
+          log.error("Error sending SMS", {
+            error: smsError instanceof Error ? {
+              name: smsError.name,
+              message: smsError.message,
+              stack: smsError.stack,
+            } : smsError,
+            orderId
+          });
           // Continue with order processing even if SMS fails
         }
       } else {
-        console.warn(
-          "Twilio credentials not fully configured - skipping SMS notification",
-        );
+        log.warn("Twilio credentials not fully configured - skipping SMS notification");
       }
 
       // Connect to MongoDB using Mongoose
       await dbConnect();
+      log.debug("Database connection established");
 
       // First try to find the rental
       const existingRental = await Rental.findOne({ paypalOrderId: orderId });
+      log.debug("Existing rental lookup complete", { 
+        exists: !!existingRental,
+        orderId 
+      });
 
       if (!existingRental && rentalData) {
         // If rental not found but we have rental data, create it
@@ -102,6 +124,10 @@ export async function POST(request: Request) {
           },
         });
         await rental.save();
+        log.info("New rental created", { 
+          rentalId: rental._id,
+          orderId 
+        });
         return NextResponse.json({
           id: capture.result.id,
           status: capture.result.status,
@@ -110,8 +136,15 @@ export async function POST(request: Request) {
       }
 
       if (!existingRental) {
-        console.error("No rental found for PayPal order:", orderId);
-        throw new Error("Rental not found and no rental data provided");
+        const error = new Error("Rental not found and no rental data provided");
+        log.error("Rental lookup failed", {
+          error: {
+            message: error.message,
+            stack: error.stack
+          },
+          orderId
+        });
+        throw error;
       }
 
       // Update the existing rental
@@ -130,14 +163,28 @@ export async function POST(request: Request) {
           },
         },
         {
-          new: true, // Return the updated document
-          runValidators: true, // Run schema validators on update
+          new: true,
+          runValidators: true,
         },
       );
 
       if (!updatedRental) {
-        throw new Error("Failed to update rental");
+        const error = new Error("Failed to update rental");
+        log.error("Rental update failed", {
+          error: {
+            message: error.message,
+            stack: error.stack
+          },
+          orderId
+        });
+        throw error;
       }
+
+      log.info("Rental updated successfully", {
+        rentalId: updatedRental._id,
+        orderId,
+        status: "confirmed"
+      });
 
       // Configure nodemailer
       const transporter = nodemailer.createTransport({
@@ -153,7 +200,7 @@ export async function POST(request: Request) {
         await transporter.sendMail({
           from: process.env.NODEMAILER_USERNAME,
           to: process.env.NODEMAILER_USERNAME,
-          // bcc: updatedRental.customer.email, // BCC the business email
+          // bcc: updatedRental.customer.email,
           subject: "SATX Ritas Margarita Rentals - Order Confirmation",
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333; background-color: #f9fafb; border-radius: 8px;">
@@ -192,10 +239,17 @@ export async function POST(request: Request) {
             </div>
           `,
         });
+        log.info("Confirmation email sent", { orderId });
       } catch (emailError) {
-        console.error("Error sending confirmation email:", emailError);
+        log.error("Error sending confirmation email", {
+          error: emailError instanceof Error ? {
+            name: emailError.name,
+            message: emailError.message,
+            stack: emailError.stack,
+          } : emailError,
+          orderId
+        });
         // Continue with the order process even if email fails
-        // We don't want to fail the order just because the email didn't send
       }
 
       return NextResponse.json({
@@ -204,6 +258,11 @@ export async function POST(request: Request) {
         rental: updatedRental.toObject(),
       });
     } else {
+      log.warn("Payment capture unsuccessful", { 
+        orderId,
+        captureStatus: capture.result.status 
+      });
+      
       // Update rental payment status to failed if capture wasn't successful
       await dbConnect();
       const rental = await Rental.findOneAndUpdate(
@@ -218,28 +277,33 @@ export async function POST(request: Request) {
       );
 
       if (!rental) {
-        console.error("No rental found for PayPal order:", orderId);
-        throw new Error("Rental not found for failed payment");
+        const error = new Error("Rental not found for failed payment");
+        log.error("Failed payment rental lookup failed", {
+          error: {
+            message: error.message,
+            stack: error.stack
+          },
+          orderId
+        });
+        throw error;
       }
+
+      log.info("Rental updated with failed payment status", {
+        rentalId: rental._id,
+        orderId
+      });
 
       throw new Error("Payment capture failed");
     }
   } catch (error) {
-    console.error("Error capturing PayPal payment:", error);
-
-    // Log detailed error information
-    if (error instanceof Error) {
-      console.error("Error details:", {
+    log.error("Error capturing PayPal payment", {
+      error: error instanceof Error ? {
         name: error.name,
         message: error.message,
         stack: error.stack,
-      });
-    }
-
-    // Check if it's a PayPal API error
-    if (error && typeof error === "object" && "details" in error) {
-      console.error("PayPal API error details:", error.details);
-    }
+      } : error,
+      details: error && typeof error === "object" && "details" in error ? error.details : undefined
+    });
 
     let errorMessage = "Failed to capture payment";
     if (error instanceof Error) {
@@ -248,4 +312,8 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ message: errorMessage }, { status: 500 });
   }
-}
+}, {
+  logRequestDetails: ["body", "nextUrl"],
+  notFoundLogLevel: LogLevel.error,
+  redirectLogLevel: LogLevel.info
+});

@@ -2,12 +2,17 @@ import { NextResponse } from "next/server";
 import { initializePayPalSDK } from "@/lib/paypal-server";
 import dbConnect from "@/lib/mongodb";
 import { Rental } from "@/models/rental";
+import { withAxiom, AxiomRequest, LogLevel } from "next-axiom";
 
-export async function POST(request: Request) {
+export const POST = withAxiom(async (request: AxiomRequest) => {
+  const log = request.log.with({ scope: "create-paypal-order" });
+  
   try {
     const { amount, currency, rentalData } = await request.json();
+    log.info("Received PayPal order request", { amount, currency });
 
     if (!amount || !currency) {
+      log.warn("Missing payment details", { amount, currency });
       return NextResponse.json(
         { message: "Missing required payment details" },
         { status: 400 },
@@ -16,6 +21,7 @@ export async function POST(request: Request) {
 
     // Import PayPal SDK dynamically
     const sdk = await import("@paypal/checkout-server-sdk");
+    log.debug("PayPal SDK imported");
 
     const paypalClient = await initializePayPalSDK();
     // @ts-expect-error: TypeScript does not recognize OrdersCreateRequest
@@ -35,11 +41,13 @@ export async function POST(request: Request) {
     });
 
     const order = await paypalClient.execute(request_);
+    log.info("PayPal order created", { orderId: order.result.id });
 
     // If rental data is provided, create a pending rental
     if (rentalData) {
       try {
         await dbConnect();
+        log.debug("Database connection established");
 
         // Create a new rental with pending status
         const rental = new Rental({
@@ -75,20 +83,25 @@ export async function POST(request: Request) {
 
         // Save the rental
         const savedRental = await rental.save();
+        log.info("Rental saved successfully", { 
+          rentalId: savedRental._id,
+          paypalOrderId: order.result.id 
+        });
 
         return NextResponse.json({
           id: order.result.id,
           rentalId: savedRental._id,
         });
       } catch (dbError) {
-        console.error("Error saving rental:", dbError);
-        if (dbError instanceof Error) {
-          console.error("Error details:", {
+        log.error("Database error while saving rental", {
+          error: dbError instanceof Error ? {
             name: dbError.name,
             message: dbError.message,
             stack: dbError.stack,
-          });
-        }
+          } : dbError,
+          paypalOrderId: order.result.id
+        });
+        
         // Even if saving the rental fails, return the PayPal order ID
         // as the payment flow can still continue
         return NextResponse.json({ id: order.result.id });
@@ -98,20 +111,14 @@ export async function POST(request: Request) {
     // If no rental data, just return the PayPal order ID
     return NextResponse.json({ id: order.result.id });
   } catch (error) {
-    console.error("Error creating PayPal order:", error);
-    // Log detailed error information
-    if (error instanceof Error) {
-      console.error("Error details:", {
+    log.error("Error creating PayPal order", {
+      error: error instanceof Error ? {
         name: error.name,
         message: error.message,
         stack: error.stack,
-      });
-    }
-
-    // Check if it's a PayPal API error
-    if (error && typeof error === "object" && "details" in error) {
-      console.error("PayPal API error details:", error.details);
-    }
+      } : error,
+      details: error && typeof error === "object" && "details" in error ? error.details : undefined
+    });
 
     let errorMessage = "Failed to create order";
     if (error instanceof Error) {
@@ -120,4 +127,8 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ message: errorMessage }, { status: 500 });
   }
-}
+}, {
+  logRequestDetails: ["body", "nextUrl"],
+  notFoundLogLevel: LogLevel.error,
+  redirectLogLevel: LogLevel.info
+});

@@ -1,5 +1,7 @@
 "use client";
 
+import { useLogger, LogLevel } from "next-axiom";
+import { usePathname } from "next/navigation";
 import { useEffect } from "react";
 
 export default function Error({
@@ -9,10 +11,27 @@ export default function Error({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const pathname = usePathname();
+  const log = useLogger({ source: "error.tsx" });
+
   useEffect(() => {
-    // Log the error to an error reporting service
-    console.error(error);
-  }, [error]);
+    // Log the error to Axiom
+    log.logHttpRequest(
+      LogLevel.error,
+      error.message,
+      {
+        host: window.location.href,
+        path: pathname,
+        statusCode: error.message === "Invalid URL" ? 404 : 500,
+      },
+      {
+        error: error.name,
+        cause: error.cause,
+        stack: error.stack,
+        digest: error.digest,
+      }
+    );
+  }, [error, log, pathname]);
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center px-4">

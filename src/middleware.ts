@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
+import type { NextRequest, NextFetchEvent } from "next/server";
+import { Logger } from "next-axiom";
 
 // Define permanent redirects
 const PERMANENT_REDIRECTS: Record<string, string> = {
@@ -8,7 +9,9 @@ const PERMANENT_REDIRECTS: Record<string, string> = {
   // "/legacy": "/modern",
 };
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest, event: NextFetchEvent) {
+  const logger = new Logger({ source: "middleware" });
+  await logger.middleware(request, { logRequestDetails: ["body", "nextUrl"] });
   // Check for permanent redirects
   const pathname = request.nextUrl.pathname;
   const redirectTo = PERMANENT_REDIRECTS[pathname];
@@ -82,6 +85,7 @@ export function middleware(request: NextRequest) {
     }
   }
 
+  event.waitUntil(logger.flush());
   return NextResponse.next();
 }
 
