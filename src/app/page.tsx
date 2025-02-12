@@ -44,9 +44,6 @@ export const metadata: Metadata = {
   title: "SATX Ritas Rentals | Frozen Drink Machine Rentals in San Antonio",
   description:
     "Premium frozen drink machine rentals in San Antonio, TX. Perfect for parties, weddings, and events. Serving margaritas, daiquiris, and more with professional setup and service.",
-  alternates: {
-    canonical: "https://satxritas.com",
-  },
   other: {
     "script:ld+json": JSON.stringify(jsonLd),
   },
