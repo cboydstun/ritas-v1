@@ -13,7 +13,7 @@ export const metadata: Metadata = {
   metadataBase: new URL(
     process.env.NODE_ENV === "production"
       ? "https://satxritas.com"
-      : "http://localhost:3000",
+      : "http://localhost:3000"
   ),
   title: "Ritas Rentals",
   description:
@@ -69,6 +69,7 @@ export const metadata: Metadata = {
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import ThemeWrapper from "@/components/ThemeWrapper";
+import GoogleAnalytics from "@/components/GoogleAnalytics";
 
 export default function RootLayout({
   children,
@@ -77,6 +78,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="light">
+      <GoogleAnalytics />
       <body
         className={`${poppins.className} flex flex-col min-h-screen bg-white dark:bg-charcoal dark:text-white`}
       >
