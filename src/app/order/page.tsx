@@ -40,9 +40,6 @@ export const metadata: Metadata = {
   title: "Book Now | SATX Ritas Rentals - Frozen Drink Machine Rentals",
   description:
     "Book your frozen drink machine rental in San Antonio. Easy online booking with flexible scheduling, delivery, and setup included. Perfect for parties and events of any size.",
-  alternates: {
-    canonical: "https://satxritas.com/order",
-  },
   other: {
     "script:ld+json": JSON.stringify(jsonLd),
   },
