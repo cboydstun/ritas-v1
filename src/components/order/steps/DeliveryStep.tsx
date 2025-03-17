@@ -30,7 +30,7 @@ export default function DeliveryStep({
       if (formData.machineType === "single") {
         newMixers = []; // Clear all mixers for single tank
       } else {
-        // For double tank, remove the mixer at the specific tank index
+        // For double or triple tank, remove the mixer at the specific tank index
         newMixers = newMixers.filter((_, index) => index !== tankIndex);
       }
     } else {
@@ -48,11 +48,17 @@ export default function DeliveryStep({
         if (formData.machineType === "single") {
           newMixers = [mixer]; // Replace any existing mixer
         } else {
-          // For double tank, ensure we maintain the correct order
+          // For double or triple tank, ensure we maintain the correct order
           if (tankIndex === 0) {
             newMixers = [mixer, ...newMixers.slice(1)];
+          } else if (tankIndex === 1) {
+            newMixers = [
+              ...newMixers.slice(0, 1),
+              mixer,
+              ...newMixers.slice(2),
+            ];
           } else {
-            newMixers = [...newMixers.slice(0, 1), mixer];
+            newMixers = [...newMixers.slice(0, 2), mixer];
           }
         }
       }
@@ -78,9 +84,17 @@ export default function DeliveryStep({
             src={
               formData.machineType === "single"
                 ? "/vevor-15l-slushy.jpg"
-                : "/vevor-30l-slushy.png"
+                : formData.machineType === "double"
+                  ? "/vevor-30l-slushy.png"
+                  : "/vevor-45l-slushy-2.png"
             }
-            alt={`${formData.capacity}L ${formData.machineType === "single" ? "Single" : "Double"} Tank Machine`}
+            alt={`${formData.capacity}L ${
+              formData.machineType === "single"
+                ? "Single"
+                : formData.machineType === "double"
+                  ? "Double"
+                  : "Triple"
+            } Tank Machine`}
             fill
             className="object-cover rounded-lg"
             priority
@@ -97,11 +111,14 @@ export default function DeliveryStep({
           >
             <option value="single">15L Single Tank Machine</option>
             <option value="double">30L Double Tank Machine</option>
+            <option value="triple">45L Triple Tank Machine</option>
           </select>
           <p className="mt-2 text-sm text-charcoal/70 dark:text-white/70">
             {formData.machineType === "single"
               ? "Perfect for smaller gatherings and parties"
-              : "Ideal for larger events and multiple flavors"}
+              : formData.machineType === "double"
+                ? "Ideal for larger events and multiple flavors"
+                : "The ultimate machine for large events and variety"}
           </p>
         </div>
 
@@ -109,7 +126,9 @@ export default function DeliveryStep({
           <label className={labelClassName}>
             {formData.machineType === "single"
               ? "Select 1 Mixer"
-              : "Select 2 Mixers"}
+              : formData.machineType === "double"
+                ? "Select 2 Mixers"
+                : "Select 3 Mixers"}
           </label>
           <div className="space-y-6 mt-2">
             {formData.machineType === "single" ? (
@@ -161,7 +180,7 @@ export default function DeliveryStep({
                   </div>
                 </div>
               </div>
-            ) : (
+            ) : formData.machineType === "double" ? (
               // Double Tank Selection
               <div className="space-y-8">
                 {/* Tank 1 */}
@@ -257,6 +276,177 @@ export default function DeliveryStep({
                       <div className="ml-3">
                         <label
                           htmlFor="tank2-no-mixer"
+                          className="text-sm font-medium text-charcoal dark:text-white"
+                        >
+                          No Mixer
+                        </label>
+                        <p className="text-xs text-charcoal/70 dark:text-white/70">
+                          Bring your own mixer for complete control over your
+                          drinks
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              // Triple Tank Selection
+              <div className="space-y-8">
+                {/* Tank 1 */}
+                <div>
+                  <h4 className="text-sm font-medium text-charcoal dark:text-white mb-4">
+                    Tank 1:
+                  </h4>
+                  <div className="space-y-4 pl-4">
+                    {mixerTypes.map((type) => (
+                      <div
+                        key={`tank1-triple-${type}`}
+                        className="flex items-start"
+                      >
+                        <input
+                          type="checkbox"
+                          id={`tank1-triple-${type}`}
+                          checked={formData.selectedMixers?.[0] === type}
+                          onChange={() => handleMixerChange(type, 0)}
+                          className="h-4 w-4 text-margarita border-gray-300 rounded focus:ring-margarita"
+                        />
+                        <div className="ml-3">
+                          <label
+                            htmlFor={`tank1-triple-${type}`}
+                            className="text-sm font-medium text-charcoal dark:text-white"
+                          >
+                            {mixerDetails[type].label} (+$
+                            {mixerDetails[type].price.toFixed(2)})
+                          </label>
+                          <p className="text-xs text-charcoal/70 dark:text-white/70">
+                            {mixerDetails[type].description}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                    <div className="flex items-start">
+                      <input
+                        type="checkbox"
+                        id="tank1-triple-no-mixer"
+                        checked={!formData.selectedMixers?.[0]}
+                        onChange={() => handleMixerChange(null, 0)}
+                        className="h-4 w-4 text-margarita border-gray-300 rounded focus:ring-margarita"
+                      />
+                      <div className="ml-3">
+                        <label
+                          htmlFor="tank1-triple-no-mixer"
+                          className="text-sm font-medium text-charcoal dark:text-white"
+                        >
+                          No Mixer
+                        </label>
+                        <p className="text-xs text-charcoal/70 dark:text-white/70">
+                          Bring your own mixer for complete control over your
+                          drinks
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Tank 2 */}
+                <div>
+                  <h4 className="text-sm font-medium text-charcoal dark:text-white mb-4">
+                    Tank 2:
+                  </h4>
+                  <div className="space-y-4 pl-4">
+                    {mixerTypes.map((type) => (
+                      <div
+                        key={`tank2-triple-${type}`}
+                        className="flex items-start"
+                      >
+                        <input
+                          type="checkbox"
+                          id={`tank2-triple-${type}`}
+                          checked={formData.selectedMixers?.[1] === type}
+                          onChange={() => handleMixerChange(type, 1)}
+                          className="h-4 w-4 text-margarita border-gray-300 rounded focus:ring-margarita"
+                        />
+                        <div className="ml-3">
+                          <label
+                            htmlFor={`tank2-triple-${type}`}
+                            className="text-sm font-medium text-charcoal dark:text-white"
+                          >
+                            {mixerDetails[type].label} (+$
+                            {mixerDetails[type].price.toFixed(2)})
+                          </label>
+                          <p className="text-xs text-charcoal/70 dark:text-white/70">
+                            {mixerDetails[type].description}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                    <div className="flex items-start">
+                      <input
+                        type="checkbox"
+                        id="tank2-triple-no-mixer"
+                        checked={!formData.selectedMixers?.[1]}
+                        onChange={() => handleMixerChange(null, 1)}
+                        className="h-4 w-4 text-margarita border-gray-300 rounded focus:ring-margarita"
+                      />
+                      <div className="ml-3">
+                        <label
+                          htmlFor="tank2-triple-no-mixer"
+                          className="text-sm font-medium text-charcoal dark:text-white"
+                        >
+                          No Mixer
+                        </label>
+                        <p className="text-xs text-charcoal/70 dark:text-white/70">
+                          Bring your own mixer for complete control over your
+                          drinks
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Tank 3 */}
+                <div>
+                  <h4 className="text-sm font-medium text-charcoal dark:text-white mb-4">
+                    Tank 3:
+                  </h4>
+                  <div className="space-y-4 pl-4">
+                    {mixerTypes.map((type) => (
+                      <div
+                        key={`tank3-triple-${type}`}
+                        className="flex items-start"
+                      >
+                        <input
+                          type="checkbox"
+                          id={`tank3-triple-${type}`}
+                          checked={formData.selectedMixers?.[2] === type}
+                          onChange={() => handleMixerChange(type, 2)}
+                          className="h-4 w-4 text-margarita border-gray-300 rounded focus:ring-margarita"
+                        />
+                        <div className="ml-3">
+                          <label
+                            htmlFor={`tank3-triple-${type}`}
+                            className="text-sm font-medium text-charcoal dark:text-white"
+                          >
+                            {mixerDetails[type].label} (+$
+                            {mixerDetails[type].price.toFixed(2)})
+                          </label>
+                          <p className="text-xs text-charcoal/70 dark:text-white/70">
+                            {mixerDetails[type].description}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                    <div className="flex items-start">
+                      <input
+                        type="checkbox"
+                        id="tank3-triple-no-mixer"
+                        checked={!formData.selectedMixers?.[2]}
+                        onChange={() => handleMixerChange(null, 2)}
+                        className="h-4 w-4 text-margarita border-gray-300 rounded focus:ring-margarita"
+                      />
+                      <div className="ml-3">
+                        <label
+                          htmlFor="tank3-triple-no-mixer"
                           className="text-sm font-medium text-charcoal dark:text-white"
                         >
                           No Mixer

@@ -32,12 +32,12 @@ const rentalSchema = new mongoose.Schema(
     machineType: {
       type: String,
       required: true,
-      enum: ["single", "double"] as MachineType[],
+      enum: ["single", "double", "triple"] as MachineType[],
     },
     capacity: {
       type: Number,
       required: true,
-      enum: [15, 30],
+      enum: [15, 30, 45],
     },
     selectedMixers: {
       type: [String],
@@ -58,7 +58,11 @@ const rentalSchema = new mongoose.Schema(
               return mixers.length <= 1;
             }
             // Double tank can have 0 to 2 mixers
-            return mixers.length <= 2;
+            if (this.machineType === "double") {
+              return mixers.length <= 2;
+            }
+            // Triple tank can have 0 to 3 mixers
+            return mixers.length <= 3;
           },
           message: "Selected mixers exceed machine capacity",
         },
@@ -136,7 +140,7 @@ export const Rental =
 
 export type RentalDocument = mongoose.Document & {
   machineType: MachineType;
-  capacity: 15 | 30;
+  capacity: 15 | 30 | 45;
   selectedMixers: string[];
   price: number;
   rentalDate: string;

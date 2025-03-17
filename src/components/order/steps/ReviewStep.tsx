@@ -10,14 +10,14 @@ export default function ReviewStep({
 }: StepProps) {
   const priceBreakdown = calculatePrice(
     formData.machineType,
-    formData.selectedMixers[0] as MixerType,
+    formData.selectedMixers[0] as MixerType
   );
 
   const perDayRate = priceBreakdown.basePrice + priceBreakdown.mixerPrice;
   const rentalDays = Math.ceil(
     (new Date(formData.returnDate).getTime() -
       new Date(formData.rentalDate).getTime()) /
-      (1000 * 60 * 60 * 24),
+      (1000 * 60 * 60 * 24)
   );
 
   return (
@@ -32,9 +32,17 @@ export default function ReviewStep({
               src={
                 formData.machineType === "single"
                   ? "/vevor-15l-slushy-2.jpg"
-                  : "/vevor-30l-slushy-2.png"
+                  : formData.machineType === "double"
+                    ? "/vevor-30l-slushy-2.png"
+                    : "/vevor-45l-slushy-1.webp" // Use double tank image for triple until we have a proper image
               }
-              alt={`${formData.capacity}L ${formData.machineType === "single" ? "Single" : "Double"} Tank Machine`}
+              alt={`${formData.capacity}L ${
+                formData.machineType === "single"
+                  ? "Single"
+                  : formData.machineType === "double"
+                    ? "Double"
+                    : "Triple"
+              } Tank Machine`}
               fill
               className="object-cover rounded-lg"
               priority
@@ -45,8 +53,12 @@ export default function ReviewStep({
           </h3>
           <p className="text-charcoal/70 dark:text-white/70">
             {formData.capacity}L{" "}
-            {formData.machineType === "single" ? "Single" : "Double"} Tank
-            Machine
+            {formData.machineType === "single"
+              ? "Single"
+              : formData.machineType === "double"
+                ? "Double"
+                : "Triple"}{" "}
+            Tank Machine
           </p>
           <div className="text-charcoal/70 dark:text-white/70">
             <p className="mb-2">Selected Mixers:</p>
@@ -64,7 +76,7 @@ export default function ReviewStep({
                   </li>
                 )}
               </ul>
-            ) : (
+            ) : formData.machineType === "double" ? (
               // Double Tank Display
               <div className="space-y-2">
                 <div>
@@ -86,6 +98,49 @@ export default function ReviewStep({
                     <p className="ml-4">
                       {
                         mixerDetails[formData.selectedMixers[1] as MixerType]
+                          .label
+                      }
+                    </p>
+                  ) : (
+                    <p className="ml-4">No mixer - Bring your own</p>
+                  )}
+                </div>
+              </div>
+            ) : (
+              // Triple Tank Display
+              <div className="space-y-2">
+                <div>
+                  <p className="font-medium">Tank 1:</p>
+                  {formData.selectedMixers[0] ? (
+                    <p className="ml-4">
+                      {
+                        mixerDetails[formData.selectedMixers[0] as MixerType]
+                          .label
+                      }
+                    </p>
+                  ) : (
+                    <p className="ml-4">No mixer - Bring your own</p>
+                  )}
+                </div>
+                <div>
+                  <p className="font-medium">Tank 2:</p>
+                  {formData.selectedMixers[1] ? (
+                    <p className="ml-4">
+                      {
+                        mixerDetails[formData.selectedMixers[1] as MixerType]
+                          .label
+                      }
+                    </p>
+                  ) : (
+                    <p className="ml-4">No mixer - Bring your own</p>
+                  )}
+                </div>
+                <div>
+                  <p className="font-medium">Tank 3:</p>
+                  {formData.selectedMixers[2] ? (
+                    <p className="ml-4">
+                      {
+                        mixerDetails[formData.selectedMixers[2] as MixerType]
                           .label
                       }
                     </p>

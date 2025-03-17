@@ -3,8 +3,8 @@ import { MixerType } from "@/lib/rental-data";
 export type OrderStep = "delivery" | "details" | "review" | "payment";
 
 export interface OrderFormData {
-  machineType: "single" | "double";
-  capacity: 15 | 30;
+  machineType: "single" | "double" | "triple";
+  capacity: 15 | 30 | 45;
   selectedMixers: MixerType[];
   price: number;
   rentalDate: string;

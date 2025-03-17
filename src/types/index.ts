@@ -1,4 +1,4 @@
-export type MachineType = "single" | "double";
+export type MachineType = "single" | "double" | "triple";
 export type MixerType =
   | "non-alcoholic"
   | "margarita"
@@ -36,7 +36,7 @@ export interface Payment {
 export interface MargaritaRental {
   _id?: string; // MongoDB document ID
   machineType: MachineType;
-  capacity: 15 | 30;
+  capacity: 15 | 30 | 45;
   selectedMixers: MixerType[];
   price: number;
   rentalDate: string;

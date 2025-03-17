@@ -27,7 +27,7 @@ const DeliveryStep = dynamic<StepProps>(
   {
     loading: () => <StepSkeleton />,
     ssr: false,
-  },
+  }
 );
 
 const DetailsStep = dynamic<StepProps>(
@@ -35,7 +35,7 @@ const DetailsStep = dynamic<StepProps>(
   {
     loading: () => <StepSkeleton />,
     ssr: false,
-  },
+  }
 );
 
 const ReviewStep = dynamic<StepProps>(
@@ -43,7 +43,7 @@ const ReviewStep = dynamic<StepProps>(
   {
     loading: () => <StepSkeleton />,
     ssr: false,
-  },
+  }
 );
 
 const PaymentStep = dynamic<StepProps>(
@@ -51,7 +51,7 @@ const PaymentStep = dynamic<StepProps>(
   {
     loading: () => <StepSkeleton />,
     ssr: false,
-  },
+  }
 );
 
 // Loading skeleton for step components
@@ -73,7 +73,7 @@ export default function OrderForm() {
 
   // Get initial machine type and mixer from URL once
   const initialMachineType =
-    (searchParams.get("machine") as "single" | "double") || "single";
+    (searchParams.get("machine") as "single" | "double" | "triple") || "single";
   const initialMixer = searchParams.get("mixer");
   const initialSelectedMixers = initialMixer ? [initialMixer as MixerType] : [];
 
@@ -104,7 +104,7 @@ export default function OrderForm() {
   const handleInputChange = (
     e: React.ChangeEvent<
       HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-    >,
+    >
   ) => {
     const { name, value } = e.target;
 
@@ -156,21 +156,29 @@ export default function OrderForm() {
       if (name === "machineType" || name === "selectedMixers") {
         const newPrice = calculatePrice(
           name === "machineType"
-            ? (value as "single" | "double")
+            ? (value as "single" | "double" | "triple")
             : prev.machineType,
           name === "selectedMixers"
             ? (value as unknown as MixerType[])[0]
-            : prev.selectedMixers[0],
+            : prev.selectedMixers[0]
         ).total;
+
+        // Update capacity based on machine type
+        let newCapacity = prev.capacity;
+        if (name === "machineType") {
+          if (value === "single") {
+            newCapacity = 15;
+          } else if (value === "double") {
+            newCapacity = 30;
+          } else if (value === "triple") {
+            newCapacity = 45;
+          }
+        }
+
         return {
           ...newData,
           price: newPrice,
-          capacity:
-            name === "machineType"
-              ? value === "single"
-                ? 15
-                : 30
-              : prev.capacity,
+          capacity: newCapacity,
         };
       }
 

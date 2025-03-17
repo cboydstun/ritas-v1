@@ -12,6 +12,9 @@ A modern web application built with Next.js and TypeScript for managing frozen d
 - 📄 Informative content pages (About, FAQ, Pricing, Contact)
 - 🌙 Dark/light theme toggle
 - 📝 Contact form for inquiries
+- 📊 Google Analytics integration
+- 📧 Email notifications for order confirmations
+- 🍹 Multiple machine options (15L, 30L, and 45L capacities)
 
 ## Tech Stack
 
@@ -21,6 +24,8 @@ A modern web application built with Next.js and TypeScript for managing frozen d
 - [MongoDB](https://www.mongodb.com/) - NoSQL database
 - [PayPal API](https://developer.paypal.com/) - Secure payment processing
 - [Twilio](https://www.twilio.com/) - SMS notifications
+- [Nodemailer](https://nodemailer.com/) - Email notifications
+- [Google Analytics](https://analytics.google.com/) - Website analytics
 
 ## Getting Started
 
@@ -50,6 +55,10 @@ A modern web application built with Next.js and TypeScript for managing frozen d
    TWILIO_AUTH_TOKEN=your_twilio_auth_token
    TWILIO_PHONE_NUMBER=your_twilio_phone_number
    USER_PHONE_NUMBER=your_notification_phone_number
+
+   # Nodemailer Configuration (for email notifications)
+   NODEMAILER_USERNAME=your_gmail_address
+   NODEMAILER_PASSWORD=your_gmail_app_password
 
    # Admin Panel Credentials
    ADMIN_USERNAME=admin
@@ -101,9 +110,10 @@ src/
 
 ## API Routes
 
-- `/api/create-paypal-order` - Initializes a new PayPal order with rental details
-- `/api/capture-paypal-order` - Captures and processes approved PayPal payments
-- `/api/admin/orders` - Admin endpoints for order management
+- `/api/create-paypal-order` - Initializes a new PayPal order with rental details and creates a pending rental in the database
+- `/api/capture-paypal-order` - Captures and processes approved PayPal payments, updates rental status to confirmed, sends SMS notifications via Twilio, and sends confirmation emails via Nodemailer
+- `/api/admin/orders` - Admin endpoints for retrieving all orders and creating new orders
+- `/api/admin/orders/[id]` - Admin endpoints for retrieving, updating, and deleting specific orders by ID
 
 ## Key Components
 
@@ -117,6 +127,7 @@ src/
 - `ThemeWrapper` - Theme context provider for consistent styling
 - `OrdersTable` - Admin dashboard for managing rental orders
 - `EditOrderModal` - Modal for editing order details in admin panel
+- `GoogleAnalytics` - Component for integrating Google Analytics tracking
 
 ## Deployment
 
