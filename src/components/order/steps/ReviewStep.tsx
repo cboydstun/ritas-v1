@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { StepProps } from "../types";
+import { StepProps, ExtraItem } from "../types";
 import { mixerDetails, MixerType } from "@/lib/rental-data";
 import { calculatePrice, formatPrice } from "@/lib/pricing";
 
@@ -14,11 +14,28 @@ export default function ReviewStep({
   );
 
   const perDayRate = priceBreakdown.basePrice + priceBreakdown.mixerPrice;
+
   const rentalDays = Math.ceil(
     (new Date(formData.returnDate).getTime() -
       new Date(formData.rentalDate).getTime()) /
       (1000 * 60 * 60 * 24)
   );
+
+  // Calculate extras total (per day × number of days)
+  const extrasTotal = formData.selectedExtras.reduce(
+    (sum, item) => sum + item.price * (item.quantity || 1) * rentalDays,
+    0
+  );
+
+  // Recalculate subtotal including extras
+  const subtotal = perDayRate + priceBreakdown.deliveryFee + extrasTotal;
+
+  // Recalculate tax and processing fee based on the new subtotal
+  const salesTax = subtotal * 0.0825; // 8.25% tax rate
+  const processingFee = subtotal * 0.03; // 3% processing fee
+
+  // Calculate the final total including extras
+  const finalTotal = subtotal + salesTax + processingFee;
 
   return (
     <div className="space-y-6">
@@ -156,6 +173,43 @@ export default function ReviewStep({
           </p>
         </div>
 
+        {formData.selectedExtras.length > 0 && (
+          <div className="bg-white/80 dark:bg-charcoal/30 rounded-xl mt-4">
+            <h3 className="font-semibold text-lg text-charcoal dark:text-white mb-4">
+              Selected Extras
+            </h3>
+            <div className="space-y-2">
+              {formData.selectedExtras.map((extra) => (
+                <div key={extra.id} className="flex justify-between">
+                  <p className="text-charcoal/70 dark:text-white/70">
+                    {extra.name}{" "}
+                    {extra.quantity && extra.quantity > 1
+                      ? `(${extra.quantity}x)`
+                      : ""}
+                  </p>
+                  <p className="text-charcoal/70 dark:text-white/70">
+                    ${formatPrice(extra.price * (extra.quantity || 1))}/day ×{" "}
+                    {rentalDays} day{rentalDays > 1 ? "s" : ""} = $
+                    {formatPrice(
+                      extra.price * (extra.quantity || 1) * rentalDays
+                    )}
+                  </p>
+                </div>
+              ))}
+            </div>
+            <p className="text-lg font-semibold text-orange mt-4">
+              Extras Total: $
+              {formatPrice(
+                formData.selectedExtras.reduce(
+                  (sum, item) =>
+                    sum + item.price * (item.quantity || 1) * rentalDays,
+                  0
+                )
+              )}
+            </p>
+          </div>
+        )}
+
         <div className="bg-white/80 dark:bg-charcoal/30 rounded-xl">
           <h3 className="font-semibold text-lg text-charcoal dark:text-white mb-4">
             Rental Details
@@ -201,20 +255,49 @@ export default function ReviewStep({
             Rate: ${formatPrice(perDayRate)}/day × {rentalDays} day
             {rentalDays > 1 ? "s" : ""}
           </p>
+          {formData.selectedExtras.length > 0 && (
+            <p className=" text-charcoal/70 dark:text-white/70">
+              Extras: $
+              {formatPrice(
+                formData.selectedExtras.reduce(
+                  (sum, item) =>
+                    sum + item.price * (item.quantity || 1) * rentalDays,
+                  0
+                )
+              )}{" "}
+              ($
+              {formatPrice(
+                formData.selectedExtras.reduce(
+                  (sum, item) => sum + item.price * (item.quantity || 1),
+                  0
+                )
+              )}
+              /day × {rentalDays} day{rentalDays > 1 ? "s" : ""})
+            </p>
+          )}
           <p className=" text-charcoal/70 dark:text-white/70">
             Delivery Fee: ${formatPrice(priceBreakdown.deliveryFee)}
           </p>
           <p className=" text-charcoal/70 dark:text-white/70">
-            Subtotal: ${formatPrice(perDayRate + priceBreakdown.deliveryFee)}
+            Subtotal: $
+            {formatPrice(
+              perDayRate * rentalDays +
+                priceBreakdown.deliveryFee +
+                formData.selectedExtras.reduce(
+                  (sum, item) =>
+                    sum + item.price * (item.quantity || 1) * rentalDays,
+                  0
+                )
+            )}
           </p>
           <p className=" text-charcoal/70 dark:text-white/70">
-            Sales Tax (8.25%): ${formatPrice(priceBreakdown.salesTax)}
+            Sales Tax (8.25%): ${formatPrice(salesTax)}
           </p>
           <p className=" text-charcoal/70 dark:text-white/70">
-            Processing Fee (3%): ${formatPrice(priceBreakdown.processingFee)}
+            Processing Fee (3%): ${formatPrice(processingFee)}
           </p>
           <p className="text-xl font-bold text-orange mb-4">
-            Total Amount: ${formatPrice(priceBreakdown.total)}
+            Total Amount: ${formatPrice(finalTotal)}
           </p>
           <div className="flex items-center space-x-2 mt-4">
             <input

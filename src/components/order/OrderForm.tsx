@@ -38,6 +38,14 @@ const DetailsStep = dynamic<StepProps>(
   }
 );
 
+const ExtrasStep = dynamic<StepProps>(
+  () => import("./steps/ExtrasStep").then((mod) => mod.default),
+  {
+    loading: () => <StepSkeleton />,
+    ssr: false,
+  }
+);
+
 const ReviewStep = dynamic<StepProps>(
   () => import("./steps/ReviewStep").then((mod) => mod.default),
   {
@@ -82,6 +90,7 @@ export default function OrderForm() {
     machineType: initialMachineType,
     capacity: initialMachineType === "double" ? 30 : 15,
     selectedMixers: initialSelectedMixers,
+    selectedExtras: [],
     price: calculatePrice(initialMachineType, initialSelectedMixers[0]).total,
     rentalDate: "",
     rentalTime: "10:00",
@@ -100,6 +109,19 @@ export default function OrderForm() {
     },
     notes: "",
   });
+
+  // Calculate rental days based on rental and return dates
+  const calculateRentalDays = (
+    rentalDate: string,
+    returnDate: string
+  ): number => {
+    if (!rentalDate || !returnDate) return 1;
+
+    return Math.ceil(
+      (new Date(returnDate).getTime() - new Date(rentalDate).getTime()) /
+        (1000 * 60 * 60 * 24)
+    );
+  };
 
   const handleInputChange = (
     e: React.ChangeEvent<
@@ -304,6 +326,14 @@ export default function OrderForm() {
 
           {step === "details" && (
             <DetailsStep
+              formData={formData}
+              onInputChange={handleInputChange}
+              error={error}
+            />
+          )}
+
+          {step === "extras" && (
+            <ExtrasStep
               formData={formData}
               onInputChange={handleInputChange}
               error={error}

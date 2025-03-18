@@ -7,7 +7,7 @@ A modern web application built with Next.js and TypeScript for managing frozen d
 - 🎨 Modern, responsive design with dark/light theme support
 - 💳 Secure PayPal payment integration
 - 🗺️ Interactive map showing service area
-- 📱 Multi-step rental booking process
+- 📱 Multi-step rental booking process with Party Extras options
 - 🔒 MongoDB database for order management
 - 📄 Informative content pages (About, FAQ, Pricing, Contact)
 - 🌙 Dark/light theme toggle
@@ -97,8 +97,8 @@ src/
 │   │   ├── MapSection    # Service area map
 │   │   └── SocialProof   # Customer testimonials
 │   └── order/             # Order flow components
-│       ├── steps/         # Multi-step form components
-│       └── types.ts       # Order type definitions
+│       ├── steps/         # Multi-step form components including ExtrasStep
+│       └── types.ts       # Order type definitions and extras configuration
 ├── config/                # Configuration files
 ├── lib/                   # Utility functions
 │   ├── mongodb.ts         # MongoDB connection
@@ -118,6 +118,9 @@ src/
 ## Key Components
 
 - `OrderForm` - Multi-step rental booking process with validation
+- `ExtrasStep` - Party extras selection with quantity controls for table & chairs
+- `ReviewStep` - Comprehensive order summary with detailed pricing breakdown
+- `PaymentStep` - Secure payment processing with accurate pricing calculations
 - `PayPalCheckout` - Secure PayPal payment integration
 - `ThemeToggle` - Dark/light theme switcher with system preference detection
 - `MapSection` - Interactive service area map with delivery zone highlighting

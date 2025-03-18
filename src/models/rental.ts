@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import { MachineType, PaymentStatus, RentalStatus } from "@/types";
+import { ExtraItem } from "@/components/order/types";
 
 const addressSchema = new mongoose.Schema({
   street: { type: String, required: true },
@@ -25,6 +26,16 @@ const paymentSchema = new mongoose.Schema({
     default: "pending",
   },
   date: { type: Date, required: true },
+});
+
+const extraItemSchema = new mongoose.Schema({
+  id: { type: String, required: true },
+  name: { type: String, required: true },
+  description: { type: String, required: true },
+  price: { type: Number, required: true },
+  image: { type: String, required: true },
+  allowQuantity: { type: Boolean, default: false },
+  quantity: { type: Number, default: 1 },
 });
 
 const rentalSchema = new mongoose.Schema(
@@ -92,6 +103,10 @@ const rentalSchema = new mongoose.Schema(
       type: customerSchema,
       required: true,
     },
+    selectedExtras: {
+      type: [extraItemSchema],
+      default: [],
+    },
     notes: {
       type: String,
       default: "",
@@ -142,6 +157,7 @@ export type RentalDocument = mongoose.Document & {
   machineType: MachineType;
   capacity: 15 | 30 | 45;
   selectedMixers: string[];
+  selectedExtras: ExtraItem[];
   price: number;
   rentalDate: string;
   rentalTime: string;
