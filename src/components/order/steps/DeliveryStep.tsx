@@ -1,7 +1,15 @@
 import Image from "next/image";
-import { ChangeEvent } from "react";
+import { ChangeEvent, useState, useEffect } from "react";
 import { StepProps, inputClassName, labelClassName } from "../types";
 import { mixerDetails, MixerType } from "@/lib/rental-data";
+
+// Define the sub-steps for the delivery step
+enum DeliverySubStep {
+  MachineType = 0,
+  Mixer = 1,
+  DeliveryDate = 2,
+  NextButton = 3,
+}
 
 const mixerTypes: MixerType[] = [
   "non-alcoholic",
@@ -10,11 +18,22 @@ const mixerTypes: MixerType[] = [
   "strawberry-daiquiri",
 ];
 
+// CSS classes for active step highlighting
+const activeStepClass =
+  "border-2 border-margarita animate-pulse bg-margarita/10 shadow-lg shadow-margarita/20";
+const completedStepClass = "border-2 border-margarita/50";
+const normalStepClass = "border-2 border-transparent";
+
 export default function DeliveryStep({
   formData,
   onInputChange,
   error,
 }: StepProps) {
+  // Track the current sub-step
+  const [currentSubStep, setCurrentSubStep] = useState<DeliverySubStep>(
+    DeliverySubStep.MachineType
+  );
+
   // Helper function to create a properly typed synthetic event
   const createSyntheticEvent = (name: string, value: string | string[]) => {
     return {
@@ -65,6 +84,11 @@ export default function DeliveryStep({
     }
 
     onInputChange(createSyntheticEvent("selectedMixers", newMixers));
+
+    // Progress to the next step if we're on the mixer step
+    if (currentSubStep === DeliverySubStep.Mixer) {
+      setCurrentSubStep(DeliverySubStep.DeliveryDate);
+    }
   };
 
   return (
@@ -76,10 +100,31 @@ export default function DeliveryStep({
         <p className="text-charcoal/70 dark:text-white/70">
           Choose your perfect frozen drink machine setup
         </p>
+        <div className="flex justify-center space-x-2 mt-4">
+          <div
+            className={`w-3 h-3 rounded-full ${currentSubStep >= DeliverySubStep.MachineType ? "bg-margarita" : "bg-gray-300"}`}
+          ></div>
+          <div
+            className={`w-3 h-3 rounded-full ${currentSubStep >= DeliverySubStep.Mixer ? "bg-margarita" : "bg-gray-300"}`}
+          ></div>
+          <div
+            className={`w-3 h-3 rounded-full ${currentSubStep >= DeliverySubStep.DeliveryDate ? "bg-margarita" : "bg-gray-300"}`}
+          ></div>
+          <div
+            className={`w-3 h-3 rounded-full ${currentSubStep >= DeliverySubStep.NextButton ? "bg-margarita" : "bg-gray-300"}`}
+          ></div>
+        </div>
       </div>
 
       <div className="space-y-6">
-        <div className="relative w-full aspect-square mb-4">
+        {/* Machine Type Section */}
+        <div
+          className={`relative w-full aspect-square mb-4 rounded-lg overflow-hidden transition-all duration-300 ${
+            currentSubStep === DeliverySubStep.MachineType
+              ? activeStepClass
+              : normalStepClass
+          }`}
+        >
           <Image
             src={
               formData.machineType === "single"
@@ -101,13 +146,23 @@ export default function DeliveryStep({
           />
         </div>
 
-        <div>
+        <div
+          className={`p-4 rounded-lg transition-all duration-300 ${
+            currentSubStep === DeliverySubStep.MachineType
+              ? activeStepClass
+              : normalStepClass
+          }`}
+        >
           <label className={labelClassName}>Machine Type</label>
           <select
             name="machineType"
             value={formData.machineType}
-            onChange={onInputChange}
-            className={`${inputClassName} border-2 border-margarita focus:border-margarita`}
+            onChange={(e) => {
+              onInputChange(e);
+              // Move to the next step when machine type is selected
+              setCurrentSubStep(DeliverySubStep.Mixer);
+            }}
+            className={`${inputClassName} focus:border-margarita focus:ring-2 focus:ring-margarita/50`}
           >
             <option value="single">15L Single Tank Machine</option>
             <option value="double">30L Double Tank Machine</option>
@@ -122,7 +177,14 @@ export default function DeliveryStep({
           </p>
         </div>
 
-        <div>
+        {/* Mixer Selection Section */}
+        <div
+          className={`p-4 rounded-lg mt-6 transition-all duration-300 ${
+            currentSubStep === DeliverySubStep.Mixer
+              ? activeStepClass
+              : normalStepClass
+          }`}
+        >
           <label className={labelClassName}>
             {formData.machineType === "single"
               ? "Select 1 Mixer"
@@ -162,9 +224,13 @@ export default function DeliveryStep({
                     type="checkbox"
                     id="single-no-mixer"
                     checked={formData.selectedMixers?.length === 0}
-                    onChange={() =>
-                      onInputChange(createSyntheticEvent("selectedMixers", []))
-                    }
+                    onChange={() => {
+                      onInputChange(createSyntheticEvent("selectedMixers", []));
+                      // Progress to the next step
+                      if (currentSubStep === DeliverySubStep.Mixer) {
+                        setCurrentSubStep(DeliverySubStep.DeliveryDate);
+                      }
+                    }}
                     className="h-4 w-4 text-margarita border-gray-300 rounded focus:ring-margarita"
                   />
                   <div className="ml-3">
@@ -464,15 +530,26 @@ export default function DeliveryStep({
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Delivery Date Section */}
+        <div
+          className={`grid grid-cols-1 md:grid-cols-2 gap-4 p-4 rounded-lg mt-6 transition-all duration-300 ${
+            currentSubStep === DeliverySubStep.DeliveryDate
+              ? activeStepClass
+              : normalStepClass
+          }`}
+        >
           <div>
             <label className={labelClassName}>Delivery Date</label>
             <input
               type="date"
               name="rentalDate"
               value={formData.rentalDate}
-              onChange={onInputChange}
-              className={`${inputClassName} ${!formData.rentalDate ? "border-2 border-margarita focus:border-margarita focus:ring-2" : ""}`}
+              onChange={(e) => {
+                onInputChange(e);
+                // Move to the next step when delivery date is selected
+                setCurrentSubStep(DeliverySubStep.NextButton);
+              }}
+              className={`${inputClassName} focus:border-margarita focus:ring-2 focus:ring-margarita/50`}
               min={new Date().toISOString().split("T")[0]}
             />
           </div>
