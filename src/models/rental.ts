@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import { MachineType, PaymentStatus, RentalStatus } from "@/types";
+import { ExtraItem } from "@/components/order/types";
 
 const addressSchema = new mongoose.Schema({
   street: { type: String, required: true },
@@ -27,17 +28,27 @@ const paymentSchema = new mongoose.Schema({
   date: { type: Date, required: true },
 });
 
+const extraItemSchema = new mongoose.Schema({
+  id: { type: String, required: true },
+  name: { type: String, required: true },
+  description: { type: String, required: true },
+  price: { type: Number, required: true },
+  image: { type: String, required: true },
+  allowQuantity: { type: Boolean, default: false },
+  quantity: { type: Number, default: 1 },
+});
+
 const rentalSchema = new mongoose.Schema(
   {
     machineType: {
       type: String,
       required: true,
-      enum: ["single", "double"] as MachineType[],
+      enum: ["single", "double", "triple"] as MachineType[],
     },
     capacity: {
       type: Number,
       required: true,
-      enum: [15, 30],
+      enum: [15, 30, 45],
     },
     selectedMixers: {
       type: [String],
@@ -58,7 +69,11 @@ const rentalSchema = new mongoose.Schema(
               return mixers.length <= 1;
             }
             // Double tank can have 0 to 2 mixers
-            return mixers.length <= 2;
+            if (this.machineType === "double") {
+              return mixers.length <= 2;
+            }
+            // Triple tank can have 0 to 3 mixers
+            return mixers.length <= 3;
           },
           message: "Selected mixers exceed machine capacity",
         },
@@ -87,6 +102,10 @@ const rentalSchema = new mongoose.Schema(
     customer: {
       type: customerSchema,
       required: true,
+    },
+    selectedExtras: {
+      type: [extraItemSchema],
+      default: [],
     },
     notes: {
       type: String,
@@ -136,8 +155,9 @@ export const Rental =
 
 export type RentalDocument = mongoose.Document & {
   machineType: MachineType;
-  capacity: 15 | 30;
+  capacity: 15 | 30 | 45;
   selectedMixers: string[];
+  selectedExtras: ExtraItem[];
   price: number;
   rentalDate: string;
   rentalTime: string;

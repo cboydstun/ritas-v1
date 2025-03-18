@@ -46,6 +46,7 @@ export async function POST(request: Request) {
           machineType: rentalData.machineType,
           capacity: rentalData.capacity,
           selectedMixers: rentalData.selectedMixers,
+          selectedExtras: rentalData.selectedExtras || [],
           price: rentalData.price,
           rentalDate: rentalData.rentalDate,
           rentalTime: rentalData.rentalTime,

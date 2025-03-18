@@ -27,7 +27,7 @@ const DeliveryStep = dynamic<StepProps>(
   {
     loading: () => <StepSkeleton />,
     ssr: false,
-  },
+  }
 );
 
 const DetailsStep = dynamic<StepProps>(
@@ -35,7 +35,15 @@ const DetailsStep = dynamic<StepProps>(
   {
     loading: () => <StepSkeleton />,
     ssr: false,
-  },
+  }
+);
+
+const ExtrasStep = dynamic<StepProps>(
+  () => import("./steps/ExtrasStep").then((mod) => mod.default),
+  {
+    loading: () => <StepSkeleton />,
+    ssr: false,
+  }
 );
 
 const ReviewStep = dynamic<StepProps>(
@@ -43,7 +51,7 @@ const ReviewStep = dynamic<StepProps>(
   {
     loading: () => <StepSkeleton />,
     ssr: false,
-  },
+  }
 );
 
 const PaymentStep = dynamic<StepProps>(
@@ -51,7 +59,7 @@ const PaymentStep = dynamic<StepProps>(
   {
     loading: () => <StepSkeleton />,
     ssr: false,
-  },
+  }
 );
 
 // Loading skeleton for step components
@@ -73,7 +81,7 @@ export default function OrderForm() {
 
   // Get initial machine type and mixer from URL once
   const initialMachineType =
-    (searchParams.get("machine") as "single" | "double") || "single";
+    (searchParams.get("machine") as "single" | "double" | "triple") || "single";
   const initialMixer = searchParams.get("mixer");
   const initialSelectedMixers = initialMixer ? [initialMixer as MixerType] : [];
 
@@ -82,6 +90,7 @@ export default function OrderForm() {
     machineType: initialMachineType,
     capacity: initialMachineType === "double" ? 30 : 15,
     selectedMixers: initialSelectedMixers,
+    selectedExtras: [],
     price: calculatePrice(initialMachineType, initialSelectedMixers[0]).total,
     rentalDate: "",
     rentalTime: "10:00",
@@ -101,20 +110,39 @@ export default function OrderForm() {
     notes: "",
   });
 
+  // Helper function to calculate rental days - used in handleInputChange
+  const calculateRentalDays = (
+    rentalDate: string,
+    returnDate: string
+  ): number => {
+    if (!rentalDate || !returnDate) return 1;
+
+    return Math.ceil(
+      (new Date(returnDate).getTime() - new Date(rentalDate).getTime()) /
+        (1000 * 60 * 60 * 24)
+    );
+  };
+
   const handleInputChange = (
     e: React.ChangeEvent<
       HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-    >,
+    >
   ) => {
     const { name, value } = e.target;
 
     // Update returnDate when rentalDate changes
     if (name === "rentalDate") {
       const nextDay = getNextDay(new Date(value));
+      const nextDayString = nextDay.toISOString().split("T")[0];
+
+      // Use calculateRentalDays to get the rental duration
+      const days = calculateRentalDays(value, nextDayString);
+      console.log(`Rental duration: ${days} day(s)`);
+
       setFormData((prev: OrderFormData) => ({
         ...prev,
         rentalDate: value,
-        returnDate: nextDay.toISOString().split("T")[0],
+        returnDate: nextDayString,
       }));
       return;
     }
@@ -156,21 +184,29 @@ export default function OrderForm() {
       if (name === "machineType" || name === "selectedMixers") {
         const newPrice = calculatePrice(
           name === "machineType"
-            ? (value as "single" | "double")
+            ? (value as "single" | "double" | "triple")
             : prev.machineType,
           name === "selectedMixers"
             ? (value as unknown as MixerType[])[0]
-            : prev.selectedMixers[0],
+            : prev.selectedMixers[0]
         ).total;
+
+        // Update capacity based on machine type
+        let newCapacity = prev.capacity;
+        if (name === "machineType") {
+          if (value === "single") {
+            newCapacity = 15;
+          } else if (value === "double") {
+            newCapacity = 30;
+          } else if (value === "triple") {
+            newCapacity = 45;
+          }
+        }
+
         return {
           ...newData,
           price: newPrice,
-          capacity:
-            name === "machineType"
-              ? value === "single"
-                ? 15
-                : 30
-              : prev.capacity,
+          capacity: newCapacity,
         };
       }
 
@@ -296,6 +332,14 @@ export default function OrderForm() {
 
           {step === "details" && (
             <DetailsStep
+              formData={formData}
+              onInputChange={handleInputChange}
+              error={error}
+            />
+          )}
+
+          {step === "extras" && (
+            <ExtrasStep
               formData={formData}
               onInputChange={handleInputChange}
               error={error}

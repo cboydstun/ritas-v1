@@ -11,8 +11,8 @@ export interface MixerDetails {
 }
 
 export interface MachinePackage {
-  type: "single" | "double";
-  capacity: 15 | 30;
+  type: "single" | "double" | "triple";
+  capacity: 15 | 30 | 45;
   name: string;
   description: string;
   basePrice: number;
@@ -77,4 +77,21 @@ export const machinePackages: MachinePackage[] = [
       "Temperature Control",
     ],
   },
+  {
+    type: "triple",
+    capacity: 45,
+    name: "45L Triple Tank Machine",
+    description: "The ultimate machine for large events and variety",
+    basePrice: 174.95,
+    maxMixers: 3,
+    features: [
+      "45L Total Capacity",
+      "Triple Tank System",
+      "Three Different Flavors",
+      "Professional Setup & Training",
+      "Cleaning Included",
+      "24/7 Support",
+      "Temperature Control",
+    ],
+  }
 ];

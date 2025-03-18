@@ -1,4 +1,4 @@
-export type MachineType = "single" | "double";
+export type MachineType = "single" | "double" | "triple";
 export type MixerType =
   | "non-alcoholic"
   | "margarita"
@@ -33,11 +33,15 @@ export interface Payment {
   date: Date;
 }
 
+// Import the ExtraItem interface from the order types
+import { ExtraItem } from "@/components/order/types";
+
 export interface MargaritaRental {
   _id?: string; // MongoDB document ID
   machineType: MachineType;
-  capacity: 15 | 30;
+  capacity: 15 | 30 | 45;
   selectedMixers: MixerType[];
+  selectedExtras?: ExtraItem[]; // Array of extra items with optional quantity
   price: number;
   rentalDate: string;
   rentalTime: string;

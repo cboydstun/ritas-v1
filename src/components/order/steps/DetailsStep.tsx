@@ -44,7 +44,12 @@ export default function DetailsStep({
         </h2>
         <p className="text-charcoal/70 dark:text-white/70">
           Tell us where to deliver your {formData.capacity}L{" "}
-          {formData.machineType === "single" ? "Single" : "Double"} Tank Machine
+          {formData.machineType === "single"
+            ? "Single"
+            : formData.machineType === "double"
+              ? "Double"
+              : "Triple"}{" "}
+          Tank Machine
         </p>
       </div>
 

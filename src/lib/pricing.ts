@@ -14,7 +14,7 @@ interface PriceBreakdown {
 }
 
 export function calculatePrice(
-  machineType: "single" | "double",
+  machineType: "single" | "double" | "triple",
   mixerType?: MixerType,
 ): PriceBreakdown {
   const machine = machinePackages.find((pkg) => pkg.type === machineType);
@@ -22,8 +22,15 @@ export function calculatePrice(
     throw new Error(`Invalid machine type: ${machineType}`);
   }
 
+  let mixerMultiplier = 1; // Default for single tank
+  if (machineType === "double") {
+    mixerMultiplier = 2;
+  } else if (machineType === "triple") {
+    mixerMultiplier = 3;
+  }
+
   const mixerPrice = mixerType
-    ? (machineType === "double" ? 2 : 1) * mixerDetails[mixerType].price
+    ? mixerMultiplier * mixerDetails[mixerType].price
     : 0;
 
   const subtotal = machine.basePrice + mixerPrice + DELIVERY_FEE;

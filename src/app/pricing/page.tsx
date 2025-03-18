@@ -105,13 +105,61 @@ const jsonLd = {
         },
       ],
     },
+    {
+      "@type": "Product",
+      name: machinePackages[2].name,
+      description: machinePackages[2].description,
+      image: "https://satxritas.com/og-image.jpg",
+      offers: [
+        {
+          "@type": "Offer",
+          price: calculatePrice("triple").total,
+          priceCurrency: "USD",
+          itemCondition: "https://schema.org/NewCondition",
+          availability: "https://schema.org/InStock",
+          name: "Machine Only",
+        },
+        {
+          "@type": "Offer",
+          price: calculatePrice("triple", "non-alcoholic").total,
+          priceCurrency: "USD",
+          itemCondition: "https://schema.org/NewCondition",
+          availability: "https://schema.org/InStock",
+          name: `3x ${mixerDetails["non-alcoholic"].label}`,
+        },
+        {
+          "@type": "Offer",
+          price: calculatePrice("triple", "margarita").total,
+          priceCurrency: "USD",
+          itemCondition: "https://schema.org/NewCondition",
+          availability: "https://schema.org/InStock",
+          name: `3x ${mixerDetails["margarita"].label}`,
+        },
+        {
+          "@type": "Offer",
+          price: calculatePrice("triple", "pina-colada").total,
+          priceCurrency: "USD",
+          itemCondition: "https://schema.org/NewCondition",
+          availability: "https://schema.org/InStock",
+          name: `3x ${mixerDetails["pina-colada"].label}`,
+        },
+        {
+          "@type": "Offer",
+          price: calculatePrice("triple", "strawberry-daiquiri").total,
+          priceCurrency: "USD",
+          itemCondition: "https://schema.org/NewCondition",
+          availability: "https://schema.org/InStock",
+          name: `3x ${mixerDetails["strawberry-daiquiri"].label}`,
+        },
+      ],
+    },
   ],
 };
 
 export const metadata: Metadata = {
   title: "Pricing | SATX Ritas Rentals - Frozen Drink Machine Rentals",
   description:
-    "Transparent pricing for frozen drink machine rentals in San Antonio. Professional delivery, setup, and pickup included. Single and double tank machines available with various mixer options.",
+    "Transparent pricing for frozen drink machine rentals in San Antonio. Professional delivery, setup, and pickup included. Single, double, and triple tank machines available with various mixer options.",
   other: {
     "script:ld+json": JSON.stringify(jsonLd),
   },
@@ -187,7 +235,7 @@ export default function PricingPage() {
               Understanding Our Pricing
             </h2>
             <div className="max-w-3xl mx-auto">
-              <div className="grid grid-cols-2 gap-8 mb-8">
+              <div className="grid grid-cols-3 gap-8 mb-8">
                 <div className="relative">
                   <Image
                     src="/vevor-15l-slushy-3.webp"
@@ -208,13 +256,23 @@ export default function PricingPage() {
                     priority
                   />
                 </div>
+                <div className="relative">
+                  <Image
+                    src="/vevor-45l-slushy-1.webp"
+                    alt="Triple Tank Frozen Drink Machine"
+                    width={800}
+                    height={600}
+                    className="w-full h-full object-cover rounded-lg"
+                    priority
+                  />
+                </div>
               </div>
 
               <div className="text-charcoal/70 dark:text-white/70">
                 <h4 className="text-lg font-semibold text-charcoal dark:text-white mb-4">
                   Machine Options
                 </h4>
-                <div className="grid grid-cols-2 gap-8 mb-8">
+                <div className="grid grid-cols-3 gap-8 mb-8">
                   <div>
                     <p className="font-medium text-charcoal dark:text-white mb-2">
                       15L Single Tank Machine
@@ -236,6 +294,18 @@ export default function PricingPage() {
                     </p>
                     <p className="font-semibold">
                       Base Price: ${formatPrice(machinePackages[1].basePrice)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="font-medium text-charcoal dark:text-white mb-2">
+                      45L Triple Tank Machine
+                    </p>
+                    <p className="mb-2">
+                      The ultimate machine for large events and variety. Three
+                      different flavors.
+                    </p>
+                    <p className="font-semibold">
+                      Base Price: ${formatPrice(machinePackages[2].basePrice)}
                     </p>
                   </div>
                 </div>

@@ -8,16 +8,33 @@ import { calculatePrice, formatPrice } from "@/lib/pricing";
 export default function PaymentStep({ formData }: StepProps) {
   const priceBreakdown = calculatePrice(
     formData.machineType,
-    formData.selectedMixers[0] as MixerType,
+    formData.selectedMixers[0] as MixerType
   );
+
+  const perDayRate = priceBreakdown.basePrice + priceBreakdown.mixerPrice;
 
   const rentalDays = Math.ceil(
     (new Date(formData.returnDate).getTime() -
       new Date(formData.rentalDate).getTime()) /
-      (1000 * 60 * 60 * 24),
+      (1000 * 60 * 60 * 24)
   );
 
-  const total = priceBreakdown.total * rentalDays;
+  // Calculate extras total (per day × number of days)
+  const extrasTotal = formData.selectedExtras.reduce(
+    (sum, item) => sum + item.price * (item.quantity || 1) * rentalDays,
+    0
+  );
+
+  // Recalculate subtotal including extras
+  const subtotal =
+    perDayRate * rentalDays + priceBreakdown.deliveryFee + extrasTotal;
+
+  // Recalculate tax and processing fee based on the new subtotal
+  const salesTax = subtotal * 0.0825; // 8.25% tax rate
+  const processingFee = subtotal * 0.03; // 3% processing fee
+
+  // Calculate the final total including extras
+  const finalTotal = subtotal + salesTax + processingFee;
 
   return (
     <div className="space-y-6">
@@ -26,18 +43,19 @@ export default function PaymentStep({ formData }: StepProps) {
       </h2>
       <div className="bg-white/80 dark:bg-charcoal/30 rounded-xl p-6">
         <p className="text-center text-xl font-bold text-orange mb-6">
-          Total Amount: ${formatPrice(total)}
+          Total Amount: ${formatPrice(finalTotal)}
         </p>
         <div className="text-center">
           <PayPalScriptProvider options={paypalConfig}>
             <PayPalCheckout
-              amount={total}
+              amount={finalTotal}
               currency="USD"
               rentalData={{
                 machineType: formData.machineType,
                 capacity: formData.capacity,
                 selectedMixers: formData.selectedMixers,
-                price: formData.price,
+                selectedExtras: formData.selectedExtras,
+                price: finalTotal,
                 rentalDate: formData.rentalDate,
                 rentalTime: formData.rentalTime,
                 returnDate: formData.returnDate,

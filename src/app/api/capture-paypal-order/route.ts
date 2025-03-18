@@ -57,6 +57,13 @@ export async function POST(request: Request) {
             // Format time to 12-hour format
             const formattedTime = `${rental.rentalTime}${parseInt(hour) >= 12 ? "PM" : "AM"}`;
 
+            // Prepare extras text if any
+            const extrasText = rental.selectedExtras && rental.selectedExtras.length > 0
+              ? `Extras: ${rental.selectedExtras.map((extra: { name: string, quantity?: number }) =>
+                `${extra.name}${extra.quantity && extra.quantity > 1 ? ` (${extra.quantity}x)` : ''}`
+              ).join(", ")}\n`
+              : '';
+
             await twilioClient.messages.create({
               body:
                 `Slushy Machine Rental!\n` +
@@ -65,6 +72,7 @@ export async function POST(request: Request) {
                 `Address: ${rental.customer.address.street}, ${rental.customer.address.city}, ${rental.customer.address.state} ${rental.customer.address.zipCode}\n` +
                 `Machine: ${rental.machineType}\n` +
                 `Mixers: ${rental.selectedMixers.join(", ") || "None"}\n` +
+                `${extrasText}` +
                 `Customer: ${rental.customer.name}\n` +
                 `Phone: ${rental.customer.phone}\n` +
                 `Total: $${amount}`,
@@ -92,6 +100,7 @@ export async function POST(request: Request) {
         // If rental not found but we have rental data, create it
         const rental = new Rental({
           ...rentalData,
+          selectedExtras: rentalData.selectedExtras || [],
           paypalOrderId: orderId,
           status: "confirmed",
           payment: {
@@ -169,6 +178,10 @@ export async function POST(request: Request) {
                 <li style="margin-bottom: 8px;">🗓 Rental Date: ${updatedRental.rentalDate} at ${updatedRental.rentalTime}</li>
                 <li style="margin-bottom: 8px;">🗓 Return Date: ${updatedRental.returnDate} at ${updatedRental.returnTime}</li>
                 <li style="margin-bottom: 8px;">🍹 Selected Mixers: ${updatedRental.selectedMixers.join(", ")}</li>
+                ${updatedRental.selectedExtras && updatedRental.selectedExtras.length > 0 ?
+              `<li style="margin-bottom: 8px;">🎉 Party Extras: ${updatedRental.selectedExtras.map((extra: { name: string, quantity?: number }) =>
+                `${extra.name}${extra.quantity && extra.quantity > 1 ? ` (${extra.quantity}x)` : ''}`
+              ).join(", ")}</li>` : ''}
                 <li style="margin-bottom: 8px;">💰 Total Amount: $${amount}</li>
                 <li style="margin-bottom: 8px;">⚡ Machine Capacity: ${updatedRental.capacity}L</li>
               </ul>
