@@ -110,7 +110,7 @@ export default function OrderForm() {
     notes: "",
   });
 
-  // Calculate rental days based on rental and return dates
+  // Helper function to calculate rental days - used in handleInputChange
   const calculateRentalDays = (
     rentalDate: string,
     returnDate: string
@@ -133,10 +133,16 @@ export default function OrderForm() {
     // Update returnDate when rentalDate changes
     if (name === "rentalDate") {
       const nextDay = getNextDay(new Date(value));
+      const nextDayString = nextDay.toISOString().split("T")[0];
+
+      // Use calculateRentalDays to get the rental duration
+      const days = calculateRentalDays(value, nextDayString);
+      console.log(`Rental duration: ${days} day(s)`);
+
       setFormData((prev: OrderFormData) => ({
         ...prev,
         rentalDate: value,
-        returnDate: nextDay.toISOString().split("T")[0],
+        returnDate: nextDayString,
       }));
       return;
     }

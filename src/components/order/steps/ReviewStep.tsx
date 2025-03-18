@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { StepProps, ExtraItem } from "../types";
+import { StepProps } from "../types";
 import { mixerDetails, MixerType } from "@/lib/rental-data";
 import { calculatePrice, formatPrice } from "@/lib/pricing";
 

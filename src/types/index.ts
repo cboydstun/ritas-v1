@@ -33,12 +33,15 @@ export interface Payment {
   date: Date;
 }
 
+// Import the ExtraItem interface from the order types
+import { ExtraItem } from "@/components/order/types";
+
 export interface MargaritaRental {
   _id?: string; // MongoDB document ID
   machineType: MachineType;
   capacity: 15 | 30 | 45;
   selectedMixers: MixerType[];
-  selectedExtras?: any[]; // Array of extra items with optional quantity
+  selectedExtras?: ExtraItem[]; // Array of extra items with optional quantity
   price: number;
   rentalDate: string;
   rentalTime: string;
