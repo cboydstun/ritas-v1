@@ -16,6 +16,7 @@ import {
   validateEmail,
   validatePhone,
   validateZipCode,
+  isBexarCountyZipCode,
 } from "./utils";
 import { calculatePrice } from "@/lib/pricing";
 import { ProgressBar } from "./ProgressBar";
@@ -291,6 +292,12 @@ export default function OrderForm() {
       }
       if (!validateZipCode(formData.customer.address.zipCode)) {
         setError("Please enter a valid ZIP code (e.g., 12345 or 12345-6789)");
+        return;
+      }
+      if (!isBexarCountyZipCode(formData.customer.address.zipCode)) {
+        setError(
+          "We only deliver within Bexar County, TX. Please enter a valid Bexar County ZIP code."
+        );
         return;
       }
     }

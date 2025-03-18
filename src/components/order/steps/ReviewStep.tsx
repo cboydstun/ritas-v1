@@ -28,7 +28,8 @@ export default function ReviewStep({
   );
 
   // Recalculate subtotal including extras
-  const subtotal = perDayRate + priceBreakdown.deliveryFee + extrasTotal;
+  const subtotal =
+    perDayRate * rentalDays + priceBreakdown.deliveryFee + extrasTotal;
 
   // Recalculate tax and processing fee based on the new subtotal
   const salesTax = subtotal * 0.0825; // 8.25% tax rate
