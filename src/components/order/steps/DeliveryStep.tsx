@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { ChangeEvent, useState, useEffect } from "react";
+import { ChangeEvent, useState } from "react";
 import { StepProps, inputClassName, labelClassName } from "../types";
 import { mixerDetails, MixerType } from "@/lib/rental-data";
 
@@ -21,7 +21,6 @@ const mixerTypes: MixerType[] = [
 // CSS classes for active step highlighting
 const activeStepClass =
   "border-2 border-margarita animate-pulse bg-margarita/10 shadow-lg shadow-margarita/20";
-const completedStepClass = "border-2 border-margarita/50";
 const normalStepClass = "border-2 border-transparent";
 
 export default function DeliveryStep({

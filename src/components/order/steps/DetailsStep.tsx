@@ -356,9 +356,9 @@ export default function DetailsStep({
               <h3 className="text-xl font-bold">Delivery Not Available</h3>
             </div>
             <p className="mb-4">
-              We're sorry, but we can only deliver to addresses within Bexar
-              County, TX. The ZIP code you entered (
-              {formData.customer.address.zipCode}) is outside our delivery area.
+              Sorry but we can only deliver to addresses within Bexar County,
+              TX. The ZIP code you entered ({formData.customer.address.zipCode})
+              is outside our delivery area.
             </p>
             <p className="mb-6">
               Please update your address with a valid Bexar County ZIP code to
