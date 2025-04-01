@@ -29,11 +29,11 @@ const securityHeaders = [
     key: 'Content-Security-Policy',
     value: `
       default-src 'self';
-      script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.paypal.com https://www.google-analytics.com;
+      script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.paypal.com https://www.google-analytics.com https://www.googletagmanager.com;
       style-src 'self' 'unsafe-inline';
-      img-src 'self' data: https://*.paypal.com https://www.google-analytics.com;
+      img-src 'self' data: https://*.paypal.com https://www.google-analytics.com https://www.googletagmanager.com;
       font-src 'self';
-      connect-src 'self' https://*.paypal.com https://www.google-analytics.com;
+      connect-src 'self' https://*.paypal.com https://www.google-analytics.com https://www.googletagmanager.com;
       frame-src 'self' https://*.paypal.com;
       object-src 'none';
       base-uri 'self';
