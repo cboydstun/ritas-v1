@@ -1,9 +1,19 @@
 import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import dbConnect from "@/lib/mongodb";
 import { Rental } from "@/models/rental";
 
 // Get all orders
 export async function GET() {
+  // Check authentication
+  const session = await getServerSession(authOptions);
+  if (!session || session.user.role !== "admin") {
+    return NextResponse.json(
+      { message: "Unauthorized" },
+      { status: 401 }
+    );
+  }
   try {
     await dbConnect();
     const rentals = await Rental.find({})
@@ -22,6 +32,14 @@ export async function GET() {
 
 // Create a new order (if needed in admin panel)
 export async function POST(request: Request) {
+  // Check authentication
+  const session = await getServerSession(authOptions);
+  if (!session || session.user.role !== "admin") {
+    return NextResponse.json(
+      { message: "Unauthorized" },
+      { status: 401 }
+    );
+  }
   try {
     const data = await request.json();
     await dbConnect();

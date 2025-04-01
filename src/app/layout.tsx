@@ -70,6 +70,7 @@ import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import ThemeWrapper from "@/components/ThemeWrapper";
 import GoogleAnalytics from "@/components/GoogleAnalytics";
+import SessionProvider from "@/components/SessionProvider";
 
 export default function RootLayout({
   children,
@@ -82,11 +83,13 @@ export default function RootLayout({
       <body
         className={`${poppins.className} flex flex-col min-h-screen bg-white dark:bg-charcoal dark:text-white`}
       >
-        <ThemeWrapper>
-          <Navigation />
-          <main className="flex-grow">{children}</main>
-          <Footer />
-        </ThemeWrapper>
+        <SessionProvider>
+          <ThemeWrapper>
+            <Navigation />
+            <main className="flex-grow">{children}</main>
+            <Footer />
+          </ThemeWrapper>
+        </SessionProvider>
       </body>
     </html>
   );

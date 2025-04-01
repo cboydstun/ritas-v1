@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { getToken } from "next-auth/jwt";
 
 // Define permanent redirects
 const PERMANENT_REDIRECTS: Record<string, string> = {
@@ -8,7 +9,7 @@ const PERMANENT_REDIRECTS: Record<string, string> = {
   // "/legacy": "/modern",
 };
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   // Redirect HTTP to HTTPS in production
   if (
     process.env.NODE_ENV === "production" &&
@@ -29,67 +30,37 @@ export function middleware(request: NextRequest) {
   }
 
   // Check if the request is for an admin route
-  if (request.nextUrl.pathname.startsWith("/admin")) {
-    // For now, we'll use basic auth
-    // In production, you should implement proper authentication
-    const basicAuth = request.headers.get("authorization");
-
-    if (!basicAuth) {
-      return new NextResponse(null, {
-        status: 401,
-        headers: {
-          "WWW-Authenticate": 'Basic realm="Secure Area"',
-        },
-      });
+  if (pathname.startsWith("/admin") || pathname.startsWith("/api/admin")) {
+    // Skip auth check for login page
+    if (pathname === "/admin/login") {
+      return NextResponse.next();
     }
 
-    const authValue = basicAuth.split(" ")[1];
-    const [user, pwd] = atob(authValue).split(":");
-
-    // Use environment variables for credentials
-    // Add ADMIN_USERNAME=admin and ADMIN_PASSWORD=your-secure-password to .env.local
-    if (
-      user !== process.env.ADMIN_USERNAME ||
-      pwd !== process.env.ADMIN_PASSWORD
-    ) {
-      return new NextResponse(null, {
-        status: 401,
-        headers: {
-          "WWW-Authenticate": 'Basic realm="Secure Area"',
-        },
-      });
-    }
-  }
-
-  // Also protect admin API routes
-  if (request.nextUrl.pathname.startsWith("/api/admin")) {
-    // For API routes, we'll check the same basic auth
-    const basicAuth = request.headers.get("authorization");
-
-    if (!basicAuth) {
-      return new NextResponse(JSON.stringify({ message: "Unauthorized" }), {
-        status: 401,
-        headers: {
-          "Content-Type": "application/json",
-          "WWW-Authenticate": 'Basic realm="Secure Area"',
-        },
-      });
+    // Skip auth check for NextAuth API routes
+    if (pathname.startsWith("/api/auth")) {
+      return NextResponse.next();
     }
 
-    const authValue = basicAuth.split(" ")[1];
-    const [user, pwd] = atob(authValue).split(":");
+    // Get the NextAuth.js token
+    const token = await getToken({
+      req: request,
+      secret: process.env.NEXTAUTH_SECRET,
+    });
 
-    if (
-      user !== process.env.ADMIN_USERNAME ||
-      pwd !== process.env.ADMIN_PASSWORD
-    ) {
-      return new NextResponse(JSON.stringify({ message: "Unauthorized" }), {
-        status: 401,
-        headers: {
-          "Content-Type": "application/json",
-          "WWW-Authenticate": 'Basic realm="Secure Area"',
-        },
-      });
+    // Redirect to login if not authenticated or not an admin
+    if (!token || token.role !== "admin") {
+      // For API routes, return a JSON response
+      if (pathname.startsWith("/api/admin")) {
+        return NextResponse.json(
+          { message: "Unauthorized" },
+          { status: 401 }
+        );
+      }
+
+      // For admin UI routes, redirect to login page
+      const url = new URL("/admin/login", request.url);
+      url.searchParams.set("callbackUrl", encodeURI(pathname));
+      return NextResponse.redirect(url);
     }
   }
 
