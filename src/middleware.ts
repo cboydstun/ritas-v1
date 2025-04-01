@@ -9,6 +9,17 @@ const PERMANENT_REDIRECTS: Record<string, string> = {
 };
 
 export function middleware(request: NextRequest) {
+  // Redirect HTTP to HTTPS in production
+  if (
+    process.env.NODE_ENV === "production" &&
+    request.headers.get("x-forwarded-proto") !== "https"
+  ) {
+    const secureUrl = request.nextUrl.clone();
+    secureUrl.protocol = "https";
+    secureUrl.host = request.headers.get("host") || request.nextUrl.host;
+    return NextResponse.redirect(secureUrl, { status: 301 });
+  }
+
   // Check for permanent redirects
   const pathname = request.nextUrl.pathname;
   const redirectTo = PERMANENT_REDIRECTS[pathname];
@@ -86,5 +97,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/api/admin/:path*"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
 };
