@@ -66,6 +66,13 @@ export const validateDeliveryTime = (time: string): boolean => {
   return timeInMinutes >= minTimeInMinutes && timeInMinutes <= maxTimeInMinutes;
 };
 
+// Format date from YYYY-MM-DD to MM-DD-YYYY
+export const formatDateForDisplay = (isoDate: string): string => {
+  if (!isoDate) return '';
+  const [year, month, day] = isoDate.split('-');
+  return `${month}-${day}-${year}`;
+};
+
 interface PricingDetails {
   rentalDays: number;
   perDayRate: number;

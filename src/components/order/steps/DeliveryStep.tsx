@@ -1,5 +1,6 @@
 import Image from "next/image";
 import { ChangeEvent, useState, useEffect } from "react";
+import { formatDateForDisplay } from "../utils";
 import { StepProps, inputClassName, labelClassName } from "../types";
 import { mixerDetails, MixerType } from "@/lib/rental-data";
 import { useAvailabilityCheck } from "@/hooks/useAvailabilityCheck";
@@ -581,8 +582,9 @@ export default function DeliveryStep({
                   );
 
                   if (!result.available) {
+                    const formattedDate = formatDateForDisplay(value);
                     setDateAvailabilityError(
-                      `Sorry, the ${capacity}L ${formData.machineType} tank machine is not available on ${value}. Please select a different date or machine type.`
+                      `Sorry, the ${capacity}L ${formData.machineType} tank machine is not available on ${formattedDate}. Please select a different date or machine type.`
                     );
                   } else {
                     // Only advance to next step if machine is available
