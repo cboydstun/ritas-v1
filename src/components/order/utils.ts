@@ -58,6 +58,7 @@ export const isBexarCountyZipCode = (zipCode: string): boolean => {
 };
 
 export const validateDeliveryTime = (time: string): boolean => {
+  if (time === "ANY") return true;
   if (!time) return false;
   const [hours, minutes] = time.split(":").map(Number);
   const timeInMinutes = hours * 60 + minutes;

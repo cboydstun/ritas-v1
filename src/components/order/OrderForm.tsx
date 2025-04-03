@@ -95,9 +95,9 @@ export default function OrderForm() {
     selectedExtras: [],
     price: calculatePrice(initialMachineType, initialSelectedMixers[0]).total,
     rentalDate: "",
-    rentalTime: "10:00",
+    rentalTime: "ANY",
     returnDate: "",
-    returnTime: "10:00",
+    returnTime: "ANY",
     customer: {
       name: "",
       email: "",
