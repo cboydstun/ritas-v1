@@ -46,6 +46,7 @@ export interface StepProps {
   error: string | null;
   agreedToTerms?: boolean;
   setAgreedToTerms?: (value: boolean) => void;
+  onAvailabilityError?: (errorMsg: string | null) => void;
 }
 
 export const steps: { id: OrderStep; label: string }[] = [

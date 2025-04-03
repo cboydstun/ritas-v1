@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useState, Suspense, useRef } from "react";
 import { MixerType } from "@/lib/rental-data";
 import { useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
@@ -79,6 +79,7 @@ export default function OrderForm() {
   const [step, setStep] = useState<OrderStep>("delivery");
   const [error, setError] = useState<string | null>(null);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const dateAvailabilityErrorRef = useRef<string | null>(null);
 
   // Get initial machine type and mixer from URL once
   const initialMachineType =
@@ -226,6 +227,12 @@ export default function OrderForm() {
 
     // Validate delivery step
     if (step === "delivery") {
+      // Check for availability error first
+      if (dateAvailabilityErrorRef.current) {
+        setError(dateAvailabilityErrorRef.current);
+        return;
+      }
+
       if (!formData.rentalDate) {
         setError("Please select a delivery date");
         return;
@@ -334,6 +341,9 @@ export default function OrderForm() {
               formData={formData}
               onInputChange={handleInputChange}
               error={error}
+              onAvailabilityError={(errorMsg) => {
+                dateAvailabilityErrorRef.current = errorMsg;
+              }}
             />
           )}
 
