@@ -28,6 +28,11 @@ interface AnalyticsData {
   deviceBreakdown: AnalyticsItem[];
   dailyVisits: AnalyticsItem[];
   topPages: AnalyticsItem[];
+  orderSteps: Array<{
+    _id: string;
+    count: number;
+    uniqueVisitors: number;
+  }>;
 }
 
 // Register Chart.js components
@@ -145,10 +150,40 @@ export default function AnalyticsPage() {
       ],
     };
   };
+  
+  const prepareOrderStepsChartData = () => {
+    if (!analyticsData?.orderSteps || analyticsData.orderSteps.length === 0) return null;
+    
+    // Map step IDs to readable names
+    const stepNames: Record<string, string> = {
+      "/order/delivery": "1. Delivery",
+      "/order/details": "2. Details",
+      "/order/extras": "3. Extras",
+      "/order/review": "4. Review",
+      "/order/payment": "5. Payment"
+    };
+    
+    const labels = analyticsData.orderSteps.map(item => stepNames[item._id] || item._id);
+    const data = analyticsData.orderSteps.map(item => item.uniqueVisitors);
+    
+    return {
+      labels,
+      datasets: [
+        {
+          label: "Unique Visitors",
+          data,
+          backgroundColor: "rgba(255, 159, 64, 0.5)",
+          borderColor: "rgb(255, 159, 64)",
+          borderWidth: 1,
+        },
+      ],
+    };
+  };
 
   const visitorChartData = prepareVisitorChartData();
   const deviceChartData = prepareDeviceChartData();
   const topPagesChartData = prepareTopPagesChartData();
+  const orderStepsChartData = prepareOrderStepsChartData();
 
   return (
     <AdminLayout>
@@ -267,6 +302,34 @@ export default function AnalyticsPage() {
                   />
                 ) : (
                   <p className="text-gray-500 dark:text-gray-400">No data available</p>
+                )}
+              </div>
+            </div>
+            
+            {/* Order Form Steps Chart */}
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow mb-8">
+              <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+                Order Form Funnel
+              </h2>
+              <div className="h-80">
+                {orderStepsChartData ? (
+                  <Bar
+                    data={orderStepsChartData}
+                    options={{
+                      responsive: true,
+                      maintainAspectRatio: false,
+                      scales: {
+                        y: {
+                          beginAtZero: true,
+                          ticks: {
+                            precision: 0,
+                          },
+                        },
+                      },
+                    }}
+                  />
+                ) : (
+                  <p className="text-gray-500 dark:text-gray-400">No order form data available</p>
                 )}
               </div>
             </div>

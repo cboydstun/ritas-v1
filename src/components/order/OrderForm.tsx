@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, Suspense, useRef } from "react";
+import OrderFormTracker from "./OrderFormTracker";
 import { MixerType } from "@/lib/rental-data";
 import { useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
@@ -327,6 +328,9 @@ export default function OrderForm() {
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8">
+      {/* Track form step changes */}
+      <OrderFormTracker currentStep={step} formData={formData} />
+      
       <ProgressBar currentStep={step} />
 
       <div className="bg-white/90 dark:bg-charcoal/50 backdrop-blur-lg rounded-2xl shadow-xl p-8 relative overflow-hidden">

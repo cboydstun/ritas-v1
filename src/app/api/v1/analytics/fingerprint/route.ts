@@ -45,11 +45,12 @@ export async function POST(req: NextRequest) {
       existingThumbprint.lastSeen = new Date();
       existingThumbprint.visitCount += 1;
       
-      // Add new visit
+      // Add new visit with form context if available
       existingThumbprint.visits.push({
         timestamp: new Date(),
         page: data.page || "/",
         referrer: data.referrer || null,
+        formContext: data.formContext || {},
       });
       
       // Update user agent if provided
@@ -86,7 +87,8 @@ export async function POST(req: NextRequest) {
         visits: [{
           timestamp: new Date(),
           page: data.page || "/",
-          referrer: data.referrer || null
+          referrer: data.referrer || null,
+          formContext: data.formContext || {}
         }]
       });
       

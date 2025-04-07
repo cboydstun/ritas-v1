@@ -40,6 +40,7 @@ export interface IThumbprint extends Document {
     duration?: number;
     referrer?: string;
     exitPage?: string;
+    formContext?: Record<string, object>;
     interactions?: {
       clicks?: number;
       scrollDepth?: number;
@@ -97,6 +98,10 @@ const ThumbprintSchema = new Schema<IThumbprint>({
     duration: Number,
     referrer: String,
     exitPage: String,
+    formContext: {
+      type: Object,
+      default: {}
+    },
     interactions: {
       clicks: Number,
       scrollDepth: Number,

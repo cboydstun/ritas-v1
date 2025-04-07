@@ -79,12 +79,42 @@ export async function GET() {
       }
     ]);
     
+    // Get order form step completion rates
+    const orderSteps = await Thumbprint.aggregate([
+      {
+        $unwind: "$visits"
+      },
+      {
+        $match: {
+          "visits.page": { $regex: "^/order/" }
+        }
+      },
+      {
+        $group: {
+          _id: "$visits.page",
+          count: { $sum: 1 },
+          uniqueVisitors: { $addToSet: "$fingerprintHash" }
+        }
+      },
+      {
+        $project: {
+          _id: 1,
+          count: 1,
+          uniqueVisitors: { $size: "$uniqueVisitors" }
+        }
+      },
+      {
+        $sort: { _id: 1 }
+      }
+    ]);
+    
     return NextResponse.json({
       totalVisitors,
       newVisitorsLast30Days,
       deviceBreakdown,
       dailyVisits,
-      topPages
+      topPages,
+      orderSteps
     });
   } catch (error) {
     console.error("Error fetching analytics data:", error);
