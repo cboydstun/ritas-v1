@@ -1,8 +1,24 @@
 import mongoose, { Schema, Document } from "mongoose";
 
+// Define a type for browser components
+export interface BrowserComponent {
+  userAgent?: string;
+  language?: string;
+  platform?: string;
+  screenWidth?: number;
+  screenHeight?: number;
+  colorDepth?: number;
+  timezone?: string;
+  sessionStorage?: boolean;
+  localStorage?: boolean;
+  indexedDb?: boolean;
+  cookiesEnabled?: boolean;
+  [key: string]: string | number | boolean | undefined;
+}
+
 export interface IThumbprint extends Document {
   fingerprintHash: string;
-  components: Record<string, any>;
+  components: Record<string, BrowserComponent | string | number | boolean>;
   userAgent: string;
   device: {
     type: "desktop" | "tablet" | "mobile" | "other";

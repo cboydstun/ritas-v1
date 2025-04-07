@@ -16,6 +16,20 @@ import {
 } from "chart.js";
 import { Line, Bar, Pie } from "react-chartjs-2";
 
+// Define types for analytics data
+interface AnalyticsItem {
+  _id: string;
+  count: number;
+}
+
+interface AnalyticsData {
+  totalVisitors: number;
+  newVisitorsLast30Days: number;
+  deviceBreakdown: AnalyticsItem[];
+  dailyVisits: AnalyticsItem[];
+  topPages: AnalyticsItem[];
+}
+
 // Register Chart.js components
 ChartJS.register(
   CategoryScale,
@@ -32,7 +46,7 @@ ChartJS.register(
 export default function AnalyticsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [analyticsData, setAnalyticsData] = useState<any>(null);
+  const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null);
 
   useEffect(() => {
     fetchAnalyticsData();
@@ -61,8 +75,8 @@ export default function AnalyticsPage() {
   const prepareVisitorChartData = () => {
     if (!analyticsData?.dailyVisits) return null;
     
-    const labels = analyticsData.dailyVisits.map((item: any) => item._id);
-    const data = analyticsData.dailyVisits.map((item: any) => item.count);
+    const labels = analyticsData.dailyVisits.map((item: AnalyticsItem) => item._id);
+    const data = analyticsData.dailyVisits.map((item: AnalyticsItem) => item.count);
     
     return {
       labels,
@@ -81,8 +95,8 @@ export default function AnalyticsPage() {
   const prepareDeviceChartData = () => {
     if (!analyticsData?.deviceBreakdown) return null;
     
-    const labels = analyticsData.deviceBreakdown.map((item: any) => item._id);
-    const data = analyticsData.deviceBreakdown.map((item: any) => item.count);
+    const labels = analyticsData.deviceBreakdown.map((item: AnalyticsItem) => item._id);
+    const data = analyticsData.deviceBreakdown.map((item: AnalyticsItem) => item.count);
     
     return {
       labels,
@@ -111,12 +125,12 @@ export default function AnalyticsPage() {
   const prepareTopPagesChartData = () => {
     if (!analyticsData?.topPages) return null;
     
-    const labels = analyticsData.topPages.map((item: any) => {
+    const labels = analyticsData.topPages.map((item: AnalyticsItem) => {
       // Truncate long page paths
       const page = item._id;
       return page.length > 20 ? page.substring(0, 17) + "..." : page;
     });
-    const data = analyticsData.topPages.map((item: any) => item.count);
+    const data = analyticsData.topPages.map((item: AnalyticsItem) => item.count);
     
     return {
       labels,
