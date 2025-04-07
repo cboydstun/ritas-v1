@@ -12,7 +12,8 @@ A modern web application built with Next.js and TypeScript for managing frozen d
 - 📄 Informative content pages (About, FAQ, Pricing, Contact)
 - 🌙 Dark/light theme toggle
 - 📝 Contact form for inquiries
-- 📊 Google Analytics integration
+- 📊 Advanced analytics with browser fingerprinting and conversion tracking
+- 📈 Order form funnel analysis to track user progression
 - 📧 Email notifications for order confirmations
 - 🍹 Multiple machine options (15L, 30L, and 45L capacities)
 
@@ -26,6 +27,7 @@ A modern web application built with Next.js and TypeScript for managing frozen d
 - [Twilio](https://www.twilio.com/) - SMS notifications
 - [Nodemailer](https://nodemailer.com/) - Email notifications
 - [Google Analytics](https://analytics.google.com/) - Website analytics
+- [ThumbmarkJS](https://github.com/thumbmarkjs/thumbmarkjs) - Browser fingerprinting for enhanced analytics
 
 ## Getting Started
 
@@ -63,6 +65,9 @@ A modern web application built with Next.js and TypeScript for managing frozen d
    # Admin Panel Credentials
    ADMIN_USERNAME=admin
    ADMIN_PASSWORD=your-secure-password
+
+   # Analytics Configuration (optional)
+   ANALYTICS_ENABLED=true
    ```
 
 4. Run the development server:
@@ -79,6 +84,10 @@ src/
 ├── app/                    # Next.js App Router pages and API routes
 │   ├── api/               # API routes
 │   │   ├── admin/        # Admin API endpoints
+│   │   │   ├── orders/   # Order management endpoints
+│   │   │   └── analytics/ # Analytics data endpoints
+│   │   ├── v1/           # Version 1 API endpoints
+│   │   │   └── analytics/ # Analytics data collection endpoints
 │   │   ├── create-paypal-order/    # PayPal order creation
 │   │   └── capture-paypal-order/   # PayPal payment capture
 │   ├── about/             # About page
@@ -90,6 +99,7 @@ src/
 │   └── rentals/           # Rental management
 ├── components/            # React components
 │   ├── admin/            # Admin dashboard components
+│   ├── FingerprintTracker.tsx # Site-wide fingerprint tracking
 │   ├── contact/           # Contact form components
 │   ├── home/              # Homepage sections
 │   │   ├── AboutSection   # Home page about section
@@ -98,6 +108,7 @@ src/
 │   │   └── SocialProof   # Customer testimonials
 │   └── order/             # Order flow components
 │       ├── steps/         # Multi-step form components including ExtrasStep
+│       ├── OrderFormTracker.tsx # Form step tracking for analytics
 │       └── types.ts       # Order type definitions and extras configuration
 ├── config/                # Configuration files
 ├── lib/                   # Utility functions
@@ -105,6 +116,8 @@ src/
 │   ├── paypal-server.ts   # PayPal integration
 │   └── rental-data.ts     # Rental data utilities
 ├── models/                # MongoDB models
+│   ├── rental.ts         # Rental order model
+│   └── thumbprint.ts     # Analytics fingerprint model
 └── types/                 # TypeScript type definitions
 ```
 
@@ -114,10 +127,12 @@ src/
 - `/api/capture-paypal-order` - Captures and processes approved PayPal payments, updates rental status to confirmed, sends SMS notifications via Twilio, and sends confirmation emails via Nodemailer
 - `/api/admin/orders` - Admin endpoints for retrieving all orders and creating new orders
 - `/api/admin/orders/[id]` - Admin endpoints for retrieving, updating, and deleting specific orders by ID
+- `/api/admin/analytics` - Admin endpoint for retrieving analytics data including visitor stats and order form funnel metrics
+- `/api/v1/analytics/fingerprint` - Endpoint for storing browser fingerprint data and tracking user journeys
 
 ## Key Components
 
-- `OrderForm` - Multi-step rental booking process with validation
+- `OrderForm` - Multi-step rental booking process with validation and analytics tracking
 - `ExtrasStep` - Party extras selection with quantity controls for table & chairs
 - `ReviewStep` - Comprehensive order summary with detailed pricing breakdown
 - `PaymentStep` - Secure payment processing with accurate pricing calculations
@@ -131,6 +146,8 @@ src/
 - `OrdersTable` - Admin dashboard for managing rental orders
 - `EditOrderModal` - Modal for editing order details in admin panel
 - `GoogleAnalytics` - Component for integrating Google Analytics tracking
+- `FingerprintTracker` - Site-wide browser fingerprinting for enhanced analytics
+- `OrderFormTracker` - Step-by-step tracking of user progression through the order form
 
 ## Deployment
 
