@@ -32,12 +32,23 @@ export default function SocialProofSection() {
   useEffect(() => {
     const fetchReviews = async () => {
       try {
-        const response = await fetch("https://paparaz.me/api/v1/reviews");
+        const response = await fetch("/api/v1/reviews");
         if (!response.ok) {
           throw new Error("Failed to fetch reviews");
         }
         const data = await response.json();
-        setReviews(data);
+        // Ensure we're setting an array of reviews
+        if (Array.isArray(data)) {
+          setReviews(data);
+        } else if (data.reviews && Array.isArray(data.reviews)) {
+          // If the API returns an object with a reviews property that's an array
+          setReviews(data.reviews);
+        } else {
+          // If we can't find an array of reviews, log the structure and set an empty array
+          console.error("Unexpected reviews data structure:", data);
+          setReviews([]);
+          throw new Error("Unexpected data structure from reviews API");
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load reviews");
       } finally {
