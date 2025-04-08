@@ -269,11 +269,23 @@ export default function OrdersTable() {
     newStatus: PaymentStatus,
   ) => {
     try {
+      // Find the current order to get existing payment details if available
+      const currentOrder = orders.find(order => order._id?.toString() === orderId);
+      
+      // Create a payment object with all required fields
+      const paymentData = {
+        // Use existing values if available, otherwise provide defaults
+        paypalTransactionId: currentOrder?.payment?.paypalTransactionId || `admin-${Date.now()}`,
+        amount: currentOrder?.payment?.amount || currentOrder?.price || 0,
+        date: currentOrder?.payment?.date || new Date().toISOString(),
+        status: newStatus
+      };
+      
       const response = await fetch(`/api/admin/orders/${orderId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          payment: { status: newStatus },
+          payment: paymentData
         }),
       });
 
