@@ -45,13 +45,54 @@ export async function POST(req: NextRequest) {
       existingThumbprint.lastSeen = new Date();
       existingThumbprint.visitCount += 1;
       
-      // Add new visit with form context if available
+      // Add new visit with form context and time spent if available
       existingThumbprint.visits.push({
         timestamp: new Date(),
         page: data.page || "/",
         referrer: data.referrer || null,
+        timeSpentMs: data.timeSpentMs || 0,
         formContext: data.formContext || {},
+        fieldInteractions: data.fieldInteractions || []
       });
+      
+      // Update funnel data if this is an order form page
+      if (data.page && data.page.startsWith('/order/')) {
+        const stepName = data.page.split('/').pop() || '';
+        
+        // Initialize funnelData if it doesn't exist
+        if (!existingThumbprint.funnelData) {
+          existingThumbprint.funnelData = {
+            entryStep: stepName,
+            completedSteps: [],
+            exitStep: stepName
+          };
+        }
+        
+        // Update funnel data
+        if (existingThumbprint.funnelData) {
+          // Add to completed steps if not already there
+          if (!existingThumbprint.funnelData.completedSteps?.includes(stepName)) {
+            existingThumbprint.funnelData.completedSteps = [
+              ...(existingThumbprint.funnelData.completedSteps || []),
+              stepName
+            ];
+          }
+          
+          // Update exit step
+          existingThumbprint.funnelData.exitStep = stepName;
+          
+          // If this is the payment step and we have all steps, mark as converted
+          if (stepName === 'payment' && 
+              existingThumbprint.funnelData.completedSteps?.length === 5) {
+            existingThumbprint.conversion = {
+              ...existingThumbprint.conversion,
+              hasConverted: true,
+              conversionDate: new Date(),
+              conversionType: 'order_completed'
+            };
+          }
+        }
+      }
       
       // Update user agent if provided
       if (userAgent) {
@@ -88,8 +129,24 @@ export async function POST(req: NextRequest) {
           timestamp: new Date(),
           page: data.page || "/",
           referrer: data.referrer || null,
-          formContext: data.formContext || {}
-        }]
+          timeSpentMs: data.timeSpentMs || 0,
+          formContext: data.formContext || {},
+          fieldInteractions: data.fieldInteractions || []
+        }],
+        // Initialize user segmentation
+        userSegmentation: {
+          userType: 'new',
+          deviceCategory: deviceType,
+          acquisitionSource: data.referrer ? 'referral' : 'direct'
+        },
+        // Initialize funnel data if this is an order form page
+        ...(data.page && data.page.startsWith('/order/') ? {
+          funnelData: {
+            entryStep: data.page.split('/').pop() || '',
+            completedSteps: [data.page.split('/').pop() || ''],
+            exitStep: data.page.split('/').pop() || ''
+          }
+        } : {})
       });
       
       await newThumbprint.save();

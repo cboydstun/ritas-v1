@@ -32,6 +32,28 @@ interface AnalyticsData {
     _id: string;
     count: number;
     uniqueVisitors: number;
+    avgTimeSpent: number;
+    totalTimeSpent: number;
+  }>;
+  funnelMetrics: {
+    totalFunnels: number;
+    completedFunnels: number;
+    abandonedFunnels: number;
+    conversionRate: number;
+  };
+  stepAbandonment: Array<{
+    _id: string;
+    count: number;
+  }>;
+  visitsByDayOfWeek: Array<{
+    _id: number;
+    count: number;
+    uniqueVisitors: number;
+  }>;
+  visitsByHourOfDay: Array<{
+    _id: number;
+    count: number;
+    uniqueVisitors: number;
   }>;
 }
 
@@ -180,10 +202,136 @@ export default function AnalyticsPage() {
     };
   };
 
+  const prepareTimeSpentChartData = () => {
+    if (!analyticsData?.orderSteps || analyticsData.orderSteps.length === 0) return null;
+    
+    // Map step IDs to readable names
+    const stepNames: Record<string, string> = {
+      "/order/delivery": "1. Delivery",
+      "/order/details": "2. Details",
+      "/order/extras": "3. Extras",
+      "/order/review": "4. Review",
+      "/order/payment": "5. Payment"
+    };
+    
+    const labels = analyticsData.orderSteps.map(item => stepNames[item._id] || item._id);
+    const data = analyticsData.orderSteps.map(item => item.avgTimeSpent / 1000); // Convert to seconds
+    
+    return {
+      labels,
+      datasets: [
+        {
+          label: "Avg. Time Spent (seconds)",
+          data,
+          backgroundColor: "rgba(75, 192, 192, 0.5)",
+          borderColor: "rgb(75, 192, 192)",
+          borderWidth: 1,
+        },
+      ],
+    };
+  };
+
+  const prepareStepAbandonmentChartData = () => {
+    if (!analyticsData?.stepAbandonment || analyticsData.stepAbandonment.length === 0) return null;
+    
+    // Map step IDs to readable names
+    const stepNames: Record<string, string> = {
+      "delivery": "1. Delivery",
+      "details": "2. Details",
+      "extras": "3. Extras",
+      "review": "4. Review",
+      "payment": "5. Payment"
+    };
+    
+    const labels = analyticsData.stepAbandonment.map(item => stepNames[item._id] || item._id);
+    const data = analyticsData.stepAbandonment.map(item => item.count);
+    
+    return {
+      labels,
+      datasets: [
+        {
+          label: "Abandonment Count",
+          data,
+          backgroundColor: "rgba(255, 99, 132, 0.5)",
+          borderColor: "rgb(255, 99, 132)",
+          borderWidth: 1,
+        },
+      ],
+    };
+  };
+
+  // Day of week chart preparation
+  const prepareDayOfWeekChartData = () => {
+    if (!analyticsData?.visitsByDayOfWeek) return null;
+    
+    // Map numeric days to names
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    
+    // Sort by day of week (MongoDB returns 1-7 where 1=Sunday)
+    const sortedData = [...analyticsData.visitsByDayOfWeek]
+      .sort((a, b) => a._id - b._id)
+      .map(item => ({
+        ...item,
+        // MongoDB's $dayOfWeek returns 1-7 where 1=Sunday, so we adjust to 0-6 for array index
+        dayName: dayNames[item._id - 1]
+      }));
+    
+    return {
+      labels: sortedData.map(item => item.dayName),
+      datasets: [
+        {
+          label: "Visits by Day of Week",
+          data: sortedData.map(item => item.count),
+          backgroundColor: "rgba(54, 162, 235, 0.5)",
+          borderColor: "rgb(54, 162, 235)",
+          borderWidth: 1,
+        },
+      ],
+    };
+  };
+
+  // Hour of day chart preparation
+  const prepareHourOfDayChartData = () => {
+    if (!analyticsData?.visitsByHourOfDay) return null;
+    
+    // Format hours in 12-hour format with AM/PM
+    const formatHour = (hour: number) => {
+      if (hour === 0) return '12 AM';
+      if (hour < 12) return `${hour} AM`;
+      if (hour === 12) return '12 PM';
+      return `${hour - 12} PM`;
+    };
+    
+    // Sort by hour
+    const sortedData = [...analyticsData.visitsByHourOfDay]
+      .sort((a, b) => a._id - b._id)
+      .map(item => ({
+        ...item,
+        hourFormatted: formatHour(item._id)
+      }));
+    
+    return {
+      labels: sortedData.map(item => item.hourFormatted),
+      datasets: [
+        {
+          label: "Visits by Hour of Day",
+          data: sortedData.map(item => item.count),
+          backgroundColor: "rgba(255, 206, 86, 0.5)",
+          borderColor: "rgb(255, 206, 86)",
+          borderWidth: 1,
+        },
+      ],
+    };
+  };
+
   const visitorChartData = prepareVisitorChartData();
   const deviceChartData = prepareDeviceChartData();
   const topPagesChartData = prepareTopPagesChartData();
   const orderStepsChartData = prepareOrderStepsChartData();
+  const timeSpentChartData = prepareTimeSpentChartData();
+  const stepAbandonmentChartData = prepareStepAbandonmentChartData();
+  const dayOfWeekChartData = prepareDayOfWeekChartData();
+  const hourOfDayChartData = prepareHourOfDayChartData();
 
   return (
     <AdminLayout>
@@ -229,7 +377,10 @@ export default function AnalyticsPage() {
                   Conversion Rate
                 </h3>
                 <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                  Coming Soon
+                  {analyticsData.funnelMetrics?.conversionRate?.toFixed(2)}%
+                </p>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                  {analyticsData.funnelMetrics?.completedFunnels} completed / {analyticsData.funnelMetrics?.totalFunnels} total
                 </p>
               </div>
             </div>
@@ -306,31 +457,162 @@ export default function AnalyticsPage() {
               </div>
             </div>
             
-            {/* Order Form Steps Chart */}
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow mb-8">
-              <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
-                Order Form Funnel
+            {/* Order Form Funnel Section */}
+            <div className="mb-8">
+              <h2 className="text-xl font-bold text-gray-800 dark:text-white mb-4">
+                Order Form Analytics
               </h2>
-              <div className="h-80">
-                {orderStepsChartData ? (
-                  <Bar
-                    data={orderStepsChartData}
-                    options={{
-                      responsive: true,
-                      maintainAspectRatio: false,
-                      scales: {
-                        y: {
-                          beginAtZero: true,
-                          ticks: {
-                            precision: 0,
+              
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                {/* Order Form Steps Chart */}
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
+                  <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+                    Order Form Funnel
+                  </h2>
+                  <div className="h-80">
+                    {orderStepsChartData ? (
+                      <Bar
+                        data={orderStepsChartData}
+                        options={{
+                          responsive: true,
+                          maintainAspectRatio: false,
+                          scales: {
+                            y: {
+                              beginAtZero: true,
+                              ticks: {
+                                precision: 0,
+                              },
+                            },
+                          },
+                        }}
+                      />
+                    ) : (
+                      <p className="text-gray-500 dark:text-gray-400">No order form data available</p>
+                    )}
+                  </div>
+                </div>
+                
+                {/* Time Spent Chart */}
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
+                  <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+                    Time Spent on Each Step
+                  </h2>
+                  <div className="h-80">
+                    {timeSpentChartData ? (
+                      <Bar
+                        data={timeSpentChartData}
+                        options={{
+                          responsive: true,
+                          maintainAspectRatio: false,
+                          scales: {
+                            y: {
+                              beginAtZero: true,
+                              title: {
+                                display: true,
+                                text: 'Seconds'
+                              }
+                            },
+                          },
+                        }}
+                      />
+                    ) : (
+                      <p className="text-gray-500 dark:text-gray-400">No time data available</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+              
+              {/* Step Abandonment Chart */}
+              <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow mb-8">
+                <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+                  Form Abandonment by Step
+                </h2>
+                <div className="h-80">
+                  {stepAbandonmentChartData ? (
+                    <Bar
+                      data={stepAbandonmentChartData}
+                      options={{
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                          y: {
+                            beginAtZero: true,
+                            ticks: {
+                              precision: 0,
+                            },
                           },
                         },
-                      },
-                    }}
-                  />
-                ) : (
-                  <p className="text-gray-500 dark:text-gray-400">No order form data available</p>
-                )}
+                      }}
+                    />
+                  ) : (
+                    <p className="text-gray-500 dark:text-gray-400">No abandonment data available</p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Time-Based Analytics Section */}
+            <div className="mb-8">
+              <h2 className="text-xl font-bold text-gray-800 dark:text-white mb-4">
+                Visit Timing Analytics
+              </h2>
+              
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                {/* Day of Week Chart */}
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
+                  <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+                    Visits by Day of Week
+                  </h2>
+                  <div className="h-80">
+                    {dayOfWeekChartData ? (
+                      <Bar
+                        data={dayOfWeekChartData}
+                        options={{
+                          responsive: true,
+                          maintainAspectRatio: false,
+                          scales: {
+                            y: {
+                              beginAtZero: true,
+                              ticks: {
+                                precision: 0,
+                              },
+                            },
+                          },
+                        }}
+                      />
+                    ) : (
+                      <p className="text-gray-500 dark:text-gray-400">No data available</p>
+                    )}
+                  </div>
+                </div>
+                
+                {/* Hour of Day Chart */}
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
+                  <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+                    Visits by Time of Day
+                  </h2>
+                  <div className="h-80">
+                    {hourOfDayChartData ? (
+                      <Bar
+                        data={hourOfDayChartData}
+                        options={{
+                          responsive: true,
+                          maintainAspectRatio: false,
+                          scales: {
+                            y: {
+                              beginAtZero: true,
+                              ticks: {
+                                precision: 0,
+                              },
+                            },
+                          },
+                        }}
+                      />
+                    ) : (
+                      <p className="text-gray-500 dark:text-gray-400">No data available</p>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
           </>

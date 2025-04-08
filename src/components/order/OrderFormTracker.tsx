@@ -12,6 +12,7 @@ interface OrderFormTrackerProps {
 export default function OrderFormTracker({ currentStep, formData }: OrderFormTrackerProps) {
   const [lastStep, setLastStep] = useState<OrderStep | null>(null);
   const fingerprintRef = useRef<string | null>(null);
+  const [stepStartTime, setStepStartTime] = useState<number>(Date.now());
   
   const trackStepChange = useCallback(async () => {
     try {
@@ -19,6 +20,12 @@ export default function OrderFormTracker({ currentStep, formData }: OrderFormTra
       if (!fingerprintRef.current) {
         fingerprintRef.current = await getFingerprint();
       }
+      
+      // Calculate time spent on previous step
+      const timeSpentMs = lastStep ? Date.now() - stepStartTime : 0;
+      
+      // Reset timer for new step
+      setStepStartTime(Date.now());
       
       // Prepare data
       const data = {
@@ -38,6 +45,7 @@ export default function OrderFormTracker({ currentStep, formData }: OrderFormTra
         },
         page: `/order/${currentStep}`, // Virtual path for analytics
         referrer: lastStep ? `/order/${lastStep}` : document.referrer || null,
+        timeSpentMs, // Add time spent on previous step
         // Include relevant form data for this step (optional)
         formContext: getFormContextForStep(currentStep, formData)
       };
@@ -57,7 +65,7 @@ export default function OrderFormTracker({ currentStep, formData }: OrderFormTra
     } catch (error) {
       console.error("Error tracking form step:", error);
     }
-  }, [currentStep, lastStep, formData]);
+  }, [currentStep, lastStep, formData, stepStartTime]);
   
   useEffect(() => {
     // Only track if the step has changed

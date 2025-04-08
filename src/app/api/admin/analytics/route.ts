@@ -79,7 +79,7 @@ export async function GET() {
       }
     ]);
     
-    // Get order form step completion rates
+    // Get order form step completion rates with time spent
     const orderSteps = await Thumbprint.aggregate([
       {
         $unwind: "$visits"
@@ -93,6 +93,98 @@ export async function GET() {
         $group: {
           _id: "$visits.page",
           count: { $sum: 1 },
+          uniqueVisitors: { $addToSet: "$fingerprintHash" },
+          avgTimeSpent: { $avg: "$visits.timeSpentMs" },
+          totalTimeSpent: { $sum: "$visits.timeSpentMs" }
+        }
+      },
+      {
+        $project: {
+          _id: 1,
+          count: 1,
+          uniqueVisitors: { $size: "$uniqueVisitors" },
+          avgTimeSpent: 1,
+          totalTimeSpent: 1
+        }
+      },
+      {
+        $sort: { _id: 1 }
+      }
+    ]);
+    
+    // Get funnel completion metrics
+    const funnelMetrics = await Thumbprint.aggregate([
+      {
+        $match: {
+          "funnelData": { $exists: true }
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          totalFunnels: { $sum: 1 },
+          completedFunnels: {
+            $sum: {
+              $cond: [
+                { $eq: ["$conversion.hasConverted", true] },
+                1,
+                0
+              ]
+            }
+          },
+          abandonedFunnels: {
+            $sum: {
+              $cond: [
+                { $eq: ["$conversion.hasConverted", true] },
+                0,
+                1
+              ]
+            }
+          }
+        }
+      },
+      {
+        $project: {
+          _id: 0,
+          totalFunnels: 1,
+          completedFunnels: 1,
+          abandonedFunnels: 1,
+          conversionRate: {
+            $multiply: [
+              { $divide: ["$completedFunnels", { $max: ["$totalFunnels", 1] }] },
+              100
+            ]
+          }
+        }
+      }
+    ]);
+    
+    // Get step abandonment data
+    const stepAbandonment = await Thumbprint.aggregate([
+      {
+        $match: {
+          "funnelData.exitStep": { $exists: true },
+          "conversion.hasConverted": { $ne: true }
+        }
+      },
+      {
+        $group: {
+          _id: "$funnelData.exitStep",
+          count: { $sum: 1 }
+        }
+      },
+      {
+        $sort: { count: -1 }
+      }
+    ]);
+    
+    // Get visits by day of week (1 = Sunday, 7 = Saturday in MongoDB)
+    const visitsByDayOfWeek = await Thumbprint.aggregate([
+      { $unwind: "$visits" },
+      {
+        $group: {
+          _id: { $dayOfWeek: "$visits.timestamp" },
+          count: { $sum: 1 },
           uniqueVisitors: { $addToSet: "$fingerprintHash" }
         }
       },
@@ -103,9 +195,27 @@ export async function GET() {
           uniqueVisitors: { $size: "$uniqueVisitors" }
         }
       },
+      { $sort: { _id: 1 } }
+    ]);
+
+    // Get visits by hour of day (0-23)
+    const visitsByHourOfDay = await Thumbprint.aggregate([
+      { $unwind: "$visits" },
       {
-        $sort: { _id: 1 }
-      }
+        $group: {
+          _id: { $hour: "$visits.timestamp" },
+          count: { $sum: 1 },
+          uniqueVisitors: { $addToSet: "$fingerprintHash" }
+        }
+      },
+      {
+        $project: {
+          _id: 1,
+          count: 1,
+          uniqueVisitors: { $size: "$uniqueVisitors" }
+        }
+      },
+      { $sort: { _id: 1 } }
     ]);
     
     return NextResponse.json({
@@ -114,7 +224,16 @@ export async function GET() {
       deviceBreakdown,
       dailyVisits,
       topPages,
-      orderSteps
+      orderSteps,
+      funnelMetrics: funnelMetrics[0] || {
+        totalFunnels: 0,
+        completedFunnels: 0,
+        abandonedFunnels: 0,
+        conversionRate: 0
+      },
+      stepAbandonment,
+      visitsByDayOfWeek,
+      visitsByHourOfDay
     });
   } catch (error) {
     console.error("Error fetching analytics data:", error);
