@@ -35,80 +35,61 @@ export async function POST(req: NextRequest) {
       deviceType = "desktop";
     }
     
+    // Prepare the new visit data
+    const newVisit = {
+      timestamp: new Date(),
+      page: data.page || "/",
+      referrer: data.referrer || null,
+      timeSpentMs: data.timeSpentMs || 0,
+      formContext: data.formContext || {},
+      fieldInteractions: data.fieldInteractions || []
+    };
+    
+    // Prepare funnel data updates if this is an order form page
+    const stepName = data.page && data.page.startsWith('/order/') 
+      ? data.page.split('/').pop() || '' 
+      : null;
+    
     // Check if this fingerprint already exists
     const existingThumbprint = await Thumbprint.findOne({ 
       fingerprintHash: data.fingerprintHash 
     });
     
     if (existingThumbprint) {
-      // Update existing record
-      existingThumbprint.lastSeen = new Date();
-      existingThumbprint.visitCount += 1;
-      
-      // Add new visit with form context and time spent if available
-      existingThumbprint.visits.push({
-        timestamp: new Date(),
-        page: data.page || "/",
-        referrer: data.referrer || null,
-        timeSpentMs: data.timeSpentMs || 0,
-        formContext: data.formContext || {},
-        fieldInteractions: data.fieldInteractions || []
-      });
-      
-      // Update funnel data if this is an order form page
-      if (data.page && data.page.startsWith('/order/')) {
-        const stepName = data.page.split('/').pop() || '';
-        
-        // Initialize funnelData if it doesn't exist
-        if (!existingThumbprint.funnelData) {
-          existingThumbprint.funnelData = {
-            entryStep: stepName,
-            completedSteps: [],
-            exitStep: stepName
-          };
-        }
-        
-        // Update funnel data
-        if (existingThumbprint.funnelData) {
-          // Add to completed steps if not already there
-          if (!existingThumbprint.funnelData.completedSteps?.includes(stepName)) {
-            existingThumbprint.funnelData.completedSteps = [
-              ...(existingThumbprint.funnelData.completedSteps || []),
-              stepName
-            ];
+      // Use atomic findOneAndUpdate for existing records
+      await Thumbprint.findOneAndUpdate(
+        { fingerprintHash: data.fingerprintHash },
+        {
+          // Set fields
+          $set: {
+            lastSeen: new Date(),
+            userAgent: userAgent,
+            device: {
+              ...existingThumbprint.device,
+              type: deviceType,
+              ...(data.device || {})
+            },
+            ...(stepName && {
+              'funnelData.exitStep': stepName,
+              ...(stepName === 'payment' && existingThumbprint.funnelData?.completedSteps?.length === 4 ? {
+                'conversion.hasConverted': true,
+                'conversion.conversionDate': new Date(),
+                'conversion.conversionType': 'order_completed'
+              } : {})
+            })
+          },
+          // Increment fields
+          $inc: { visitCount: 1 },
+          // Push to arrays
+          $push: { 
+            visits: newVisit,
+            ...(stepName && !existingThumbprint.funnelData?.completedSteps?.includes(stepName) ? {
+              'funnelData.completedSteps': stepName
+            } : {})
           }
-          
-          // Update exit step
-          existingThumbprint.funnelData.exitStep = stepName;
-          
-          // If this is the payment step and we have all steps, mark as converted
-          if (stepName === 'payment' && 
-              existingThumbprint.funnelData.completedSteps?.length === 5) {
-            existingThumbprint.conversion = {
-              ...existingThumbprint.conversion,
-              hasConverted: true,
-              conversionDate: new Date(),
-              conversionType: 'order_completed'
-            };
-          }
-        }
-      }
-      
-      // Update user agent if provided
-      if (userAgent) {
-        existingThumbprint.userAgent = userAgent;
-      }
-      
-      // Update device info if provided
-      if (deviceType) {
-        existingThumbprint.device = {
-          ...existingThumbprint.device,
-          type: deviceType,
-          ...data.device
-        };
-      }
-      
-      await existingThumbprint.save();
+        },
+        { new: true } // Return the updated document
+      );
       
       return NextResponse.json({ 
         success: true, 
@@ -116,40 +97,47 @@ export async function POST(req: NextRequest) {
         fingerprintHash: data.fingerprintHash
       });
     } else {
-      // Create new record
-      const newThumbprint = new Thumbprint({
-        fingerprintHash: data.fingerprintHash,
-        components: data.components,
-        userAgent: userAgent,
-        device: {
-          type: deviceType,
-          ...data.device
-        },
-        visits: [{
-          timestamp: new Date(),
-          page: data.page || "/",
-          referrer: data.referrer || null,
-          timeSpentMs: data.timeSpentMs || 0,
-          formContext: data.formContext || {},
-          fieldInteractions: data.fieldInteractions || []
-        }],
-        // Initialize user segmentation
-        userSegmentation: {
-          userType: 'new',
-          deviceCategory: deviceType,
-          acquisitionSource: data.referrer ? 'referral' : 'direct'
-        },
-        // Initialize funnel data if this is an order form page
-        ...(data.page && data.page.startsWith('/order/') ? {
-          funnelData: {
-            entryStep: data.page.split('/').pop() || '',
-            completedSteps: [data.page.split('/').pop() || ''],
-            exitStep: data.page.split('/').pop() || ''
+      // Use findOneAndUpdate with upsert for new records
+      // This handles the case where the document might have been created
+      // between our check and insert
+      await Thumbprint.findOneAndUpdate(
+        { fingerprintHash: data.fingerprintHash },
+        {
+          $setOnInsert: {
+            fingerprintHash: data.fingerprintHash,
+            components: data.components,
+            firstSeen: new Date(),
+            visitCount: 1,
+            userSegmentation: {
+              userType: 'new',
+              deviceCategory: deviceType,
+              acquisitionSource: data.referrer ? 'referral' : 'direct'
+            }
+          },
+          $set: {
+            lastSeen: new Date(),
+            userAgent: userAgent,
+            device: {
+              type: deviceType,
+              ...(data.device || {})
+            },
+            ...(stepName && {
+              'funnelData.entryStep': stepName,
+              'funnelData.exitStep': stepName,
+            })
+          },
+          $push: { 
+            visits: newVisit,
+            ...(stepName ? {
+              'funnelData.completedSteps': stepName
+            } : {})
           }
-        } : {})
-      });
-      
-      await newThumbprint.save();
+        },
+        { 
+          new: true,
+          upsert: true
+        }
+      );
       
       return NextResponse.json({ 
         success: true, 
