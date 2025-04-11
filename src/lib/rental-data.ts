@@ -22,9 +22,9 @@ export interface MachinePackage {
 
 export const mixerDetails: Record<MixerType, MixerDetails> = {
   "non-alcoholic": {
-    label: "Non-Alcoholic Mixer",
+    label: "Kool Aid Grape or Cherry Mixer",
     description: "Non-alcoholic, perfect for family events",
-    price: 14.95,
+    price: 19.95,
   },
   margarita: {
     label: "Margarita Mixer",
@@ -39,7 +39,7 @@ export const mixerDetails: Record<MixerType, MixerDetails> = {
   "strawberry-daiquiri": {
     label: "Strawberry Daiquiri Mixer",
     description: "Sweet strawberry daiquiri mix, just add rum",
-    price: 24.95,
+    price: 29.95,
   },
 };
 
@@ -49,7 +49,7 @@ export const machinePackages: MachinePackage[] = [
     capacity: 15,
     name: "15L Single Tank Machine",
     description: "Perfect for smaller gatherings and parties",
-    basePrice: 89.95,
+    basePrice: 149.95,
     maxMixers: 1,
     features: [
       "15L Capacity",
@@ -65,7 +65,7 @@ export const machinePackages: MachinePackage[] = [
     capacity: 30,
     name: "30L Double Tank Machine",
     description: "Ideal for larger events and multiple flavors",
-    basePrice: 124.95,
+    basePrice: 199.95,
     maxMixers: 2,
     features: [
       "30L Total Capacity",
@@ -82,7 +82,7 @@ export const machinePackages: MachinePackage[] = [
     capacity: 45,
     name: "45L Triple Tank Machine",
     description: "The ultimate machine for large events and variety",
-    basePrice: 174.95,
+    basePrice: 249.95,
     maxMixers: 3,
     features: [
       "45L Total Capacity",

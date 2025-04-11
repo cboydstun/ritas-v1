@@ -78,7 +78,7 @@ export const extraItems: ExtraItem[] = [
     id: "bounce-castle",
     name: "Inflatable Bounce Castle",
     description: "An inflatable bounce castle for kids",
-    price: 149.95,
+    price: 99.95,
     image: "/bounce-house-satx-ritas.webp",
   },
   {
