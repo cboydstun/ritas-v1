@@ -39,7 +39,7 @@ export const mixerDetails: Record<MixerType, MixerDetails> = {
   "strawberry-daiquiri": {
     label: "Strawberry Daiquiri Mixer",
     description: "Sweet strawberry daiquiri mix, just add rum",
-    price: 29.95,
+    price: 24.95,
   },
 };
 
@@ -49,7 +49,7 @@ export const machinePackages: MachinePackage[] = [
     capacity: 15,
     name: "15L Single Tank Machine",
     description: "Perfect for smaller gatherings and parties",
-    basePrice: 149.95,
+    basePrice: 124.95,
     maxMixers: 1,
     features: [
       "15L Capacity",
@@ -65,7 +65,7 @@ export const machinePackages: MachinePackage[] = [
     capacity: 30,
     name: "30L Double Tank Machine",
     description: "Ideal for larger events and multiple flavors",
-    basePrice: 199.95,
+    basePrice: 149.95,
     maxMixers: 2,
     features: [
       "30L Total Capacity",
@@ -82,7 +82,7 @@ export const machinePackages: MachinePackage[] = [
     capacity: 45,
     name: "45L Triple Tank Machine",
     description: "The ultimate machine for large events and variety",
-    basePrice: 249.95,
+    basePrice: 175.95,
     maxMixers: 3,
     features: [
       "45L Total Capacity",
