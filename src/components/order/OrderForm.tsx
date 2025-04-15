@@ -119,10 +119,13 @@ export default function OrderForm() {
   ): number => {
     if (!rentalDate || !returnDate) return 1;
 
-    return Math.ceil(
+    const days = Math.ceil(
       (new Date(returnDate).getTime() - new Date(rentalDate).getTime()) /
         (1000 * 60 * 60 * 24)
     );
+
+    // Always return at least 1 day
+    return Math.max(1, days);
   };
 
   const handleInputChange = (

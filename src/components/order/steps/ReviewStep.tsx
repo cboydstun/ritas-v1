@@ -15,10 +15,13 @@ export default function ReviewStep({
 
   const perDayRate = priceBreakdown.basePrice + priceBreakdown.mixerPrice;
 
-  const rentalDays = Math.ceil(
-    (new Date(formData.returnDate).getTime() -
-      new Date(formData.rentalDate).getTime()) /
-      (1000 * 60 * 60 * 24)
+  const rentalDays = Math.max(
+    1,
+    Math.ceil(
+      (new Date(formData.returnDate).getTime() -
+        new Date(formData.rentalDate).getTime()) /
+        (1000 * 60 * 60 * 24)
+    )
   );
 
   // Calculate extras total (per day × number of days)

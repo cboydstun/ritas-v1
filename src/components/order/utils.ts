@@ -89,10 +89,13 @@ export const calculatePricing = (
   rentalDate: string,
   returnDate: string,
 ): PricingDetails => {
-  const rentalDays = Math.ceil(
-    (new Date(returnDate + "T00:00:00").getTime() -
-      new Date(rentalDate + "T00:00:00").getTime()) /
-    (1000 * 60 * 60 * 24),
+  const rentalDays = Math.max(
+    1,
+    Math.ceil(
+      (new Date(returnDate + "T00:00:00").getTime() -
+        new Date(rentalDate + "T00:00:00").getTime()) /
+      (1000 * 60 * 60 * 24),
+    )
   );
   const perDayRate = price;
   const deliveryFee = 20;
