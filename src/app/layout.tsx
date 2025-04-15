@@ -71,6 +71,7 @@ import Footer from "@/components/Footer";
 import ThemeWrapper from "@/components/ThemeWrapper";
 import GoogleAnalytics from "@/components/GoogleAnalytics";
 import SessionProvider from "@/components/SessionProvider";
+import FingerprintTracker from "@/components/FingerprintTracker";
 
 export default function RootLayout({
   children,
@@ -88,6 +89,7 @@ export default function RootLayout({
             <Navigation />
             <main className="flex-grow">{children}</main>
             <Footer />
+            <FingerprintTracker />
           </ThemeWrapper>
         </SessionProvider>
       </body>

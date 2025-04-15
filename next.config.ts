@@ -34,7 +34,7 @@ const securityHeaders = [
       img-src 'self' data: https://*.paypal.com https://www.google-analytics.com https://www.googletagmanager.com;
       font-src 'self';
       connect-src 'self' https://*.paypal.com https://www.google-analytics.com https://www.googletagmanager.com;
-      frame-src 'self' https://*.paypal.com;
+      frame-src 'self' https://*.paypal.com https://www.google.com;
       object-src 'none';
       base-uri 'self';
       form-action 'self';
