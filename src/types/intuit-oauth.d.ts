@@ -1,4 +1,4 @@
-declare module 'intuit-oauth' {
+declare module "intuit-oauth" {
   export default class OAuthClient {
     constructor(options: {
       clientId: string;
@@ -21,10 +21,7 @@ declare module 'intuit-oauth' {
       Intuit_name: string;
     };
 
-    authorizeUri(options: {
-      scope: string[];
-      state: string;
-    }): string;
+    authorizeUri(options: { scope: string[]; state: string }): string;
 
     createToken(url: string): Promise<{
       getJson(): {
@@ -48,8 +45,6 @@ declare module 'intuit-oauth' {
       };
     }>;
 
-    revoke(options: {
-      token: string;
-    }): Promise<any>;
+    revoke(options: { token: string }): Promise<unknown>;
   }
 }

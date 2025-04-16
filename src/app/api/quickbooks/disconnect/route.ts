@@ -1,6 +1,5 @@
-import { NextRequest } from 'next/server';
-import { disconnectHandler } from '@/lib/quickbooks-auth';
+import { disconnectHandler } from "@/lib/quickbooks-auth";
 
-export async function POST(request: NextRequest) {
+export async function POST() {
   return disconnectHandler();
 }

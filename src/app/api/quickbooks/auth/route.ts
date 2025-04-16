@@ -1,6 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getAuthorizationUrlHandler } from '@/lib/quickbooks-auth';
+import { getAuthorizationUrlHandler } from "@/lib/quickbooks-auth";
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   return getAuthorizationUrlHandler();
 }
