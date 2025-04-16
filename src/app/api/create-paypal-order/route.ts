@@ -15,24 +15,83 @@ export async function POST(request: Request) {
     }
 
     // Import PayPal SDK dynamically
-    const sdk = await import("@paypal/checkout-server-sdk");
-
+    const paypalSdk = await import("@paypal/checkout-server-sdk");
     const paypalClient = await initializePayPalSDK();
-    // @ts-expect-error: TypeScript does not recognize OrdersCreateRequest
-    const request_ = new sdk.default.orders.OrdersCreateRequest();
-
-    request_.prefer("return=representation");
-    request_.requestBody({
-      intent: "CAPTURE",
-      purchase_units: [
-        {
-          amount: {
-            currency_code: currency,
-            value: amount.toString(),
+    
+    // Create a request object that works with our custom client
+    let request_;
+    
+    try {
+      // Use a type assertion to access the SDK structure
+      const sdkModule = paypalSdk as any;
+      
+      // Log the SDK structure for debugging
+      console.log("SDK keys:", Object.keys(sdkModule));
+      if (sdkModule.default) {
+        console.log("SDK default keys:", Object.keys(sdkModule.default));
+        if (sdkModule.default.orders) {
+          console.log("SDK default.orders keys:", Object.keys(sdkModule.default.orders));
+        }
+      }
+      
+      // In development mode, create a custom request object that works with our custom client
+      if (process.env.NODE_ENV !== "production") {
+        console.log("Using development mode request object");
+        
+        // Create a custom request object with the properties our custom client expects
+        request_ = {
+          path: "/v2/checkout/orders",
+          verb: "POST",
+          body: {
+            intent: "CAPTURE",
+            purchase_units: [
+              {
+                amount: {
+                  currency_code: currency,
+                  value: amount.toString(),
+                },
+              },
+            ],
           },
-        },
-      ],
-    });
+          headers: {
+            "Content-Type": "application/json",
+            "Prefer": "return=representation",
+          },
+        };
+      } else {
+        // In production, use the standard SDK
+        // Create the request object using the appropriate path
+        if (sdkModule.default && sdkModule.default.orders && sdkModule.default.orders.OrdersCreateRequest) {
+          request_ = new sdkModule.default.orders.OrdersCreateRequest();
+        } else if (sdkModule.orders && sdkModule.orders.OrdersCreateRequest) {
+          request_ = new sdkModule.orders.OrdersCreateRequest();
+        } else if (sdkModule.default && sdkModule.default.OrdersCreateRequest) {
+          request_ = new sdkModule.default.OrdersCreateRequest();
+        } else if (sdkModule.OrdersCreateRequest) {
+          request_ = new sdkModule.OrdersCreateRequest();
+        } else {
+          throw new Error("Could not find OrdersCreateRequest in PayPal SDK");
+        }
+        
+        request_.prefer("return=representation");
+        
+        // Create the request body
+        request_.requestBody({
+          intent: "CAPTURE",
+          purchase_units: [
+            {
+              amount: {
+                currency_code: currency,
+                value: amount.toString(),
+              },
+            },
+          ],
+        });
+      }
+    } catch (error) {
+      console.error("Error creating PayPal request:", error);
+      throw new Error(`Failed to create PayPal request: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
 
     const order = await paypalClient.execute(request_);
 
