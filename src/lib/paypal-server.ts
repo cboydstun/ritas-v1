@@ -16,6 +16,7 @@ export const initializePayPalSDK = async () => {
   
   try {
     // Use a type assertion to access the SDK structure
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const sdkModule = paypalSdk as any;
     
     // Log the SDK structure for debugging
@@ -33,6 +34,7 @@ export const initializePayPalSDK = async () => {
     // Create a custom client wrapper that handles development mode issues
     // This is a workaround for the authentication issues in development mode
     const customClient = {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       execute: async (request: any) => {
         try {
           // In development mode, we'll use a custom implementation
@@ -41,11 +43,12 @@ export const initializePayPalSDK = async () => {
             
             // Create the appropriate request based on the request type
             let url = "https://api-m.sandbox.paypal.com";
-            let method = "POST";
-            let headers: Record<string, string> = {
+            const method = "POST";
+            const headers: Record<string, string> = {
               "Content-Type": "application/json",
               "Authorization": `Basic ${Buffer.from(`${clientId}:${secret}`).toString("base64")}`,
             };
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             let data: any = {};
             
             // Determine the request type and set up the appropriate endpoint and data
