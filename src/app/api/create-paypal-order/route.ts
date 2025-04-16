@@ -174,11 +174,30 @@ export async function POST(request: Request) {
       console.error("PayPal API error details:", error.details);
     }
 
+    // Prepare a more detailed error response
     let errorMessage = "Failed to create order";
+    let errorDetails = {};
+    
     if (error instanceof Error) {
       errorMessage = `PayPal Error: ${error.message}`;
+      errorDetails = {
+        name: error.name,
+        message: error.message,
+      };
+    }
+    
+    // If it's a PayPal API error, include the details
+    if (error && typeof error === "object" && "details" in error) {
+      errorDetails = {
+        ...errorDetails,
+        paypalDetails: error.details,
+      };
     }
 
-    return NextResponse.json({ message: errorMessage }, { status: 500 });
+    return NextResponse.json({ 
+      message: errorMessage,
+      details: errorDetails,
+      timestamp: new Date().toISOString(),
+    }, { status: 500 });
   }
 }

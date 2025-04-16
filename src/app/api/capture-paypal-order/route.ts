@@ -42,14 +42,20 @@ export async function POST(request: Request) {
         console.log("Using development mode request object for capture");
         
         // Create a custom request object with the properties our custom client expects
+        // For capture requests, PayPal API expects an empty body or minimal data
         request_ = {
-          path: `/v2/checkout/orders/${orderId}`,
+          // Use a path that clearly indicates this is a capture request
+          path: `/v2/checkout/orders/${orderId}/capture`,
           verb: "POST",
+          // Empty body for capture request as per PayPal documentation
+          body: {},
           headers: {
             "Content-Type": "application/json",
             "Prefer": "return=representation",
           },
         };
+        
+        console.log(`Creating capture request for order ${orderId} with path: ${request_.path}`);
       } else {
         // In production, use the standard SDK
         // Create the request object using the appropriate path
@@ -264,6 +270,10 @@ export async function POST(request: Request) {
         rental: updatedRental.toObject(),
       });
     } else {
+      // Capture wasn't successful - log detailed information
+      console.error("PayPal capture failed with status:", capture.result.status);
+      console.error("Capture result details:", JSON.stringify(capture.result, null, 2));
+      
       // Update rental payment status to failed if capture wasn't successful
       await dbConnect();
       const rental = await Rental.findOneAndUpdate(
@@ -271,6 +281,7 @@ export async function POST(request: Request) {
         {
           $set: {
             "payment.status": "failed",
+            "payment.errorDetails": JSON.stringify(capture.result),
             updatedAt: new Date(),
           },
         },
@@ -282,7 +293,8 @@ export async function POST(request: Request) {
         throw new Error("Rental not found for failed payment");
       }
 
-      throw new Error("Payment capture failed");
+      // Throw a more detailed error with the status
+      throw new Error(`Payment capture failed with status: ${capture.result.status}`);
     }
   } catch (error) {
     console.error("Error capturing PayPal payment:", error);
@@ -301,11 +313,30 @@ export async function POST(request: Request) {
       console.error("PayPal API error details:", error.details);
     }
 
+    // Prepare a more detailed error response
     let errorMessage = "Failed to capture payment";
+    let errorDetails = {};
+    
     if (error instanceof Error) {
       errorMessage = `PayPal Error: ${error.message}`;
+      errorDetails = {
+        name: error.name,
+        message: error.message,
+      };
+    }
+    
+    // If it's a PayPal API error, include the details
+    if (error && typeof error === "object" && "details" in error) {
+      errorDetails = {
+        ...errorDetails,
+        paypalDetails: error.details,
+      };
     }
 
-    return NextResponse.json({ message: errorMessage }, { status: 500 });
+    return NextResponse.json({ 
+      message: errorMessage,
+      details: errorDetails,
+      timestamp: new Date().toISOString(),
+    }, { status: 500 });
   }
 }

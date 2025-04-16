@@ -52,16 +52,42 @@ export const initializePayPalSDK = async () => {
             let data: any = {};
             
             // Determine the request type and set up the appropriate endpoint and data
-            if (request.path.includes("/v2/checkout/orders")) {
+            console.log(`Processing request with path: ${request.path} and verb: ${request.verb}`);
+            
+            // First check if it's a capture request (more specific)
+            if (request.path.includes("/capture") && request.verb === "POST") {
+              // This is a capture request
+              // Extract the order ID from the path
+              const pathParts = request.path.split("/");
+              const orderId = pathParts[pathParts.length - 2]; // Get the ID before "/capture"
+              
+              url += `/v2/checkout/orders/${orderId}/capture`;
+              
+              // For capture requests, PayPal API expects an empty body or minimal data
+              // Using an empty body as recommended in PayPal documentation for capture requests
+              data = {};
+              
+              // Add debug logging
+              console.log(`Sending capture request for order ${orderId} to ${url}`);
+            } 
+            // Then check if it's a regular order request (less specific)
+            else if (request.path === "/v2/checkout/orders" || request.path === "/v2/checkout/orders/") {
               url += "/v2/checkout/orders";
               data = request.body;
-            } else if (request.path.includes("/v2/checkout/orders/") && request.verb === "POST") {
-              // This is a capture request
-              const orderId = request.path.split("/").pop();
-              url += `/v2/checkout/orders/${orderId}/capture`;
-            } else {
+              
+              console.log(`Sending create order request to ${url}`);
+            } 
+            else {
               throw new Error(`Unsupported request path: ${request.path}`);
             }
+            
+            // Log the request details for debugging
+            console.log(`PayPal API Request:
+              URL: ${url}
+              Method: ${method}
+              Headers: ${JSON.stringify(headers, null, 2)}
+              Body: ${data ? JSON.stringify(data, null, 2) : 'undefined'}
+            `);
             
             // Make the request using fetch
             const response = await fetch(url, {
@@ -70,12 +96,23 @@ export const initializePayPalSDK = async () => {
               body: data ? JSON.stringify(data) : undefined,
             });
             
+            // Log response status
+            console.log(`PayPal API Response Status: ${response.status} ${response.statusText}`);
+            
             if (!response.ok) {
               const errorData = await response.json();
+              console.error(`PayPal API Error Response: ${JSON.stringify(errorData, null, 2)}`);
               throw new Error(`PayPal API error: ${JSON.stringify(errorData)}`);
             }
             
             const responseData = await response.json();
+            
+            // Log successful response data (without sensitive info)
+            console.log(`PayPal API Success Response: ${JSON.stringify({
+              id: responseData.id,
+              status: responseData.status,
+              links: responseData.links,
+            }, null, 2)}`);
             
             // Return a response object that matches the structure expected by the calling code
             return {
