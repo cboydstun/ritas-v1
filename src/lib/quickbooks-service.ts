@@ -2,6 +2,8 @@ import QuickBooks from "node-quickbooks";
 import { QuickBooksAuth } from "./quickbooks-auth";
 import { OrderFormData } from "@/components/order/types";
 import { Rental } from "@/models/rental";
+import { calculatePrice } from "./pricing";
+import { MixerType, mixerDetails } from "./rental-data";
 
 // Define types for QuickBooks entities
 interface QBCustomer {
@@ -468,14 +470,24 @@ export class QuickBooksService {
       // Find or create customer
       const customerId = await this.findOrCreateCustomer(rental.customer);
 
+      // Get price breakdown
+      const priceBreakdown = calculatePrice(
+        rental.machineType as "single" | "double" | "triple",
+        rental.selectedMixers && rental.selectedMixers.length > 0
+          ? rental.selectedMixers[0] as MixerType
+          : undefined
+      );
+
+      console.log("Price breakdown for invoice:", priceBreakdown);
+
       // Create line items
       const lineItems = [];
 
-      // Add machine rental line item
+      // Add base machine rental line item (without delivery, tax, or processing)
       const machineItemId = await this.findOrCreateItem(
         `${rental.machineType} Slushy Machine Rental`,
         `${rental.machineType} Slushy Machine Rental (${rental.capacity}L)`,
-        rental.price,
+        priceBreakdown.basePrice,
       );
 
       lineItems.push({
@@ -483,19 +495,52 @@ export class QuickBooksService {
         SalesItemLineDetail: {
           ItemRef: { value: machineItemId },
           Qty: 1,
-          UnitPrice: rental.price,
+          UnitPrice: priceBreakdown.basePrice,
         },
-        Amount: rental.price,
+        Amount: priceBreakdown.basePrice,
         Description: `${rental.machineType} Slushy Machine Rental (${rental.capacity}L)`,
       });
 
-      // Add mixer line items if any
+      // Add delivery fee line item
+      const deliveryItemId = await this.findOrCreateItem(
+        "Delivery Fee",
+        "Delivery and pickup service fee",
+        priceBreakdown.deliveryFee,
+      );
+
+      lineItems.push({
+        DetailType: "SalesItemLineDetail",
+        SalesItemLineDetail: {
+          ItemRef: { value: deliveryItemId },
+          Qty: 1,
+          UnitPrice: priceBreakdown.deliveryFee,
+        },
+        Amount: priceBreakdown.deliveryFee,
+        Description: "Delivery and Pickup Service",
+      });
+
+      // Add mixer line items with correct prices
       if (rental.selectedMixers && rental.selectedMixers.length > 0) {
         for (const mixer of rental.selectedMixers) {
+          // Get the correct mixer price from mixerDetails
+          const mixerType = mixer as MixerType;
+          const mixerPrice = mixerDetails[mixerType]?.price || 0;
+          
+          // Format mixer name properly (capitalize first letter, handle special cases)
+          let formattedMixerName = mixer;
+          if (mixer === "pina-colada") {
+            formattedMixerName = "Piña Colada"; // Proper spelling with accent
+          } else if (mixer === "non-alcoholic") {
+            formattedMixerName = "Non-Alcoholic";
+          } else {
+            // Capitalize first letter for other mixers
+            formattedMixerName = mixer.charAt(0).toUpperCase() + mixer.slice(1);
+          }
+          
           const mixerItemId = await this.findOrCreateItem(
-            `${mixer} Mixer`,
-            `${mixer} Mixer for Slushy Machine`,
-            0, // Included in machine rental price
+            `${formattedMixerName} Mixer`,
+            `${formattedMixerName} Mixer for Slushy Machine`,
+            mixerPrice,
           );
 
           lineItems.push({
@@ -503,13 +548,51 @@ export class QuickBooksService {
             SalesItemLineDetail: {
               ItemRef: { value: mixerItemId },
               Qty: 1,
-              UnitPrice: 0,
+              UnitPrice: mixerPrice,
             },
-            Amount: 0,
-            Description: `${mixer} Mixer`,
+            Amount: mixerPrice,
+            Description: `${formattedMixerName} Mixer`,
           });
         }
       }
+
+      // Add sales tax line item (with consistent rounding)
+      const roundedSalesTax = Math.round(priceBreakdown.salesTax * 100) / 100;
+      const salesTaxItemId = await this.findOrCreateItem(
+        "Sales Tax",
+        "8.25% Texas Sales Tax",
+        roundedSalesTax,
+      );
+
+      lineItems.push({
+        DetailType: "SalesItemLineDetail",
+        SalesItemLineDetail: {
+          ItemRef: { value: salesTaxItemId },
+          Qty: 1,
+          UnitPrice: roundedSalesTax,
+        },
+        Amount: roundedSalesTax,
+        Description: "8.25% Texas Sales Tax",
+      });
+
+      // Add processing fee line item (with consistent rounding)
+      const roundedProcessingFee = Math.round(priceBreakdown.processingFee * 100) / 100;
+      const processingFeeItemId = await this.findOrCreateItem(
+        "Processing Fee",
+        "3% Payment Processing Fee",
+        roundedProcessingFee,
+      );
+
+      lineItems.push({
+        DetailType: "SalesItemLineDetail",
+        SalesItemLineDetail: {
+          ItemRef: { value: processingFeeItemId },
+          Qty: 1,
+          UnitPrice: roundedProcessingFee,
+        },
+        Amount: roundedProcessingFee,
+        Description: "3% Payment Processing Fee",
+      });
 
       // Add extras line items if any
       if (rental.selectedExtras && rental.selectedExtras.length > 0) {
