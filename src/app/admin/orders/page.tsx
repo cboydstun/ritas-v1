@@ -21,11 +21,9 @@ export default function AdminOrdersPage() {
             Create New Order
           </button>
         </div>
-        
+
         {isCreateModalOpen && (
-          <CreateOrderModal
-            onClose={() => setIsCreateModalOpen(false)}
-          />
+          <CreateOrderModal onClose={() => setIsCreateModalOpen(false)} />
         )}
         <Suspense fallback={<div>Loading orders...</div>}>
           <OrdersTable />

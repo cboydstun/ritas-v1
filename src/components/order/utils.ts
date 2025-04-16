@@ -41,17 +41,35 @@ export const validateZipCode = (zipCode: string): boolean => {
 
 export const isBexarCountyZipCode = (zipCode: string): boolean => {
   // Remove any non-digit characters (like dashes)
-  const cleanZip = zipCode.replace(/\D/g, '');
+  const cleanZip = zipCode.replace(/\D/g, "");
 
   // Main San Antonio/Bexar County ZIP codes
   const bexarZips = [
     // Main San Antonio ZIP ranges (78201-78299)
-    ...Array.from({ length: 99 }, (_, i) => `782${String(i).padStart(2, '0')}`),
+    ...Array.from({ length: 99 }, (_, i) => `782${String(i).padStart(2, "0")}`),
 
     // Additional Bexar County ZIPs
-    '78002', '78006', '78009', '78015', '78023', '78039', '78052',
-    '78054', '78056', '78069', '78073', '78101', '78108', '78109',
-    '78112', '78124', '78148', '78150', '78152', '78154', '78163', 
+    "78002",
+    "78006",
+    "78009",
+    "78015",
+    "78023",
+    "78039",
+    "78052",
+    "78054",
+    "78056",
+    "78069",
+    "78073",
+    "78101",
+    "78108",
+    "78109",
+    "78112",
+    "78124",
+    "78148",
+    "78150",
+    "78152",
+    "78154",
+    "78163",
   ];
 
   return bexarZips.includes(cleanZip);
@@ -69,8 +87,8 @@ export const validateDeliveryTime = (time: string): boolean => {
 
 // Format date from YYYY-MM-DD to MM-DD-YYYY
 export const formatDateForDisplay = (isoDate: string): string => {
-  if (!isoDate) return '';
-  const [year, month, day] = isoDate.split('-');
+  if (!isoDate) return "";
+  const [year, month, day] = isoDate.split("-");
   return `${month}-${day}-${year}`;
 };
 
@@ -94,8 +112,8 @@ export const calculatePricing = (
     Math.ceil(
       (new Date(returnDate + "T00:00:00").getTime() -
         new Date(rentalDate + "T00:00:00").getTime()) /
-      (1000 * 60 * 60 * 24),
-    )
+        (1000 * 60 * 60 * 24),
+    ),
   );
   const perDayRate = price;
   const deliveryFee = 20;

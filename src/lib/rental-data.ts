@@ -93,5 +93,5 @@ export const machinePackages: MachinePackage[] = [
       "24/7 Support",
       "Temperature Control",
     ],
-  }
+  },
 ];

@@ -7,19 +7,19 @@ import { getFingerprint } from "@thumbmarkjs/thumbmarkjs";
 export default function FingerprintTracker() {
   const pathname = usePathname();
   const [lastPath, setLastPath] = useState<string | null>(null);
-  
+
   useEffect(() => {
     // Skip tracking for admin pages
     if (pathname.startsWith("/admin")) {
       return;
     }
-    
+
     // Track page view
     const trackPageView = async () => {
       try {
         // Get fingerprint
         const fingerprintResult = await getFingerprint();
-        
+
         // Prepare data with mock component data since thumbarkjs doesn't expose components directly
         const data = {
           fingerprintHash: fingerprintResult,
@@ -37,9 +37,9 @@ export default function FingerprintTracker() {
             cookiesEnabled: navigator.cookieEnabled,
           },
           page: pathname,
-          referrer: document.referrer || null
+          referrer: document.referrer || null,
         };
-        
+
         // Send to API
         const response = await fetch("/api/v1/analytics/fingerprint", {
           method: "POST",
@@ -48,7 +48,7 @@ export default function FingerprintTracker() {
           },
           body: JSON.stringify(data),
         });
-        
+
         if (!response.ok) {
           throw new Error("Failed to send fingerprint data");
         }
@@ -56,13 +56,13 @@ export default function FingerprintTracker() {
         console.error("Error tracking page view:", error);
       }
     };
-    
+
     // Only track if the path has changed
     if (pathname !== lastPath) {
       trackPageView();
       setLastPath(pathname);
     }
   }, [pathname, lastPath]);
-  
+
   return null; // This component doesn't render anything
 }

@@ -17,28 +17,31 @@ export async function POST(request: Request) {
     // Import PayPal SDK dynamically
     const paypalSdk = await import("@paypal/checkout-server-sdk");
     const paypalClient = await initializePayPalSDK();
-    
+
     // Create a request object that works with our custom client
     let request_;
-    
+
     try {
       // Use a type assertion to access the SDK structure
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const sdkModule = paypalSdk as any;
-      
+
       // Log the SDK structure for debugging
       console.log("SDK keys:", Object.keys(sdkModule));
       if (sdkModule.default) {
         console.log("SDK default keys:", Object.keys(sdkModule.default));
         if (sdkModule.default.orders) {
-          console.log("SDK default.orders keys:", Object.keys(sdkModule.default.orders));
+          console.log(
+            "SDK default.orders keys:",
+            Object.keys(sdkModule.default.orders),
+          );
         }
       }
-      
+
       // In development mode, create a custom request object that works with our custom client
       if (process.env.NODE_ENV !== "production") {
         console.log("Using development mode request object");
-        
+
         // Create a custom request object with the properties our custom client expects
         request_ = {
           path: "/v2/checkout/orders",
@@ -56,13 +59,17 @@ export async function POST(request: Request) {
           },
           headers: {
             "Content-Type": "application/json",
-            "Prefer": "return=representation",
+            Prefer: "return=representation",
           },
         };
       } else {
         // In production, use the standard SDK
         // Create the request object using the appropriate path
-        if (sdkModule.default && sdkModule.default.orders && sdkModule.default.orders.OrdersCreateRequest) {
+        if (
+          sdkModule.default &&
+          sdkModule.default.orders &&
+          sdkModule.default.orders.OrdersCreateRequest
+        ) {
           request_ = new sdkModule.default.orders.OrdersCreateRequest();
         } else if (sdkModule.orders && sdkModule.orders.OrdersCreateRequest) {
           request_ = new sdkModule.orders.OrdersCreateRequest();
@@ -73,9 +80,9 @@ export async function POST(request: Request) {
         } else {
           throw new Error("Could not find OrdersCreateRequest in PayPal SDK");
         }
-        
+
         request_.prefer("return=representation");
-        
+
         // Create the request body
         request_.requestBody({
           intent: "CAPTURE",
@@ -91,7 +98,9 @@ export async function POST(request: Request) {
       }
     } catch (error) {
       console.error("Error creating PayPal request:", error);
-      throw new Error(`Failed to create PayPal request: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `Failed to create PayPal request: ${error instanceof Error ? error.message : "Unknown error"}`,
+      );
     }
 
     const order = await paypalClient.execute(request_);
@@ -177,7 +186,7 @@ export async function POST(request: Request) {
     // Prepare a more detailed error response
     let errorMessage = "Failed to create order";
     let errorDetails = {};
-    
+
     if (error instanceof Error) {
       errorMessage = `PayPal Error: ${error.message}`;
       errorDetails = {
@@ -185,7 +194,7 @@ export async function POST(request: Request) {
         message: error.message,
       };
     }
-    
+
     // If it's a PayPal API error, include the details
     if (error && typeof error === "object" && "details" in error) {
       errorDetails = {
@@ -194,10 +203,13 @@ export async function POST(request: Request) {
       };
     }
 
-    return NextResponse.json({ 
-      message: errorMessage,
-      details: errorDetails,
-      timestamp: new Date().toISOString(),
-    }, { status: 500 });
+    return NextResponse.json(
+      {
+        message: errorMessage,
+        details: errorDetails,
+        timestamp: new Date().toISOString(),
+      },
+      { status: 500 },
+    );
   }
 }

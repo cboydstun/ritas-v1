@@ -57,13 +57,13 @@ export default function DetailsStep({
     // Validate ZIP code format
     if (value && !validateZipCode(value)) {
       setZipCodeError(
-        "Please enter a valid ZIP code format (e.g., 78201 or 78201-1234)"
+        "Please enter a valid ZIP code format (e.g., 78201 or 78201-1234)",
       );
     }
     // Validate if ZIP is in Bexar County
     else if (value && validateZipCode(value) && !isBexarCountyZipCode(value)) {
       setZipCodeError(
-        "We only deliver within Bexar County, TX. This ZIP code is outside our delivery area."
+        "We only deliver within Bexar County, TX. This ZIP code is outside our delivery area.",
       );
       if (value.length === 5 || value.length > 6) {
         setShowZipCodeWarning(true);

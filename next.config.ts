@@ -2,31 +2,31 @@ import type { NextConfig } from "next";
 
 const securityHeaders = [
   {
-    key: 'Strict-Transport-Security',
-    value: 'max-age=63072000; includeSubDomains; preload'
+    key: "Strict-Transport-Security",
+    value: "max-age=63072000; includeSubDomains; preload",
   },
   {
-    key: 'X-XSS-Protection',
-    value: '1; mode=block'
+    key: "X-XSS-Protection",
+    value: "1; mode=block",
   },
   {
-    key: 'X-Content-Type-Options',
-    value: 'nosniff'
+    key: "X-Content-Type-Options",
+    value: "nosniff",
   },
   {
-    key: 'Referrer-Policy',
-    value: 'strict-origin-when-cross-origin'
+    key: "Referrer-Policy",
+    value: "strict-origin-when-cross-origin",
   },
   {
-    key: 'X-Frame-Options',
-    value: 'SAMEORIGIN'
+    key: "X-Frame-Options",
+    value: "SAMEORIGIN",
   },
   {
-    key: 'Permissions-Policy',
-    value: 'camera=(), microphone=(), geolocation=()'
+    key: "Permissions-Policy",
+    value: "camera=(), microphone=(), geolocation=()",
   },
   {
-    key: 'Content-Security-Policy',
+    key: "Content-Security-Policy",
     value: `
       default-src 'self';
       script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.paypal.com https://www.google-analytics.com https://www.googletagmanager.com;
@@ -41,8 +41,10 @@ const securityHeaders = [
       frame-ancestors 'self';
       block-all-mixed-content;
       upgrade-insecure-requests;
-    `.replace(/\s+/g, ' ').trim()
-  }
+    `
+      .replace(/\s+/g, " ")
+      .trim(),
+  },
 ];
 
 const nextConfig: NextConfig = {
@@ -54,7 +56,7 @@ const nextConfig: NextConfig = {
     return [
       {
         // Apply these headers to all routes
-        source: '/:path*',
+        source: "/:path*",
         headers: securityHeaders,
       },
     ];

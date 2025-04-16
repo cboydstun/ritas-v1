@@ -10,7 +10,7 @@ export default function ExtrasStep({
 }: StepProps) {
   // Local state to track selected extras
   const [selectedExtras, setSelectedExtras] = useState<ExtraItem[]>(
-    formData.selectedExtras || []
+    formData.selectedExtras || [],
   );
 
   // Calculate the total price for an item based on quantity
@@ -39,7 +39,7 @@ export default function ExtrasStep({
     if (newQuantity < 1) return; // Don't allow quantities less than 1
 
     const newSelectedExtras = selectedExtras.map((item) =>
-      item.id === extraId ? { ...item, quantity: newQuantity } : item
+      item.id === extraId ? { ...item, quantity: newQuantity } : item,
     );
 
     setSelectedExtras(newSelectedExtras);
@@ -61,7 +61,7 @@ export default function ExtrasStep({
     // Update the total price
     const extrasTotal = newSelectedExtras.reduce(
       (sum, item) => sum + calculateItemTotal(item),
-      0
+      0,
     );
     const newPrice = formData.price + extrasTotal;
 
@@ -172,7 +172,7 @@ export default function ExtrasStep({
                         onClick={() =>
                           handleQuantityChange(
                             extra.id,
-                            getExtraQuantity(extra.id) - 1
+                            getExtraQuantity(extra.id) - 1,
                           )
                         }
                         className="px-3 py-2 text-gray-500 hover:text-margarita focus:outline-none"
@@ -189,7 +189,7 @@ export default function ExtrasStep({
                         onClick={() =>
                           handleQuantityChange(
                             extra.id,
-                            getExtraQuantity(extra.id) + 1
+                            getExtraQuantity(extra.id) + 1,
                           )
                         }
                         className="px-3 py-2 text-gray-500 hover:text-margarita focus:outline-none"

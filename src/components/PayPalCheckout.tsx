@@ -41,15 +41,15 @@ export const PayPalCheckout: React.FC<PayPalCheckoutProps> = ({
       if (!response.ok) {
         const errorData = await response.json();
         console.error("PayPal create order error response:", errorData);
-        
+
         // Create a more detailed error message
         let errorMessage = errorData.message || "Failed to create order";
-        
+
         // If there are additional details, include them in the error message
         if (errorData.details && Object.keys(errorData.details).length > 0) {
           errorMessage += ` (${JSON.stringify(errorData.details)})`;
         }
-        
+
         throw new Error(errorMessage);
       }
 
@@ -86,15 +86,15 @@ export const PayPalCheckout: React.FC<PayPalCheckoutProps> = ({
       if (!response.ok) {
         const errorData = await response.json();
         console.error("PayPal capture error response:", errorData);
-        
+
         // Create a more detailed error message
         let errorMessage = errorData.message || "Failed to capture payment";
-        
+
         // If there are additional details, include them in the error message
         if (errorData.details && Object.keys(errorData.details).length > 0) {
           errorMessage += ` (${JSON.stringify(errorData.details)})`;
         }
-        
+
         throw new Error(errorMessage);
       }
 

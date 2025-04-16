@@ -20,7 +20,7 @@ jest.mock("next/navigation", () => ({
 describe("Success Page", () => {
   it("renders the success message", () => {
     render(<SuccessPage />);
-    
+
     // Check for success message
     expect(screen.getByText(/Order Confirmed/i)).toBeInTheDocument();
     expect(screen.getByText(/Thank you for your order/i)).toBeInTheDocument();
@@ -28,14 +28,14 @@ describe("Success Page", () => {
 
   it("displays the order ID", () => {
     render(<SuccessPage />);
-    
+
     // Check for order ID
     expect(screen.getByText(/test-order-123/i)).toBeInTheDocument();
   });
 
   it("shows order details from URL parameters", () => {
     render(<SuccessPage />);
-    
+
     // Check for machine type and mixers
     expect(screen.getByText(/double/i)).toBeInTheDocument();
     expect(screen.getByText(/margarita/i)).toBeInTheDocument();
@@ -44,7 +44,7 @@ describe("Success Page", () => {
 
   it("has a return to home button", () => {
     render(<SuccessPage />);
-    
+
     // Check for home button
     const homeButton = screen.getByRole("link", { name: /return home/i });
     expect(homeButton).toBeInTheDocument();

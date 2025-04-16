@@ -300,7 +300,7 @@ export async function GET(request: Request) {
     console.error("Error fetching orders:", error);
     return NextResponse.json(
       { message: "Failed to fetch orders" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

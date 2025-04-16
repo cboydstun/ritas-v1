@@ -7,87 +7,84 @@ import { authOptions } from "@/lib/auth";
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
-    
+
     // Check if user is authenticated
     if (!session) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    
+
     await dbConnect();
-    
+
     // Get basic stats
     const totalVisitors = await Thumbprint.countDocuments();
     const newVisitorsLast30Days = await Thumbprint.countDocuments({
-      firstSeen: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) }
+      firstSeen: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
     });
-    
+
     // Get device breakdown
     const deviceBreakdown = await Thumbprint.aggregate([
       {
         $group: {
           _id: "$device.type",
-          count: { $sum: 1 }
-        }
-      }
+          count: { $sum: 1 },
+        },
+      },
     ]);
-    
+
     // Get daily visitors for the last 30 days
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    
+
     const dailyVisits = await Thumbprint.aggregate([
       {
-        $unwind: "$visits"
+        $unwind: "$visits",
       },
       {
         $match: {
-          "visits.timestamp": { $gte: thirtyDaysAgo }
-        }
+          "visits.timestamp": { $gte: thirtyDaysAgo },
+        },
       },
       {
         $group: {
           _id: {
-            $dateToString: { format: "%Y-%m-%d", date: "$visits.timestamp" }
+            $dateToString: { format: "%Y-%m-%d", date: "$visits.timestamp" },
           },
-          count: { $sum: 1 }
-        }
+          count: { $sum: 1 },
+        },
       },
       {
-        $sort: { _id: 1 }
-      }
+        $sort: { _id: 1 },
+      },
     ]);
-    
+
     // Get top pages
     const topPages = await Thumbprint.aggregate([
       {
-        $unwind: "$visits"
+        $unwind: "$visits",
       },
       {
         $group: {
           _id: "$visits.page",
-          count: { $sum: 1 }
-        }
+          count: { $sum: 1 },
+        },
       },
       {
-        $sort: { count: -1 }
+        $sort: { count: -1 },
       },
       {
-        $limit: 10
-      }
+        $limit: 10,
+      },
     ]);
-    
+
     // Get order form step completion rates with time spent
     const orderSteps = await Thumbprint.aggregate([
       {
-        $unwind: "$visits"
+        $unwind: "$visits",
       },
       {
         $match: {
-          "visits.page": { $regex: "^/order/" }
-        }
+          "visits.page": { $regex: "^/order/" },
+        },
       },
       {
         $group: {
@@ -95,8 +92,8 @@ export async function GET() {
           count: { $sum: 1 },
           uniqueVisitors: { $addToSet: "$fingerprintHash" },
           avgTimeSpent: { $avg: "$visits.timeSpentMs" },
-          totalTimeSpent: { $sum: "$visits.timeSpentMs" }
-        }
+          totalTimeSpent: { $sum: "$visits.timeSpentMs" },
+        },
       },
       {
         $project: {
@@ -104,20 +101,20 @@ export async function GET() {
           count: 1,
           uniqueVisitors: { $size: "$uniqueVisitors" },
           avgTimeSpent: 1,
-          totalTimeSpent: 1
-        }
+          totalTimeSpent: 1,
+        },
       },
       {
-        $sort: { _id: 1 }
-      }
+        $sort: { _id: 1 },
+      },
     ]);
-    
+
     // Get funnel completion metrics
     const funnelMetrics = await Thumbprint.aggregate([
       {
         $match: {
-          "funnelData": { $exists: true }
-        }
+          funnelData: { $exists: true },
+        },
       },
       {
         $group: {
@@ -125,23 +122,15 @@ export async function GET() {
           totalFunnels: { $sum: 1 },
           completedFunnels: {
             $sum: {
-              $cond: [
-                { $eq: ["$conversion.hasConverted", true] },
-                1,
-                0
-              ]
-            }
+              $cond: [{ $eq: ["$conversion.hasConverted", true] }, 1, 0],
+            },
           },
           abandonedFunnels: {
             $sum: {
-              $cond: [
-                { $eq: ["$conversion.hasConverted", true] },
-                0,
-                1
-              ]
-            }
-          }
-        }
+              $cond: [{ $eq: ["$conversion.hasConverted", true] }, 0, 1],
+            },
+          },
+        },
       },
       {
         $project: {
@@ -151,33 +140,35 @@ export async function GET() {
           abandonedFunnels: 1,
           conversionRate: {
             $multiply: [
-              { $divide: ["$completedFunnels", { $max: ["$totalFunnels", 1] }] },
-              100
-            ]
-          }
-        }
-      }
+              {
+                $divide: ["$completedFunnels", { $max: ["$totalFunnels", 1] }],
+              },
+              100,
+            ],
+          },
+        },
+      },
     ]);
-    
+
     // Get step abandonment data
     const stepAbandonment = await Thumbprint.aggregate([
       {
         $match: {
           "funnelData.exitStep": { $exists: true },
-          "conversion.hasConverted": { $ne: true }
-        }
+          "conversion.hasConverted": { $ne: true },
+        },
       },
       {
         $group: {
           _id: "$funnelData.exitStep",
-          count: { $sum: 1 }
-        }
+          count: { $sum: 1 },
+        },
       },
       {
-        $sort: { count: -1 }
-      }
+        $sort: { count: -1 },
+      },
     ]);
-    
+
     // Get visits by day of week (1 = Sunday, 7 = Saturday in MongoDB)
     const visitsByDayOfWeek = await Thumbprint.aggregate([
       { $unwind: "$visits" },
@@ -185,17 +176,17 @@ export async function GET() {
         $group: {
           _id: { $dayOfWeek: "$visits.timestamp" },
           count: { $sum: 1 },
-          uniqueVisitors: { $addToSet: "$fingerprintHash" }
-        }
+          uniqueVisitors: { $addToSet: "$fingerprintHash" },
+        },
       },
       {
         $project: {
           _id: 1,
           count: 1,
-          uniqueVisitors: { $size: "$uniqueVisitors" }
-        }
+          uniqueVisitors: { $size: "$uniqueVisitors" },
+        },
       },
-      { $sort: { _id: 1 } }
+      { $sort: { _id: 1 } },
     ]);
 
     // Get visits by hour of day (0-23)
@@ -205,19 +196,19 @@ export async function GET() {
         $group: {
           _id: { $hour: "$visits.timestamp" },
           count: { $sum: 1 },
-          uniqueVisitors: { $addToSet: "$fingerprintHash" }
-        }
+          uniqueVisitors: { $addToSet: "$fingerprintHash" },
+        },
       },
       {
         $project: {
           _id: 1,
           count: 1,
-          uniqueVisitors: { $size: "$uniqueVisitors" }
-        }
+          uniqueVisitors: { $size: "$uniqueVisitors" },
+        },
       },
-      { $sort: { _id: 1 } }
+      { $sort: { _id: 1 } },
     ]);
-    
+
     return NextResponse.json({
       totalVisitors,
       newVisitorsLast30Days,
@@ -229,17 +220,17 @@ export async function GET() {
         totalFunnels: 0,
         completedFunnels: 0,
         abandonedFunnels: 0,
-        conversionRate: 0
+        conversionRate: 0,
       },
       stepAbandonment,
       visitsByDayOfWeek,
-      visitsByHourOfDay
+      visitsByHourOfDay,
     });
   } catch (error) {
     console.error("Error fetching analytics data:", error);
     return NextResponse.json(
       { error: "Failed to fetch analytics data" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

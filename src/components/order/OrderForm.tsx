@@ -29,7 +29,7 @@ const DeliveryStep = dynamic<StepProps>(
   {
     loading: () => <StepSkeleton />,
     ssr: false,
-  }
+  },
 );
 
 const DetailsStep = dynamic<StepProps>(
@@ -37,7 +37,7 @@ const DetailsStep = dynamic<StepProps>(
   {
     loading: () => <StepSkeleton />,
     ssr: false,
-  }
+  },
 );
 
 const ExtrasStep = dynamic<StepProps>(
@@ -45,7 +45,7 @@ const ExtrasStep = dynamic<StepProps>(
   {
     loading: () => <StepSkeleton />,
     ssr: false,
-  }
+  },
 );
 
 const ReviewStep = dynamic<StepProps>(
@@ -53,7 +53,7 @@ const ReviewStep = dynamic<StepProps>(
   {
     loading: () => <StepSkeleton />,
     ssr: false,
-  }
+  },
 );
 
 const PaymentStep = dynamic<StepProps>(
@@ -61,7 +61,7 @@ const PaymentStep = dynamic<StepProps>(
   {
     loading: () => <StepSkeleton />,
     ssr: false,
-  }
+  },
 );
 
 // Loading skeleton for step components
@@ -116,13 +116,13 @@ export default function OrderForm() {
   // Helper function to calculate rental days - used in handleInputChange
   const calculateRentalDays = (
     rentalDate: string,
-    returnDate: string
+    returnDate: string,
   ): number => {
     if (!rentalDate || !returnDate) return 1;
 
     const days = Math.ceil(
       (new Date(returnDate).getTime() - new Date(rentalDate).getTime()) /
-        (1000 * 60 * 60 * 24)
+        (1000 * 60 * 60 * 24),
     );
 
     // Always return at least 1 day
@@ -132,7 +132,7 @@ export default function OrderForm() {
   const handleInputChange = (
     e: React.ChangeEvent<
       HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-    >
+    >,
   ) => {
     const { name, value } = e.target;
 
@@ -194,7 +194,7 @@ export default function OrderForm() {
             : prev.machineType,
           name === "selectedMixers"
             ? (value as unknown as MixerType[])[0]
-            : prev.selectedMixers[0]
+            : prev.selectedMixers[0],
         ).total;
 
         // Update capacity based on machine type
@@ -307,7 +307,7 @@ export default function OrderForm() {
       }
       if (!isBexarCountyZipCode(formData.customer.address.zipCode)) {
         setError(
-          "We only deliver within Bexar County, TX. Please enter a valid Bexar County ZIP code."
+          "We only deliver within Bexar County, TX. Please enter a valid Bexar County ZIP code.",
         );
         return;
       }
@@ -333,7 +333,7 @@ export default function OrderForm() {
     <div className="max-w-3xl mx-auto px-4 py-8">
       {/* Track form step changes */}
       <OrderFormTracker currentStep={step} formData={formData} />
-      
+
       <ProgressBar currentStep={step} />
 
       <div className="bg-white/90 dark:bg-charcoal/50 backdrop-blur-lg rounded-2xl shadow-xl p-8 relative overflow-hidden">

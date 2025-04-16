@@ -13,12 +13,12 @@ export default function TestSuccessPage() {
     params.append("orderId", "test-order-123");
     params.append("machineType", "double");
     params.append("mixers", "margarita,pina-colada");
-    
+
     // Redirect to success page after a short delay
     const timer = setTimeout(() => {
       router.push(`/success?${params.toString()}`);
     }, 2000);
-    
+
     return () => clearTimeout(timer);
   }, [router]);
 

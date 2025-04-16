@@ -33,7 +33,7 @@ export default function DeliveryStep({
 }: StepProps) {
   // Track the current sub-step
   const [currentSubStep, setCurrentSubStep] = useState<DeliverySubStep>(
-    DeliverySubStep.MachineType
+    DeliverySubStep.MachineType,
   );
 
   // State for availability checking
@@ -578,13 +578,13 @@ export default function DeliveryStep({
                   const result = await checkAvailability(
                     formData.machineType,
                     capacity,
-                    value
+                    value,
                   );
 
                   if (!result.available) {
                     const formattedDate = formatDateForDisplay(value);
                     setDateAvailabilityError(
-                      `Sorry, the ${capacity}L ${formData.machineType} tank machine is not available on ${formattedDate}. Please select a different date or machine type.`
+                      `Sorry, the ${capacity}L ${formData.machineType} tank machine is not available on ${formattedDate}. Please select a different date or machine type.`,
                     );
                   } else {
                     // Only advance to next step if machine is available

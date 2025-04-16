@@ -9,10 +9,7 @@ export async function GET() {
   // Check authentication
   const session = await getServerSession(authOptions);
   if (!session || session.user.role !== "admin") {
-    return NextResponse.json(
-      { message: "Unauthorized" },
-      { status: 401 }
-    );
+    return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
   }
   try {
     await dbConnect();
@@ -35,10 +32,7 @@ export async function POST(request: Request) {
   // Check authentication
   const session = await getServerSession(authOptions);
   if (!session || session.user.role !== "admin") {
-    return NextResponse.json(
-      { message: "Unauthorized" },
-      { status: 401 }
-    );
+    return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
   }
   try {
     const data = await request.json();

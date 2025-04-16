@@ -62,23 +62,24 @@ export default function CreateOrderModal({ onClose }: CreateOrderModalProps) {
     // Calculate rental days between rental and return dates
     const calculateRentalDaysInternal = () => {
       if (!formData.rentalDate || !formData.returnDate) return 1;
-      
+
       const rentalDate = new Date(formData.rentalDate + "T00:00:00");
       const returnDate = new Date(formData.returnDate + "T00:00:00");
-      
+
       if (isNaN(rentalDate.getTime()) || isNaN(returnDate.getTime())) return 1;
-      
+
       const diffTime = returnDate.getTime() - rentalDate.getTime();
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      
+
       return Math.max(1, diffDays); // Ensure at least 1 day
     };
 
     // Find the selected machine package
     const selectedMachine = machinePackages.find(
-      (pkg) => pkg.type === formData.machineType && pkg.capacity === formData.capacity
+      (pkg) =>
+        pkg.type === formData.machineType && pkg.capacity === formData.capacity,
     );
-    
+
     // Default values if no machine is selected
     if (!selectedMachine) {
       return {
@@ -91,16 +92,16 @@ export default function CreateOrderModal({ onClose }: CreateOrderModalProps) {
         subtotal: DELIVERY_FEE,
         salesTax: DELIVERY_FEE * SALES_TAX_RATE,
         processingFee: DELIVERY_FEE * PROCESSING_FEE_RATE,
-        total: DELIVERY_FEE * (1 + SALES_TAX_RATE + PROCESSING_FEE_RATE)
+        total: DELIVERY_FEE * (1 + SALES_TAX_RATE + PROCESSING_FEE_RATE),
       };
     }
-    
+
     // Calculate rental days
     const rentalDays = calculateRentalDaysInternal();
-    
+
     // Start with the base price
     const basePrice = selectedMachine.basePrice;
-    
+
     // Add mixer prices
     let mixerPrice = 0;
     if (formData.selectedMixers && formData.selectedMixers.length > 0) {
@@ -111,10 +112,10 @@ export default function CreateOrderModal({ onClose }: CreateOrderModalProps) {
         }
       });
     }
-    
+
     // Calculate per day rate
     const perDayRate = basePrice + mixerPrice;
-    
+
     // Add extras prices (per day × number of days)
     let extrasTotal = 0;
     if (formData.selectedExtras && formData.selectedExtras.length > 0) {
@@ -122,17 +123,17 @@ export default function CreateOrderModal({ onClose }: CreateOrderModalProps) {
         extrasTotal += extra.price * (extra.quantity || 1) * rentalDays;
       });
     }
-    
+
     // Calculate subtotal including delivery fee
     const subtotal = perDayRate * rentalDays + DELIVERY_FEE + extrasTotal;
-    
+
     // Calculate tax and processing fee
     const salesTax = subtotal * SALES_TAX_RATE;
     const processingFee = subtotal * PROCESSING_FEE_RATE;
-    
+
     // Calculate final total
     const total = subtotal + salesTax + processingFee;
-    
+
     return {
       basePrice,
       mixerPrice,
@@ -143,9 +144,16 @@ export default function CreateOrderModal({ onClose }: CreateOrderModalProps) {
       subtotal,
       salesTax,
       processingFee,
-      total
+      total,
     };
-  }, [formData.machineType, formData.capacity, formData.selectedMixers, formData.selectedExtras, formData.rentalDate, formData.returnDate]);
+  }, [
+    formData.machineType,
+    formData.capacity,
+    formData.selectedMixers,
+    formData.selectedExtras,
+    formData.rentalDate,
+    formData.returnDate,
+  ]);
 
   // Use effect to update price whenever relevant form fields change
   useEffect(() => {
@@ -159,10 +167,10 @@ export default function CreateOrderModal({ onClose }: CreateOrderModalProps) {
   // Handle machine type change
   const handleMachineTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newType = e.target.value as MachineType;
-    
+
     // Find the first package with the selected type
     const newPackage = machinePackages.find((pkg) => pkg.type === newType);
-    
+
     if (newPackage) {
       setFormData((prev) => ({
         ...prev,
@@ -177,7 +185,7 @@ export default function CreateOrderModal({ onClose }: CreateOrderModalProps) {
   // Handle capacity change
   const handleCapacityChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newCapacity = parseInt(e.target.value) as 15 | 30 | 45;
-    
+
     setFormData((prev) => ({
       ...prev,
       capacity: newCapacity,
@@ -187,7 +195,7 @@ export default function CreateOrderModal({ onClose }: CreateOrderModalProps) {
   // Handle mixer selection
   const handleMixerChange = (index: number, value: MixerType) => {
     const newMixers = [...(formData.selectedMixers || [])];
-    
+
     if (index >= newMixers.length) {
       // Add new mixer
       newMixers.push(value);
@@ -195,7 +203,7 @@ export default function CreateOrderModal({ onClose }: CreateOrderModalProps) {
       // Update existing mixer
       newMixers[index] = value;
     }
-    
+
     setFormData((prev) => ({
       ...prev,
       selectedMixers: newMixers,
@@ -206,10 +214,10 @@ export default function CreateOrderModal({ onClose }: CreateOrderModalProps) {
   const handleExtraItemToggle = (itemId: string) => {
     const item = extraItems.find((item) => item.id === itemId);
     if (!item) return;
-    
+
     const currentExtras = formData.selectedExtras || [];
     const itemIndex = currentExtras.findIndex((extra) => extra.id === itemId);
-    
+
     let newExtras;
     if (itemIndex === -1) {
       // Add the item
@@ -218,7 +226,7 @@ export default function CreateOrderModal({ onClose }: CreateOrderModalProps) {
       // Remove the item
       newExtras = currentExtras.filter((extra) => extra.id !== itemId);
     }
-    
+
     setFormData((prev) => ({
       ...prev,
       selectedExtras: newExtras,
@@ -228,15 +236,15 @@ export default function CreateOrderModal({ onClose }: CreateOrderModalProps) {
   // Handle extra item quantity change
   const handleExtraQuantityChange = (itemId: string, quantity: number) => {
     if (quantity < 1) return;
-    
+
     const currentExtras = formData.selectedExtras || [];
     const itemIndex = currentExtras.findIndex((extra) => extra.id === itemId);
-    
+
     if (itemIndex === -1) return;
-    
+
     const newExtras = [...currentExtras];
     newExtras[itemIndex] = { ...newExtras[itemIndex], quantity };
-    
+
     setFormData((prev) => ({
       ...prev,
       selectedExtras: newExtras,
@@ -250,11 +258,20 @@ export default function CreateOrderModal({ onClose }: CreateOrderModalProps) {
 
     try {
       // Validate required fields
-      if (!formData.rentalDate || !formData.rentalTime || !formData.returnDate || !formData.returnTime) {
+      if (
+        !formData.rentalDate ||
+        !formData.rentalTime ||
+        !formData.returnDate ||
+        !formData.returnTime
+      ) {
         throw new Error("Please fill in all rental date and time fields");
       }
 
-      if (!formData.customer?.name || !formData.customer?.email || !formData.customer?.phone) {
+      if (
+        !formData.customer?.name ||
+        !formData.customer?.email ||
+        !formData.customer?.phone
+      ) {
         throw new Error("Please fill in all customer information fields");
       }
 
@@ -301,7 +318,8 @@ export default function CreateOrderModal({ onClose }: CreateOrderModalProps) {
   // Get the maximum number of mixers based on the selected machine type
   const getMaxMixers = () => {
     const selectedMachine = machinePackages.find(
-      (pkg) => pkg.type === formData.machineType && pkg.capacity === formData.capacity
+      (pkg) =>
+        pkg.type === formData.machineType && pkg.capacity === formData.capacity,
     );
     return selectedMachine ? selectedMachine.maxMixers : 1;
   };
@@ -312,13 +330,13 @@ export default function CreateOrderModal({ onClose }: CreateOrderModalProps) {
         <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
           Create New Order
         </h2>
-        
+
         {error && (
           <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-md">
             {error}
           </div>
         )}
-        
+
         <form onSubmit={handleSubmit}>
           <div className="space-y-4">
             {/* Machine Details */}
@@ -337,7 +355,10 @@ export default function CreateOrderModal({ onClose }: CreateOrderModalProps) {
                     className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm"
                   >
                     {machinePackages.map((pkg) => (
-                      <option key={`${pkg.type}-${pkg.capacity}`} value={pkg.type}>
+                      <option
+                        key={`${pkg.type}-${pkg.capacity}`}
+                        value={pkg.type}
+                      >
                         {pkg.name}
                       </option>
                     ))}
@@ -355,22 +376,29 @@ export default function CreateOrderModal({ onClose }: CreateOrderModalProps) {
                     {machinePackages
                       .filter((pkg) => pkg.type === formData.machineType)
                       .map((pkg) => (
-                        <option key={`capacity-${pkg.capacity}`} value={pkg.capacity}>
+                        <option
+                          key={`capacity-${pkg.capacity}`}
+                          value={pkg.capacity}
+                        >
                           {pkg.capacity}L
                         </option>
                       ))}
                   </select>
                 </div>
-                
+
                 {/* Mixer Selection */}
                 {Array.from({ length: getMaxMixers() }).map((_, index) => (
                   <div key={`mixer-${index}`}>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                      {getMaxMixers() > 1 ? `Tank ${index + 1} Mixer` : "Mixer Type"}
+                      {getMaxMixers() > 1
+                        ? `Tank ${index + 1} Mixer`
+                        : "Mixer Type"}
                     </label>
                     <select
                       value={formData.selectedMixers?.[index] || ""}
-                      onChange={(e) => handleMixerChange(index, e.target.value as MixerType)}
+                      onChange={(e) =>
+                        handleMixerChange(index, e.target.value as MixerType)
+                      }
                       className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm"
                     >
                       <option value="">Select a mixer</option>
@@ -392,32 +420,58 @@ export default function CreateOrderModal({ onClose }: CreateOrderModalProps) {
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {extraItems.map((item) => (
-                  <div key={item.id} className="flex items-start space-x-3 p-3 border rounded-md">
+                  <div
+                    key={item.id}
+                    className="flex items-start space-x-3 p-3 border rounded-md"
+                  >
                     <input
                       type="checkbox"
                       id={`extra-${item.id}`}
-                      checked={Boolean(formData.selectedExtras?.some((extra) => extra.id === item.id))}
+                      checked={Boolean(
+                        formData.selectedExtras?.some(
+                          (extra) => extra.id === item.id,
+                        ),
+                      )}
                       onChange={() => handleExtraItemToggle(item.id)}
                       className="mt-1"
                     />
                     <div className="flex-1">
-                      <label htmlFor={`extra-${item.id}`} className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      <label
+                        htmlFor={`extra-${item.id}`}
+                        className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+                      >
                         {item.name} (${item.price.toFixed(2)})
                       </label>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">{item.description}</p>
-                      
-                      {item.allowQuantity && formData.selectedExtras?.some((extra) => extra.id === item.id) && (
-                        <div className="mt-2 flex items-center space-x-2">
-                          <label className="text-xs text-gray-700 dark:text-gray-300">Quantity:</label>
-                          <input
-                            type="number"
-                            min="1"
-                            value={formData.selectedExtras?.find((extra) => extra.id === item.id)?.quantity || 1}
-                            onChange={(e) => handleExtraQuantityChange(item.id, parseInt(e.target.value))}
-                            className="w-16 text-sm rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm"
-                          />
-                        </div>
-                      )}
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        {item.description}
+                      </p>
+
+                      {item.allowQuantity &&
+                        formData.selectedExtras?.some(
+                          (extra) => extra.id === item.id,
+                        ) && (
+                          <div className="mt-2 flex items-center space-x-2">
+                            <label className="text-xs text-gray-700 dark:text-gray-300">
+                              Quantity:
+                            </label>
+                            <input
+                              type="number"
+                              min="1"
+                              value={
+                                formData.selectedExtras?.find(
+                                  (extra) => extra.id === item.id,
+                                )?.quantity || 1
+                              }
+                              onChange={(e) =>
+                                handleExtraQuantityChange(
+                                  item.id,
+                                  parseInt(e.target.value),
+                                )
+                              }
+                              className="w-16 text-sm rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm"
+                            />
+                          </div>
+                        )}
                     </div>
                   </div>
                 ))}
@@ -694,7 +748,7 @@ export default function CreateOrderModal({ onClose }: CreateOrderModalProps) {
               <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
                 Order Summary
               </h3>
-              
+
               {/* Price Breakdown */}
               {formData.rentalDate && formData.returnDate && (
                 <div className="space-y-1 mb-4">
@@ -704,41 +758,50 @@ export default function CreateOrderModal({ onClose }: CreateOrderModalProps) {
                       <>
                         <div className="flex justify-between text-sm text-gray-700 dark:text-gray-300">
                           <span>Machine Rate:</span>
-                          <span>${formatPrice(priceDetails.perDayRate)}/day × {priceDetails.rentalDays} day{priceDetails.rentalDays > 1 ? 's' : ''}</span>
+                          <span>
+                            ${formatPrice(priceDetails.perDayRate)}/day ×{" "}
+                            {priceDetails.rentalDays} day
+                            {priceDetails.rentalDays > 1 ? "s" : ""}
+                          </span>
                         </div>
-                        
-                        {formData.selectedExtras && formData.selectedExtras.length > 0 && (
-                          <div className="flex justify-between text-sm text-gray-700 dark:text-gray-300">
-                            <span>Extras:</span>
-                            <span>${formatPrice(priceDetails.extrasTotal)}</span>
-                          </div>
-                        )}
-                        
+
+                        {formData.selectedExtras &&
+                          formData.selectedExtras.length > 0 && (
+                            <div className="flex justify-between text-sm text-gray-700 dark:text-gray-300">
+                              <span>Extras:</span>
+                              <span>
+                                ${formatPrice(priceDetails.extrasTotal)}
+                              </span>
+                            </div>
+                          )}
+
                         <div className="flex justify-between text-sm text-gray-700 dark:text-gray-300">
                           <span>Delivery Fee:</span>
                           <span>${formatPrice(priceDetails.deliveryFee)}</span>
                         </div>
-                        
+
                         <div className="flex justify-between text-sm text-gray-700 dark:text-gray-300">
                           <span>Subtotal:</span>
                           <span>${formatPrice(priceDetails.subtotal)}</span>
                         </div>
-                        
+
                         <div className="flex justify-between text-sm text-gray-700 dark:text-gray-300">
                           <span>Sales Tax (8.25%):</span>
                           <span>${formatPrice(priceDetails.salesTax)}</span>
                         </div>
-                        
+
                         <div className="flex justify-between text-sm text-gray-700 dark:text-gray-300">
                           <span>Processing Fee (3%):</span>
-                          <span>${formatPrice(priceDetails.processingFee)}</span>
+                          <span>
+                            ${formatPrice(priceDetails.processingFee)}
+                          </span>
                         </div>
                       </>
                     );
                   })()}
                 </div>
               )}
-              
+
               <div className="text-right">
                 <p className="text-xl font-bold text-gray-900 dark:text-white">
                   Total: ${formData.price?.toFixed(2) || "0.00"}

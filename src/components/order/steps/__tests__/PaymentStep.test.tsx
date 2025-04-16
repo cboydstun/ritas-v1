@@ -5,12 +5,16 @@ import { describe, it, expect, jest, beforeEach } from "@jest/globals";
 
 // Mock the PayPalScriptProvider and PayPalCheckout components
 jest.mock("@paypal/react-paypal-js", () => ({
-  PayPalScriptProvider: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  PayPalScriptProvider: ({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  ),
 }));
 
 jest.mock("@/components/PayPalCheckout", () => ({
   PayPalCheckout: ({ onSuccess }: { onSuccess: (orderId: string) => void }) => (
-    <button onClick={() => onSuccess("test-order-123")}>Mock PayPal Button</button>
+    <button onClick={() => onSuccess("test-order-123")}>
+      Mock PayPal Button
+    </button>
   ),
 }));
 
@@ -56,19 +60,31 @@ describe("PaymentStep", () => {
   });
 
   it("renders payment details", () => {
-    render(<PaymentStep formData={mockFormData} onInputChange={jest.fn()} error={null} />);
-    
+    render(
+      <PaymentStep
+        formData={mockFormData}
+        onInputChange={jest.fn()}
+        error={null}
+      />,
+    );
+
     expect(screen.getByText(/Payment Details/i)).toBeInTheDocument();
     expect(screen.getByText(/Total Amount:/i)).toBeInTheDocument();
   });
 
   it("redirects to success page on successful payment", () => {
-    render(<PaymentStep formData={mockFormData} onInputChange={jest.fn()} error={null} />);
-    
+    render(
+      <PaymentStep
+        formData={mockFormData}
+        onInputChange={jest.fn()}
+        error={null}
+      />,
+    );
+
     // Find and click the mock PayPal button
     const paypalButton = screen.getByText("Mock PayPal Button");
     paypalButton.click();
-    
+
     // Check that window.location.href was set to the success page with correct parameters
     expect(window.location.href).toContain("/success");
     expect(window.location.href).toContain("orderId=test-order-123");
