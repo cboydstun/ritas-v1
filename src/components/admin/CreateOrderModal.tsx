@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { MargaritaRental, MachineType, MixerType } from "@/types/index";
 import { machinePackages, mixerDetails } from "@/lib/rental-data";
 import { extraItems } from "@/components/order/types";
@@ -43,21 +43,6 @@ export default function CreateOrderModal({ onClose }: CreateOrderModalProps) {
     status: "pending",
   });
 
-  // Calculate rental days between rental and return dates
-  const calculateRentalDays = () => {
-    if (!formData.rentalDate || !formData.returnDate) return 1;
-    
-    const rentalDate = new Date(formData.rentalDate + "T00:00:00");
-    const returnDate = new Date(formData.returnDate + "T00:00:00");
-    
-    if (isNaN(rentalDate.getTime()) || isNaN(returnDate.getTime())) return 1;
-    
-    const diffTime = returnDate.getTime() - rentalDate.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
-    return Math.max(1, diffDays); // Ensure at least 1 day
-  };
-
   // Define the price details interface
   interface PriceDetails {
     basePrice: number;
@@ -73,7 +58,22 @@ export default function CreateOrderModal({ onClose }: CreateOrderModalProps) {
   }
 
   // Calculate the total price based on selected machine, mixers, extras, and fees
-  const calculateTotalPrice = (): PriceDetails => {
+  const calculateTotalPrice = useCallback((): PriceDetails => {
+    // Calculate rental days between rental and return dates
+    const calculateRentalDaysInternal = () => {
+      if (!formData.rentalDate || !formData.returnDate) return 1;
+      
+      const rentalDate = new Date(formData.rentalDate + "T00:00:00");
+      const returnDate = new Date(formData.returnDate + "T00:00:00");
+      
+      if (isNaN(rentalDate.getTime()) || isNaN(returnDate.getTime())) return 1;
+      
+      const diffTime = returnDate.getTime() - rentalDate.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      
+      return Math.max(1, diffDays); // Ensure at least 1 day
+    };
+
     // Find the selected machine package
     const selectedMachine = machinePackages.find(
       (pkg) => pkg.type === formData.machineType && pkg.capacity === formData.capacity
@@ -96,7 +96,7 @@ export default function CreateOrderModal({ onClose }: CreateOrderModalProps) {
     }
     
     // Calculate rental days
-    const rentalDays = calculateRentalDays();
+    const rentalDays = calculateRentalDaysInternal();
     
     // Start with the base price
     const basePrice = selectedMachine.basePrice;
@@ -145,7 +145,7 @@ export default function CreateOrderModal({ onClose }: CreateOrderModalProps) {
       processingFee,
       total
     };
-  };
+  }, [formData.machineType, formData.capacity, formData.selectedMixers, formData.selectedExtras, formData.rentalDate, formData.returnDate]);
 
   // Use effect to update price whenever relevant form fields change
   useEffect(() => {
@@ -154,7 +154,7 @@ export default function CreateOrderModal({ onClose }: CreateOrderModalProps) {
       ...prev,
       price: priceDetails.total,
     }));
-  }, [formData.machineType, formData.capacity, formData.selectedMixers, formData.selectedExtras, formData.rentalDate, formData.returnDate, calculateTotalPrice]);
+  }, [calculateTotalPrice]);
 
   // Handle machine type change
   const handleMachineTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {

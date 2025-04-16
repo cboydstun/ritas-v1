@@ -17,11 +17,58 @@ export async function POST(request: Request) {
     }
 
     // Import PayPal SDK dynamically
-    const sdk = await import("@paypal/checkout-server-sdk");
-
+    const paypalSdk = await import("@paypal/checkout-server-sdk");
     const paypalClient = await initializePayPalSDK();
-    // @ts-expect-error: TypeScript does not recognize OrdersCaptureRequest
-    const request_ = new sdk.default.orders.OrdersCaptureRequest(orderId);
+    
+    // Create a request object that works with our custom client
+    let request_;
+    
+    try {
+      // Use a type assertion to access the SDK structure
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const sdkModule = paypalSdk as any;
+      
+      // Log the SDK structure for debugging
+      console.log("SDK keys:", Object.keys(sdkModule));
+      if (sdkModule.default) {
+        console.log("SDK default keys:", Object.keys(sdkModule.default));
+        if (sdkModule.default.orders) {
+          console.log("SDK default.orders keys:", Object.keys(sdkModule.default.orders));
+        }
+      }
+      
+      // In development mode, create a custom request object that works with our custom client
+      if (process.env.NODE_ENV !== "production") {
+        console.log("Using development mode request object for capture");
+        
+        // Create a custom request object with the properties our custom client expects
+        request_ = {
+          path: `/v2/checkout/orders/${orderId}`,
+          verb: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Prefer": "return=representation",
+          },
+        };
+      } else {
+        // In production, use the standard SDK
+        // Create the request object using the appropriate path
+        if (sdkModule.default && sdkModule.default.orders && sdkModule.default.orders.OrdersCaptureRequest) {
+          request_ = new sdkModule.default.orders.OrdersCaptureRequest(orderId);
+        } else if (sdkModule.orders && sdkModule.orders.OrdersCaptureRequest) {
+          request_ = new sdkModule.orders.OrdersCaptureRequest(orderId);
+        } else if (sdkModule.default && sdkModule.default.OrdersCaptureRequest) {
+          request_ = new sdkModule.default.OrdersCaptureRequest(orderId);
+        } else if (sdkModule.OrdersCaptureRequest) {
+          request_ = new sdkModule.OrdersCaptureRequest(orderId);
+        } else {
+          throw new Error("Could not find OrdersCaptureRequest in PayPal SDK");
+        }
+      }
+    } catch (error) {
+      console.error("Error creating PayPal capture request:", error);
+      throw new Error(`Failed to create PayPal capture request: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
     const capture = await paypalClient.execute(request_);
 
     if (capture.result.status === "COMPLETED") {
