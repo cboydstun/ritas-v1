@@ -8,7 +8,7 @@ import { calculatePrice, formatPrice } from "@/lib/pricing";
 export default function PaymentStep({ formData }: StepProps) {
   const priceBreakdown = calculatePrice(
     formData.machineType,
-    formData.selectedMixers[0] as MixerType
+    formData.selectedMixers[0] as MixerType,
   );
 
   const perDayRate = priceBreakdown.basePrice + priceBreakdown.mixerPrice;
@@ -18,14 +18,14 @@ export default function PaymentStep({ formData }: StepProps) {
     Math.ceil(
       (new Date(formData.returnDate).getTime() -
         new Date(formData.rentalDate).getTime()) /
-        (1000 * 60 * 60 * 24)
-    )
+        (1000 * 60 * 60 * 24),
+    ),
   );
 
   // Calculate extras total (per day × number of days)
   const extrasTotal = formData.selectedExtras.reduce(
     (sum, item) => sum + item.price * (item.quantity || 1) * rentalDays,
-    0
+    0,
   );
 
   // Recalculate subtotal including extras
@@ -66,13 +66,23 @@ export default function PaymentStep({ formData }: StepProps) {
                 customer: formData.customer,
                 notes: formData.notes,
               }}
-              onSuccess={() => {
+              onSuccess={(orderId) => {
                 // Show success message
                 alert("Payment successful! Your rental has been confirmed.");
-                // Reset form state and step in a single batch
+
+                // Build URL parameters for the success page
+                const params = new URLSearchParams();
+                params.append("orderId", orderId);
+                params.append("machineType", formData.machineType);
+
+                // Add mixers to URL parameters
+                if (formData.selectedMixers.length > 0) {
+                  params.append("mixers", formData.selectedMixers.join(","));
+                }
+
+                // Redirect to success page
                 Promise.resolve().then(() => {
-                  // These will be handled by the parent component
-                  window.location.href = "/";
+                  window.location.href = `/success?${params.toString()}`;
                 });
               }}
               onError={(error: Error) => {

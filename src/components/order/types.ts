@@ -1,6 +1,11 @@
 import { MixerType } from "@/lib/rental-data";
 
-export type OrderStep = "delivery" | "details" | "extras" | "review" | "payment";
+export type OrderStep =
+  | "delivery"
+  | "details"
+  | "extras"
+  | "review"
+  | "payment";
 
 export interface ExtraItem {
   id: string;
@@ -70,7 +75,8 @@ export const extraItems: ExtraItem[] = [
   {
     id: "cotton-candy",
     name: "Cotton Candy Machine",
-    description: "Cotton Candy Machine with 50 servings including pink vanilla and blue raspberry",
+    description:
+      "Cotton Candy Machine with 50 servings including pink vanilla and blue raspberry",
     price: 49.95,
     image: "/cotton-candy-satx-ritas.webp",
   },

@@ -10,21 +10,21 @@ import { headers } from "next/headers";
 export async function POST(req: NextRequest) {
   try {
     const data = await req.json();
-    
+
     // Validate required fields
     if (!data.fingerprintHash || !data.components) {
       return NextResponse.json(
         { success: false, error: "Missing required fields" },
-        { status: 400 }
+        { status: 400 },
       );
     }
-    
+
     await dbConnect();
-    
+
     // Get user agent from headers
     const headersList = await headers();
-    const userAgent = headersList.get('user-agent') || data.userAgent || '';
-    
+    const userAgent = headersList.get("user-agent") || data.userAgent || "";
+
     // Determine device type based on user agent
     let deviceType: "desktop" | "tablet" | "mobile" | "other" = "other";
     if (/mobile/i.test(userAgent)) {
@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
     } else if (/windows|macintosh|linux/i.test(userAgent)) {
       deviceType = "desktop";
     }
-    
+
     // Prepare the new visit data
     const newVisit = {
       timestamp: new Date(),
@@ -42,19 +42,20 @@ export async function POST(req: NextRequest) {
       referrer: data.referrer || null,
       timeSpentMs: data.timeSpentMs || 0,
       formContext: data.formContext || {},
-      fieldInteractions: data.fieldInteractions || []
+      fieldInteractions: data.fieldInteractions || [],
     };
-    
+
     // Prepare funnel data updates if this is an order form page
-    const stepName = data.page && data.page.startsWith('/order/') 
-      ? data.page.split('/').pop() || '' 
-      : null;
-    
+    const stepName =
+      data.page && data.page.startsWith("/order/")
+        ? data.page.split("/").pop() || ""
+        : null;
+
     // Check if this fingerprint already exists
-    const existingThumbprint = await Thumbprint.findOne({ 
-      fingerprintHash: data.fingerprintHash 
+    const existingThumbprint = await Thumbprint.findOne({
+      fingerprintHash: data.fingerprintHash,
     });
-    
+
     if (existingThumbprint) {
       // Use atomic findOneAndUpdate for existing records
       await Thumbprint.findOneAndUpdate(
@@ -67,34 +68,40 @@ export async function POST(req: NextRequest) {
             device: {
               ...existingThumbprint.device,
               type: deviceType,
-              ...(data.device || {})
+              ...(data.device || {}),
             },
             ...(stepName && {
-              'funnelData.exitStep': stepName,
-              ...(stepName === 'payment' && existingThumbprint.funnelData?.completedSteps?.length === 4 ? {
-                'conversion.hasConverted': true,
-                'conversion.conversionDate': new Date(),
-                'conversion.conversionType': 'order_completed'
-              } : {})
-            })
+              "funnelData.exitStep": stepName,
+              ...(stepName === "payment" &&
+              existingThumbprint.funnelData?.completedSteps?.length === 4
+                ? {
+                    "conversion.hasConverted": true,
+                    "conversion.conversionDate": new Date(),
+                    "conversion.conversionType": "order_completed",
+                  }
+                : {}),
+            }),
           },
           // Increment fields
           $inc: { visitCount: 1 },
           // Push to arrays
-          $push: { 
+          $push: {
             visits: newVisit,
-            ...(stepName && !existingThumbprint.funnelData?.completedSteps?.includes(stepName) ? {
-              'funnelData.completedSteps': stepName
-            } : {})
-          }
+            ...(stepName &&
+            !existingThumbprint.funnelData?.completedSteps?.includes(stepName)
+              ? {
+                  "funnelData.completedSteps": stepName,
+                }
+              : {}),
+          },
         },
-        { new: true } // Return the updated document
+        { new: true }, // Return the updated document
       );
-      
-      return NextResponse.json({ 
-        success: true, 
+
+      return NextResponse.json({
+        success: true,
         isNewVisitor: false,
-        fingerprintHash: data.fingerprintHash
+        fingerprintHash: data.fingerprintHash,
       });
     } else {
       // Use findOneAndUpdate with upsert for new records
@@ -109,47 +116,49 @@ export async function POST(req: NextRequest) {
             firstSeen: new Date(),
             visitCount: 1,
             userSegmentation: {
-              userType: 'new',
+              userType: "new",
               deviceCategory: deviceType,
-              acquisitionSource: data.referrer ? 'referral' : 'direct'
-            }
+              acquisitionSource: data.referrer ? "referral" : "direct",
+            },
           },
           $set: {
             lastSeen: new Date(),
             userAgent: userAgent,
             device: {
               type: deviceType,
-              ...(data.device || {})
+              ...(data.device || {}),
             },
             ...(stepName && {
-              'funnelData.entryStep': stepName,
-              'funnelData.exitStep': stepName,
-            })
+              "funnelData.entryStep": stepName,
+              "funnelData.exitStep": stepName,
+            }),
           },
-          $push: { 
+          $push: {
             visits: newVisit,
-            ...(stepName ? {
-              'funnelData.completedSteps': stepName
-            } : {})
-          }
+            ...(stepName
+              ? {
+                  "funnelData.completedSteps": stepName,
+                }
+              : {}),
+          },
         },
-        { 
+        {
           new: true,
-          upsert: true
-        }
+          upsert: true,
+        },
       );
-      
-      return NextResponse.json({ 
-        success: true, 
+
+      return NextResponse.json({
+        success: true,
         isNewVisitor: true,
-        fingerprintHash: data.fingerprintHash
+        fingerprintHash: data.fingerprintHash,
       });
     }
   } catch (error) {
     console.error("Error processing fingerprint:", error);
     return NextResponse.json(
       { success: false, error: "Failed to process fingerprint" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

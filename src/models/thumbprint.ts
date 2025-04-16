@@ -66,7 +66,7 @@ export interface IThumbprint extends Document {
   segments?: string[];
   userSegmentation?: {
     acquisitionSource?: string;
-    userType?: 'new' | 'returning' | 'converted';
+    userType?: "new" | "returning" | "converted";
     deviceCategory?: string;
     geographicRegion?: string;
     behaviors?: string[];
@@ -84,25 +84,25 @@ const ThumbprintSchema = new Schema<IThumbprint>({
   fingerprintHash: {
     type: String,
     required: true,
-    index: true
+    index: true,
   },
   components: {
     type: Object,
     required: true,
-    default: {} // Add a default value
+    default: {}, // Add a default value
   },
   userAgent: {
     type: String,
-    index: true
+    index: true,
   },
   device: {
     type: {
       type: String,
-      enum: ['desktop', 'tablet', 'mobile', 'other'],
-      index: true
+      enum: ["desktop", "tablet", "mobile", "other"],
+      index: true,
     },
     brand: String,
-    model: String
+    model: String,
   },
   location: {
     country: String,
@@ -110,77 +110,81 @@ const ThumbprintSchema = new Schema<IThumbprint>({
     city: String,
     coordinates: {
       latitude: Number,
-      longitude: Number
-    }
+      longitude: Number,
+    },
   },
-  visits: [{
-    timestamp: Date,
-    page: String,
-    duration: Number,
-    timeSpentMs: Number,
-    referrer: String,
-    exitPage: String,
-    formContext: {
-      type: Object,
-      default: {}
+  visits: [
+    {
+      timestamp: Date,
+      page: String,
+      duration: Number,
+      timeSpentMs: Number,
+      referrer: String,
+      exitPage: String,
+      formContext: {
+        type: Object,
+        default: {},
+      },
+      fieldInteractions: {
+        type: [
+          {
+            fieldName: String,
+            interactionCount: Number,
+            timeSpentMs: Number,
+            validationErrors: [String],
+          },
+        ],
+        default: [],
+      },
+      interactions: {
+        clicks: Number,
+        scrollDepth: Number,
+        formInteractions: Boolean,
+      },
     },
-    fieldInteractions: {
-      type: [{
-        fieldName: String,
-        interactionCount: Number,
-        timeSpentMs: Number,
-        validationErrors: [String]
-      }],
-      default: []
-    },
-    interactions: {
-      clicks: Number,
-      scrollDepth: Number,
-      formInteractions: Boolean
-    }
-  }],
+  ],
   firstSeen: {
     type: Date,
     default: Date.now,
-    index: true
+    index: true,
   },
   lastSeen: {
     type: Date,
     default: Date.now,
-    index: true
+    index: true,
   },
   visitCount: {
     type: Number,
     default: 1,
-    index: true
+    index: true,
   },
   conversion: {
     hasConverted: {
       type: Boolean,
       default: false,
-      index: true
+      index: true,
     },
     conversionDate: Date,
     conversionValue: Number,
-    conversionType: String
+    conversionType: String,
   },
   segments: {
     type: [String],
-    index: true
+    index: true,
   },
   userSegmentation: {
     type: {
       acquisitionSource: String,
       userType: {
         type: String,
-        enum: ['new', 'returning', 'converted'],
-        default: 'new'
+        enum: ["new", "returning", "converted"],
+        default: "new",
       },
       deviceCategory: String,
       geographicRegion: String,
-      behaviors: [String]
+      behaviors: [String],
     },
-    default: {}
+    default: {},
   },
   funnelData: {
     type: {
@@ -188,12 +192,13 @@ const ThumbprintSchema = new Schema<IThumbprint>({
       exitStep: String,
       completedSteps: [String],
       abandonedStep: String,
-      conversionPath: String
+      conversionPath: String,
     },
-    default: {}
-  }
+    default: {},
+  },
 });
 
 // Only create the model if it hasn't been created already
-export const Thumbprint = mongoose.models.Thumbprint || 
+export const Thumbprint =
+  mongoose.models.Thumbprint ||
   mongoose.model<IThumbprint>("Thumbprint", ThumbprintSchema);

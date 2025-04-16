@@ -51,10 +51,7 @@ export async function middleware(request: NextRequest) {
     if (!token || token.role !== "admin") {
       // For API routes, return a JSON response
       if (pathname.startsWith("/api/admin")) {
-        return NextResponse.json(
-          { message: "Unauthorized" },
-          { status: 401 }
-        );
+        return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
       }
 
       // For admin UI routes, redirect to login page

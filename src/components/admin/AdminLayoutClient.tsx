@@ -10,7 +10,8 @@ export default function AdminLayoutClient({
 }) {
   const pathname = usePathname();
   // Check if the current path is the login page
-  const isLoginPage = pathname === "/admin/login" || pathname.includes("/admin/login");
+  const isLoginPage =
+    pathname === "/admin/login" || pathname.includes("/admin/login");
 
   if (isLoginPage) {
     return <>{children}</>;

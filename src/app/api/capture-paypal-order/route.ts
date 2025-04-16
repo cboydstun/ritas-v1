@@ -19,45 +19,63 @@ export async function POST(request: Request) {
     // Import PayPal SDK dynamically
     const paypalSdk = await import("@paypal/checkout-server-sdk");
     const paypalClient = await initializePayPalSDK();
-    
+
     // Create a request object that works with our custom client
     let request_;
-    
+
     try {
       // Use a type assertion to access the SDK structure
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const sdkModule = paypalSdk as any;
-      
+
       // Log the SDK structure for debugging
       console.log("SDK keys:", Object.keys(sdkModule));
       if (sdkModule.default) {
         console.log("SDK default keys:", Object.keys(sdkModule.default));
         if (sdkModule.default.orders) {
-          console.log("SDK default.orders keys:", Object.keys(sdkModule.default.orders));
+          console.log(
+            "SDK default.orders keys:",
+            Object.keys(sdkModule.default.orders),
+          );
         }
       }
-      
+
       // In development mode, create a custom request object that works with our custom client
       if (process.env.NODE_ENV !== "production") {
         console.log("Using development mode request object for capture");
-        
+
         // Create a custom request object with the properties our custom client expects
+        // For capture requests, PayPal API expects an empty body or minimal data
         request_ = {
-          path: `/v2/checkout/orders/${orderId}`,
+          // Use a path that clearly indicates this is a capture request
+          path: `/v2/checkout/orders/${orderId}/capture`,
           verb: "POST",
+          // Empty body for capture request as per PayPal documentation
+          body: {},
           headers: {
             "Content-Type": "application/json",
-            "Prefer": "return=representation",
+            Prefer: "return=representation",
           },
         };
+
+        console.log(
+          `Creating capture request for order ${orderId} with path: ${request_.path}`,
+        );
       } else {
         // In production, use the standard SDK
         // Create the request object using the appropriate path
-        if (sdkModule.default && sdkModule.default.orders && sdkModule.default.orders.OrdersCaptureRequest) {
+        if (
+          sdkModule.default &&
+          sdkModule.default.orders &&
+          sdkModule.default.orders.OrdersCaptureRequest
+        ) {
           request_ = new sdkModule.default.orders.OrdersCaptureRequest(orderId);
         } else if (sdkModule.orders && sdkModule.orders.OrdersCaptureRequest) {
           request_ = new sdkModule.orders.OrdersCaptureRequest(orderId);
-        } else if (sdkModule.default && sdkModule.default.OrdersCaptureRequest) {
+        } else if (
+          sdkModule.default &&
+          sdkModule.default.OrdersCaptureRequest
+        ) {
           request_ = new sdkModule.default.OrdersCaptureRequest(orderId);
         } else if (sdkModule.OrdersCaptureRequest) {
           request_ = new sdkModule.OrdersCaptureRequest(orderId);
@@ -67,7 +85,9 @@ export async function POST(request: Request) {
       }
     } catch (error) {
       console.error("Error creating PayPal capture request:", error);
-      throw new Error(`Failed to create PayPal capture request: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `Failed to create PayPal capture request: ${error instanceof Error ? error.message : "Unknown error"}`,
+      );
     }
     const capture = await paypalClient.execute(request_);
 
@@ -105,11 +125,15 @@ export async function POST(request: Request) {
             const formattedTime = `${rental.rentalTime}${parseInt(hour) >= 12 ? "PM" : "AM"}`;
 
             // Prepare extras text if any
-            const extrasText = rental.selectedExtras && rental.selectedExtras.length > 0
-              ? `Extras: ${rental.selectedExtras.map((extra: { name: string, quantity?: number }) =>
-                `${extra.name}${extra.quantity && extra.quantity > 1 ? ` (${extra.quantity}x)` : ''}`
-              ).join(", ")}\n`
-              : '';
+            const extrasText =
+              rental.selectedExtras && rental.selectedExtras.length > 0
+                ? `Extras: ${rental.selectedExtras
+                    .map(
+                      (extra: { name: string; quantity?: number }) =>
+                        `${extra.name}${extra.quantity && extra.quantity > 1 ? ` (${extra.quantity}x)` : ""}`,
+                    )
+                    .join(", ")}\n`
+                : "";
 
             await twilioClient.messages.create({
               body:
@@ -225,10 +249,17 @@ export async function POST(request: Request) {
                 <li style="margin-bottom: 8px;">🗓 Rental Date: ${updatedRental.rentalDate} at ${updatedRental.rentalTime}</li>
                 <li style="margin-bottom: 8px;">🗓 Return Date: ${updatedRental.returnDate} at ${updatedRental.returnTime}</li>
                 <li style="margin-bottom: 8px;">🍹 Selected Mixers: ${updatedRental.selectedMixers.join(", ")}</li>
-                ${updatedRental.selectedExtras && updatedRental.selectedExtras.length > 0 ?
-              `<li style="margin-bottom: 8px;">🎉 Party Extras: ${updatedRental.selectedExtras.map((extra: { name: string, quantity?: number }) =>
-                `${extra.name}${extra.quantity && extra.quantity > 1 ? ` (${extra.quantity}x)` : ''}`
-              ).join(", ")}</li>` : ''}
+                ${
+                  updatedRental.selectedExtras &&
+                  updatedRental.selectedExtras.length > 0
+                    ? `<li style="margin-bottom: 8px;">🎉 Party Extras: ${updatedRental.selectedExtras
+                        .map(
+                          (extra: { name: string; quantity?: number }) =>
+                            `${extra.name}${extra.quantity && extra.quantity > 1 ? ` (${extra.quantity}x)` : ""}`,
+                        )
+                        .join(", ")}</li>`
+                    : ""
+                }
                 <li style="margin-bottom: 8px;">💰 Total Amount: $${amount}</li>
                 <li style="margin-bottom: 8px;">⚡ Machine Capacity: ${updatedRental.capacity}L</li>
               </ul>
@@ -264,6 +295,16 @@ export async function POST(request: Request) {
         rental: updatedRental.toObject(),
       });
     } else {
+      // Capture wasn't successful - log detailed information
+      console.error(
+        "PayPal capture failed with status:",
+        capture.result.status,
+      );
+      console.error(
+        "Capture result details:",
+        JSON.stringify(capture.result, null, 2),
+      );
+
       // Update rental payment status to failed if capture wasn't successful
       await dbConnect();
       const rental = await Rental.findOneAndUpdate(
@@ -271,6 +312,7 @@ export async function POST(request: Request) {
         {
           $set: {
             "payment.status": "failed",
+            "payment.errorDetails": JSON.stringify(capture.result),
             updatedAt: new Date(),
           },
         },
@@ -282,7 +324,10 @@ export async function POST(request: Request) {
         throw new Error("Rental not found for failed payment");
       }
 
-      throw new Error("Payment capture failed");
+      // Throw a more detailed error with the status
+      throw new Error(
+        `Payment capture failed with status: ${capture.result.status}`,
+      );
     }
   } catch (error) {
     console.error("Error capturing PayPal payment:", error);
@@ -301,11 +346,33 @@ export async function POST(request: Request) {
       console.error("PayPal API error details:", error.details);
     }
 
+    // Prepare a more detailed error response
     let errorMessage = "Failed to capture payment";
+    let errorDetails = {};
+
     if (error instanceof Error) {
       errorMessage = `PayPal Error: ${error.message}`;
+      errorDetails = {
+        name: error.name,
+        message: error.message,
+      };
     }
 
-    return NextResponse.json({ message: errorMessage }, { status: 500 });
+    // If it's a PayPal API error, include the details
+    if (error && typeof error === "object" && "details" in error) {
+      errorDetails = {
+        ...errorDetails,
+        paypalDetails: error.details,
+      };
+    }
+
+    return NextResponse.json(
+      {
+        message: errorMessage,
+        details: errorDetails,
+        timestamp: new Date().toISOString(),
+      },
+      { status: 500 },
+    );
   }
 }

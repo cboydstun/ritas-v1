@@ -9,24 +9,27 @@ interface OrderFormTrackerProps {
   formData: OrderFormData;
 }
 
-export default function OrderFormTracker({ currentStep, formData }: OrderFormTrackerProps) {
+export default function OrderFormTracker({
+  currentStep,
+  formData,
+}: OrderFormTrackerProps) {
   const [lastStep, setLastStep] = useState<OrderStep | null>(null);
   const fingerprintRef = useRef<string | null>(null);
   const [stepStartTime, setStepStartTime] = useState<number>(Date.now());
-  
+
   const trackStepChange = useCallback(async () => {
     try {
       // Get fingerprint (only once per session)
       if (!fingerprintRef.current) {
         fingerprintRef.current = await getFingerprint();
       }
-      
+
       // Calculate time spent on previous step
       const timeSpentMs = lastStep ? Date.now() - stepStartTime : 0;
-      
+
       // Reset timer for new step
       setStepStartTime(Date.now());
-      
+
       // Prepare data
       const data = {
         fingerprintHash: fingerprintRef.current,
@@ -47,9 +50,9 @@ export default function OrderFormTracker({ currentStep, formData }: OrderFormTra
         referrer: lastStep ? `/order/${lastStep}` : document.referrer || null,
         timeSpentMs, // Add time spent on previous step
         // Include relevant form data for this step (optional)
-        formContext: getFormContextForStep(currentStep, formData)
+        formContext: getFormContextForStep(currentStep, formData),
       };
-      
+
       // Send to API
       const response = await fetch("/api/v1/analytics/fingerprint", {
         method: "POST",
@@ -58,7 +61,7 @@ export default function OrderFormTracker({ currentStep, formData }: OrderFormTra
         },
         body: JSON.stringify(data),
       });
-      
+
       if (!response.ok) {
         throw new Error("Failed to send fingerprint data");
       }
@@ -66,7 +69,7 @@ export default function OrderFormTracker({ currentStep, formData }: OrderFormTra
       console.error("Error tracking form step:", error);
     }
   }, [currentStep, lastStep, formData, stepStartTime]);
-  
+
   useEffect(() => {
     // Only track if the step has changed
     if (currentStep !== lastStep) {
@@ -74,7 +77,7 @@ export default function OrderFormTracker({ currentStep, formData }: OrderFormTra
       setLastStep(currentStep);
     }
   }, [currentStep, lastStep, trackStepChange]);
-  
+
   // Extract relevant form data for each step (without sensitive information)
   const getFormContextForStep = (step: OrderStep, formData: OrderFormData) => {
     switch (step) {
@@ -111,6 +114,6 @@ export default function OrderFormTracker({ currentStep, formData }: OrderFormTra
         return {};
     }
   };
-  
+
   return null; // This component doesn't render anything
 }
