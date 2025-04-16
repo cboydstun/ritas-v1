@@ -38,6 +38,20 @@ const extraItemSchema = new mongoose.Schema({
   quantity: { type: Number, default: 1 },
 });
 
+// New schema for QuickBooks integration
+const quickbooksSchema = new mongoose.Schema({
+  customerId: { type: String },
+  invoiceId: { type: String },
+  invoiceNumber: { type: String },
+  syncStatus: {
+    type: String,
+    enum: ["pending", "synced", "failed"],
+    default: "pending",
+  },
+  lastSyncAttempt: { type: Date },
+  syncError: { type: String },
+});
+
 const rentalSchema = new mongoose.Schema(
   {
     machineType: {
@@ -129,6 +143,11 @@ const rentalSchema = new mongoose.Schema(
       type: paymentSchema,
       required: false,
     },
+    // Add QuickBooks fields to the schema
+    quickbooks: {
+      type: quickbooksSchema,
+      required: false,
+    },
     createdAt: {
       type: Date,
       default: Date.now,
@@ -182,6 +201,15 @@ export type RentalDocument = mongoose.Document & {
     amount: number;
     status: PaymentStatus;
     date: Date;
+  };
+  // Add QuickBooks fields to the type
+  quickbooks?: {
+    customerId?: string;
+    invoiceId?: string;
+    invoiceNumber?: string;
+    syncStatus?: "pending" | "synced" | "failed";
+    lastSyncAttempt?: Date;
+    syncError?: string;
   };
   createdAt: Date;
   updatedAt: Date;

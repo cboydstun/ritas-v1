@@ -4,6 +4,7 @@ import dbConnect from "@/lib/mongodb";
 import { Rental } from "@/models/rental";
 import twilio from "twilio";
 import nodemailer from "nodemailer";
+import { generateQuickBooksInvoice, logQuickBooksError } from "@/lib/quickbooks-service";
 
 export async function POST(request: Request) {
   try {
@@ -289,10 +290,50 @@ export async function POST(request: Request) {
         // We don't want to fail the order just because the email didn't send
       }
 
+      // Generate QuickBooks invoice
+      let invoiceData = null;
+      try {
+        // Only generate invoice if QuickBooks is configured
+        if (process.env.QB_CLIENT_ID && process.env.QB_CLIENT_SECRET && process.env.QB_REALM_ID) {
+          console.log("Generating QuickBooks invoice for rental:", updatedRental._id);
+          
+          // Generate the invoice
+          const invoice = await generateQuickBooksInvoice(updatedRental);
+          
+          // Store invoice ID in rental record
+          await Rental.findByIdAndUpdate(updatedRental._id, {
+            $set: {
+              'quickbooks.customerId': invoice.CustomerRef.value,
+              'quickbooks.invoiceId': invoice.Id,
+              'quickbooks.invoiceNumber': invoice.DocNumber,
+              'quickbooks.syncStatus': 'synced',
+              'quickbooks.lastSyncAttempt': new Date()
+            }
+          });
+          
+          // Include invoice info in response
+          invoiceData = {
+            id: invoice.Id,
+            number: invoice.DocNumber
+          };
+          
+          console.log("Successfully generated QuickBooks invoice:", invoiceData);
+        } else {
+          console.log("QuickBooks not configured - skipping invoice generation");
+        }
+      } catch (qbError) {
+        // Log error but don't fail the order process
+        console.error("Error generating QuickBooks invoice:", qbError);
+        
+        // Store error for later retry
+        await logQuickBooksError(updatedRental._id.toString(), qbError);
+      }
+
       return NextResponse.json({
         id: capture.result.id,
         status: capture.result.status,
         rental: updatedRental.toObject(),
+        invoice: invoiceData
       });
     } else {
       // Capture wasn't successful - log detailed information

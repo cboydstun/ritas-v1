@@ -16,6 +16,7 @@ A modern web application built with Next.js and TypeScript for managing frozen d
 - 📈 Order form funnel analysis to track user progression
 - 📧 Email notifications for order confirmations
 - 🍹 Multiple machine options (15L, 30L, and 45L capacities)
+- 📊 QuickBooks Online integration for automatic invoice generation
 
 ## Tech Stack
 
@@ -24,6 +25,7 @@ A modern web application built with Next.js and TypeScript for managing frozen d
 - [Tailwind CSS](https://tailwindcss.com/) - Utility-first CSS framework
 - [MongoDB](https://www.mongodb.com/) - NoSQL database
 - [PayPal API](https://developer.paypal.com/) - Secure payment processing
+- [QuickBooks API](https://developer.intuit.com/) - Automated invoice generation
 - [Twilio](https://www.twilio.com/) - SMS notifications
 - [Nodemailer](https://nodemailer.com/) - Email notifications
 - [Google Analytics](https://analytics.google.com/) - Website analytics
@@ -65,6 +67,13 @@ A modern web application built with Next.js and TypeScript for managing frozen d
    # Admin Panel Credentials
    ADMIN_USERNAME=admin
    ADMIN_PASSWORD=your-secure-password
+
+   # QuickBooks Configuration
+   QB_CLIENT_ID=your_quickbooks_client_id
+   QB_CLIENT_SECRET=your_quickbooks_client_secret
+   QB_REDIRECT_URI=http://localhost:3000/api/quickbooks/callback
+   QB_ENVIRONMENT=sandbox                               # Use 'production' for live deployment
+   QB_REALM_ID=your_quickbooks_company_id               # Obtained after first authentication
 
    # Analytics Configuration (optional)
    ANALYTICS_ENABLED=true
