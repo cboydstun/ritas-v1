@@ -282,8 +282,27 @@ export class QuickBooksService {
                   return;
                 }
 
-                // Handle case where PayPal Bank account doesn't exist
-                if (!accounts || accounts.length === 0) {
+                console.log("PayPal Bank account search result:", JSON.stringify(accounts, null, 2));
+
+                // Check for different response formats from QuickBooks API
+                let paypalBankAccount = null;
+
+                // Check if accounts is an array with elements
+                if (Array.isArray(accounts) && accounts.length > 0 && accounts[0] && accounts[0].Id) {
+                  paypalBankAccount = accounts[0];
+                } 
+                // Check if accounts is in QueryResponse format with Account array
+                else if (accounts && 
+                         typeof accounts === 'object' && 
+                         'QueryResponse' in accounts && 
+                         (accounts as any).QueryResponse.Account && 
+                         Array.isArray((accounts as any).QueryResponse.Account) && 
+                         (accounts as any).QueryResponse.Account.length > 0) {
+                  paypalBankAccount = (accounts as any).QueryResponse.Account[0];
+                }
+
+                // If PayPal Bank account not found, look for any Income account
+                if (!paypalBankAccount) {
                   console.log("PayPal Bank account not found, looking for any Income account as fallback");
                   
                   // Try to find any Income account as fallback
@@ -296,20 +315,32 @@ export class QuickBooksService {
                         return;
                       }
 
-                      if (!incomeAccounts || incomeAccounts.length === 0) {
+                      console.log("Income accounts search result:", JSON.stringify(incomeAccounts, null, 2));
+
+                      // Check for different response formats for income accounts
+                      let incomeAccount = null;
+
+                      // Check if incomeAccounts is an array with elements
+                      if (Array.isArray(incomeAccounts) && incomeAccounts.length > 0 && incomeAccounts[0] && incomeAccounts[0].Id) {
+                        incomeAccount = incomeAccounts[0];
+                      } 
+                      // Check if incomeAccounts is in QueryResponse format with Account array
+                      else if (incomeAccounts && 
+                               typeof incomeAccounts === 'object' && 
+                               'QueryResponse' in incomeAccounts && 
+                               (incomeAccounts as any).QueryResponse.Account && 
+                               Array.isArray((incomeAccounts as any).QueryResponse.Account) && 
+                               (incomeAccounts as any).QueryResponse.Account.length > 0) {
+                        incomeAccount = (incomeAccounts as any).QueryResponse.Account[0];
+                      }
+
+                      if (!incomeAccount) {
                         console.error("No Income accounts found in QuickBooks");
-                        reject(new Error("No Income accounts found in QuickBooks. Please create a 'PayPal Bank' account."));
+                        reject(new Error("No Income accounts found in QuickBooks. Please create a 'PayPal Bank' account or any Income account."));
                         return;
                       }
 
-                      // Verify the account has an Id
-                      if (!incomeAccounts[0] || !incomeAccounts[0].Id) {
-                        console.error("Invalid Income account structure:", incomeAccounts[0]);
-                        reject(new Error("Invalid Income account structure returned from QuickBooks"));
-                        return;
-                      }
-
-                      const fallbackAccountId = incomeAccounts[0].Id;
+                      const fallbackAccountId = incomeAccount.Id;
                       console.log(`Using fallback Income account: ${fallbackAccountId}`);
 
                       const newItem: QBItem = {
@@ -326,14 +357,8 @@ export class QuickBooksService {
                   return;
                 }
 
-                // Verify the PayPal Bank account has an Id
-                if (!accounts[0] || !accounts[0].Id) {
-                  console.error("Invalid PayPal Bank account structure:", accounts[0]);
-                  reject(new Error("Invalid PayPal Bank account structure returned from QuickBooks"));
-                  return;
-                }
-
-                const paypalBankAccountId = accounts[0].Id;
+                // Use the PayPal Bank account
+                const paypalBankAccountId = paypalBankAccount.Id;
                 console.log(`Using PayPal Bank account: ${paypalBankAccountId}`);
 
                 const newItem: QBItem = {
@@ -364,6 +389,56 @@ export class QuickBooksService {
   ): void {
     this.qb.createItem(newItem, (err, item) => {
       if (err) {
+        console.error("Error creating item:", err);
+        
+        // Check if this is a duplicate name error
+        const qbError = err as any;
+        if (qbError.Fault && 
+            qbError.Fault.Error && 
+            Array.isArray(qbError.Fault.Error) &&
+            qbError.Fault.Error[0] && 
+            qbError.Fault.Error[0].code === "6240") {
+          console.log("Duplicate item error detected");
+          
+          // Try to extract the item ID from the error message
+          const errorDetail = qbError.Fault.Error[0].Detail;
+          const idMatch = errorDetail && errorDetail.match(/Id=(\d+)/);
+          
+          if (idMatch && idMatch[1]) {
+            const existingItemId = idMatch[1];
+            console.log(`Found existing item ID from error: ${existingItemId}`);
+            resolve(existingItemId);
+            return;
+          }
+          
+          // If we couldn't extract the ID, try to find the item by name
+          console.log(`Trying to find item by name: ${newItem.Name}`);
+          this.qb.findItems(
+            [{ field: "Name", value: newItem.Name }],
+            (nameErr, nameItems) => {
+              if (nameErr) {
+                console.error("Error finding item by name:", nameErr);
+                reject(err); // Still reject with the original error
+                return;
+              }
+              
+              if (!nameItems || 
+                  !Array.isArray(nameItems) || 
+                  nameItems.length === 0 || 
+                  !nameItems[0] || 
+                  !nameItems[0].Id) {
+                console.error("Could not find item by name either");
+                reject(err); // Still reject with the original error
+                return;
+              }
+              
+              console.log(`Found item by name with ID: ${nameItems[0].Id}`);
+              resolve(nameItems[0].Id as string);
+            }
+          );
+          return;
+        }
+        
         reject(err);
         return;
       }
@@ -373,6 +448,7 @@ export class QuickBooksService {
         return;
       }
 
+      console.log(`Created new item with ID: ${item.Id}`);
       resolve(item.Id as string);
     });
   }
@@ -466,6 +542,7 @@ export class QuickBooksService {
         Line: lineItems,
         TxnDate: new Date().toISOString().split("T")[0], // Today's date
         DueDate: new Date().toISOString().split("T")[0], // Due today since it's already paid
+        ShipFromAddr: null, // Explicitly remove shipping address
       };
 
       return new Promise((resolve, reject) => {
