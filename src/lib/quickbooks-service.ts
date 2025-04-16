@@ -70,28 +70,48 @@ export class QuickBooksService {
   public async initialize(): Promise<void> {
     try {
       const qbAuth = QuickBooksAuth.getInstance();
-      const tokens = await qbAuth.getValidTokens();
+      
+      try {
+        const tokens = await qbAuth.getValidTokens();
 
-      // Get realmId from environment or database
-      this.realmId = process.env.QB_REALM_ID || "";
+        // Get realmId from environment or database
+        this.realmId = process.env.QB_REALM_ID || "";
 
-      if (!this.realmId) {
-        throw new Error("QuickBooks Realm ID not found");
+        if (!this.realmId) {
+          throw new Error("QuickBooks Realm ID not found");
+        }
+
+        // Initialize QuickBooks client
+        this.qb = new QuickBooks(
+          process.env.QB_CLIENT_ID || "",
+          process.env.QB_CLIENT_SECRET || "",
+          tokens.access_token,
+          false, // don't use sandbox if in production
+          this.realmId,
+          process.env.QB_ENVIRONMENT === "sandbox", // use sandbox in development
+          true, // debug
+          null, // oauthversion
+          "2.0", // API version
+          tokens.refresh_token,
+        );
+      } catch (tokenError) {
+        console.error("Error getting valid QuickBooks tokens:", tokenError);
+        
+        // Check if this is an authentication error
+        const errorStr = String(tokenError);
+        if (
+          errorStr.includes("authenticate") || 
+          errorStr.includes("expired") ||
+          errorStr.includes("invalid_token") ||
+          errorStr.includes("invalid_grant")
+        ) {
+          throw new Error(
+            "QuickBooks authentication has expired. Please reconnect to QuickBooks in the admin panel."
+          );
+        }
+        
+        throw tokenError;
       }
-
-      // Initialize QuickBooks client
-      this.qb = new QuickBooks(
-        process.env.QB_CLIENT_ID || "",
-        process.env.QB_CLIENT_SECRET || "",
-        tokens.access_token,
-        false, // don't use sandbox if in production
-        this.realmId,
-        process.env.QB_ENVIRONMENT === "sandbox", // use sandbox in development
-        true, // debug
-        null, // oauthversion
-        "2.0", // API version
-        tokens.refresh_token,
-      );
     } catch (error) {
       console.error("Error initializing QuickBooks service:", error);
       throw error;
@@ -107,47 +127,120 @@ export class QuickBooksService {
 
       // First try to find customer by email
       return new Promise((resolve, reject) => {
+        console.log(`Searching for customer with email: ${customerData.email}`);
+        
         this.qb.findCustomers(
           [{ field: "PrimaryEmailAddr", value: customerData.email }],
           (err, customers) => {
             if (err) {
+              console.error("Error finding customer by email:", err);
               reject(err);
               return;
             }
 
-            if (customers && customers.length > 0) {
+            // Add detailed logging to see what's being returned
+            console.log("Customer search results:", JSON.stringify(customers, null, 2));
+
+            // More robust check for existing customers
+            if (customers && 
+                Array.isArray(customers) && 
+                customers.length > 0 && 
+                customers[0] && 
+                customers[0].Id) {
               // Customer found, return ID
+              console.log(`Found existing customer with ID: ${customers[0].Id}`);
               resolve(customers[0].Id as string);
-            } else {
-              // Customer not found, create new one
-              const newCustomer: QBCustomer = {
-                DisplayName: customerData.name,
-                PrimaryEmailAddr: { Address: customerData.email },
-                PrimaryPhone: { FreeFormNumber: customerData.phone },
-                BillAddr: {
-                  Line1: customerData.address.street,
-                  City: customerData.address.city,
-                  CountrySubDivisionCode: customerData.address.state,
-                  PostalCode: customerData.address.zipCode,
-                },
-              };
+              return;
+            }
+            
+            // Check if the response has a different structure (QuickBooks API can be inconsistent)
+            if (customers && 
+                typeof customers === 'object' && 
+                'QueryResponse' in customers) {
+              // Use type assertion to access QueryResponse
+              const queryResponse = (customers as any).QueryResponse;
+              if (queryResponse && 
+                  queryResponse.Customer && 
+                  Array.isArray(queryResponse.Customer) && 
+                  queryResponse.Customer.length > 0 &&
+                  queryResponse.Customer[0].Id) {
+                const customerId = queryResponse.Customer[0].Id;
+                console.log(`Found existing customer in QueryResponse with ID: ${customerId}`);
+                resolve(customerId as string);
+                return;
+              }
+            }
 
-              this.qb.createCustomer(newCustomer, (err, customer) => {
-                if (err) {
-                  reject(err);
-                  return;
-                }
+            console.log("No existing customer found, creating new one");
+            
+            // Customer not found, create new one
+            const newCustomer: QBCustomer = {
+              DisplayName: customerData.name,
+              PrimaryEmailAddr: { Address: customerData.email },
+              PrimaryPhone: { FreeFormNumber: customerData.phone },
+              BillAddr: {
+                Line1: customerData.address.street,
+                City: customerData.address.city,
+                CountrySubDivisionCode: customerData.address.state,
+                PostalCode: customerData.address.zipCode,
+              },
+            };
 
-                if (!customer || !customer.Id) {
-                  reject(
-                    new Error("Failed to create customer: No ID returned"),
+            this.qb.createCustomer(newCustomer, (err, customer) => {
+              if (err) {
+                console.error("Error creating customer:", err);
+                
+                // Check if this is a duplicate name error
+                // Use type assertion for QuickBooks error structure
+                const qbError = err as any;
+                if (qbError.Fault && 
+                    qbError.Fault.Error && 
+                    Array.isArray(qbError.Fault.Error) &&
+                    qbError.Fault.Error[0] && 
+                    qbError.Fault.Error[0].code === "6240") {
+                  console.log("Duplicate customer error detected, trying to find by name instead");
+                  
+                  // Try to find the customer by name as a fallback
+                  this.qb.findCustomers(
+                    [{ field: "DisplayName", value: customerData.name }],
+                    (nameErr, nameCustomers) => {
+                      if (nameErr) {
+                        console.error("Error finding customer by name:", nameErr);
+                        reject(err); // Still reject with the original error
+                        return;
+                      }
+                      
+                      if (!nameCustomers || 
+                          !Array.isArray(nameCustomers) || 
+                          nameCustomers.length === 0 || 
+                          !nameCustomers[0] || 
+                          !nameCustomers[0].Id) {
+                        console.error("Could not find customer by name either");
+                        reject(err); // Still reject with the original error
+                        return;
+                      }
+                      
+                      console.log(`Found customer by name with ID: ${nameCustomers[0].Id}`);
+                      resolve(nameCustomers[0].Id as string);
+                    }
                   );
                   return;
                 }
+                
+                reject(err);
+                return;
+              }
 
-                resolve(customer.Id as string);
-              });
-            }
+              if (!customer || !customer.Id) {
+                reject(
+                  new Error("Failed to create customer: No ID returned"),
+                );
+                return;
+              }
+
+              console.log(`Created new customer with ID: ${customer.Id}`);
+              resolve(customer.Id as string);
+            });
           },
         );
       });
@@ -179,44 +272,80 @@ export class QuickBooksService {
             resolve(items[0].Id as string);
           } else {
             // Item not found, create new one
-            // First, we need to get the default income account
+            // First, we need to get the PayPal Bank account
             this.qb.findAccounts(
-              [{ field: "AccountType", value: "Income" }],
+              [{ field: "Name", value: "PayPal Bank" }],
               (err, accounts) => {
                 if (err) {
+                  console.error("Error finding PayPal Bank account:", err);
                   reject(err);
                   return;
                 }
 
+                // Handle case where PayPal Bank account doesn't exist
                 if (!accounts || accounts.length === 0) {
-                  reject(new Error("No income account found in QuickBooks"));
+                  console.log("PayPal Bank account not found, looking for any Income account as fallback");
+                  
+                  // Try to find any Income account as fallback
+                  this.qb.findAccounts(
+                    [{ field: "AccountType", value: "Income" }],
+                    (err, incomeAccounts) => {
+                      if (err) {
+                        console.error("Error finding Income accounts:", err);
+                        reject(err);
+                        return;
+                      }
+
+                      if (!incomeAccounts || incomeAccounts.length === 0) {
+                        console.error("No Income accounts found in QuickBooks");
+                        reject(new Error("No Income accounts found in QuickBooks. Please create a 'PayPal Bank' account."));
+                        return;
+                      }
+
+                      // Verify the account has an Id
+                      if (!incomeAccounts[0] || !incomeAccounts[0].Id) {
+                        console.error("Invalid Income account structure:", incomeAccounts[0]);
+                        reject(new Error("Invalid Income account structure returned from QuickBooks"));
+                        return;
+                      }
+
+                      const fallbackAccountId = incomeAccounts[0].Id;
+                      console.log(`Using fallback Income account: ${fallbackAccountId}`);
+
+                      const newItem: QBItem = {
+                        Name: name,
+                        Description: description,
+                        Type: "Service",
+                        UnitPrice: unitPrice,
+                        IncomeAccountRef: { value: fallbackAccountId as string },
+                      };
+
+                      this.createItemWithAccount(newItem, resolve, reject);
+                    }
+                  );
                   return;
                 }
 
-                const incomeAccountId = accounts[0].Id;
+                // Verify the PayPal Bank account has an Id
+                if (!accounts[0] || !accounts[0].Id) {
+                  console.error("Invalid PayPal Bank account structure:", accounts[0]);
+                  reject(new Error("Invalid PayPal Bank account structure returned from QuickBooks"));
+                  return;
+                }
+
+                const paypalBankAccountId = accounts[0].Id;
+                console.log(`Using PayPal Bank account: ${paypalBankAccountId}`);
 
                 const newItem: QBItem = {
                   Name: name,
                   Description: description,
                   Type: "Service",
                   UnitPrice: unitPrice,
-                  IncomeAccountRef: { value: incomeAccountId as string },
+                  IncomeAccountRef: { value: paypalBankAccountId as string },
                 };
 
-                this.qb.createItem(newItem, (err, item) => {
-                  if (err) {
-                    reject(err);
-                    return;
-                  }
-
-                  if (!item || !item.Id) {
-                    reject(new Error("Failed to create item: No ID returned"));
-                    return;
-                  }
-
-                  resolve(item.Id as string);
-                });
-              },
+                this.createItemWithAccount(newItem, resolve, reject);
+              }
             );
           }
         });
@@ -225,6 +354,27 @@ export class QuickBooksService {
       console.error("Error finding or creating item:", error);
       throw error;
     }
+  }
+
+  // Helper method to create an item with the specified account
+  private createItemWithAccount(
+    newItem: QBItem,
+    resolve: (value: string) => void,
+    reject: (reason: Error) => void
+  ): void {
+    this.qb.createItem(newItem, (err, item) => {
+      if (err) {
+        reject(err);
+        return;
+      }
+
+      if (!item || !item.Id) {
+        reject(new Error("Failed to create item: No ID returned"));
+        return;
+      }
+
+      resolve(item.Id as string);
+    });
   }
 
   // Create an invoice in QuickBooks
@@ -348,6 +498,7 @@ export class QuickBooksService {
 
 // Helper function to generate QuickBooks invoice from rental data
 export async function generateQuickBooksInvoice(rental: {
+  _id?: string; // MongoDB ID for logging errors
   customer: {
     name: string;
     email: string;
@@ -366,10 +517,50 @@ export async function generateQuickBooksInvoice(rental: {
   selectedExtras?: Array<{ name: string; price?: number; quantity?: number }>;
 }): Promise<QBInvoice> {
   try {
+    console.log(`Generating QuickBooks invoice for rental: ${rental._id}`);
     const qbService = QuickBooksService.getInstance();
-    return await qbService.createInvoice(rental);
+    const invoice = await qbService.createInvoice(rental);
+    
+    // If we have a rental ID, update the rental with the invoice ID
+    if (rental._id) {
+      try {
+        await Rental.findByIdAndUpdate(rental._id, {
+          $set: {
+            "quickbooks.syncStatus": "success",
+            "quickbooks.lastSyncAttempt": new Date(),
+            "quickbooks.invoiceId": invoice.Id,
+            "quickbooks.invoiceNumber": invoice.DocNumber,
+          },
+        });
+      } catch (dbError) {
+        console.error("Error updating rental with QuickBooks invoice ID:", dbError);
+        // Continue even if the update fails
+      }
+    }
+    
+    return invoice;
   } catch (error) {
     console.error("Error generating QuickBooks invoice:", error);
+    
+    // Log the error to the database if we have a rental ID
+    if (rental._id) {
+      await logQuickBooksError(rental._id.toString(), error);
+    }
+    
+    // Check if this is an authentication error
+    const errorStr = String(error);
+    if (
+      errorStr.includes("authenticate") || 
+      errorStr.includes("expired") ||
+      errorStr.includes("invalid_token") ||
+      errorStr.includes("invalid_grant") ||
+      errorStr.includes("Token expired")
+    ) {
+      throw new Error(
+        "QuickBooks authentication has expired. Please reconnect to QuickBooks in the admin panel."
+      );
+    }
+    
     throw error;
   }
 }
@@ -380,14 +571,52 @@ export async function logQuickBooksError(
   error: unknown,
 ): Promise<void> {
   try {
+    // Get the current rental to access retry count
+    const rental = await Rental.findById(rentalId);
+    if (!rental) {
+      console.error(`Rental not found for ID: ${rentalId}`);
+      return;
+    }
+    
+    // Get current retry count or default to 0
+    const retryCount = rental.quickbooks?.retryCount || 0;
+    
+    // Calculate next retry time with exponential backoff
+    // Base delay is 5 minutes, doubles each retry up to a max of 24 hours
+    const baseDelayMinutes = 5;
+    const maxDelayHours = 24;
+    
+    // Calculate delay in milliseconds with exponential backoff: baseDelay * 2^retryCount
+    const delayMinutes = Math.min(
+      baseDelayMinutes * Math.pow(2, retryCount),
+      maxDelayHours * 60
+    );
+    
+    const nextRetryAt = new Date(Date.now() + delayMinutes * 60 * 1000);
+    
+    // Determine sync status based on error type
+    const errorStr = String(error);
+    const syncStatus = errorStr.includes("authenticate") || 
+                       errorStr.includes("expired") ||
+                       errorStr.includes("invalid_token") ||
+                       errorStr.includes("invalid_grant") ||
+                       errorStr.includes("Token expired")
+                       ? "auth_error"
+                       : "failed";
+    
+    // Update the rental with error details and retry information
     await Rental.findByIdAndUpdate(rentalId, {
       $set: {
-        "quickbooks.syncStatus": "failed",
+        "quickbooks.syncStatus": syncStatus,
         "quickbooks.lastSyncAttempt": new Date(),
         "quickbooks.syncError":
           error instanceof Error ? error.message : JSON.stringify(error),
+        "quickbooks.retryCount": retryCount + 1,
+        "quickbooks.nextRetryAt": nextRetryAt,
       },
     });
+    
+    console.log(`QuickBooks error logged for rental ${rentalId}. Next retry scheduled at ${nextRetryAt.toISOString()}`);
   } catch (dbError) {
     console.error("Error logging QuickBooks error:", dbError);
   }

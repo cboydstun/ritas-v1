@@ -308,17 +308,9 @@ export async function POST(request: Request) {
           );
 
           // Generate the invoice
-          const invoice = await generateQuickBooksInvoice(updatedRental);
-
-          // Store invoice ID in rental record
-          await Rental.findByIdAndUpdate(updatedRental._id, {
-            $set: {
-              "quickbooks.customerId": invoice.CustomerRef.value,
-              "quickbooks.invoiceId": invoice.Id,
-              "quickbooks.invoiceNumber": invoice.DocNumber,
-              "quickbooks.syncStatus": "synced",
-              "quickbooks.lastSyncAttempt": new Date(),
-            },
+          const invoice = await generateQuickBooksInvoice({
+            ...updatedRental.toObject(),
+            _id: updatedRental._id
           });
 
           // Include invoice info in response
@@ -340,8 +332,35 @@ export async function POST(request: Request) {
         // Log error but don't fail the order process
         console.error("Error generating QuickBooks invoice:", qbError);
 
-        // Store error for later retry
-        await logQuickBooksError(updatedRental._id.toString(), qbError);
+        // Check if this is an authentication error
+        const errorStr = String(qbError);
+        if (
+          errorStr.includes("authenticate") || 
+          errorStr.includes("expired") ||
+          errorStr.includes("invalid_token") ||
+          errorStr.includes("invalid_grant") ||
+          errorStr.includes("Token expired")
+        ) {
+          console.warn("QuickBooks authentication has expired. Invoice generation will be retried later.");
+          
+          // Update rental with authentication error
+          await Rental.findByIdAndUpdate(updatedRental._id, {
+            $set: {
+              "quickbooks.syncStatus": "auth_error",
+              "quickbooks.lastSyncAttempt": new Date(),
+              "quickbooks.syncError": "QuickBooks authentication has expired. Please reconnect in the admin panel.",
+            },
+          });
+        } else {
+          // Store error for later retry
+          await logQuickBooksError(updatedRental._id.toString(), qbError);
+        }
+        
+        // Add error info to response
+        invoiceData = {
+          error: "Invoice generation failed but will be retried later",
+          errorType: errorStr.includes("expired") ? "auth_expired" : "general_error"
+        };
       }
 
       return NextResponse.json({

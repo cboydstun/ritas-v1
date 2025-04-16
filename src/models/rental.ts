@@ -45,11 +45,13 @@ const quickbooksSchema = new mongoose.Schema({
   invoiceNumber: { type: String },
   syncStatus: {
     type: String,
-    enum: ["pending", "synced", "failed"],
+    enum: ["pending", "synced", "failed", "auth_error"],
     default: "pending",
   },
   lastSyncAttempt: { type: Date },
   syncError: { type: String },
+  retryCount: { type: Number, default: 0 },
+  nextRetryAt: { type: Date },
 });
 
 const rentalSchema = new mongoose.Schema(
@@ -207,9 +209,11 @@ export type RentalDocument = mongoose.Document & {
     customerId?: string;
     invoiceId?: string;
     invoiceNumber?: string;
-    syncStatus?: "pending" | "synced" | "failed";
+    syncStatus?: "pending" | "synced" | "failed" | "auth_error";
     lastSyncAttempt?: Date;
     syncError?: string;
+    retryCount?: number;
+    nextRetryAt?: Date;
   };
   createdAt: Date;
   updatedAt: Date;
