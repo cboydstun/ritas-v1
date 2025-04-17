@@ -9,10 +9,7 @@ export async function POST(request: NextRequest) {
     // Check authentication
     const session = await getServerSession(authOptions);
     if (!session) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     // Parse request body
@@ -22,7 +19,7 @@ export async function POST(request: NextRequest) {
     if (!data.templateId || !data.to) {
       return NextResponse.json(
         { error: "Template ID and recipient email are required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -45,21 +42,18 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error("Error sending test email:", error);
-    
+
     // Check if it's a "not found" error
     if (error instanceof Error && error.message.includes("not found")) {
-      return NextResponse.json(
-        { error: error.message },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: error.message }, { status: 404 });
     }
-    
+
     return NextResponse.json(
-      { 
+      {
         error: "Failed to send test email",
-        details: error instanceof Error ? error.message : "Unknown error"
+        details: error instanceof Error ? error.message : "Unknown error",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

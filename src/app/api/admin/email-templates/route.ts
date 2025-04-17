@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import {
-  getAllEmailTemplates,
-  createEmailTemplate,
-} from "@/lib/email-service";
+import { getAllEmailTemplates, createEmailTemplate } from "@/lib/email-service";
 
 // GET /api/admin/email-templates - List all email templates
 export async function GET() {
@@ -12,10 +9,7 @@ export async function GET() {
     // Check authentication
     const session = await getServerSession(authOptions);
     if (!session) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     // Get all email templates
@@ -26,7 +20,7 @@ export async function GET() {
     console.error("Error fetching email templates:", error);
     return NextResponse.json(
       { error: "Failed to fetch email templates" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -37,10 +31,7 @@ export async function POST(request: NextRequest) {
     // Check authentication
     const session = await getServerSession(authOptions);
     if (!session) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     // Parse request body
@@ -50,7 +41,7 @@ export async function POST(request: NextRequest) {
     if (!data.name || !data.subject || !data.body) {
       return NextResponse.json(
         { error: "Name, subject, and body are required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -69,7 +60,7 @@ export async function POST(request: NextRequest) {
     console.error("Error creating email template:", error);
     return NextResponse.json(
       { error: "Failed to create email template" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

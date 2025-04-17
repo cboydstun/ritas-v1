@@ -14,7 +14,7 @@ A modern web application built with Next.js and TypeScript for managing frozen d
 - 📝 Contact form for inquiries
 - 📊 Advanced analytics with browser fingerprinting and conversion tracking
 - 📈 Order form funnel analysis to track user progression
-- 📧 Email notifications for order confirmations
+- 📧 Email management system with customizable templates and tracking
 - 🍹 Multiple machine options (15L, 30L, and 45L capacities)
 - 📊 QuickBooks Online integration for automatic invoice generation
 
@@ -27,7 +27,7 @@ A modern web application built with Next.js and TypeScript for managing frozen d
 - [PayPal API](https://developer.paypal.com/) - Secure payment processing
 - [QuickBooks API](https://developer.intuit.com/) - Automated invoice generation
 - [Twilio](https://www.twilio.com/) - SMS notifications
-- [Nodemailer](https://nodemailer.com/) - Email notifications
+- [Resend](https://resend.com/) - Email delivery service with template management
 - [Google Analytics](https://analytics.google.com/) - Website analytics
 - [ThumbmarkJS](https://github.com/thumbmarkjs/thumbmarkjs) - Browser fingerprinting for enhanced analytics
 
@@ -60,9 +60,9 @@ A modern web application built with Next.js and TypeScript for managing frozen d
    TWILIO_PHONE_NUMBER=your_twilio_phone_number
    USER_PHONE_NUMBER=your_notification_phone_number
 
-   # Nodemailer Configuration (for email notifications)
-   NODEMAILER_USERNAME=your_gmail_address
-   NODEMAILER_PASSWORD=your_gmail_app_password
+   # Resend Configuration (for email management)
+   RESEND_API_KEY=your_resend_api_key
+   DEFAULT_EMAIL_FROM=SATX Ritas <orders@satxritas.com>
 
    # Admin Panel Credentials
    ADMIN_USERNAME=admin
@@ -94,7 +94,9 @@ src/
 │   ├── api/               # API routes
 │   │   ├── admin/        # Admin API endpoints
 │   │   │   ├── orders/   # Order management endpoints
-│   │   │   └── analytics/ # Analytics data endpoints
+│   │   │   ├── analytics/ # Analytics data endpoints
+│   │   │   ├── email-templates/ # Email template management endpoints
+│   │   │   └── sent-emails/ # Sent email tracking endpoints
 │   │   ├── v1/           # Version 1 API endpoints
 │   │   │   └── analytics/ # Analytics data collection endpoints
 │   │   ├── create-paypal-order/    # PayPal order creation
@@ -108,6 +110,7 @@ src/
 │   └── rentals/           # Rental management
 ├── components/            # React components
 │   ├── admin/            # Admin dashboard components
+│   ├── email-template.tsx # Email template component
 │   ├── FingerprintTracker.tsx # Site-wide fingerprint tracking
 │   ├── contact/           # Contact form components
 │   ├── home/              # Homepage sections
@@ -123,9 +126,11 @@ src/
 ├── lib/                   # Utility functions
 │   ├── mongodb.ts         # MongoDB connection
 │   ├── paypal-server.ts   # PayPal integration
+│   ├── email-service.ts   # Email service with Resend integration
 │   └── rental-data.ts     # Rental data utilities
 ├── models/                # MongoDB models
 │   ├── rental.ts         # Rental order model
+│   ├── email-template.ts # Email template and sent email models
 │   └── thumbprint.ts     # Analytics fingerprint model
 └── types/                 # TypeScript type definitions
 ```
@@ -133,10 +138,16 @@ src/
 ## API Routes
 
 - `/api/create-paypal-order` - Initializes a new PayPal order with rental details and creates a pending rental in the database
-- `/api/capture-paypal-order` - Captures and processes approved PayPal payments, updates rental status to confirmed, sends SMS notifications via Twilio, and sends confirmation emails via Nodemailer
+- `/api/capture-paypal-order` - Captures and processes approved PayPal payments, updates rental status to confirmed, sends SMS notifications via Twilio, and sends confirmation emails via Resend
 - `/api/admin/orders` - Admin endpoints for retrieving all orders and creating new orders
 - `/api/admin/orders/[id]` - Admin endpoints for retrieving, updating, and deleting specific orders by ID
 - `/api/admin/analytics` - Admin endpoint for retrieving analytics data including visitor stats and order form funnel metrics
+- `/api/admin/email-templates` - Admin endpoints for creating and listing email templates
+- `/api/admin/email-templates/[id]` - Admin endpoints for retrieving, updating, and deleting specific email templates
+- `/api/admin/email-templates/preview` - Admin endpoint for previewing email templates with variables
+- `/api/admin/email-templates/send-test` - Admin endpoint for sending test emails
+- `/api/admin/sent-emails` - Admin endpoints for listing sent emails with pagination and filtering
+- `/api/admin/sent-emails/[id]` - Admin endpoint for retrieving details of a specific sent email
 - `/api/v1/analytics/fingerprint` - Endpoint for storing browser fingerprint data and tracking user journeys
 
 ## Key Components
@@ -154,6 +165,10 @@ src/
 - `ThemeWrapper` - Theme context provider for consistent styling
 - `OrdersTable` - Admin dashboard for managing rental orders
 - `EditOrderModal` - Modal for editing order details in admin panel
+- `EmailTemplateForm` - Form for creating and editing email templates with variables
+- `EmailPreview` - Component for previewing email templates with variable substitution
+- `EmailTemplateList` - List of email templates with actions for edit, preview, and delete
+- `SentEmailList` - List of sent emails with filtering, pagination, and detailed view
 - `GoogleAnalytics` - Component for integrating Google Analytics tracking
 - `FingerprintTracker` - Site-wide browser fingerprinting for enhanced analytics
 - `OrderFormTracker` - Step-by-step tracking of user progression through the order form

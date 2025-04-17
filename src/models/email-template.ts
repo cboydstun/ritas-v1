@@ -21,16 +21,16 @@ const emailTemplateSchema = new mongoose.Schema(
   },
   {
     collection: "emailTemplates",
-  }
+  },
 );
 
 // Schema for sent emails
 const sentEmailSchema = new mongoose.Schema(
   {
-    templateId: { 
-      type: mongoose.Schema.Types.ObjectId, 
-      ref: 'EmailTemplate',
-      required: false // Allow null for custom one-off emails
+    templateId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "EmailTemplate",
+      required: false, // Allow null for custom one-off emails
     },
     subject: { type: String, required: true },
     body: { type: String, required: true },
@@ -38,10 +38,10 @@ const sentEmailSchema = new mongoose.Schema(
     to: { type: [String], required: true },
     cc: { type: [String], default: [] },
     bcc: { type: [String], default: [] },
-    status: { 
-      type: String, 
-      enum: ['sent', 'failed', 'delivered', 'bounced'],
-      default: 'sent'
+    status: {
+      type: String,
+      enum: ["sent", "failed", "delivered", "bounced"],
+      default: "sent",
     },
     resendId: { type: String, required: true }, // ID returned by Resend
     metadata: { type: Map, of: String, default: {} }, // For additional data
@@ -49,7 +49,7 @@ const sentEmailSchema = new mongoose.Schema(
   },
   {
     collection: "sentEmails",
-  }
+  },
 );
 
 // Update timestamps before saving
@@ -84,7 +84,7 @@ export interface ISentEmail extends mongoose.Document {
   to: string[];
   cc: string[];
   bcc: string[];
-  status: 'sent' | 'failed' | 'delivered' | 'bounced';
+  status: "sent" | "failed" | "delivered" | "bounced";
   resendId: string;
   metadata: Map<string, string>;
   sentAt: Date;

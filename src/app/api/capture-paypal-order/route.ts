@@ -3,7 +3,10 @@ import { initializePayPalSDK } from "@/lib/paypal-server";
 import dbConnect from "@/lib/mongodb";
 import { Rental } from "@/models/rental";
 import twilio from "twilio";
-import { sendCustomEmail, sendEmailWithReactComponent } from "@/lib/email-service";
+import {
+  sendCustomEmail,
+  sendEmailWithReactComponent,
+} from "@/lib/email-service";
 import { EmailTemplate } from "@/components/email-template";
 import {
   generateQuickBooksInvoice,
@@ -241,7 +244,7 @@ export async function POST(request: Request) {
           amount,
           capacity: updatedRental.capacity,
         };
-        
+
         // Instead of using sendEmailWithReactComponent, we'll use sendCustomEmail
         // and render the email template to HTML
         const emailHtml = `
@@ -274,16 +277,21 @@ export async function POST(request: Request) {
                 <li style="margin-bottom: 8px;">
                   🍹 Selected Mixers: ${updatedRental.selectedMixers.join(", ")}
                 </li>
-                ${updatedRental.selectedExtras && updatedRental.selectedExtras.length > 0 ? `
+                ${
+                  updatedRental.selectedExtras &&
+                  updatedRental.selectedExtras.length > 0
+                    ? `
                 <li style="margin-bottom: 8px;">
                   🎉 Party Extras: ${updatedRental.selectedExtras
                     .map(
                       (extra: { name: string; quantity?: number }) =>
-                        `${extra.name}${extra.quantity && extra.quantity > 1 ? ` (${extra.quantity}x)` : ""}`
+                        `${extra.name}${extra.quantity && extra.quantity > 1 ? ` (${extra.quantity}x)` : ""}`,
                     )
                     .join(", ")}
                 </li>
-                ` : ''}
+                `
+                    : ""
+                }
                 <li style="margin-bottom: 8px;">💰 Total Amount: $${amount}</li>
                 <li style="margin-bottom: 8px;">
                   ⚡ Machine Capacity: ${updatedRental.capacity}L
@@ -325,14 +333,14 @@ export async function POST(request: Request) {
             </p>
           </div>
         `;
-        
+
         const result = await sendCustomEmail({
           to: [process.env.NODEMAILER_USERNAME as string],
           bcc: [updatedRental.customer.email as string], // BCC the customer
           subject: "SATX Ritas Margarita Rentals - Order Confirmation",
           html: emailHtml,
         });
-        
+
         console.log("Email sent successfully with ID:", result.id);
       } catch (emailError) {
         console.error("Error sending confirmation email:", emailError);

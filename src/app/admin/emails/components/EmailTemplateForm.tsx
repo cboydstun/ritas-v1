@@ -48,7 +48,7 @@ export default function EmailTemplateForm({
     }
 
     // Check if variable name already exists
-    if (variables.some(v => v.name === newVariable.name)) {
+    if (variables.some((v) => v.name === newVariable.name)) {
       setError(`Variable '${newVariable.name}' already exists`);
       return;
     }
@@ -72,17 +72,17 @@ export default function EmailTemplateForm({
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     try {
       setLoading(true);
       setError(null);
-      
+
       // Validate form
       if (!name || !subject || !body) {
         setError("Name, subject, and body are required");
         return;
       }
-      
+
       const templateData = {
         name,
         description,
@@ -91,14 +91,14 @@ export default function EmailTemplateForm({
         variables,
         isDefault,
       };
-      
+
       // Determine if we're creating or updating
       const url = template
         ? `/api/admin/email-templates/${template._id}`
         : "/api/admin/email-templates";
-      
+
       const method = template ? "PUT" : "POST";
-      
+
       const response = await fetch(url, {
         method,
         headers: {
@@ -106,12 +106,15 @@ export default function EmailTemplateForm({
         },
         body: JSON.stringify(templateData),
       });
-      
+
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || `Error ${method === "POST" ? "creating" : "updating"} template`);
+        throw new Error(
+          errorData.error ||
+            `Error ${method === "POST" ? "creating" : "updating"} template`,
+        );
       }
-      
+
       // Call the onSubmit callback to refresh the template list
       onSubmit();
     } catch (err) {
@@ -226,7 +229,8 @@ export default function EmailTemplateForm({
                 required
               />
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                Use &#123;&#123;variableName&#125;&#125; syntax to include variables in your template.
+                Use &#123;&#123;variableName&#125;&#125; syntax to include
+                variables in your template.
               </p>
             </div>
 
@@ -403,7 +407,11 @@ export default function EmailTemplateForm({
                 className="px-4 py-2 bg-teal text-white rounded-md hover:bg-teal-600 transition-colors"
                 disabled={loading}
               >
-                {loading ? "Saving..." : template ? "Update Template" : "Create Template"}
+                {loading
+                  ? "Saving..."
+                  : template
+                    ? "Update Template"
+                    : "Create Template"}
               </button>
             </div>
           </form>

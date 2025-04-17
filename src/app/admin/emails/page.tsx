@@ -14,7 +14,7 @@ export default function EmailsPage() {
         <h1 className="text-2xl font-bold text-gray-800 dark:text-white mb-6">
           Email Management
         </h1>
-        
+
         <Suspense fallback={<div>Loading...</div>}>
           <EmailsClient />
         </Suspense>

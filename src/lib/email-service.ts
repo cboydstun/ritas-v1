@@ -1,5 +1,10 @@
 import { Resend } from "resend";
-import { EmailTemplate, SentEmail, IEmailTemplate, ISentEmail } from "@/models/email-template";
+import {
+  EmailTemplate,
+  SentEmail,
+  IEmailTemplate,
+  ISentEmail,
+} from "@/models/email-template";
 import dbConnect from "@/lib/mongodb";
 import { ReactElement } from "react";
 
@@ -7,10 +12,13 @@ import { ReactElement } from "react";
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 // Replace variables in template
-export const replaceVariables = (template: string, variables: Record<string, string>) => {
+export const replaceVariables = (
+  template: string,
+  variables: Record<string, string>,
+) => {
   let result = template;
   for (const [key, value] of Object.entries(variables)) {
-    result = result.replace(new RegExp(`{{${key}}}`, 'g'), value || '');
+    result = result.replace(new RegExp(`{{${key}}}`, "g"), value || "");
   }
   return result;
 };
@@ -32,17 +40,17 @@ export const sendEmailWithTemplate = async ({
   from?: string;
 }): Promise<{ id: string; sentEmail: ISentEmail }> => {
   await dbConnect();
-  
+
   // Get template
   const template = await EmailTemplate.findById(templateId);
   if (!template) {
     throw new Error(`Email template with ID ${templateId} not found`);
   }
-  
+
   // Replace variables in subject and body
   const subject = replaceVariables(template.subject, variables);
   const html = replaceVariables(template.body, variables);
-  
+
   // Send email with Resend
   const { data, error } = await resend.emails.send({
     from,
@@ -52,7 +60,7 @@ export const sendEmailWithTemplate = async ({
     subject,
     html,
   });
-  
+
   if (error) {
     // Create a record of the failed email
     const sentEmail = new SentEmail({
@@ -63,20 +71,20 @@ export const sendEmailWithTemplate = async ({
       to,
       cc: cc || [],
       bcc: bcc || [],
-      status: 'failed',
-      resendId: 'error',
-      metadata: new Map([['error', error.message]]),
+      status: "failed",
+      resendId: "error",
+      metadata: new Map([["error", error.message]]),
     });
-    
+
     await sentEmail.save();
-    
+
     throw new Error(`Failed to send email: ${error.message}`);
   }
-  
+
   if (!data || !data.id) {
-    throw new Error('Failed to send email: No ID returned from Resend');
+    throw new Error("Failed to send email: No ID returned from Resend");
   }
-  
+
   // Log sent email
   const sentEmail = new SentEmail({
     templateId,
@@ -88,9 +96,9 @@ export const sendEmailWithTemplate = async ({
     bcc: bcc || [],
     resendId: data.id,
   });
-  
+
   await sentEmail.save();
-  
+
   return { id: data.id, sentEmail };
 };
 
@@ -111,7 +119,7 @@ export const sendEmailWithReactComponent = async ({
   from?: string;
 }): Promise<{ id: string; sentEmail: ISentEmail }> => {
   await dbConnect();
-  
+
   // Send email with Resend
   const { data, error } = await resend.emails.send({
     from,
@@ -121,7 +129,7 @@ export const sendEmailWithReactComponent = async ({
     subject,
     react,
   });
-  
+
   if (error) {
     // Create a record of the failed email
     const sentEmail = new SentEmail({
@@ -131,20 +139,20 @@ export const sendEmailWithReactComponent = async ({
       to,
       cc: cc || [],
       bcc: bcc || [],
-      status: 'failed',
-      resendId: 'error',
-      metadata: new Map([['error', error.message]]),
+      status: "failed",
+      resendId: "error",
+      metadata: new Map([["error", error.message]]),
     });
-    
+
     await sentEmail.save();
-    
+
     throw new Error(`Failed to send email: ${error.message}`);
   }
-  
+
   if (!data || !data.id) {
-    throw new Error('Failed to send email: No ID returned from Resend');
+    throw new Error("Failed to send email: No ID returned from Resend");
   }
-  
+
   // Log sent email
   const sentEmail = new SentEmail({
     subject,
@@ -155,9 +163,9 @@ export const sendEmailWithReactComponent = async ({
     bcc: bcc || [],
     resendId: data.id,
   });
-  
+
   await sentEmail.save();
-  
+
   return { id: data.id, sentEmail };
 };
 
@@ -178,7 +186,7 @@ export const sendCustomEmail = async ({
   from?: string;
 }): Promise<{ id: string; sentEmail: ISentEmail }> => {
   await dbConnect();
-  
+
   // Send email with Resend
   const { data, error } = await resend.emails.send({
     from,
@@ -188,7 +196,7 @@ export const sendCustomEmail = async ({
     subject,
     html,
   });
-  
+
   if (error) {
     // Create a record of the failed email
     const sentEmail = new SentEmail({
@@ -198,20 +206,20 @@ export const sendCustomEmail = async ({
       to,
       cc: cc || [],
       bcc: bcc || [],
-      status: 'failed',
-      resendId: 'error',
-      metadata: new Map([['error', error.message]]),
+      status: "failed",
+      resendId: "error",
+      metadata: new Map([["error", error.message]]),
     });
-    
+
     await sentEmail.save();
-    
+
     throw new Error(`Failed to send email: ${error.message}`);
   }
-  
+
   if (!data || !data.id) {
-    throw new Error('Failed to send email: No ID returned from Resend');
+    throw new Error("Failed to send email: No ID returned from Resend");
   }
-  
+
   // Log sent email
   const sentEmail = new SentEmail({
     subject,
@@ -222,9 +230,9 @@ export const sendCustomEmail = async ({
     bcc: bcc || [],
     resendId: data.id,
   });
-  
+
   await sentEmail.save();
-  
+
   return { id: data.id, sentEmail };
 };
 
@@ -237,72 +245,77 @@ export const previewEmailTemplate = async ({
   variables: Record<string, string>;
 }): Promise<{ subject: string; body: string }> => {
   await dbConnect();
-  
+
   // Get template
   const template = await EmailTemplate.findById(templateId);
   if (!template) {
     throw new Error(`Email template with ID ${templateId} not found`);
   }
-  
+
   // Replace variables in subject and body
   const subject = replaceVariables(template.subject, variables);
   const body = replaceVariables(template.body, variables);
-  
+
   return { subject, body };
 };
 
 // Get email template by ID
 export const getEmailTemplate = async (id: string): Promise<IEmailTemplate> => {
   await dbConnect();
-  
+
   const template = await EmailTemplate.findById(id);
   if (!template) {
     throw new Error(`Email template with ID ${id} not found`);
   }
-  
+
   return template;
 };
 
 // Get all email templates
 export const getAllEmailTemplates = async (): Promise<IEmailTemplate[]> => {
   await dbConnect();
-  
+
   return EmailTemplate.find().sort({ name: 1 });
 };
 
 // Create email template
-export const createEmailTemplate = async (template: Partial<IEmailTemplate>): Promise<IEmailTemplate> => {
+export const createEmailTemplate = async (
+  template: Partial<IEmailTemplate>,
+): Promise<IEmailTemplate> => {
   await dbConnect();
-  
+
   const newTemplate = new EmailTemplate(template);
   await newTemplate.save();
-  
+
   return newTemplate;
 };
 
 // Update email template
-export const updateEmailTemplate = async (id: string, template: Partial<IEmailTemplate>): Promise<IEmailTemplate> => {
+export const updateEmailTemplate = async (
+  id: string,
+  template: Partial<IEmailTemplate>,
+): Promise<IEmailTemplate> => {
   await dbConnect();
-  
+
   const updatedTemplate = await EmailTemplate.findByIdAndUpdate(
     id,
     { ...template, updatedAt: new Date() },
-    { new: true, runValidators: true }
+    { new: true, runValidators: true },
   );
-  
+
   if (!updatedTemplate) {
     throw new Error(`Email template with ID ${id} not found`);
   }
-  
+
   return updatedTemplate;
 };
 
 // Delete email template
 export const deleteEmailTemplate = async (id: string): Promise<void> => {
   await dbConnect();
-  
+
   const result = await EmailTemplate.findByIdAndDelete(id);
-  
+
   if (!result) {
     throw new Error(`Email template with ID ${id} not found`);
   }
@@ -316,21 +329,21 @@ export const getSentEmails = async ({
 }: {
   page?: number;
   limit?: number;
-  status?: 'sent' | 'failed' | 'delivered' | 'bounced';
+  status?: "sent" | "failed" | "delivered" | "bounced";
 }): Promise<{ emails: ISentEmail[]; total: number; pages: number }> => {
   await dbConnect();
-  
+
   const query = status ? { status } : {};
-  
+
   const [emails, total] = await Promise.all([
     SentEmail.find(query)
       .sort({ sentAt: -1 })
       .skip((page - 1) * limit)
       .limit(limit)
-      .populate('templateId', 'name'),
+      .populate("templateId", "name"),
     SentEmail.countDocuments(query),
   ]);
-  
+
   return {
     emails,
     total,
@@ -341,32 +354,32 @@ export const getSentEmails = async ({
 // Get sent email by ID
 export const getSentEmail = async (id: string): Promise<ISentEmail> => {
   await dbConnect();
-  
-  const email = await SentEmail.findById(id).populate('templateId', 'name');
-  
+
+  const email = await SentEmail.findById(id).populate("templateId", "name");
+
   if (!email) {
     throw new Error(`Sent email with ID ${id} not found`);
   }
-  
+
   return email;
 };
 
 // Update sent email status (e.g., from webhook)
 export const updateSentEmailStatus = async (
   resendId: string,
-  status: 'sent' | 'failed' | 'delivered' | 'bounced'
+  status: "sent" | "failed" | "delivered" | "bounced",
 ): Promise<ISentEmail> => {
   await dbConnect();
-  
+
   const email = await SentEmail.findOneAndUpdate(
     { resendId },
     { status },
-    { new: true }
+    { new: true },
   );
-  
+
   if (!email) {
     throw new Error(`Sent email with Resend ID ${resendId} not found`);
   }
-  
+
   return email;
 };

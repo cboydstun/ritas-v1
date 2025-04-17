@@ -19,10 +19,7 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
     // Check authentication
     const session = await getServerSession(authOptions);
     if (!session) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     // Get email template by ID
@@ -31,18 +28,18 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
     return NextResponse.json(template);
   } catch (error) {
     console.error(`Error fetching email template ${params.id}:`, error);
-    
+
     // Check if it's a "not found" error
     if (error instanceof Error && error.message.includes("not found")) {
       return NextResponse.json(
         { error: `Email template with ID ${params.id} not found` },
-        { status: 404 }
+        { status: 404 },
       );
     }
-    
+
     return NextResponse.json(
       { error: "Failed to fetch email template" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -53,10 +50,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     // Check authentication
     const session = await getServerSession(authOptions);
     if (!session) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     // Parse request body
@@ -66,7 +60,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     if (!data.name || !data.subject || !data.body) {
       return NextResponse.json(
         { error: "Name, subject, and body are required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -83,18 +77,18 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     return NextResponse.json(template);
   } catch (error) {
     console.error(`Error updating email template ${params.id}:`, error);
-    
+
     // Check if it's a "not found" error
     if (error instanceof Error && error.message.includes("not found")) {
       return NextResponse.json(
         { error: `Email template with ID ${params.id} not found` },
-        { status: 404 }
+        { status: 404 },
       );
     }
-    
+
     return NextResponse.json(
       { error: "Failed to update email template" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -105,10 +99,7 @@ export async function DELETE(_request: NextRequest, { params }: RouteParams) {
     // Check authentication
     const session = await getServerSession(authOptions);
     if (!session) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     // Delete email template
@@ -116,22 +107,22 @@ export async function DELETE(_request: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json(
       { message: `Email template ${params.id} deleted successfully` },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error) {
     console.error(`Error deleting email template ${params.id}:`, error);
-    
+
     // Check if it's a "not found" error
     if (error instanceof Error && error.message.includes("not found")) {
       return NextResponse.json(
         { error: `Email template with ID ${params.id} not found` },
-        { status: 404 }
+        { status: 404 },
       );
     }
-    
+
     return NextResponse.json(
       { error: "Failed to delete email template" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

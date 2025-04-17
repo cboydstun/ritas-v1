@@ -10,9 +10,15 @@ export default function EmailTemplateList() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
-  const [editingTemplate, setEditingTemplate] = useState<IEmailTemplate | null>(null);
-  const [previewTemplate, setPreviewTemplate] = useState<IEmailTemplate | null>(null);
-  const [previewVariables, setPreviewVariables] = useState<Record<string, string>>({});
+  const [editingTemplate, setEditingTemplate] = useState<IEmailTemplate | null>(
+    null,
+  );
+  const [previewTemplate, setPreviewTemplate] = useState<IEmailTemplate | null>(
+    null,
+  );
+  const [previewVariables, setPreviewVariables] = useState<
+    Record<string, string>
+  >({});
   const [showPreview, setShowPreview] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
@@ -26,13 +32,13 @@ export default function EmailTemplateList() {
     try {
       setLoading(true);
       setError(null);
-      
+
       const response = await fetch("/api/admin/email-templates");
-      
+
       if (!response.ok) {
         throw new Error(`Error fetching templates: ${response.statusText}`);
       }
-      
+
       const data = await response.json();
       setTemplates(data);
     } catch (err) {
@@ -47,17 +53,17 @@ export default function EmailTemplateList() {
   const deleteTemplate = async (id: string) => {
     try {
       setLoading(true);
-      
+
       const response = await fetch(`/api/admin/email-templates/${id}`, {
         method: "DELETE",
       });
-      
+
       if (!response.ok) {
         throw new Error(`Error deleting template: ${response.statusText}`);
       }
-      
+
       // Remove the template from the list
-      setTemplates(templates.filter(template => template._id !== id));
+      setTemplates(templates.filter((template) => template._id !== id));
       setDeleteConfirmId(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
@@ -78,20 +84,24 @@ export default function EmailTemplateList() {
   const handlePreview = (template: IEmailTemplate) => {
     // Initialize preview variables with default values
     const initialVariables: Record<string, string> = {};
-    template.variables.forEach(variable => {
+    template.variables.forEach((variable) => {
       initialVariables[variable.name] = variable.defaultValue || "";
     });
-    
+
     setPreviewTemplate(template);
     setPreviewVariables(initialVariables);
     setShowPreview(true);
   };
 
   // Handle sending test email
-  const handleSendTest = async (templateId: string, email: string, variables: Record<string, string>) => {
+  const handleSendTest = async (
+    templateId: string,
+    email: string,
+    variables: Record<string, string>,
+  ) => {
     try {
       setLoading(true);
-      
+
       const response = await fetch("/api/admin/email-templates/send-test", {
         method: "POST",
         headers: {
@@ -103,11 +113,11 @@ export default function EmailTemplateList() {
           variables,
         }),
       });
-      
+
       if (!response.ok) {
         throw new Error(`Error sending test email: ${response.statusText}`);
       }
-      
+
       alert("Test email sent successfully!");
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
@@ -167,24 +177,24 @@ export default function EmailTemplateList() {
                 </span>
               )}
             </div>
-            
+
             {template.description && (
               <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
                 {template.description}
               </p>
             )}
-            
+
             <div className="text-sm text-gray-500 dark:text-gray-400 mb-2">
               <strong>Subject:</strong> {template.subject}
             </div>
-            
+
             <div className="text-sm text-gray-500 dark:text-gray-400 mb-4">
               <strong>Variables:</strong>{" "}
               {template.variables.length > 0
-                ? template.variables.map(v => v.name).join(", ")
+                ? template.variables.map((v) => v.name).join(", ")
                 : "None"}
             </div>
-            
+
             <div className="flex flex-wrap gap-2 mt-4">
               <button
                 onClick={() => handlePreview(template)}
@@ -199,7 +209,9 @@ export default function EmailTemplateList() {
                 Edit
               </button>
               <button
-                onClick={() => setDeleteConfirmId(template._id?.toString() || "")}
+                onClick={() =>
+                  setDeleteConfirmId(template._id?.toString() || "")
+                }
                 className="px-3 py-1 bg-red-500 text-white text-sm rounded hover:bg-red-600 transition-colors"
               >
                 Delete
@@ -214,7 +226,9 @@ export default function EmailTemplateList() {
                 </p>
                 <div className="flex gap-2">
                   <button
-                    onClick={() => deleteTemplate(template._id?.toString() || "")}
+                    onClick={() =>
+                      deleteTemplate(template._id?.toString() || "")
+                    }
                     className="px-3 py-1 bg-red-500 text-white text-sm rounded hover:bg-red-600 transition-colors"
                   >
                     Yes, Delete

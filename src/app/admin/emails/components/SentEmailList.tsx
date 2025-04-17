@@ -10,7 +10,9 @@ export default function SentEmailList() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalEmails, setTotalEmails] = useState(0);
-  const [statusFilter, setStatusFilter] = useState<string | undefined>(undefined);
+  const [statusFilter, setStatusFilter] = useState<string | undefined>(
+    undefined,
+  );
   const [selectedEmail, setSelectedEmail] = useState<ISentEmail | null>(null);
 
   // Fetch emails on component mount and when page or status filter changes
@@ -23,7 +25,7 @@ export default function SentEmailList() {
     try {
       setLoading(true);
       setError(null);
-      
+
       // Build query string
       const queryParams = new URLSearchParams();
       queryParams.append("page", page.toString());
@@ -31,13 +33,15 @@ export default function SentEmailList() {
       if (statusFilter) {
         queryParams.append("status", statusFilter);
       }
-      
-      const response = await fetch(`/api/admin/sent-emails?${queryParams.toString()}`);
-      
+
+      const response = await fetch(
+        `/api/admin/sent-emails?${queryParams.toString()}`,
+      );
+
       if (!response.ok) {
         throw new Error(`Error fetching emails: ${response.statusText}`);
       }
-      
+
       const data = await response.json();
       setEmails(data.emails);
       setTotalPages(data.pages);
@@ -54,13 +58,13 @@ export default function SentEmailList() {
   const fetchEmailDetails = async (id: string) => {
     try {
       setLoading(true);
-      
+
       const response = await fetch(`/api/admin/sent-emails/${id}`);
-      
+
       if (!response.ok) {
         throw new Error(`Error fetching email details: ${response.statusText}`);
       }
-      
+
       const data = await response.json();
       setSelectedEmail(data);
     } catch (err) {
@@ -99,7 +103,7 @@ export default function SentEmailList() {
         <h2 className="text-xl font-semibold text-gray-800 dark:text-white">
           Sent Emails
         </h2>
-        
+
         {/* Status filter */}
         <div>
           <select
@@ -127,7 +131,9 @@ export default function SentEmailList() {
       )}
 
       {/* Loading state */}
-      {loading && !selectedEmail && <div className="text-center py-4">Loading...</div>}
+      {loading && !selectedEmail && (
+        <div className="text-center py-4">Loading...</div>
+      )}
 
       {/* Email list */}
       {!loading && emails.length === 0 && (
@@ -191,7 +197,7 @@ export default function SentEmailList() {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span
                       className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeClass(
-                        email.status
+                        email.status,
                       )}`}
                     >
                       {email.status}
@@ -199,7 +205,9 @@ export default function SentEmailList() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <button
-                      onClick={() => fetchEmailDetails(email._id?.toString() || "")}
+                      onClick={() =>
+                        fetchEmailDetails(email._id?.toString() || "")
+                      }
                       className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
                     >
                       View
@@ -277,14 +285,18 @@ export default function SentEmailList() {
               <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">
                 Subject
               </h4>
-              <p className="text-gray-900 dark:text-white">{selectedEmail.subject}</p>
+              <p className="text-gray-900 dark:text-white">
+                {selectedEmail.subject}
+              </p>
             </div>
 
             <div>
               <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">
                 From
               </h4>
-              <p className="text-gray-900 dark:text-white">{selectedEmail.from}</p>
+              <p className="text-gray-900 dark:text-white">
+                {selectedEmail.from}
+              </p>
             </div>
 
             <div>
@@ -333,7 +345,7 @@ export default function SentEmailList() {
               </h4>
               <span
                 className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeClass(
-                  selectedEmail.status
+                  selectedEmail.status,
                 )}`}
               >
                 {selectedEmail.status}

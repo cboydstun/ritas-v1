@@ -8,7 +8,11 @@ interface EmailPreviewProps {
   variables: Record<string, string>;
   onVariableChange: (variables: Record<string, string>) => void;
   onClose: () => void;
-  onSendTest: (templateId: string, email: string, variables: Record<string, string>) => Promise<void>;
+  onSendTest: (
+    templateId: string,
+    email: string,
+    variables: Record<string, string>,
+  ) => Promise<void>;
 }
 
 export default function EmailPreview({
@@ -37,7 +41,7 @@ export default function EmailPreview({
     try {
       setPreviewLoading(true);
       setPreviewError(null);
-      
+
       const response = await fetch("/api/admin/email-templates/preview", {
         method: "POST",
         headers: {
@@ -48,11 +52,11 @@ export default function EmailPreview({
           variables,
         }),
       });
-      
+
       if (!response.ok) {
         throw new Error(`Error generating preview: ${response.statusText}`);
       }
-      
+
       const data = await response.json();
       setPreviewHtml(data.body);
       setPreviewSubject(data.subject);
@@ -67,18 +71,18 @@ export default function EmailPreview({
   // Handle send test email
   const handleSendTest = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!testEmail) {
       setPreviewError("Email address is required");
       return;
     }
-    
+
     try {
       setSendingTest(true);
       setPreviewError(null);
-      
+
       await onSendTest(template._id?.toString() || "", testEmail, variables);
-      
+
       // Reset form
       setTestEmail("");
       setShowTestForm(false);
@@ -132,7 +136,7 @@ export default function EmailPreview({
                 <h3 className="text-lg font-medium text-gray-800 dark:text-white mb-4">
                   Template Variables
                 </h3>
-                
+
                 {template.variables.length === 0 ? (
                   <p className="text-sm text-gray-500 dark:text-gray-400">
                     This template has no variables.
@@ -173,7 +177,7 @@ export default function EmailPreview({
                   >
                     {previewLoading ? "Generating..." : "Generate Preview"}
                   </button>
-                  
+
                   <button
                     type="button"
                     onClick={() => setShowTestForm(!showTestForm)}
@@ -225,7 +229,7 @@ export default function EmailPreview({
                     </h4>
                   </div>
                 )}
-                
+
                 {/* Email body */}
                 <div className="p-4 max-h-[60vh] overflow-y-auto">
                   {previewLoading ? (

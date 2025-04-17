@@ -9,10 +9,7 @@ export async function GET(request: NextRequest) {
     // Check authentication
     const session = await getServerSession(authOptions);
     if (!session) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     // Get query parameters
@@ -20,14 +17,15 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "10");
     const statusParam = searchParams.get("status");
-    
+
     // Only pass status if it's a valid value
-    const status = statusParam === "sent" || 
-                  statusParam === "failed" || 
-                  statusParam === "delivered" || 
-                  statusParam === "bounced" 
-                  ? statusParam as "sent" | "failed" | "delivered" | "bounced"
-                  : undefined;
+    const status =
+      statusParam === "sent" ||
+      statusParam === "failed" ||
+      statusParam === "delivered" ||
+      statusParam === "bounced"
+        ? (statusParam as "sent" | "failed" | "delivered" | "bounced")
+        : undefined;
 
     // Get sent emails with pagination
     const result = await getSentEmails({
@@ -41,7 +39,7 @@ export async function GET(request: NextRequest) {
     console.error("Error fetching sent emails:", error);
     return NextResponse.json(
       { error: "Failed to fetch sent emails" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
