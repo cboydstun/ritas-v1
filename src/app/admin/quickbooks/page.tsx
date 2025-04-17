@@ -7,7 +7,7 @@ import AdminLayout from "@/components/admin/AdminLayout";
 export default function QuickBooksPage() {
   const [isConnected, setIsConnected] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState(
-    "Checking connection status...",
+    "Checking connection status..."
   );
   const [connectionDetails, setConnectionDetails] = useState<{
     expiresAt?: string;
@@ -25,62 +25,92 @@ export default function QuickBooksPage() {
     refreshTokenExpiresIn: "8726400",
   });
   const [tokenSuccess, setTokenSuccess] = useState<string | null>(null);
-  const [failedInvoices, setFailedInvoices] = useState<Array<{
-    id: string;
-    rentalDate: string;
-    customerName: string;
-    syncStatus: string;
-    syncError: string;
-    lastAttempt: string;
-    nextRetry: string;
-  }>>([]);
+  const [activeTab, setActiveTab] = useState<"failed" | "successful">(
+    "successful"
+  );
+  const [failedInvoices, setFailedInvoices] = useState<
+    Array<{
+      id: string;
+      rentalDate: string;
+      customerName: string;
+      syncStatus: string;
+      syncError: string;
+      lastAttempt: string;
+      nextRetry: string;
+    }>
+  >([]);
+  const [successfulInvoices, setSuccessfulInvoices] = useState<
+    Array<{
+      id: string;
+      rentalDate: string;
+      customerName: string;
+      syncStatus: string;
+      syncDate: string;
+      qbInvoiceId: string;
+    }>
+  >([]);
   const [loadingInvoices, setLoadingInvoices] = useState(false);
 
-  // Check connection status and load failed invoices on page load
+  // Check connection status and load invoices on page load
   useEffect(() => {
     checkConnectionStatus();
-    loadFailedInvoices();
-  }, []);
-  
-  // Function to load failed invoices
-  const loadFailedInvoices = async () => {
+    loadInvoices();
+  }, [activeTab]);
+
+  // Function to load invoices based on active tab
+  const loadInvoices = async () => {
     try {
       setLoadingInvoices(true);
-      
-      // Fetch failed invoices from the API
-      const response = await fetch('/api/quickbooks/failed-invoices');
-      const data = await response.json();
-      
-      if (data.invoices) {
-        setFailedInvoices(data.invoices);
+
+      if (activeTab === "failed") {
+        // Fetch failed invoices from the API
+        const response = await fetch("/api/quickbooks/failed-invoices");
+        const data = await response.json();
+
+        if (data.invoices) {
+          setFailedInvoices(data.invoices);
+        }
+      } else {
+        // Fetch successful invoices from the API
+        // For now, we'll use the same endpoint with a query parameter
+        // This assumes you'll create or modify the API to support this
+        const response = await fetch("/api/quickbooks/successful-invoices");
+        const data = await response.json();
+
+        if (data.invoices) {
+          setSuccessfulInvoices(data.invoices);
+        }
       }
     } catch (err) {
-      console.error('Error loading failed invoices:', err);
+      console.error(`Error loading ${activeTab} invoices:`, err);
     } finally {
       setLoadingInvoices(false);
     }
   };
-  
+
   // Function to retry a failed invoice
   const retryInvoice = async (rentalId: string) => {
     try {
       setLoading(true);
-      
-      const response = await fetch(`/api/quickbooks/retry-invoice/${rentalId}`, {
-        method: 'POST',
-      });
-      
+
+      const response = await fetch(
+        `/api/quickbooks/retry-invoice/${rentalId}`,
+        {
+          method: "POST",
+        }
+      );
+
       const data = await response.json();
-      
+
       if (data.success) {
-        // Reload failed invoices to update the list
-        await loadFailedInvoices();
+        // Reload invoices to update the list
+        await loadInvoices();
       } else {
-        setError(data.message || 'Failed to retry invoice');
+        setError(data.message || "Failed to retry invoice");
       }
     } catch (err) {
-      console.error('Error retrying invoice:', err);
-      setError('Failed to retry invoice');
+      console.error("Error retrying invoice:", err);
+      setError("Failed to retry invoice");
     } finally {
       setLoading(false);
     }
@@ -100,16 +130,20 @@ export default function QuickBooksPage() {
       setConnectionStatus(
         data.connected
           ? "Connected to QuickBooks"
-          : "Not connected to QuickBooks",
+          : "Not connected to QuickBooks"
       );
-      
+
       // Set token expiration details if connected
       if (data.connected && data.tokenDetails) {
         setConnectionDetails({
-          expiresAt: new Date(data.tokenDetails.accessTokenExpiresAt).toLocaleString(),
-          refreshExpiresAt: new Date(data.tokenDetails.refreshTokenExpiresAt).toLocaleString(),
+          expiresAt: new Date(
+            data.tokenDetails.accessTokenExpiresAt
+          ).toLocaleString(),
+          refreshExpiresAt: new Date(
+            data.tokenDetails.refreshTokenExpiresAt
+          ).toLocaleString(),
           accessTokenExpiresIn: data.tokenDetails.accessTokenExpiresIn,
-          refreshTokenExpiresIn: data.tokenDetails.refreshTokenExpiresIn
+          refreshTokenExpiresIn: data.tokenDetails.refreshTokenExpiresIn,
         });
       }
     } catch (err) {
@@ -183,23 +217,36 @@ export default function QuickBooksPage() {
             >
               {connectionStatus}
             </p>
-            
+
             {isConnected && connectionDetails.expiresAt && (
               <div className="mt-4 p-4 bg-gray-100 dark:bg-gray-700 rounded-md">
                 <h3 className="font-semibold mb-2">Token Information</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">Access Token Expires:</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      Access Token Expires:
+                    </p>
                     <p className="font-medium">{connectionDetails.expiresAt}</p>
                     <p className="text-xs text-gray-500 dark:text-gray-500">
-                      ({connectionDetails.accessTokenExpiresIn} seconds remaining)
+                      ({connectionDetails.accessTokenExpiresIn} seconds
+                      remaining)
                     </p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">Refresh Token Expires:</p>
-                    <p className="font-medium">{connectionDetails.refreshExpiresAt}</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      Refresh Token Expires:
+                    </p>
+                    <p className="font-medium">
+                      {connectionDetails.refreshExpiresAt}
+                    </p>
                     <p className="text-xs text-gray-500 dark:text-gray-500">
-                      ({connectionDetails.refreshTokenExpiresIn !== undefined ? Math.floor(connectionDetails.refreshTokenExpiresIn / 86400) : "N/A"} days remaining)
+                      (
+                      {connectionDetails.refreshTokenExpiresIn !== undefined
+                        ? Math.floor(
+                            connectionDetails.refreshTokenExpiresIn / 86400
+                          )
+                        : "N/A"}{" "}
+                      days remaining)
                     </p>
                   </div>
                 </div>
@@ -336,10 +383,10 @@ export default function QuickBooksPage() {
                             refreshToken: tokenFormData.refreshToken,
                             expiresIn: parseInt(tokenFormData.expiresIn),
                             refreshTokenExpiresIn: parseInt(
-                              tokenFormData.refreshTokenExpiresIn,
+                              tokenFormData.refreshTokenExpiresIn
                             ),
                           }),
-                        },
+                        }
                       );
 
                       const data = await response.json();
@@ -452,111 +499,287 @@ export default function QuickBooksPage() {
             )}
           </div>
 
-          {/* Failed Invoices */}
+          {/* Invoices */}
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-6">
-            <h2 className="text-xl font-semibold mb-4">Failed Invoices</h2>
-            <p className="mb-4">
-              Invoices that failed to sync with QuickBooks are listed below. You can retry them manually.
-            </p>
-            
+            <h2 className="text-xl font-semibold mb-4">QuickBooks Invoices</h2>
+
+            {/* Tabs */}
+            <div className="flex border-b border-gray-200 dark:border-gray-700 mb-4">
+              <button
+                onClick={() => setActiveTab("successful")}
+                className={`py-2 px-4 font-medium text-sm focus:outline-none ${
+                  activeTab === "successful"
+                    ? "border-b-2 border-blue-500 text-blue-600 dark:text-blue-400"
+                    : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+                }`}
+              >
+                Successful Invoices
+              </button>
+              <button
+                onClick={() => setActiveTab("failed")}
+                className={`py-2 px-4 font-medium text-sm focus:outline-none ${
+                  activeTab === "failed"
+                    ? "border-b-2 border-blue-500 text-blue-600 dark:text-blue-400"
+                    : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+                }`}
+              >
+                Failed Invoices
+              </button>
+            </div>
+
+            {activeTab === "failed" && (
+              <p className="mb-4">
+                Invoices that failed to sync with QuickBooks are listed below.
+                You can retry them manually.
+              </p>
+            )}
+
+            {activeTab === "successful" && (
+              <p className="mb-4">
+                Invoices that have been successfully synced with QuickBooks are
+                listed below.
+              </p>
+            )}
+
             <div className="flex justify-between items-center mb-4">
               <button
-                onClick={loadFailedInvoices}
+                onClick={loadInvoices}
                 disabled={loadingInvoices}
                 className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md disabled:opacity-50"
               >
-                {loadingInvoices ? "Loading..." : "Refresh Failed Invoices"}
+                {loadingInvoices ? "Loading..." : "Refresh Invoices"}
               </button>
-              
-              {failedInvoices.length > 0 && (
+
+              {activeTab === "failed" && failedInvoices.length > 0 && (
                 <span className="text-sm text-gray-600 dark:text-gray-400">
-                  {failedInvoices.length} failed {failedInvoices.length === 1 ? 'invoice' : 'invoices'}
+                  {failedInvoices.length} failed{" "}
+                  {failedInvoices.length === 1 ? "invoice" : "invoices"}
+                </span>
+              )}
+
+              {activeTab === "successful" && successfulInvoices.length > 0 && (
+                <span className="text-sm text-gray-600 dark:text-gray-400">
+                  {successfulInvoices.length} successful{" "}
+                  {successfulInvoices.length === 1 ? "invoice" : "invoices"}
                 </span>
               )}
             </div>
-            
-            {failedInvoices.length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                  <thead className="bg-gray-50 dark:bg-gray-700">
-                    <tr>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                        Rental Date
-                      </th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                        Customer
-                      </th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                        Status
-                      </th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                        Error
-                      </th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                        Last Attempt
-                      </th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                        Next Retry
-                      </th>
-                      <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                    {failedInvoices.map((invoice) => (
-                      <tr key={invoice.id}>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200">
-                          {invoice.rentalDate}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200">
-                          {invoice.customerName}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm">
-                          <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                            invoice.syncStatus === 'auth_error' 
-                              ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' 
-                              : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-                          }`}>
-                            {invoice.syncStatus === 'auth_error' ? 'Auth Error' : 'Failed'}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-200">
-                          <div className="max-w-xs truncate" title={invoice.syncError}>
-                            {invoice.syncError}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200">
-                          {invoice.lastAttempt}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200">
-                          {invoice.nextRetry}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                          <button
-                            onClick={() => retryInvoice(invoice.id)}
-                            disabled={loading}
-                            className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300"
+
+            {/* Failed Invoices Table */}
+            {activeTab === "failed" && (
+              <>
+                {failedInvoices.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                      <thead className="bg-gray-50 dark:bg-gray-700">
+                        <tr>
+                          <th
+                            scope="col"
+                            className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
                           >
-                            Retry
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-                {loadingInvoices ? (
-                  <p>Loading failed invoices...</p>
+                            Rental Date
+                          </th>
+                          <th
+                            scope="col"
+                            className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
+                          >
+                            Customer
+                          </th>
+                          <th
+                            scope="col"
+                            className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
+                          >
+                            Status
+                          </th>
+                          <th
+                            scope="col"
+                            className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
+                          >
+                            Error
+                          </th>
+                          <th
+                            scope="col"
+                            className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
+                          >
+                            Last Attempt
+                          </th>
+                          <th
+                            scope="col"
+                            className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
+                          >
+                            Next Retry
+                          </th>
+                          <th
+                            scope="col"
+                            className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
+                          >
+                            Actions
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                        {failedInvoices.map((invoice) => (
+                          <tr key={invoice.id}>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200">
+                              {invoice.rentalDate}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200">
+                              {invoice.customerName}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm">
+                              <span
+                                className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                                  invoice.syncStatus === "auth_error"
+                                    ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
+                                    : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
+                                }`}
+                              >
+                                {invoice.syncStatus === "auth_error"
+                                  ? "Auth Error"
+                                  : "Failed"}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-200">
+                              <div
+                                className="max-w-xs truncate"
+                                title={invoice.syncError}
+                              >
+                                {invoice.syncError}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200">
+                              {invoice.lastAttempt}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200">
+                              {invoice.nextRetry}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                              <button
+                                onClick={() => retryInvoice(invoice.id)}
+                                disabled={loading}
+                                className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300"
+                              >
+                                Retry
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 ) : (
-                  <p>No failed invoices found. All invoices have been successfully synced with QuickBooks.</p>
+                  <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                    {loadingInvoices ? (
+                      <p>Loading failed invoices...</p>
+                    ) : (
+                      <p>
+                        No failed invoices found. All invoices have been
+                        successfully synced with QuickBooks.
+                      </p>
+                    )}
+                  </div>
                 )}
-              </div>
+              </>
+            )}
+
+            {/* Successful Invoices Table */}
+            {activeTab === "successful" && (
+              <>
+                {successfulInvoices.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                      <thead className="bg-gray-50 dark:bg-gray-700">
+                        <tr>
+                          <th
+                            scope="col"
+                            className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
+                          >
+                            Rental Date
+                          </th>
+                          <th
+                            scope="col"
+                            className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
+                          >
+                            Customer
+                          </th>
+                          <th
+                            scope="col"
+                            className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
+                          >
+                            Status
+                          </th>
+                          <th
+                            scope="col"
+                            className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
+                          >
+                            Sync Date
+                          </th>
+                          <th
+                            scope="col"
+                            className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
+                          >
+                            QuickBooks Invoice ID
+                          </th>
+                          <th
+                            scope="col"
+                            className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
+                          >
+                            Actions
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                        {successfulInvoices.map((invoice) => (
+                          <tr key={invoice.id}>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200">
+                              {invoice.rentalDate}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200">
+                              {invoice.customerName}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm">
+                              <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                                Synced
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200">
+                              {invoice.syncDate}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200">
+                              {invoice.qbInvoiceId}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                              <a
+                                href={`https://app.qbo.intuit.com/app/invoice?txnId=${invoice.qbInvoiceId}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300"
+                              >
+                                View in QuickBooks
+                              </a>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                    {loadingInvoices ? (
+                      <p>Loading successful invoices...</p>
+                    ) : (
+                      <p>
+                        No successful invoices found. Invoices will appear here
+                        after they have been successfully synced with
+                        QuickBooks.
+                      </p>
+                    )}
+                  </div>
+                )}
+              </>
             )}
           </div>
-          
+
           {/* Configuration Instructions */}
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
             <h2 className="text-xl font-semibold mb-4">
