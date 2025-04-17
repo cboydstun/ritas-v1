@@ -7,7 +7,7 @@ import AdminLayout from "@/components/admin/AdminLayout";
 export default function QuickBooksPage() {
   const [isConnected, setIsConnected] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState(
-    "Checking connection status..."
+    "Checking connection status...",
   );
   const [connectionDetails, setConnectionDetails] = useState<{
     expiresAt?: string;
@@ -26,7 +26,7 @@ export default function QuickBooksPage() {
   });
   const [tokenSuccess, setTokenSuccess] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"failed" | "successful">(
-    "successful"
+    "successful",
   );
   const [failedInvoices, setFailedInvoices] = useState<
     Array<{
@@ -55,7 +55,7 @@ export default function QuickBooksPage() {
   useEffect(() => {
     checkConnectionStatus();
     loadInvoices();
-  }, [activeTab]);
+  });
 
   // Function to load invoices based on active tab
   const loadInvoices = async () => {
@@ -97,7 +97,7 @@ export default function QuickBooksPage() {
         `/api/quickbooks/retry-invoice/${rentalId}`,
         {
           method: "POST",
-        }
+        },
       );
 
       const data = await response.json();
@@ -130,17 +130,17 @@ export default function QuickBooksPage() {
       setConnectionStatus(
         data.connected
           ? "Connected to QuickBooks"
-          : "Not connected to QuickBooks"
+          : "Not connected to QuickBooks",
       );
 
       // Set token expiration details if connected
       if (data.connected && data.tokenDetails) {
         setConnectionDetails({
           expiresAt: new Date(
-            data.tokenDetails.accessTokenExpiresAt
+            data.tokenDetails.accessTokenExpiresAt,
           ).toLocaleString(),
           refreshExpiresAt: new Date(
-            data.tokenDetails.refreshTokenExpiresAt
+            data.tokenDetails.refreshTokenExpiresAt,
           ).toLocaleString(),
           accessTokenExpiresIn: data.tokenDetails.accessTokenExpiresIn,
           refreshTokenExpiresIn: data.tokenDetails.refreshTokenExpiresIn,
@@ -243,7 +243,7 @@ export default function QuickBooksPage() {
                       (
                       {connectionDetails.refreshTokenExpiresIn !== undefined
                         ? Math.floor(
-                            connectionDetails.refreshTokenExpiresIn / 86400
+                            connectionDetails.refreshTokenExpiresIn / 86400,
                           )
                         : "N/A"}{" "}
                       days remaining)
@@ -383,10 +383,10 @@ export default function QuickBooksPage() {
                             refreshToken: tokenFormData.refreshToken,
                             expiresIn: parseInt(tokenFormData.expiresIn),
                             refreshTokenExpiresIn: parseInt(
-                              tokenFormData.refreshTokenExpiresIn
+                              tokenFormData.refreshTokenExpiresIn,
                             ),
                           }),
-                        }
+                        },
                       );
 
                       const data = await response.json();

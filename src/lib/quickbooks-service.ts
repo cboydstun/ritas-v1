@@ -5,7 +5,7 @@ import { Rental } from "@/models/rental";
 import { calculatePrice } from "./pricing";
 import { MixerType, mixerDetails } from "./rental-data";
 
-// Define types for QuickBooks entities
+// Define types for QuickBooks entities and responses
 interface QBCustomer {
   Id?: string;
   DisplayName: string;
@@ -16,6 +16,30 @@ interface QBCustomer {
     City: string;
     CountrySubDivisionCode: string;
     PostalCode: string;
+  };
+  [key: string]: unknown;
+}
+
+interface QBQueryResponse<T> {
+  QueryResponse: {
+    Customer?: T[];
+    Account?: T[];
+    [key: string]: unknown;
+  };
+  [key: string]: unknown;
+}
+
+interface QBErrorDetail {
+  code: string;
+  Detail?: string;
+  Message?: string;
+  [key: string]: unknown;
+}
+
+interface QBError {
+  Fault?: {
+    Error?: QBErrorDetail[];
+    [key: string]: unknown;
   };
   [key: string]: unknown;
 }
@@ -72,7 +96,7 @@ export class QuickBooksService {
   public async initialize(): Promise<void> {
     try {
       const qbAuth = QuickBooksAuth.getInstance();
-      
+
       try {
         const tokens = await qbAuth.getValidTokens();
 
@@ -98,20 +122,20 @@ export class QuickBooksService {
         );
       } catch (tokenError) {
         console.error("Error getting valid QuickBooks tokens:", tokenError);
-        
+
         // Check if this is an authentication error
         const errorStr = String(tokenError);
         if (
-          errorStr.includes("authenticate") || 
+          errorStr.includes("authenticate") ||
           errorStr.includes("expired") ||
           errorStr.includes("invalid_token") ||
           errorStr.includes("invalid_grant")
         ) {
           throw new Error(
-            "QuickBooks authentication has expired. Please reconnect to QuickBooks in the admin panel."
+            "QuickBooks authentication has expired. Please reconnect to QuickBooks in the admin panel.",
           );
         }
-        
+
         throw tokenError;
       }
     } catch (error) {
@@ -130,7 +154,7 @@ export class QuickBooksService {
       // First try to find customer by email
       return new Promise((resolve, reject) => {
         console.log(`Searching for customer with email: ${customerData.email}`);
-        
+
         this.qb.findCustomers(
           [{ field: "PrimaryEmailAddr", value: customerData.email }],
           (err, customers) => {
@@ -141,40 +165,55 @@ export class QuickBooksService {
             }
 
             // Add detailed logging to see what's being returned
-            console.log("Customer search results:", JSON.stringify(customers, null, 2));
+            console.log(
+              "Customer search results:",
+              JSON.stringify(customers, null, 2),
+            );
 
             // More robust check for existing customers
-            if (customers && 
-                Array.isArray(customers) && 
-                customers.length > 0 && 
-                customers[0] && 
-                customers[0].Id) {
+            if (
+              customers &&
+              Array.isArray(customers) &&
+              customers.length > 0 &&
+              customers[0] &&
+              customers[0].Id
+            ) {
               // Customer found, return ID
-              console.log(`Found existing customer with ID: ${customers[0].Id}`);
+              console.log(
+                `Found existing customer with ID: ${customers[0].Id}`,
+              );
               resolve(customers[0].Id as string);
               return;
             }
-            
+
             // Check if the response has a different structure (QuickBooks API can be inconsistent)
-            if (customers && 
-                typeof customers === 'object' && 
-                'QueryResponse' in customers) {
-              // Use type assertion to access QueryResponse
-              const queryResponse = (customers as any).QueryResponse;
-              if (queryResponse && 
-                  queryResponse.Customer && 
-                  Array.isArray(queryResponse.Customer) && 
-                  queryResponse.Customer.length > 0 &&
-                  queryResponse.Customer[0].Id) {
+            if (
+              customers &&
+              typeof customers === "object" &&
+              "QueryResponse" in customers
+            ) {
+              // Use type assertion with our defined interface - cast to unknown first
+              const queryResponse = (
+                customers as unknown as QBQueryResponse<QBCustomer>
+              ).QueryResponse;
+              if (
+                queryResponse &&
+                queryResponse.Customer &&
+                Array.isArray(queryResponse.Customer) &&
+                queryResponse.Customer.length > 0 &&
+                queryResponse.Customer[0].Id
+              ) {
                 const customerId = queryResponse.Customer[0].Id;
-                console.log(`Found existing customer in QueryResponse with ID: ${customerId}`);
+                console.log(
+                  `Found existing customer in QueryResponse with ID: ${customerId}`,
+                );
                 resolve(customerId as string);
                 return;
               }
             }
 
             console.log("No existing customer found, creating new one");
-            
+
             // Customer not found, create new one
             const newCustomer: QBCustomer = {
               DisplayName: customerData.name,
@@ -191,52 +230,61 @@ export class QuickBooksService {
             this.qb.createCustomer(newCustomer, (err, customer) => {
               if (err) {
                 console.error("Error creating customer:", err);
-                
+
                 // Check if this is a duplicate name error
-                // Use type assertion for QuickBooks error structure
-                const qbError = err as any;
-                if (qbError.Fault && 
-                    qbError.Fault.Error && 
-                    Array.isArray(qbError.Fault.Error) &&
-                    qbError.Fault.Error[0] && 
-                    qbError.Fault.Error[0].code === "6240") {
-                  console.log("Duplicate customer error detected, trying to find by name instead");
-                  
+                // Use our defined interface for QuickBooks error structure - cast to unknown first
+                const qbError = err as unknown as QBError;
+                if (
+                  qbError.Fault &&
+                  qbError.Fault.Error &&
+                  Array.isArray(qbError.Fault.Error) &&
+                  qbError.Fault.Error[0] &&
+                  qbError.Fault.Error[0].code === "6240"
+                ) {
+                  console.log(
+                    "Duplicate customer error detected, trying to find by name instead",
+                  );
+
                   // Try to find the customer by name as a fallback
                   this.qb.findCustomers(
                     [{ field: "DisplayName", value: customerData.name }],
                     (nameErr, nameCustomers) => {
                       if (nameErr) {
-                        console.error("Error finding customer by name:", nameErr);
+                        console.error(
+                          "Error finding customer by name:",
+                          nameErr,
+                        );
                         reject(err); // Still reject with the original error
                         return;
                       }
-                      
-                      if (!nameCustomers || 
-                          !Array.isArray(nameCustomers) || 
-                          nameCustomers.length === 0 || 
-                          !nameCustomers[0] || 
-                          !nameCustomers[0].Id) {
+
+                      if (
+                        !nameCustomers ||
+                        !Array.isArray(nameCustomers) ||
+                        nameCustomers.length === 0 ||
+                        !nameCustomers[0] ||
+                        !nameCustomers[0].Id
+                      ) {
                         console.error("Could not find customer by name either");
                         reject(err); // Still reject with the original error
                         return;
                       }
-                      
-                      console.log(`Found customer by name with ID: ${nameCustomers[0].Id}`);
+
+                      console.log(
+                        `Found customer by name with ID: ${nameCustomers[0].Id}`,
+                      );
                       resolve(nameCustomers[0].Id as string);
-                    }
+                    },
                   );
                   return;
                 }
-                
+
                 reject(err);
                 return;
               }
 
               if (!customer || !customer.Id) {
-                reject(
-                  new Error("Failed to create customer: No ID returned"),
-                );
+                reject(new Error("Failed to create customer: No ID returned"));
                 return;
               }
 
@@ -284,29 +332,52 @@ export class QuickBooksService {
                   return;
                 }
 
-                console.log("PayPal Bank account search result:", JSON.stringify(accounts, null, 2));
+                console.log(
+                  "PayPal Bank account search result:",
+                  JSON.stringify(accounts, null, 2),
+                );
 
                 // Check for different response formats from QuickBooks API
                 let paypalBankAccount = null;
 
                 // Check if accounts is an array with elements
-                if (Array.isArray(accounts) && accounts.length > 0 && accounts[0] && accounts[0].Id) {
+                if (
+                  Array.isArray(accounts) &&
+                  accounts.length > 0 &&
+                  accounts[0] &&
+                  accounts[0].Id
+                ) {
                   paypalBankAccount = accounts[0];
-                } 
+                }
                 // Check if accounts is in QueryResponse format with Account array
-                else if (accounts && 
-                         typeof accounts === 'object' && 
-                         'QueryResponse' in accounts && 
-                         (accounts as any).QueryResponse.Account && 
-                         Array.isArray((accounts as any).QueryResponse.Account) && 
-                         (accounts as any).QueryResponse.Account.length > 0) {
-                  paypalBankAccount = (accounts as any).QueryResponse.Account[0];
+                else if (
+                  accounts &&
+                  typeof accounts === "object" &&
+                  "QueryResponse" in accounts
+                ) {
+                  // Cast to unknown first, then to our interface
+                  const typedAccounts = accounts as unknown as QBQueryResponse<{
+                    Id: string;
+                  }>;
+
+                  // Safely access nested properties
+                  if (
+                    typedAccounts.QueryResponse &&
+                    typedAccounts.QueryResponse.Account &&
+                    Array.isArray(typedAccounts.QueryResponse.Account) &&
+                    typedAccounts.QueryResponse.Account.length > 0 &&
+                    typedAccounts.QueryResponse.Account[0]
+                  ) {
+                    paypalBankAccount = typedAccounts.QueryResponse.Account[0];
+                  }
                 }
 
                 // If PayPal Bank account not found, look for any Income account
                 if (!paypalBankAccount) {
-                  console.log("PayPal Bank account not found, looking for any Income account as fallback");
-                  
+                  console.log(
+                    "PayPal Bank account not found, looking for any Income account as fallback",
+                  );
+
                   // Try to find any Income account as fallback
                   this.qb.findAccounts(
                     [{ field: "AccountType", value: "Income" }],
@@ -317,51 +388,84 @@ export class QuickBooksService {
                         return;
                       }
 
-                      console.log("Income accounts search result:", JSON.stringify(incomeAccounts, null, 2));
+                      console.log(
+                        "Income accounts search result:",
+                        JSON.stringify(incomeAccounts, null, 2),
+                      );
 
                       // Check for different response formats for income accounts
                       let incomeAccount = null;
 
                       // Check if incomeAccounts is an array with elements
-                      if (Array.isArray(incomeAccounts) && incomeAccounts.length > 0 && incomeAccounts[0] && incomeAccounts[0].Id) {
+                      if (
+                        Array.isArray(incomeAccounts) &&
+                        incomeAccounts.length > 0 &&
+                        incomeAccounts[0] &&
+                        incomeAccounts[0].Id
+                      ) {
                         incomeAccount = incomeAccounts[0];
-                      } 
+                      }
                       // Check if incomeAccounts is in QueryResponse format with Account array
-                      else if (incomeAccounts && 
-                               typeof incomeAccounts === 'object' && 
-                               'QueryResponse' in incomeAccounts && 
-                               (incomeAccounts as any).QueryResponse.Account && 
-                               Array.isArray((incomeAccounts as any).QueryResponse.Account) && 
-                               (incomeAccounts as any).QueryResponse.Account.length > 0) {
-                        incomeAccount = (incomeAccounts as any).QueryResponse.Account[0];
+                      else if (
+                        incomeAccounts &&
+                        typeof incomeAccounts === "object" &&
+                        "QueryResponse" in incomeAccounts
+                      ) {
+                        // Cast to unknown first, then to our interface
+                        const typedAccounts =
+                          incomeAccounts as unknown as QBQueryResponse<{
+                            Id: string;
+                          }>;
+
+                        // Safely access nested properties
+                        if (
+                          typedAccounts.QueryResponse &&
+                          typedAccounts.QueryResponse.Account &&
+                          Array.isArray(typedAccounts.QueryResponse.Account) &&
+                          typedAccounts.QueryResponse.Account.length > 0 &&
+                          typedAccounts.QueryResponse.Account[0]
+                        ) {
+                          incomeAccount =
+                            typedAccounts.QueryResponse.Account[0];
+                        }
                       }
 
                       if (!incomeAccount) {
                         console.error("No Income accounts found in QuickBooks");
-                        reject(new Error("No Income accounts found in QuickBooks. Please create a 'PayPal Bank' account or any Income account."));
+                        reject(
+                          new Error(
+                            "No Income accounts found in QuickBooks. Please create a 'PayPal Bank' account or any Income account.",
+                          ),
+                        );
                         return;
                       }
 
                       const fallbackAccountId = incomeAccount.Id;
-                      console.log(`Using fallback Income account: ${fallbackAccountId}`);
+                      console.log(
+                        `Using fallback Income account: ${fallbackAccountId}`,
+                      );
 
                       const newItem: QBItem = {
                         Name: name,
                         Description: description,
                         Type: "Service",
                         UnitPrice: unitPrice,
-                        IncomeAccountRef: { value: fallbackAccountId as string },
+                        IncomeAccountRef: {
+                          value: fallbackAccountId as string,
+                        },
                       };
 
                       this.createItemWithAccount(newItem, resolve, reject);
-                    }
+                    },
                   );
                   return;
                 }
 
                 // Use the PayPal Bank account
                 const paypalBankAccountId = paypalBankAccount.Id;
-                console.log(`Using PayPal Bank account: ${paypalBankAccountId}`);
+                console.log(
+                  `Using PayPal Bank account: ${paypalBankAccountId}`,
+                );
 
                 const newItem: QBItem = {
                   Name: name,
@@ -372,7 +476,7 @@ export class QuickBooksService {
                 };
 
                 this.createItemWithAccount(newItem, resolve, reject);
-              }
+              },
             );
           }
         });
@@ -387,32 +491,34 @@ export class QuickBooksService {
   private createItemWithAccount(
     newItem: QBItem,
     resolve: (value: string) => void,
-    reject: (reason: Error) => void
+    reject: (reason: Error) => void,
   ): void {
     this.qb.createItem(newItem, (err, item) => {
       if (err) {
         console.error("Error creating item:", err);
-        
+
         // Check if this is a duplicate name error
-        const qbError = err as any;
-        if (qbError.Fault && 
-            qbError.Fault.Error && 
-            Array.isArray(qbError.Fault.Error) &&
-            qbError.Fault.Error[0] && 
-            qbError.Fault.Error[0].code === "6240") {
+        const qbError = err as unknown as QBError;
+        if (
+          qbError.Fault &&
+          qbError.Fault.Error &&
+          Array.isArray(qbError.Fault.Error) &&
+          qbError.Fault.Error[0] &&
+          qbError.Fault.Error[0].code === "6240"
+        ) {
           console.log("Duplicate item error detected");
-          
+
           // Try to extract the item ID from the error message
           const errorDetail = qbError.Fault.Error[0].Detail;
           const idMatch = errorDetail && errorDetail.match(/Id=(\d+)/);
-          
+
           if (idMatch && idMatch[1]) {
             const existingItemId = idMatch[1];
             console.log(`Found existing item ID from error: ${existingItemId}`);
             resolve(existingItemId);
             return;
           }
-          
+
           // If we couldn't extract the ID, try to find the item by name
           console.log(`Trying to find item by name: ${newItem.Name}`);
           this.qb.findItems(
@@ -423,24 +529,26 @@ export class QuickBooksService {
                 reject(err); // Still reject with the original error
                 return;
               }
-              
-              if (!nameItems || 
-                  !Array.isArray(nameItems) || 
-                  nameItems.length === 0 || 
-                  !nameItems[0] || 
-                  !nameItems[0].Id) {
+
+              if (
+                !nameItems ||
+                !Array.isArray(nameItems) ||
+                nameItems.length === 0 ||
+                !nameItems[0] ||
+                !nameItems[0].Id
+              ) {
                 console.error("Could not find item by name either");
                 reject(err); // Still reject with the original error
                 return;
               }
-              
+
               console.log(`Found item by name with ID: ${nameItems[0].Id}`);
               resolve(nameItems[0].Id as string);
-            }
+            },
           );
           return;
         }
-        
+
         reject(err);
         return;
       }
@@ -474,8 +582,8 @@ export class QuickBooksService {
       const priceBreakdown = calculatePrice(
         rental.machineType as "single" | "double" | "triple",
         rental.selectedMixers && rental.selectedMixers.length > 0
-          ? rental.selectedMixers[0] as MixerType
-          : undefined
+          ? (rental.selectedMixers[0] as MixerType)
+          : undefined,
       );
 
       console.log("Price breakdown for invoice:", priceBreakdown);
@@ -525,7 +633,7 @@ export class QuickBooksService {
           // Get the correct mixer price from mixerDetails
           const mixerType = mixer as MixerType;
           const mixerPrice = mixerDetails[mixerType]?.price || 0;
-          
+
           // Format mixer name properly (capitalize first letter, handle special cases)
           let formattedMixerName = mixer;
           if (mixer === "pina-colada") {
@@ -536,7 +644,7 @@ export class QuickBooksService {
             // Capitalize first letter for other mixers
             formattedMixerName = mixer.charAt(0).toUpperCase() + mixer.slice(1);
           }
-          
+
           const mixerItemId = await this.findOrCreateItem(
             `${formattedMixerName} Mixer`,
             `${formattedMixerName} Mixer for Slushy Machine`,
@@ -576,7 +684,8 @@ export class QuickBooksService {
       });
 
       // Add processing fee line item (with consistent rounding)
-      const roundedProcessingFee = Math.round(priceBreakdown.processingFee * 100) / 100;
+      const roundedProcessingFee =
+        Math.round(priceBreakdown.processingFee * 100) / 100;
       const processingFeeItemId = await this.findOrCreateItem(
         "Processing Fee",
         "3% Payment Processing Fee",
@@ -680,7 +789,7 @@ export async function generateQuickBooksInvoice(rental: {
     console.log(`Generating QuickBooks invoice for rental: ${rental._id}`);
     const qbService = QuickBooksService.getInstance();
     const invoice = await qbService.createInvoice(rental);
-    
+
     // If we have a rental ID, update the rental with the invoice ID
     if (rental._id) {
       try {
@@ -693,34 +802,37 @@ export async function generateQuickBooksInvoice(rental: {
           },
         });
       } catch (dbError) {
-        console.error("Error updating rental with QuickBooks invoice ID:", dbError);
+        console.error(
+          "Error updating rental with QuickBooks invoice ID:",
+          dbError,
+        );
         // Continue even if the update fails
       }
     }
-    
+
     return invoice;
   } catch (error) {
     console.error("Error generating QuickBooks invoice:", error);
-    
+
     // Log the error to the database if we have a rental ID
     if (rental._id) {
       await logQuickBooksError(rental._id.toString(), error);
     }
-    
+
     // Check if this is an authentication error
     const errorStr = String(error);
     if (
-      errorStr.includes("authenticate") || 
+      errorStr.includes("authenticate") ||
       errorStr.includes("expired") ||
       errorStr.includes("invalid_token") ||
       errorStr.includes("invalid_grant") ||
       errorStr.includes("Token expired")
     ) {
       throw new Error(
-        "QuickBooks authentication has expired. Please reconnect to QuickBooks in the admin panel."
+        "QuickBooks authentication has expired. Please reconnect to QuickBooks in the admin panel.",
       );
     }
-    
+
     throw error;
   }
 }
@@ -737,33 +849,34 @@ export async function logQuickBooksError(
       console.error(`Rental not found for ID: ${rentalId}`);
       return;
     }
-    
+
     // Get current retry count or default to 0
     const retryCount = rental.quickbooks?.retryCount || 0;
-    
+
     // Calculate next retry time with exponential backoff
     // Base delay is 5 minutes, doubles each retry up to a max of 24 hours
     const baseDelayMinutes = 5;
     const maxDelayHours = 24;
-    
+
     // Calculate delay in milliseconds with exponential backoff: baseDelay * 2^retryCount
     const delayMinutes = Math.min(
       baseDelayMinutes * Math.pow(2, retryCount),
-      maxDelayHours * 60
+      maxDelayHours * 60,
     );
-    
+
     const nextRetryAt = new Date(Date.now() + delayMinutes * 60 * 1000);
-    
+
     // Determine sync status based on error type
     const errorStr = String(error);
-    const syncStatus = errorStr.includes("authenticate") || 
-                       errorStr.includes("expired") ||
-                       errorStr.includes("invalid_token") ||
-                       errorStr.includes("invalid_grant") ||
-                       errorStr.includes("Token expired")
-                       ? "auth_error"
-                       : "failed";
-    
+    const syncStatus =
+      errorStr.includes("authenticate") ||
+      errorStr.includes("expired") ||
+      errorStr.includes("invalid_token") ||
+      errorStr.includes("invalid_grant") ||
+      errorStr.includes("Token expired")
+        ? "auth_error"
+        : "failed";
+
     // Update the rental with error details and retry information
     await Rental.findByIdAndUpdate(rentalId, {
       $set: {
@@ -775,8 +888,10 @@ export async function logQuickBooksError(
         "quickbooks.nextRetryAt": nextRetryAt,
       },
     });
-    
-    console.log(`QuickBooks error logged for rental ${rentalId}. Next retry scheduled at ${nextRetryAt.toISOString()}`);
+
+    console.log(
+      `QuickBooks error logged for rental ${rentalId}. Next retry scheduled at ${nextRetryAt.toISOString()}`,
+    );
   } catch (dbError) {
     console.error("Error logging QuickBooks error:", dbError);
   }

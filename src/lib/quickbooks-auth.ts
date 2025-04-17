@@ -72,12 +72,16 @@ export class QuickBooksAuth {
 
     // Check if refresh token is expired (with 1-day buffer)
     const createdAt = this.tokens.createdAt || Date.now();
-    const refreshTokenExpiresAt = 
-      createdAt + (this.tokens.x_refresh_token_expires_in * 1000) - (24 * 60 * 60 * 1000);
-    
+    const refreshTokenExpiresAt =
+      createdAt +
+      this.tokens.x_refresh_token_expires_in * 1000 -
+      24 * 60 * 60 * 1000;
+
     if (Date.now() > refreshTokenExpiresAt) {
       // Refresh token is expired, need to re-authenticate
-      console.warn("QuickBooks refresh token has expired. Re-authentication required.");
+      console.warn(
+        "QuickBooks refresh token has expired. Re-authentication required.",
+      );
       this.tokens = null;
       throw new Error(
         "QuickBooks refresh token has expired. Please re-authenticate.",
@@ -85,7 +89,8 @@ export class QuickBooksAuth {
     }
 
     // Check if access token is expired (with 5-minute buffer)
-    const accessTokenExpiresAt = createdAt + (this.tokens.expires_in * 1000) - (5 * 60 * 1000);
+    const accessTokenExpiresAt =
+      createdAt + this.tokens.expires_in * 1000 - 5 * 60 * 1000;
     if (Date.now() > accessTokenExpiresAt) {
       // Token is expired, refresh it
       try {
@@ -101,21 +106,23 @@ export class QuickBooksAuth {
         console.log("QuickBooks access token refreshed successfully.");
       } catch (error) {
         console.error("Error refreshing QuickBooks tokens:", error);
-        
+
         // Check if the error is due to an invalid refresh token
         const errorStr = String(error);
         if (
-          errorStr.includes("invalid_grant") || 
+          errorStr.includes("invalid_grant") ||
           errorStr.includes("Token expired") ||
           errorStr.includes("invalid_token")
         ) {
-          console.warn("QuickBooks refresh token is invalid. Re-authentication required.");
+          console.warn(
+            "QuickBooks refresh token is invalid. Re-authentication required.",
+          );
           this.tokens = null;
           throw new Error(
             "QuickBooks authentication has expired. Please re-authenticate.",
           );
         }
-        
+
         throw error;
       }
     }
@@ -140,16 +147,16 @@ export class QuickBooksAuth {
         console.warn("Error revoking QuickBooks token:", revokeError);
         // Token might be expired or invalid, which is fine since we're disconnecting anyway
       }
-      
+
       // Always clear the tokens, even if revocation failed
       this.tokens = null;
       return true;
     } catch (error) {
       console.error("Error disconnecting from QuickBooks:", error);
-      
+
       // As a last resort, still try to clear tokens
       this.tokens = null;
-      
+
       // Return true instead of throwing, since we've cleared the tokens locally
       return true;
     }
@@ -193,7 +200,7 @@ export async function handleCallbackHandler(request: Request) {
       refresh_token: tokens.refresh_token.substring(0, 10) + "...",
       expires_in: tokens.expires_in,
       x_refresh_token_expires_in: tokens.x_refresh_token_expires_in,
-      createdAt: tokens.createdAt
+      createdAt: tokens.createdAt,
     });
 
     return NextResponse.json({

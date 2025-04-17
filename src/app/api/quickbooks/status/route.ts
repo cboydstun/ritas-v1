@@ -11,20 +11,28 @@ export async function GET() {
       // Try to get valid tokens - if this succeeds, we're connected
       const tokens = await qbAuth.getValidTokens();
       connected = true;
-      
+
       // Calculate expiration times for display
       const createdAt = tokens.createdAt || Date.now();
-      const accessTokenExpiresAt = new Date(createdAt + (tokens.expires_in * 1000));
-      const refreshTokenExpiresAt = new Date(createdAt + (tokens.x_refresh_token_expires_in * 1000));
-      
+      const accessTokenExpiresAt = new Date(
+        createdAt + tokens.expires_in * 1000,
+      );
+      const refreshTokenExpiresAt = new Date(
+        createdAt + tokens.x_refresh_token_expires_in * 1000,
+      );
+
       // Format token details for response
       tokenDetails = {
         accessTokenExpiresAt: accessTokenExpiresAt.toISOString(),
         refreshTokenExpiresAt: refreshTokenExpiresAt.toISOString(),
-        accessTokenExpiresIn: Math.floor((accessTokenExpiresAt.getTime() - Date.now()) / 1000),
-        refreshTokenExpiresIn: Math.floor((refreshTokenExpiresAt.getTime() - Date.now()) / 1000),
+        accessTokenExpiresIn: Math.floor(
+          (accessTokenExpiresAt.getTime() - Date.now()) / 1000,
+        ),
+        refreshTokenExpiresIn: Math.floor(
+          (refreshTokenExpiresAt.getTime() - Date.now()) / 1000,
+        ),
       };
-      
+
       console.log("QuickBooks connection status: Connected", tokenDetails);
     } catch (error) {
       // If there's an error, we're not connected

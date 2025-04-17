@@ -3,7 +3,8 @@ import { initializePayPalSDK } from "@/lib/paypal-server";
 import dbConnect from "@/lib/mongodb";
 import { Rental } from "@/models/rental";
 import twilio from "twilio";
-import nodemailer from "nodemailer";
+import { Resend } from "resend";
+import { EmailTemplate } from "@/components/email-template";
 import {
   generateQuickBooksInvoice,
   logQuickBooksError,
@@ -223,70 +224,40 @@ export async function POST(request: Request) {
         throw new Error("Failed to update rental");
       }
 
-      // Configure nodemailer
-      const transporter = nodemailer.createTransport({
-        service: "gmail",
-        auth: {
-          user: process.env.NODEMAILER_USERNAME,
-          pass: process.env.NODEMAILER_PASSWORD,
-        },
-      });
+      // Initialize Resend client
+      const resend = new Resend(process.env.RESEND_API_KEY);
 
       try {
-        // Send confirmation email
-        await transporter.sendMail({
-          from: process.env.NODEMAILER_USERNAME,
-          to: process.env.NODEMAILER_USERNAME,
-          // bcc: updatedRental.customer.email, // BCC the business email
+        // Send confirmation email using Resend
+        const { data, error } = await resend.emails.send({
+          from: "SATX Ritas <orders@satxritas.com>",
+          to: [process.env.NODEMAILER_USERNAME as string],
+          bcc: [updatedRental.customer.email as string], // BCC the business email
           subject: "SATX Ritas Margarita Rentals - Order Confirmation",
-          html: `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333; background-color: #f9fafb; border-radius: 8px;">
-            <h1 style="color: #2b6cb0; text-align: center; margin-bottom: 30px; padding-bottom: 15px; border-bottom: 2px solid #e2e8f0;">Thank you for your order!</h1>
-            <p style="font-size: 16px;">Dear ${updatedRental.customer.name},</p>
-            <p style="font-size: 16px;">We have received your rental order for a ${updatedRental.machineType}.</p>
-            <div style="background-color: #fff; padding: 15px; border-radius: 6px; margin: 20px 0; border: 1px solid #e2e8f0;">
-              <p style="margin: 0;"><strong style="color: #2b6cb0;">Order ID:</strong> ${orderId}</p>
-            </div>
-            <div style="background-color: #fff; padding: 15px; border-radius: 6px; margin: 20px 0; border: 1px solid #e2e8f0;">
-              <p style="margin: 0 0 10px 0;"><strong style="color: #2b6cb0;">Rental Details:</strong></p>
-              <ul style="list-style-type: none; padding: 0; margin: 0;">
-                <li style="margin-bottom: 8px;">🗓 Rental Date: ${updatedRental.rentalDate} at ${updatedRental.rentalTime}</li>
-                <li style="margin-bottom: 8px;">🗓 Return Date: ${updatedRental.returnDate} at ${updatedRental.returnTime}</li>
-                <li style="margin-bottom: 8px;">🍹 Selected Mixers: ${updatedRental.selectedMixers.join(", ")}</li>
-                ${
-                  updatedRental.selectedExtras &&
-                  updatedRental.selectedExtras.length > 0
-                    ? `<li style="margin-bottom: 8px;">🎉 Party Extras: ${updatedRental.selectedExtras
-                        .map(
-                          (extra: { name: string; quantity?: number }) =>
-                            `${extra.name}${extra.quantity && extra.quantity > 1 ? ` (${extra.quantity}x)` : ""}`,
-                        )
-                        .join(", ")}</li>`
-                    : ""
-                }
-                <li style="margin-bottom: 8px;">💰 Total Amount: $${amount}</li>
-                <li style="margin-bottom: 8px;">⚡ Machine Capacity: ${updatedRental.capacity}L</li>
-              </ul>
-            </div>
-            <div style="background-color: #fff; padding: 15px; border-radius: 6px; margin: 20px 0; border: 1px solid #e2e8f0;">
-              <p style="margin: 0 0 10px 0;"><strong style="color: #2b6cb0;">Delivery Address:</strong></p>
-              <p style="margin: 0;">
-                ${updatedRental.customer.address.street}<br>
-                ${updatedRental.customer.address.city}, ${updatedRental.customer.address.state} ${updatedRental.customer.address.zipCode}
-              </p>
-            </div>
-            <div style="background-color: #fff; padding: 15px; border-radius: 6px; margin: 20px 0; border: 1px solid #e2e8f0;">
-              <p style="margin: 0 0 10px 0;"><strong style="color: #2b6cb0;">Contact Information:</strong></p>
-              <ul style="list-style-type: none; padding: 0; margin: 0;">
-                <li style="margin-bottom: 8px;">📱 Phone: ${updatedRental.customer.phone}</li>
-                <li style="margin-bottom: 8px;">📧 Email: ${updatedRental.customer.email}</li>
-              </ul>
-            </div>
-            <p style="font-size: 16px; background-color: #fff; padding: 15px; border-radius: 6px; margin: 20px 0; border: 1px solid #e2e8f0;">If you have any questions or need to make changes to your order, please don't hesitate to contact us. Please reference your Order ID in any communications.</p>
-            <p style="margin-top: 30px; padding-top: 20px; border-top: 2px solid #e2e8f0;">Best regards,<br>SATX Ritas Margarita Rentals Team</p>
-            </div>
-          `,
+          react: await EmailTemplate({
+            orderId,
+            customer: updatedRental.customer,
+            machineType: updatedRental.machineType,
+            rentalDate: updatedRental.rentalDate,
+            rentalTime: updatedRental.rentalTime,
+            returnDate: updatedRental.returnDate,
+            returnTime: updatedRental.returnTime,
+            selectedMixers: updatedRental.selectedMixers,
+            selectedExtras: updatedRental.selectedExtras,
+            amount,
+            capacity: updatedRental.capacity,
+          }),
         });
+
+        if (error) {
+          console.error("Error sending email with Resend:", error);
+        } else {
+          if (data) {
+            console.log("Email sent successfully with Resend ID:", data.id);
+          } else {
+            console.warn("Email sent but response data is null.");
+          }
+        }
       } catch (emailError) {
         console.error("Error sending confirmation email:", emailError);
         // Continue with the order process even if email fails
@@ -310,7 +281,7 @@ export async function POST(request: Request) {
           // Generate the invoice
           const invoice = await generateQuickBooksInvoice({
             ...updatedRental.toObject(),
-            _id: updatedRental._id
+            _id: updatedRental._id,
           });
 
           // Include invoice info in response
@@ -335,31 +306,36 @@ export async function POST(request: Request) {
         // Check if this is an authentication error
         const errorStr = String(qbError);
         if (
-          errorStr.includes("authenticate") || 
+          errorStr.includes("authenticate") ||
           errorStr.includes("expired") ||
           errorStr.includes("invalid_token") ||
           errorStr.includes("invalid_grant") ||
           errorStr.includes("Token expired")
         ) {
-          console.warn("QuickBooks authentication has expired. Invoice generation will be retried later.");
-          
+          console.warn(
+            "QuickBooks authentication has expired. Invoice generation will be retried later.",
+          );
+
           // Update rental with authentication error
           await Rental.findByIdAndUpdate(updatedRental._id, {
             $set: {
               "quickbooks.syncStatus": "auth_error",
               "quickbooks.lastSyncAttempt": new Date(),
-              "quickbooks.syncError": "QuickBooks authentication has expired. Please reconnect in the admin panel.",
+              "quickbooks.syncError":
+                "QuickBooks authentication has expired. Please reconnect in the admin panel.",
             },
           });
         } else {
           // Store error for later retry
           await logQuickBooksError(updatedRental._id.toString(), qbError);
         }
-        
+
         // Add error info to response
         invoiceData = {
           error: "Invoice generation failed but will be retried later",
-          errorType: errorStr.includes("expired") ? "auth_expired" : "general_error"
+          errorType: errorStr.includes("expired")
+            ? "auth_expired"
+            : "general_error",
         };
       }
 
