@@ -246,7 +246,7 @@ export default function EmailPreview({
                   ) : (
                     <div className="flex justify-center items-center h-64">
                       <p className="text-gray-500 dark:text-gray-400">
-                        Click "Generate Preview" to see the email with your
+                        Click `&quot;`Generate Preview`&quot;` to see the email with your
                         variables.
                       </p>
                     </div>

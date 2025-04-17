@@ -5,9 +5,7 @@ import { Rental } from "@/models/rental";
 import twilio from "twilio";
 import {
   sendCustomEmail,
-  sendEmailWithReactComponent,
 } from "@/lib/email-service";
-import { EmailTemplate } from "@/components/email-template";
 import {
   generateQuickBooksInvoice,
   logQuickBooksError,
@@ -228,23 +226,6 @@ export async function POST(request: Request) {
       }
 
       try {
-        // Send confirmation email using our email service
-        // Since EmailTemplate is a React Server Component that returns a Promise<ReactNode>,
-        // we need to convert it to a format that Resend can use
-        const emailProps = {
-          orderId,
-          customer: updatedRental.customer,
-          machineType: updatedRental.machineType,
-          rentalDate: updatedRental.rentalDate,
-          rentalTime: updatedRental.rentalTime,
-          returnDate: updatedRental.returnDate,
-          returnTime: updatedRental.returnTime,
-          selectedMixers: updatedRental.selectedMixers,
-          selectedExtras: updatedRental.selectedExtras,
-          amount,
-          capacity: updatedRental.capacity,
-        };
-
         // Instead of using sendEmailWithReactComponent, we'll use sendCustomEmail
         // and render the email template to HTML
         const emailHtml = `

@@ -18,7 +18,7 @@ export default function SentEmailList() {
   // Fetch emails on component mount and when page or status filter changes
   useEffect(() => {
     fetchEmails();
-  }, [page, statusFilter]);
+  });
 
   // Fetch sent emails
   const fetchEmails = async () => {
