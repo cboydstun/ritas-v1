@@ -1,6 +1,7 @@
 "use client";
 
 import AdminAuthCheck from "@/components/admin/AdminAuthCheck";
+import AdminLayout from "@/components/admin/AdminLayout";
 import { usePathname } from "next/navigation";
 
 export default function AdminLayoutClient({
@@ -17,5 +18,9 @@ export default function AdminLayoutClient({
     return <>{children}</>;
   }
 
-  return <AdminAuthCheck>{children}</AdminAuthCheck>;
+  return (
+    <AdminAuthCheck>
+      <AdminLayout>{children}</AdminLayout>
+    </AdminAuthCheck>
+  );
 }

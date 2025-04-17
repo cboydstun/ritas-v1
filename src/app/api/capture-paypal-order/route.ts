@@ -3,7 +3,7 @@ import { initializePayPalSDK } from "@/lib/paypal-server";
 import dbConnect from "@/lib/mongodb";
 import { Rental } from "@/models/rental";
 import twilio from "twilio";
-import { Resend } from "resend";
+import { sendCustomEmail, sendEmailWithReactComponent } from "@/lib/email-service";
 import { EmailTemplate } from "@/components/email-template";
 import {
   generateQuickBooksInvoice,
@@ -224,40 +224,116 @@ export async function POST(request: Request) {
         throw new Error("Failed to update rental");
       }
 
-      // Initialize Resend client
-      const resend = new Resend(process.env.RESEND_API_KEY);
-
       try {
-        // Send confirmation email using Resend
-        const { data, error } = await resend.emails.send({
-          from: "SATX Ritas <orders@satxritas.com>",
-          to: [process.env.NODEMAILER_USERNAME as string],
-          bcc: [updatedRental.customer.email as string], // BCC the business email
-          subject: "SATX Ritas Margarita Rentals - Order Confirmation",
-          react: await EmailTemplate({
-            orderId,
-            customer: updatedRental.customer,
-            machineType: updatedRental.machineType,
-            rentalDate: updatedRental.rentalDate,
-            rentalTime: updatedRental.rentalTime,
-            returnDate: updatedRental.returnDate,
-            returnTime: updatedRental.returnTime,
-            selectedMixers: updatedRental.selectedMixers,
-            selectedExtras: updatedRental.selectedExtras,
-            amount,
-            capacity: updatedRental.capacity,
-          }),
-        });
+        // Send confirmation email using our email service
+        // Since EmailTemplate is a React Server Component that returns a Promise<ReactNode>,
+        // we need to convert it to a format that Resend can use
+        const emailProps = {
+          orderId,
+          customer: updatedRental.customer,
+          machineType: updatedRental.machineType,
+          rentalDate: updatedRental.rentalDate,
+          rentalTime: updatedRental.rentalTime,
+          returnDate: updatedRental.returnDate,
+          returnTime: updatedRental.returnTime,
+          selectedMixers: updatedRental.selectedMixers,
+          selectedExtras: updatedRental.selectedExtras,
+          amount,
+          capacity: updatedRental.capacity,
+        };
+        
+        // Instead of using sendEmailWithReactComponent, we'll use sendCustomEmail
+        // and render the email template to HTML
+        const emailHtml = `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333; background-color: #f9fafb; border-radius: 8px;">
+            <h1 style="color: #2b6cb0; text-align: center; margin-bottom: 30px; padding-bottom: 15px; border-bottom: 2px solid #e2e8f0;">
+              Thank you for your order!
+            </h1>
+            <p style="font-size: 16px;">Dear ${updatedRental.customer.name},</p>
+            <p style="font-size: 16px;">
+              We have received your rental order for a ${updatedRental.machineType}.
+            </p>
 
-        if (error) {
-          console.error("Error sending email with Resend:", error);
-        } else {
-          if (data) {
-            console.log("Email sent successfully with Resend ID:", data.id);
-          } else {
-            console.warn("Email sent but response data is null.");
-          }
-        }
+            <div style="background-color: #fff; padding: 15px; border-radius: 6px; margin: 20px 0; border: 1px solid #e2e8f0;">
+              <p style="margin: 0;">
+                <strong style="color: #2b6cb0;">Order ID:</strong> ${orderId}
+              </p>
+            </div>
+
+            <div style="background-color: #fff; padding: 15px; border-radius: 6px; margin: 20px 0; border: 1px solid #e2e8f0;">
+              <p style="margin: 0 0 10px 0;">
+                <strong style="color: #2b6cb0;">Rental Details:</strong>
+              </p>
+              <ul style="list-style-type: none; padding: 0; margin: 0;">
+                <li style="margin-bottom: 8px;">
+                  🗓 Rental Date: ${updatedRental.rentalDate} at ${updatedRental.rentalTime}
+                </li>
+                <li style="margin-bottom: 8px;">
+                  🗓 Return Date: ${updatedRental.returnDate} at ${updatedRental.returnTime}
+                </li>
+                <li style="margin-bottom: 8px;">
+                  🍹 Selected Mixers: ${updatedRental.selectedMixers.join(", ")}
+                </li>
+                ${updatedRental.selectedExtras && updatedRental.selectedExtras.length > 0 ? `
+                <li style="margin-bottom: 8px;">
+                  🎉 Party Extras: ${updatedRental.selectedExtras
+                    .map(
+                      (extra: { name: string; quantity?: number }) =>
+                        `${extra.name}${extra.quantity && extra.quantity > 1 ? ` (${extra.quantity}x)` : ""}`
+                    )
+                    .join(", ")}
+                </li>
+                ` : ''}
+                <li style="margin-bottom: 8px;">💰 Total Amount: $${amount}</li>
+                <li style="margin-bottom: 8px;">
+                  ⚡ Machine Capacity: ${updatedRental.capacity}L
+                </li>
+              </ul>
+            </div>
+
+            <div style="background-color: #fff; padding: 15px; border-radius: 6px; margin: 20px 0; border: 1px solid #e2e8f0;">
+              <p style="margin: 0 0 10px 0;">
+                <strong style="color: #2b6cb0;">Delivery Address:</strong>
+              </p>
+              <p style="margin: 0;">
+                ${updatedRental.customer.address.street}
+                <br />
+                ${updatedRental.customer.address.city}, ${updatedRental.customer.address.state} ${updatedRental.customer.address.zipCode}
+              </p>
+            </div>
+
+            <div style="background-color: #fff; padding: 15px; border-radius: 6px; margin: 20px 0; border: 1px solid #e2e8f0;">
+              <p style="margin: 0 0 10px 0;">
+                <strong style="color: #2b6cb0;">Contact Information:</strong>
+              </p>
+              <ul style="list-style-type: none; padding: 0; margin: 0;">
+                <li style="margin-bottom: 8px;">📱 Phone: ${updatedRental.customer.phone}</li>
+                <li style="margin-bottom: 8px;">📧 Email: ${updatedRental.customer.email}</li>
+              </ul>
+            </div>
+
+            <p style="font-size: 16px; background-color: #fff; padding: 15px; border-radius: 6px; margin: 20px 0; border: 1px solid #e2e8f0;">
+              If you have any questions or need to make changes to your order, please do
+              not hesitate to contact us. Please reference your Order ID in any
+              communications.
+            </p>
+
+            <p style="margin-top: 30px; padding-top: 20px; border-top: 2px solid #e2e8f0;">
+              Best regards,
+              <br />
+              SATX Ritas Margarita Rentals Team
+            </p>
+          </div>
+        `;
+        
+        const result = await sendCustomEmail({
+          to: [process.env.NODEMAILER_USERNAME as string],
+          bcc: [updatedRental.customer.email as string], // BCC the customer
+          subject: "SATX Ritas Margarita Rentals - Order Confirmation",
+          html: emailHtml,
+        });
+        
+        console.log("Email sent successfully with ID:", result.id);
       } catch (emailError) {
         console.error("Error sending confirmation email:", emailError);
         // Continue with the order process even if email fails
