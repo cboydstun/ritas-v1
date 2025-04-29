@@ -24,6 +24,14 @@ export default function Footer() {
             <ul className="space-y-2">
               <li>
                 <Link
+                  href="/order"
+                  className="text-charcoal dark:text-white/80 hover:text-margarita dark:hover:text-margarita transition-colors"
+                >
+                  Order Online
+                </Link>
+              </li>
+              <li>
+                <Link
                   href="/pricing"
                   className="text-charcoal dark:text-white/80 hover:text-margarita dark:hover:text-margarita transition-colors"
                 >
@@ -44,6 +52,14 @@ export default function Footer() {
                   className="text-charcoal dark:text-white/80 hover:text-margarita dark:hover:text-margarita transition-colors"
                 >
                   FAQ
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/contact"
+                  className="text-charcoal dark:text-white/80 hover:text-margarita dark:hover:text-margarita transition-colors"
+                >
+                  Contact
                 </Link>
               </li>
             </ul>

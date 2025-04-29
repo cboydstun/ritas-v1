@@ -228,8 +228,8 @@ export default function OrderForm() {
 
   const handleNextStep = () => {
     // Increment the click counter
-    setNextButtonClickCount(prevCount => prevCount + 1);
-    
+    setNextButtonClickCount((prevCount) => prevCount + 1);
+
     // Clear any previous errors
     setError(null);
 
@@ -316,8 +316,11 @@ export default function OrderForm() {
       }
       // Check if we should bypass ZIP code validation (after 5 clicks)
       const shouldBypassZipValidation = nextButtonClickCount >= 5;
-      
-      if (!shouldBypassZipValidation && !isBexarCountyZipCode(formData.customer.address.zipCode)) {
+
+      if (
+        !shouldBypassZipValidation &&
+        !isBexarCountyZipCode(formData.customer.address.zipCode)
+      ) {
         setError(
           "We only deliver within Bexar County, TX. Please enter a valid Bexar County ZIP code.",
         );
@@ -334,7 +337,7 @@ export default function OrderForm() {
   const handlePreviousStep = () => {
     // Reset the click counter when going back
     setNextButtonClickCount(0);
-    
+
     const currentIndex = steps.findIndex((s) => s.id === step);
     if (currentIndex > 0) {
       if (step === "review") {

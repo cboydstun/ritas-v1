@@ -178,7 +178,7 @@ export default function ContactPage() {
                       Phone
                     </h3>
                     <p className="text-charcoal/80 dark:text-white/80">
-                      (210) 555-0123
+                      (512) 210-0194
                     </p>
                   </div>
                 </div>
@@ -203,7 +203,7 @@ export default function ContactPage() {
                       Email
                     </h3>
                     <p className="text-charcoal/80 dark:text-white/80">
-                      info@satxritas.com
+                      satxbounce@gmail.com
                     </p>
                   </div>
                 </div>

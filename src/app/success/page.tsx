@@ -99,12 +99,12 @@ function OrderDetails() {
                 Next Steps
               </h3>
               <p className="text-charcoal/70 dark:text-white/70 mb-2">
-                We have sent a confirmation email with all the details of
-                your order.
+                We have sent a confirmation email with all the details of your
+                order.
               </p>
               <p className="text-charcoal/70 dark:text-white/70">
-                Our team will contact you before your delivery date to
-                confirm the details.
+                Our team will contact you before your delivery date to confirm
+                the details.
               </p>
             </div>
           </div>
@@ -119,7 +119,9 @@ function OrderDetailsLoading() {
   return (
     <div className="text-center py-12">
       <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-margarita"></div>
-      <p className="mt-4 text-lg text-charcoal/70 dark:text-white/70">Loading order details...</p>
+      <p className="mt-4 text-lg text-charcoal/70 dark:text-white/70">
+        Loading order details...
+      </p>
     </div>
   );
 }
