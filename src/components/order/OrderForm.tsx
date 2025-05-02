@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, Suspense, useRef } from "react";
+import { useState, Suspense, useRef, useEffect } from "react";
 import OrderFormTracker from "./OrderFormTracker";
 import { MixerType } from "@/lib/rental-data";
 import { useSearchParams } from "next/navigation";
@@ -81,6 +81,7 @@ export default function OrderForm() {
   const [error, setError] = useState<string | null>(null);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const dateAvailabilityErrorRef = useRef<string | null>(null);
+  const [nextButtonClickCount, setNextButtonClickCount] = useState<number>(0);
 
   // Get initial machine type and mixer from URL once
   const initialMachineType =
@@ -220,7 +221,15 @@ export default function OrderForm() {
     });
   };
 
+  // Reset click counter when component mounts or when step changes
+  useEffect(() => {
+    setNextButtonClickCount(0);
+  }, [step]);
+
   const handleNextStep = () => {
+    // Increment the click counter
+    setNextButtonClickCount((prevCount) => prevCount + 1);
+
     // Clear any previous errors
     setError(null);
 
@@ -305,7 +314,13 @@ export default function OrderForm() {
         setError("Please enter a valid ZIP code (e.g., 12345 or 12345-6789)");
         return;
       }
-      if (!isBexarCountyZipCode(formData.customer.address.zipCode)) {
+      // Check if we should bypass ZIP code validation (after 5 clicks)
+      const shouldBypassZipValidation = nextButtonClickCount >= 5;
+
+      if (
+        !shouldBypassZipValidation &&
+        !isBexarCountyZipCode(formData.customer.address.zipCode)
+      ) {
         setError(
           "We only deliver within Bexar County, TX. Please enter a valid Bexar County ZIP code.",
         );
@@ -320,6 +335,9 @@ export default function OrderForm() {
   };
 
   const handlePreviousStep = () => {
+    // Reset the click counter when going back
+    setNextButtonClickCount(0);
+
     const currentIndex = steps.findIndex((s) => s.id === step);
     if (currentIndex > 0) {
       if (step === "review") {

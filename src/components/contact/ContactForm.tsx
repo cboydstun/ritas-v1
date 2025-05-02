@@ -9,18 +9,57 @@ export default function ContactForm() {
     eventDate: "",
     message: "",
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitStatus, setSubmitStatus] = useState<{
+    type: "success" | "error" | null;
+    message: string | null;
+  }>({ type: null, message: null });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Form submission logic would go here
-    // Reset form
-    setFormData({
-      name: "",
-      email: "",
-      phone: "",
-      eventDate: "",
-      message: "",
-    });
+    setIsSubmitting(true);
+    setSubmitStatus({ type: null, message: null });
+
+    try {
+      const response = await fetch("/api/v1/contacts", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formData),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setSubmitStatus({
+          type: "success",
+          message: "Thank you! Your message has been sent successfully.",
+        });
+        // Reset form
+        setFormData({
+          name: "",
+          email: "",
+          phone: "",
+          eventDate: "",
+          message: "",
+        });
+      } else {
+        setSubmitStatus({
+          type: "error",
+          message:
+            data.message || "Failed to submit the form. Please try again.",
+        });
+      }
+    } catch (error) {
+      console.error("Error submitting contact form:", error);
+      setSubmitStatus({
+        type: "error",
+        message: "Failed to submit the form. Please try again.",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleChange = (
@@ -40,6 +79,17 @@ export default function ContactForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      {submitStatus.type && (
+        <div
+          className={`p-4 mb-6 rounded-lg ${
+            submitStatus.type === "success"
+              ? "bg-green-100 text-green-800 dark:bg-green-800/20 dark:text-green-400"
+              : "bg-red-100 text-red-800 dark:bg-red-800/20 dark:text-red-400"
+          }`}
+        >
+          {submitStatus.message}
+        </div>
+      )}
       <div>
         <label htmlFor="name" className={labelClassName}>
           Name
@@ -116,9 +166,12 @@ export default function ContactForm() {
       </div>
       <button
         type="submit"
-        className="w-full px-6 py-3 bg-gradient-to-r from-margarita to-teal text-white rounded-lg hover:shadow-lg hover:shadow-margarita/30 transform hover:-translate-y-1 transition-all duration-300 font-semibold"
+        disabled={isSubmitting}
+        className={`w-full px-6 py-3 bg-gradient-to-r from-margarita to-teal text-white rounded-lg hover:shadow-lg hover:shadow-margarita/30 transform hover:-translate-y-1 transition-all duration-300 font-semibold ${
+          isSubmitting ? "opacity-70 cursor-not-allowed" : ""
+        }`}
       >
-        Send Message
+        {isSubmitting ? "Sending..." : "Send Message"}
       </button>
     </form>
   );

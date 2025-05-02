@@ -11,7 +11,7 @@ A modern web application built with Next.js and TypeScript for managing frozen d
 - 🔒 MongoDB database for order management
 - 📄 Informative content pages (About, FAQ, Pricing, Contact)
 - 🌙 Dark/light theme toggle
-- 📝 Contact form for inquiries
+- 📝 Contact form for inquiries with email and SMS notifications
 - 📊 Advanced analytics with browser fingerprinting and conversion tracking
 - 📈 Order form funnel analysis to track user progression
 - 📧 Email management system with customizable templates and tracking
@@ -149,6 +149,9 @@ src/
 - `/api/admin/sent-emails` - Admin endpoints for listing sent emails with pagination and filtering
 - `/api/admin/sent-emails/[id]` - Admin endpoint for retrieving details of a specific sent email
 - `/api/v1/analytics/fingerprint` - Endpoint for storing browser fingerprint data and tracking user journeys
+- `/api/v1/contacts` - Endpoint for submitting contact form inquiries with email and SMS notifications
+- `/api/admin/contacts` - Admin endpoints for managing contact form submissions
+- `/api/admin/contacts/[id]` - Admin endpoints for retrieving, updating, and deleting specific contact submissions
 
 ## Key Components
 
@@ -161,7 +164,7 @@ src/
 - `MapSection` - Interactive service area map with delivery zone highlighting
 - `Navigation` - Responsive navigation bar with mobile menu
 - `Footer` - Site-wide footer with social links and contact information
-- `ContactForm` - Validated contact form with email integration
+- `ContactForm` - Validated contact form with email and SMS notifications
 - `ThemeWrapper` - Theme context provider for consistent styling
 - `OrdersTable` - Admin dashboard for managing rental orders
 - `EditOrderModal` - Modal for editing order details in admin panel

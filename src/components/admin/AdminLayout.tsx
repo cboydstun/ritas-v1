@@ -57,6 +57,12 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             Emails
           </Link>
           <Link
+            href="/admin/contacts"
+            className="block px-6 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+          >
+            Contacts
+          </Link>
+          <Link
             href="/"
             className="block px-6 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
           >
