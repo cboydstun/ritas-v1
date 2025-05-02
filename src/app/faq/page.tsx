@@ -244,7 +244,9 @@ export default function FAQ() {
                   We understand plans can change. Cancellations made at least 7
                   days before your event receive a full refund. For
                   cancellations within 7 days, we will work with you to
-                  reschedule for a better date.
+                  reschedule for a better date. If within 48 hours, we are
+                  unable to offer a refund or reschedule, but we will do our
+                  best to accommodate you.
                 </p>
               </div>
               <div>
