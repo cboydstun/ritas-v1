@@ -1,5 +1,4 @@
 import Image from "next/image";
-import { useState } from "react";
 import { StepProps } from "../types";
 import { mixerDetails, MixerType } from "@/lib/rental-data";
 import { calculatePrice, formatPrice } from "@/lib/pricing";
@@ -18,7 +17,7 @@ export default function ReviewStep({
       : isServiceDiscount;
   const priceBreakdown = calculatePrice(
     formData.machineType,
-    formData.selectedMixers[0] as MixerType,
+    formData.selectedMixers[0] as MixerType
   );
 
   const perDayRate = priceBreakdown.basePrice + priceBreakdown.mixerPrice;
@@ -28,14 +27,14 @@ export default function ReviewStep({
     Math.ceil(
       (new Date(formData.returnDate).getTime() -
         new Date(formData.rentalDate).getTime()) /
-        (1000 * 60 * 60 * 24),
-    ),
+        (1000 * 60 * 60 * 24)
+    )
   );
 
   // Calculate extras total (per day × number of days)
   const extrasTotal = formData.selectedExtras.reduce(
     (sum, item) => sum + item.price * (item.quantity || 1) * rentalDays,
-    0,
+    0
   );
 
   // Recalculate subtotal including extras
@@ -209,7 +208,7 @@ export default function ReviewStep({
                     ${formatPrice(extra.price * (extra.quantity || 1))}/day ×{" "}
                     {rentalDays} day{rentalDays > 1 ? "s" : ""} = $
                     {formatPrice(
-                      extra.price * (extra.quantity || 1) * rentalDays,
+                      extra.price * (extra.quantity || 1) * rentalDays
                     )}
                   </p>
                 </div>
@@ -221,8 +220,8 @@ export default function ReviewStep({
                 formData.selectedExtras.reduce(
                   (sum, item) =>
                     sum + item.price * (item.quantity || 1) * rentalDays,
-                  0,
-                ),
+                  0
+                )
               )}
             </p>
           </div>
@@ -280,15 +279,15 @@ export default function ReviewStep({
                 formData.selectedExtras.reduce(
                   (sum, item) =>
                     sum + item.price * (item.quantity || 1) * rentalDays,
-                  0,
-                ),
+                  0
+                )
               )}{" "}
               ($
               {formatPrice(
                 formData.selectedExtras.reduce(
                   (sum, item) => sum + item.price * (item.quantity || 1),
-                  0,
-                ),
+                  0
+                )
               )}
               /day × {rentalDays} day{rentalDays > 1 ? "s" : ""})
             </p>
@@ -304,8 +303,8 @@ export default function ReviewStep({
                 formData.selectedExtras.reduce(
                   (sum, item) =>
                     sum + item.price * (item.quantity || 1) * rentalDays,
-                  0,
-                ),
+                  0
+                )
             )}
           </p>
           {applyServiceDiscount && (
