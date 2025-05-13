@@ -111,6 +111,10 @@ const rentalSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    isServiceDiscount: {
+      type: Boolean,
+      default: false,
+    },
     status: {
       type: String,
       enum: [
@@ -175,6 +179,7 @@ export type RentalDocument = mongoose.Document & {
     };
   };
   notes: string;
+  isServiceDiscount?: boolean;
   status: RentalStatus;
   paypalOrderId?: string;
   payment?: {

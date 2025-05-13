@@ -5,7 +5,15 @@ import { StepProps } from "../types";
 import { MixerType } from "@/lib/rental-data";
 import { calculatePrice, formatPrice } from "@/lib/pricing";
 
-export default function PaymentStep({ formData }: StepProps) {
+export default function PaymentStep({
+  formData,
+  isServiceDiscount = false,
+}: StepProps) {
+  // Use isServiceDiscount from formData if available, otherwise use the prop
+  const applyServiceDiscount =
+    formData.isServiceDiscount !== undefined
+      ? formData.isServiceDiscount
+      : isServiceDiscount;
   const priceBreakdown = calculatePrice(
     formData.machineType,
     formData.selectedMixers[0] as MixerType,
@@ -32,12 +40,18 @@ export default function PaymentStep({ formData }: StepProps) {
   const subtotal =
     perDayRate * rentalDays + priceBreakdown.deliveryFee + extrasTotal;
 
-  // Recalculate tax and processing fee based on the new subtotal
-  const salesTax = subtotal * 0.0825; // 8.25% tax rate
-  const processingFee = subtotal * 0.03; // 3% processing fee
+  // Calculate service discount if applicable
+  const serviceDiscountAmount = applyServiceDiscount ? subtotal * 0.1 : 0;
 
-  // Calculate the final total including extras
-  const finalTotal = subtotal + salesTax + processingFee;
+  // Apply discount to subtotal
+  const discountedSubtotal = subtotal - serviceDiscountAmount;
+
+  // Recalculate tax and processing fee based on the discounted subtotal
+  const salesTax = discountedSubtotal * 0.0825; // 8.25% tax rate
+  const processingFee = discountedSubtotal * 0.03; // 3% processing fee
+
+  // Calculate the final total including extras and discount
+  const finalTotal = discountedSubtotal + salesTax + processingFee;
 
   return (
     <div className="space-y-6">
@@ -45,9 +59,16 @@ export default function PaymentStep({ formData }: StepProps) {
         Payment Details
       </h2>
       <div className="bg-white/80 dark:bg-charcoal/30 rounded-xl p-6">
-        <p className="text-center text-xl font-bold text-orange mb-6">
-          Total Amount: ${formatPrice(finalTotal)}
-        </p>
+        <div className="text-center mb-6">
+          <p className="text-xl font-bold text-orange">
+            Total Amount: ${formatPrice(finalTotal)}
+          </p>
+          {applyServiceDiscount && (
+            <p className="text-sm text-charcoal/70 dark:text-white/70 mt-1">
+              Includes 10% service personnel discount
+            </p>
+          )}
+        </div>
         <div className="text-center">
           <PayPalScriptProvider options={paypalConfig}>
             <PayPalCheckout
@@ -65,6 +86,7 @@ export default function PaymentStep({ formData }: StepProps) {
                 returnTime: formData.returnTime,
                 customer: formData.customer,
                 notes: formData.notes,
+                isServiceDiscount: applyServiceDiscount,
               }}
               onSuccess={(orderId) => {
                 // Show success message

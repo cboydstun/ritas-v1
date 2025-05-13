@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { useState } from "react";
 import { StepProps } from "../types";
 import { mixerDetails, MixerType } from "@/lib/rental-data";
 import { calculatePrice, formatPrice } from "@/lib/pricing";
@@ -7,7 +8,14 @@ export default function ReviewStep({
   formData,
   agreedToTerms = false,
   setAgreedToTerms = () => {},
+  isServiceDiscount = false,
+  setIsServiceDiscount = () => {},
 }: StepProps) {
+  // Use isServiceDiscount from props for the checkbox state, but update formData when it changes
+  const applyServiceDiscount =
+    formData.isServiceDiscount !== undefined
+      ? formData.isServiceDiscount
+      : isServiceDiscount;
   const priceBreakdown = calculatePrice(
     formData.machineType,
     formData.selectedMixers[0] as MixerType,
@@ -34,12 +42,18 @@ export default function ReviewStep({
   const subtotal =
     perDayRate * rentalDays + priceBreakdown.deliveryFee + extrasTotal;
 
-  // Recalculate tax and processing fee based on the new subtotal
-  const salesTax = subtotal * 0.0825; // 8.25% tax rate
-  const processingFee = subtotal * 0.03; // 3% processing fee
+  // Calculate service discount if applicable
+  const serviceDiscountAmount = applyServiceDiscount ? subtotal * 0.1 : 0;
 
-  // Calculate the final total including extras
-  const finalTotal = subtotal + salesTax + processingFee;
+  // Apply discount to subtotal
+  const discountedSubtotal = subtotal - serviceDiscountAmount;
+
+  // Recalculate tax and processing fee based on the discounted subtotal
+  const salesTax = discountedSubtotal * 0.0825; // 8.25% tax rate
+  const processingFee = discountedSubtotal * 0.03; // 3% processing fee
+
+  // Calculate the final total including extras and discount
+  const finalTotal = discountedSubtotal + salesTax + processingFee;
 
   return (
     <div className="space-y-6">
@@ -294,6 +308,11 @@ export default function ReviewStep({
                 ),
             )}
           </p>
+          {applyServiceDiscount && (
+            <p className=" text-charcoal/70 dark:text-white/70">
+              Service Discount (10%): -${formatPrice(serviceDiscountAmount)}
+            </p>
+          )}
           <p className=" text-charcoal/70 dark:text-white/70">
             Sales Tax (8.25%): ${formatPrice(salesTax)}
           </p>
@@ -303,6 +322,26 @@ export default function ReviewStep({
           <p className="text-xl font-bold text-orange mb-4">
             Total Amount: ${formatPrice(finalTotal)}
           </p>
+          <div className="flex items-center space-x-2 mt-4 mb-4">
+            <input
+              type="checkbox"
+              id="serviceDiscount"
+              checked={applyServiceDiscount}
+              onChange={(e) => {
+                // Update both the local state and the formData
+                setIsServiceDiscount(e.target.checked);
+              }}
+              className="w-4 h-4 text-orange rounded focus:ring-orange"
+            />
+            <label
+              htmlFor="serviceDiscount"
+              className="text-charcoal/70 dark:text-white/70"
+            >
+              I am a military member, educator, police officer, firefighter, or
+              medical professional — apply 10% discount.
+            </label>
+          </div>
+
           <div className="flex items-center space-x-2 mt-4">
             <input
               type="checkbox"
