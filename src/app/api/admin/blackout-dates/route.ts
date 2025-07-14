@@ -4,9 +4,16 @@ import { authOptions } from "@/lib/auth";
 import dbConnect from "@/lib/mongodb";
 import {
   BlackoutDate,
-  BlackoutDateDocument,
   createLocalDate,
 } from "@/models/blackout-date";
+
+// Type for MongoDB query structure
+interface BlackoutDateQuery {
+  $or?: Array<{
+    startDate?: { $gte?: Date; $lte?: Date };
+    endDate?: { $gte?: Date; $lte?: Date };
+  }>;
+}
 
 // GET /api/admin/blackout-dates - List all blackout dates
 export async function GET(request: NextRequest) {
@@ -27,7 +34,7 @@ export async function GET(request: NextRequest) {
     await dbConnect();
 
     // Build query
-    let query: any = {};
+    const query: BlackoutDateQuery = {};
 
     if (startDate || endDate) {
       query.$or = [];

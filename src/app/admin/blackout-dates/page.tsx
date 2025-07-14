@@ -1,14 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useSession } from "next-auth/react";
 import AdminAuthCheck from "@/components/admin/AdminAuthCheck";
 import BlackoutDatesTable from "@/components/admin/BlackoutDatesTable";
 import BlackoutDateForm from "@/components/admin/BlackoutDateForm";
 import { BlackoutDateDocument } from "@/models/blackout-date";
 
 export default function BlackoutDatesPage() {
-  const { data: session } = useSession();
   const [blackoutDates, setBlackoutDates] = useState<BlackoutDateDocument[]>(
     [],
   );
