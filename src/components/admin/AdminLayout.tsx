@@ -51,6 +51,12 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             Contacts
           </Link>
           <Link
+            href="/admin/blackout-dates"
+            className="block px-6 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+          >
+            Blackout Dates
+          </Link>
+          <Link
             href="/"
             className="block px-6 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
           >

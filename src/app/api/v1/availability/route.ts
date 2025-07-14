@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import dbConnect from "@/lib/mongodb";
 import { Rental } from "@/models/rental";
+import { BlackoutDate, isDateBlackedOut } from "@/models/blackout-date";
 import { MachineType } from "@/types";
 
 export async function GET(request: Request) {
@@ -53,6 +54,33 @@ export async function GET(request: Request) {
 
     // Connect to database
     await dbConnect();
+
+    // Check for blackout dates first
+    const blackoutDates = await BlackoutDate.find({
+      $or: [
+        {
+          startDate: { $lte: new Date(date) },
+          endDate: { $gte: new Date(date) },
+        },
+        {
+          startDate: { $lte: new Date(date) },
+          endDate: { $exists: false },
+        },
+      ],
+    });
+
+    // Check if the date is blacked out
+    const isBlackedOut = isDateBlackedOut(new Date(date), blackoutDates);
+
+    if (isBlackedOut) {
+      return NextResponse.json({
+        available: false,
+        machineType,
+        capacity,
+        date,
+        reason: "Date is not available due to blackout period",
+      });
+    }
 
     // Check for conflicting rentals
     const conflictingRentals = await Rental.find({
