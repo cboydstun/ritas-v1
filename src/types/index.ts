@@ -54,4 +54,5 @@ export interface MargaritaRental {
   createdAt?: Date;
   updatedAt?: Date;
   paypalOrderId?: string;
+  isServiceDiscount?: boolean; // Flag for service personnel discount
 }

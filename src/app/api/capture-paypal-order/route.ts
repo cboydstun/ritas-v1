@@ -172,6 +172,7 @@ export async function POST(request: Request) {
         const rental = new Rental({
           ...rentalData,
           selectedExtras: rentalData.selectedExtras || [],
+          isServiceDiscount: rentalData.isServiceDiscount || false,
           paypalOrderId: orderId,
           status: "confirmed",
           payment: {

@@ -80,6 +80,7 @@ export default function OrderForm() {
   const [step, setStep] = useState<OrderStep>("delivery");
   const [error, setError] = useState<string | null>(null);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [isServiceDiscount, setIsServiceDiscount] = useState(false);
   const dateAvailabilityErrorRef = useRef<string | null>(null);
   const [nextButtonClickCount, setNextButtonClickCount] = useState<number>(0);
 
@@ -112,6 +113,7 @@ export default function OrderForm() {
       },
     },
     notes: "",
+    isServiceDiscount: false,
   });
 
   // Helper function to calculate rental days - used in handleInputChange
@@ -225,6 +227,21 @@ export default function OrderForm() {
   useEffect(() => {
     setNextButtonClickCount(0);
   }, [step]);
+
+  // Reset service discount only when moving to steps before review
+  useEffect(() => {
+    if (step !== "review" && step !== "payment") {
+      setIsServiceDiscount(false);
+    }
+  }, [step]);
+
+  // Update formData when isServiceDiscount changes
+  useEffect(() => {
+    setFormData((prev) => ({
+      ...prev,
+      isServiceDiscount,
+    }));
+  }, [isServiceDiscount]);
 
   const handleNextStep = () => {
     // Increment the click counter
@@ -395,6 +412,8 @@ export default function OrderForm() {
               error={error}
               agreedToTerms={agreedToTerms}
               setAgreedToTerms={setAgreedToTerms}
+              isServiceDiscount={isServiceDiscount}
+              setIsServiceDiscount={setIsServiceDiscount}
             />
           )}
 
@@ -403,6 +422,7 @@ export default function OrderForm() {
               formData={formData}
               onInputChange={handleInputChange}
               error={error}
+              isServiceDiscount={isServiceDiscount}
             />
           )}
         </Suspense>

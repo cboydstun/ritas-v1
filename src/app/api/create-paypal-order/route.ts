@@ -133,6 +133,7 @@ export async function POST(request: Request) {
             },
           },
           notes: rentalData.notes || "",
+          isServiceDiscount: rentalData.isServiceDiscount || false,
           paypalOrderId: order.result.id,
           status: "pending",
           payment: {

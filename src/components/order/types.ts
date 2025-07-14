@@ -39,6 +39,7 @@ export interface OrderFormData {
     };
   };
   notes: string;
+  isServiceDiscount?: boolean;
 }
 
 export interface StepProps {
@@ -52,6 +53,8 @@ export interface StepProps {
   agreedToTerms?: boolean;
   setAgreedToTerms?: (value: boolean) => void;
   onAvailabilityError?: (errorMsg: string | null) => void;
+  isServiceDiscount?: boolean;
+  setIsServiceDiscount?: (value: boolean) => void;
 }
 
 export const steps: { id: OrderStep; label: string }[] = [
