@@ -2,10 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import dbConnect from "@/lib/mongodb";
-import {
-  BlackoutDate,
-  createLocalDate,
-} from "@/models/blackout-date";
+import { BlackoutDate, createLocalDate } from "@/models/blackout-date";
 
 // Type for MongoDB query structure
 interface BlackoutDateQuery {
@@ -132,8 +129,8 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Validate date range
-    if (endDate && new Date(startDate) > new Date(endDate)) {
+    // Validate date range using createLocalDate to avoid timezone issues
+    if (endDate && createLocalDate(startDate) > createLocalDate(endDate)) {
       return NextResponse.json(
         { message: "End date must be after start date" },
         { status: 400 },

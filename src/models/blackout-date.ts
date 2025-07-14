@@ -103,7 +103,7 @@ export function isDateBlackedOut(
   });
 }
 
-// Helper function to format date for Central Time display
+// Helper function to format date for display (handles both UTC dates from DB and local dates)
 export function formatDateForCentralTime(date: Date | string): string {
   // Convert to Date object if it's a string
   let dateObj: Date;
@@ -149,12 +149,35 @@ export function formatDateForCentralTime(date: Date | string): string {
     return "Invalid Date";
   }
 
-  // Format the date using local time to avoid timezone conversion issues
-  const year = dateObj.getFullYear();
-  const month = String(dateObj.getMonth() + 1).padStart(2, "0");
-  const day = String(dateObj.getDate()).padStart(2, "0");
+  // For dates from MongoDB (which are stored as UTC), we need to extract the date components
+  // using UTC methods to avoid timezone conversion issues, then interpret them as local date components
+  let year: number;
+  let month: number;
+  let day: number;
 
-  return `${month}/${day}/${year}`;
+  // Check if this looks like a UTC date from MongoDB (has time component and is at midnight UTC)
+  const timeString = dateObj.toISOString();
+  const isUTCMidnight =
+    timeString.includes("T00:00:00.000Z") ||
+    timeString.includes("T05:00:00.000Z");
+
+  if (isUTCMidnight) {
+    // This is likely a date from MongoDB stored as UTC midnight
+    // Extract the date components from UTC to avoid timezone conversion
+    year = dateObj.getUTCFullYear();
+    month = dateObj.getUTCMonth() + 1;
+    day = dateObj.getUTCDate();
+  } else {
+    // This is a regular date, use local time components
+    year = dateObj.getFullYear();
+    month = dateObj.getMonth() + 1;
+    day = dateObj.getDate();
+  }
+
+  const monthStr = String(month).padStart(2, "0");
+  const dayStr = String(day).padStart(2, "0");
+
+  return `${monthStr}/${dayStr}/${year}`;
 }
 
 // Helper function to create a Date object in local time (avoiding timezone shifts)
