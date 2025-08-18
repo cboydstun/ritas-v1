@@ -75,7 +75,6 @@ const nextConfig: NextConfig = {
   experimental: {
     optimizePackageImports: ["@headlessui/react", "@heroicons/react"],
     turbo: {
-      moduleIdStrategy: "deterministic",
       rules: {
         // Add any webpack loaders if needed
       },
