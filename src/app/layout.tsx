@@ -70,6 +70,9 @@ import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import ThemeWrapper from "@/components/ThemeWrapper";
 import GoogleAnalytics from "@/components/GoogleAnalytics";
+import GoogleTagManager, {
+  GoogleTagManagerNoscript,
+} from "@/components/GoogleTagManager";
 import SessionProvider from "@/components/SessionProvider";
 import FingerprintTracker from "@/components/FingerprintTracker";
 
@@ -81,9 +84,11 @@ export default function RootLayout({
   return (
     <html lang="en" className="light">
       <GoogleAnalytics />
+      <GoogleTagManager />
       <body
         className={`${poppins.className} flex flex-col min-h-screen bg-white dark:bg-charcoal dark:text-white`}
       >
+        <GoogleTagManagerNoscript />
         <SessionProvider>
           <ThemeWrapper>
             <Navigation />
