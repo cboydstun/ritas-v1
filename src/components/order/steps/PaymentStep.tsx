@@ -154,7 +154,7 @@ export default function PaymentStep({
                 Payment Information
               </h3>
               <p className="mt-1 text-sm text-blue-700 dark:text-blue-300">
-                We'll send you an invoice for payment after your booking is
+                We will send you an invoice for payment after your booking is
                 confirmed. You can pay by cash, check, or card when we deliver
                 your rental.
               </p>
