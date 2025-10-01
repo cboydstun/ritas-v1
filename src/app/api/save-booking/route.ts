@@ -113,7 +113,7 @@ export async function POST(request: Request) {
       await resend.emails.send({
         from: "SATX Ritas Rentals <bookings@satxritas.com>",
         to: [rental.customer.email],
-        bcc: ["bookings@satxritas.com"], // BCC the business email
+        bcc: ["satxbounce@gmail.com"], // BCC the business email
         subject: "SATX Ritas Margarita Rentals - Booking Confirmation",
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333; background-color: #f9fafb; border-radius: 8px;">

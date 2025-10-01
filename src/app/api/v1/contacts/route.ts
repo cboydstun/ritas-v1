@@ -54,7 +54,7 @@ export async function POST(request: Request) {
       // Send notification email
       await resend.emails.send({
         from: "SATX Ritas Rentals <contact@satxritas.com>",
-        to: ["bookings@satxritas.com"], // Send to business email
+        to: ["satxbounce@gmail.com"], // Send to business email
         subject: "New Contact Form Submission - SATX Ritas",
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333; background-color: #f9fafb; border-radius: 8px;">
