@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import dbConnect from "@/lib/mongodb";
 import { Contact } from "@/models/contact";
-import nodemailer from "nodemailer";
+import { Resend } from "resend";
 import twilio from "twilio";
 
 /**
@@ -47,20 +47,14 @@ export async function POST(request: Request) {
       );
     }
 
-    // Configure nodemailer
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        user: process.env.NODEMAILER_USERNAME,
-        pass: process.env.NODEMAILER_PASSWORD,
-      },
-    });
+    // Configure Resend
+    const resend = new Resend(process.env.RESEND_API_KEY);
 
     try {
       // Send notification email
-      await transporter.sendMail({
-        from: process.env.NODEMAILER_USERNAME,
-        to: process.env.NODEMAILER_USERNAME, // Send to business email
+      await resend.emails.send({
+        from: "SATX Ritas Rentals <contact@satxritas.com>",
+        to: ["bookings@satxritas.com"], // Send to business email
         subject: "New Contact Form Submission - SATX Ritas",
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333; background-color: #f9fafb; border-radius: 8px;">

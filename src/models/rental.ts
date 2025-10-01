@@ -17,7 +17,7 @@ const customerSchema = new mongoose.Schema({
 });
 
 const paymentSchema = new mongoose.Schema({
-  paypalTransactionId: { type: String, required: true },
+  paypalTransactionId: { type: String, required: false }, // Made optional for manual bookings
   amount: { type: Number, required: true },
   status: {
     type: String,
@@ -119,12 +119,17 @@ const rentalSchema = new mongoose.Schema(
       type: String,
       enum: [
         "pending",
+        "pending_payment",
         "confirmed",
         "in-progress",
         "completed",
         "cancelled",
       ] as RentalStatus[],
       default: "pending",
+    },
+    bookingId: {
+      type: String,
+      required: false,
     },
     paypalOrderId: {
       type: String,

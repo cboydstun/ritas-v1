@@ -62,7 +62,7 @@ export const steps: { id: OrderStep; label: string }[] = [
   { id: "details", label: "Your Details" },
   { id: "extras", label: "Party Extras" },
   { id: "review", label: "Review Order" },
-  { id: "payment", label: "Payment" },
+  { id: "payment", label: "Confirmation" },
 ];
 
 export const extraItems: ExtraItem[] = [

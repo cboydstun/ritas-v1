@@ -7,6 +7,7 @@ export type MixerType =
 export type PaymentStatus = "pending" | "completed" | "failed" | "refunded";
 export type RentalStatus =
   | "pending"
+  | "pending_payment"
   | "confirmed"
   | "in-progress"
   | "completed"

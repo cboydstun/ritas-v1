@@ -11,14 +11,18 @@ import { Suspense } from "react";
 function OrderDetails() {
   const searchParams = useSearchParams();
 
-  // Get order details from URL parameters
-  const orderId = searchParams.get("orderId") || "Unknown";
+  // Get order details from URL parameters - handle both old PayPal flow and new booking flow
+  const orderId = searchParams.get("orderId");
+  const bookingId = searchParams.get("bookingId");
+  const displayId = bookingId || orderId || "Unknown";
+  const isManualInvoicing = Boolean(bookingId); // New booking flow uses bookingId
+
   const machineType = searchParams.get("machineType") || "single";
   const mixersParam = searchParams.get("mixers") || "";
   const mixers = mixersParam ? mixersParam.split(",") : [];
 
   // Generate JSON-LD data
-  const jsonLdData = generateOrderJsonLd(orderId, machineType);
+  const jsonLdData = generateOrderJsonLd(displayId, machineType);
 
   return (
     <>
@@ -62,12 +66,47 @@ function OrderDetails() {
                 Order Information
               </h3>
               <p className="text-charcoal/70 dark:text-white/70">
-                <span className="font-medium">Order ID:</span> {orderId}
+                <span className="font-medium">
+                  {isManualInvoicing ? "Booking ID:" : "Order ID:"}
+                </span>{" "}
+                {displayId}
               </p>
               <p className="text-charcoal/70 dark:text-white/70">
                 <span className="font-medium">Status:</span> Confirmed
               </p>
             </div>
+
+            {isManualInvoicing && (
+              <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-xl p-6">
+                <div className="flex items-center space-x-3">
+                  <div className="flex-shrink-0">
+                    <svg
+                      className="h-6 w-6 text-yellow-600 dark:text-yellow-400"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"
+                      />
+                    </svg>
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-lg font-medium text-yellow-800 dark:text-yellow-200">
+                      Payment Information
+                    </h3>
+                    <p className="mt-1 text-yellow-700 dark:text-yellow-300">
+                      We will send you an invoice for payment separately. You
+                      can pay by cash, check, or card when we deliver your
+                      rental.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="bg-white/80 dark:bg-charcoal/30 rounded-xl p-6">
               <h3 className="font-semibold text-lg text-charcoal dark:text-white mb-4">
