@@ -1,4 +1,5 @@
 import { Metadata } from "next";
+import Script from "next/script";
 import HeroSection from "@/components/home/HeroSection";
 import SocialProofSection from "@/components/home/SocialProofSection";
 import AboutSection from "@/components/home/AboutSection";
@@ -44,18 +45,22 @@ export const metadata: Metadata = {
   title: "SATX Ritas Rentals | Frozen Drink Machine Rentals in San Antonio",
   description:
     "Premium frozen drink machine rentals in San Antonio, TX. Perfect for parties, weddings, and events. Serving margaritas, daiquiris, and more with professional setup and service.",
-  other: {
-    "script:ld+json": JSON.stringify(jsonLd),
-  },
 };
 
 export default function Home() {
   return (
-    <main>
-      <HeroSection />
-      <SocialProofSection />
-      <AboutSection />
-      <MapSection />
-    </main>
+    <>
+      <Script
+        id="home-jsonld"
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      <main>
+        <HeroSection />
+        <SocialProofSection />
+        <AboutSection />
+        <MapSection />
+      </main>
+    </>
   );
 }
