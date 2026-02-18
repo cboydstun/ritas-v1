@@ -14,11 +14,21 @@ export default function FingerprintTracker() {
       return;
     }
 
-    // Track page view
-    const trackPageView = async () => {
+    // Helper function for exponential backoff retry
+    const sleep = (ms: number) =>
+      new Promise((resolve) => setTimeout(resolve, ms));
+
+    // Track page view with retry logic
+    const trackPageView = async (retryCount = 0, maxRetries = 3) => {
       try {
         // Get fingerprint
         const fingerprintResult = await getFingerprint();
+
+        // Validate fingerprint was generated
+        if (!fingerprintResult) {
+          console.warn("Fingerprint generation returned empty result");
+          return;
+        }
 
         // Prepare data with mock component data since thumbarkjs doesn't expose components directly
         const data = {
@@ -50,10 +60,53 @@ export default function FingerprintTracker() {
         });
 
         if (!response.ok) {
-          throw new Error("Failed to send fingerprint data");
+          // Get detailed error information
+          let errorMessage = `Failed to send fingerprint data (Status: ${response.status})`;
+          let shouldRetry = false;
+
+          try {
+            const errorData = await response.json();
+            errorMessage += ` - ${errorData.error || "Unknown error"}`;
+            console.error("API Error Details:", errorData);
+
+            // Retry on 503 (service unavailable) or 500 (server error)
+            shouldRetry = response.status === 503 || response.status === 500;
+          } catch {
+            const errorText = await response.text();
+            console.error("API Error Response:", errorText);
+            shouldRetry = response.status >= 500;
+          }
+
+          // Retry with exponential backoff for server errors
+          if (shouldRetry && retryCount < maxRetries) {
+            const delay = Math.min(1000 * Math.pow(2, retryCount), 10000); // Max 10 seconds
+            console.log(
+              `Retrying fingerprint tracking in ${delay}ms (attempt ${retryCount + 1}/${maxRetries})`,
+            );
+            await sleep(delay);
+            return trackPageView(retryCount + 1, maxRetries);
+          }
+
+          throw new Error(errorMessage);
+        }
+
+        // Log success for debugging
+        const result = await response.json();
+        if (process.env.NODE_ENV === "development") {
+          console.log("Fingerprint tracked successfully:", {
+            page: pathname,
+            isNewVisitor: result.isNewVisitor,
+          });
         }
       } catch (error) {
-        console.error("Error tracking page view:", error);
+        // Enhanced error logging
+        console.error("Error tracking page view:", {
+          error: error instanceof Error ? error.message : error,
+          page: pathname,
+          timestamp: new Date().toISOString(),
+        });
+
+        // Fail silently - don't disrupt user experience
       }
     };
 

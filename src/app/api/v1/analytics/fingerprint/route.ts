@@ -12,14 +12,42 @@ export async function POST(req: NextRequest) {
     const data = await req.json();
 
     // Validate required fields
-    if (!data.fingerprintHash || !data.components) {
+    if (!data.fingerprintHash) {
+      console.error("Validation error: Missing fingerprintHash");
       return NextResponse.json(
-        { success: false, error: "Missing required fields" },
+        {
+          success: false,
+          error: "Missing required field: fingerprintHash",
+        },
         { status: 400 },
       );
     }
 
-    await dbConnect();
+    if (!data.components) {
+      console.error("Validation error: Missing components");
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Missing required field: components",
+        },
+        { status: 400 },
+      );
+    }
+
+    // Connect to database with error handling
+    try {
+      await dbConnect();
+    } catch (dbError) {
+      console.error("Database connection error:", dbError);
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            "Database connection failed. Analytics tracking temporarily unavailable.",
+        },
+        { status: 503 },
+      );
+    }
 
     // Get user agent from headers
     const headersList = await headers();
@@ -155,9 +183,21 @@ export async function POST(req: NextRequest) {
       });
     }
   } catch (error) {
-    console.error("Error processing fingerprint:", error);
+    // Enhanced error logging
+    console.error("Error processing fingerprint:", {
+      error: error instanceof Error ? error.message : error,
+      stack: error instanceof Error ? error.stack : undefined,
+      timestamp: new Date().toISOString(),
+    });
+
+    // Return detailed error for development, generic for production
+    const errorMessage =
+      process.env.NODE_ENV === "development"
+        ? `Failed to process fingerprint: ${error instanceof Error ? error.message : "Unknown error"}`
+        : "Failed to process fingerprint";
+
     return NextResponse.json(
-      { success: false, error: "Failed to process fingerprint" },
+      { success: false, error: errorMessage },
       { status: 500 },
     );
   }
