@@ -8,7 +8,11 @@
     "start": "next start",
     "lint": "next lint",
     "format": "prettier --write .",
-    "test": "jest --passWithNoTests"
+    "test": "jest --passWithNoTests",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:machine": "jest --testPathPattern='MachineStep|machine' --passWithNoTests",
+    "test:ci": "jest --ci --coverage --passWithNoTests"
   },
   "dependencies": {
     "@heroicons/react": "^2.2.0",

@@ -1,8 +1,9 @@
-import Image from "next/image";
 import { ChangeEvent, useState } from "react";
-import { StepProps, inputClassName, labelClassName } from "../types";
-import { mixerDetails, MixerType } from "@/lib/rental-data";
+import { StepProps } from "../types";
+import { mixerDetails, machinePackages, MixerType } from "@/lib/rental-data";
 import { format } from "date-fns";
+import MachineCard from "./MachineCard";
+import MixerCard from "./MixerCard";
 
 // Define the sub-steps for the machine step
 enum MachineSubStep {
@@ -18,10 +19,24 @@ const mixerTypes: MixerType[] = [
   "strawberry-daiquiri",
 ];
 
-// CSS classes for active step highlighting
-const activeStepClass =
-  "border-2 border-margarita animate-pulse bg-margarita/10 shadow-lg shadow-margarita/20";
-const normalStepClass = "border-2 border-transparent";
+// Machine images and extended config
+const machineImages: Record<string, string> = {
+  single: "/vevor-15l-slushy.jpg",
+  double: "/vevor-30l-slushy.png",
+  triple: "/vevor-45l-slushy-2.png",
+};
+
+const machineGuestRanges: Record<string, { min: number; max: number }> = {
+  single: { min: 10, max: 30 },
+  double: { min: 20, max: 60 },
+  triple: { min: 40, max: 90 },
+};
+
+const machinePopular: Record<string, boolean> = {
+  single: false,
+  double: true,
+  triple: false,
+};
 
 export default function MachineStep({
   formData,
@@ -40,15 +55,30 @@ export default function MachineStep({
     } as unknown as ChangeEvent<HTMLInputElement>;
   };
 
+  const handleMachineSelect = (
+    machineType: "single" | "double" | "triple",
+  ) => {
+    const pkg = machinePackages.find((p) => p.type === machineType)!;
+    // Update machineType
+    onInputChange(createSyntheticEvent("machineType", machineType));
+    // Update capacity via separate event
+    onInputChange(
+      createSyntheticEvent("capacity", String(pkg.capacity)),
+    );
+    // Clear selected mixers when machine type changes
+    onInputChange(createSyntheticEvent("selectedMixers", []));
+    // Advance to mixer substep
+    setCurrentSubStep(MachineSubStep.Mixer);
+  };
+
   const handleMixerChange = (mixer: MixerType | null, tankIndex: number) => {
     let newMixers: MixerType[] = [...(formData.selectedMixers || [])];
 
     if (mixer === null) {
       // Handle "No Mixer" selection
       if (formData.machineType === "single") {
-        newMixers = []; // Clear all mixers for single tank
+        newMixers = [];
       } else {
-        // For double or triple tank, remove the mixer at the specific tank index
         newMixers = newMixers.filter((_, index) => index !== tankIndex);
       }
     } else {
@@ -64,17 +94,12 @@ export default function MachineStep({
       } else {
         // Select the mixer
         if (formData.machineType === "single") {
-          newMixers = [mixer]; // Replace any existing mixer
+          newMixers = [mixer];
         } else {
-          // For double or triple tank, ensure we maintain the correct order
           if (tankIndex === 0) {
             newMixers = [mixer, ...newMixers.slice(1)];
           } else if (tankIndex === 1) {
-            newMixers = [
-              ...newMixers.slice(0, 1),
-              mixer,
-              ...newMixers.slice(2),
-            ];
+            newMixers = [...newMixers.slice(0, 1), mixer, ...newMixers.slice(2)];
           } else {
             newMixers = [...newMixers.slice(0, 2), mixer];
           }
@@ -84,20 +109,82 @@ export default function MachineStep({
 
     onInputChange(createSyntheticEvent("selectedMixers", newMixers));
 
-    // Progress to the next step if we're on the mixer step
     if (currentSubStep === MachineSubStep.Mixer) {
       setCurrentSubStep(MachineSubStep.NextButton);
     }
   };
 
-  // Format the selected dates for display
   const formatDate = (dateString: string) => {
     if (!dateString) return "";
     return format(new Date(dateString), "EEEE, MMMM d, yyyy");
   };
 
+  const getMixerTankSection = (tankIndex: number, tankLabel: string) => (
+    <div key={tankLabel}>
+      {formData.machineType !== "single" && (
+        <h4 className="text-sm font-semibold text-charcoal dark:text-white mb-3">
+          {tankLabel}
+        </h4>
+      )}
+      <div className="grid grid-cols-1 gap-2">
+        {mixerTypes.map((type) => {
+          const idPrefix =
+            formData.machineType === "single"
+              ? "single"
+              : formData.machineType === "double"
+                ? `tank${tankIndex + 1}`
+                : `tank${tankIndex + 1}-triple`;
+          return (
+            <MixerCard
+              key={`${idPrefix}-${type}`}
+              mixerType={type}
+              name={mixerDetails[type].label}
+              price={mixerDetails[type].price}
+              description={mixerDetails[type].description}
+              isSelected={formData.selectedMixers?.[tankIndex] === type}
+              tankIndex={tankIndex}
+              checkboxId={`${idPrefix}-${type}`}
+              onChange={handleMixerChange}
+            />
+          );
+        })}
+        {/* No Mixer option */}
+        <MixerCard
+          mixerType={null}
+          name="No Mixer"
+          price={0}
+          description="Bring your own mixer for complete control over your drinks"
+          isSelected={
+            formData.machineType === "single"
+              ? formData.selectedMixers?.length === 0
+              : !formData.selectedMixers?.[tankIndex]
+          }
+          tankIndex={tankIndex}
+          checkboxId={
+            formData.machineType === "single"
+              ? "single-no-mixer"
+              : formData.machineType === "double"
+                ? `tank${tankIndex + 1}-no-mixer`
+                : `tank${tankIndex + 1}-triple-no-mixer`
+          }
+          onChange={(_, idx) => {
+            if (formData.machineType === "single") {
+              onInputChange(createSyntheticEvent("selectedMixers", []));
+              if (currentSubStep === MachineSubStep.Mixer) {
+                setCurrentSubStep(MachineSubStep.NextButton);
+              }
+            } else {
+              handleMixerChange(null, idx);
+            }
+          }}
+        />
+      </div>
+    </div>
+  );
+
   return (
     <div className="space-y-8 relative">
+      {/* Header */}
       <div className="text-center mb-8">
         <h2 className="text-2xl font-bold text-charcoal dark:text-white mb-2">
           Select Your Machine
@@ -116,431 +203,87 @@ export default function MachineStep({
           </div>
         )}
 
+        {/* Progress dots */}
         <div className="flex justify-center space-x-2 mt-4">
           <div
             className={`w-3 h-3 rounded-full ${currentSubStep >= MachineSubStep.MachineType ? "bg-margarita" : "bg-gray-300"}`}
-          ></div>
+          />
           <div
             className={`w-3 h-3 rounded-full ${currentSubStep >= MachineSubStep.Mixer ? "bg-margarita" : "bg-gray-300"}`}
-          ></div>
+          />
           <div
             className={`w-3 h-3 rounded-full ${currentSubStep >= MachineSubStep.NextButton ? "bg-margarita" : "bg-gray-300"}`}
-          ></div>
+          />
         </div>
       </div>
 
       <div className="space-y-6">
-        {/* Machine Type Section */}
+        {/* Machine Selection - Card Grid */}
         <div
-          className={`relative w-full aspect-square mb-4 rounded-lg overflow-hidden transition-all duration-300 ${
+          className={`p-4 rounded-xl border-2 transition-all duration-300 ${
             currentSubStep === MachineSubStep.MachineType
-              ? activeStepClass
-              : normalStepClass
+              ? "border-margarita animate-pulse bg-margarita/5 shadow-lg shadow-margarita/20"
+              : "border-transparent"
           }`}
         >
-          <Image
-            src={
-              formData.machineType === "single"
-                ? "/vevor-15l-slushy.jpg"
-                : formData.machineType === "double"
-                  ? "/vevor-30l-slushy.png"
-                  : "/vevor-45l-slushy-2.png"
-            }
-            alt={`${formData.capacity}L ${
-              formData.machineType === "single"
-                ? "Single"
-                : formData.machineType === "double"
-                  ? "Double"
-                  : "Triple"
-            } Tank Machine`}
-            fill
-            className="object-cover rounded-lg"
-            priority
-          />
-        </div>
-
-        <div
-          className={`p-4 rounded-lg transition-all duration-300 ${
-            currentSubStep === MachineSubStep.MachineType
-              ? activeStepClass
-              : normalStepClass
-          }`}
-        >
-          <label className={labelClassName}>Machine Type</label>
-          <select
-            name="machineType"
-            value={formData.machineType}
-            onChange={(e) => {
-              onInputChange(e);
-              // Move to the next step when machine type is selected
-              setCurrentSubStep(MachineSubStep.Mixer);
-            }}
-            className={`${inputClassName} focus:border-margarita focus:ring-2 focus:ring-margarita/50`}
-          >
-            <option value="single">15L Single Tank Machine</option>
-            <option value="double">30L Double Tank Machine</option>
-            <option value="triple">45L Triple Tank Machine</option>
-          </select>
-          <p className="mt-2 text-sm text-charcoal/70 dark:text-white/70">
-            {formData.machineType === "single"
-              ? "Perfect for smaller gatherings and parties"
-              : formData.machineType === "double"
-                ? "Ideal for larger events and multiple flavors"
-                : "The ultimate machine for large events and variety"}
+          <p className="text-sm font-semibold text-charcoal dark:text-white mb-3">
+            Machine Type
           </p>
+          <div className="grid grid-cols-3 gap-3">
+            {machinePackages.map((pkg) => (
+              <MachineCard
+                key={pkg.type}
+                machineType={pkg.type}
+                name={pkg.name}
+                capacity={pkg.capacity}
+                basePrice={pkg.basePrice}
+                isSelected={formData.machineType === pkg.type}
+                isPopular={machinePopular[pkg.type]}
+                onSelect={handleMachineSelect}
+                image={machineImages[pkg.type]}
+                description={pkg.description}
+                guestRange={machineGuestRanges[pkg.type]}
+              />
+            ))}
+          </div>
         </div>
 
-        {/* Mixer Selection Section */}
+        {/* Mixer Selection */}
         <div
-          className={`p-4 rounded-lg mt-6 transition-all duration-300 ${
+          className={`p-4 rounded-xl border-2 transition-all duration-300 ${
             currentSubStep === MachineSubStep.Mixer
-              ? activeStepClass
-              : normalStepClass
+              ? "border-margarita animate-pulse bg-margarita/5 shadow-lg shadow-margarita/20"
+              : "border-transparent"
           }`}
         >
-          <label className={labelClassName}>
+          <p className="text-sm font-semibold text-charcoal dark:text-white mb-3">
             {formData.machineType === "single"
               ? "Select 1 Mixer"
               : formData.machineType === "double"
                 ? "Select 2 Mixers"
                 : "Select 3 Mixers"}
-          </label>
-          <div className="space-y-6 mt-2">
-            {formData.machineType === "single" ? (
-              // Single Tank Selection
-              <div className="space-y-4">
-                {mixerTypes.map((type) => (
-                  <div key={`single-${type}`} className="flex items-start">
-                    <input
-                      type="checkbox"
-                      id={`single-${type}`}
-                      checked={formData.selectedMixers?.[0] === type}
-                      onChange={() => handleMixerChange(type, 0)}
-                      className="h-4 w-4 text-margarita border-gray-300 rounded focus:ring-margarita"
-                    />
-                    <div className="ml-3">
-                      <label
-                        htmlFor={`single-${type}`}
-                        className="text-sm font-medium text-charcoal dark:text-white"
-                      >
-                        {mixerDetails[type].label} (+$
-                        {mixerDetails[type].price.toFixed(2)})
-                      </label>
-                      <p className="text-xs text-charcoal/70 dark:text-white/70">
-                        {mixerDetails[type].description}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-                <div className="flex items-start">
-                  <input
-                    type="checkbox"
-                    id="single-no-mixer"
-                    checked={formData.selectedMixers?.length === 0}
-                    onChange={() => {
-                      onInputChange(createSyntheticEvent("selectedMixers", []));
-                      // Progress to the next step
-                      if (currentSubStep === MachineSubStep.Mixer) {
-                        setCurrentSubStep(MachineSubStep.NextButton);
-                      }
-                    }}
-                    className="h-4 w-4 text-margarita border-gray-300 rounded focus:ring-margarita"
-                  />
-                  <div className="ml-3">
-                    <label
-                      htmlFor="single-no-mixer"
-                      className="text-sm font-medium text-charcoal dark:text-white"
-                    >
-                      No Mixer
-                    </label>
-                    <p className="text-xs text-charcoal/70 dark:text-white/70">
-                      Bring your own mixer for complete control over your drinks
-                    </p>
-                  </div>
-                </div>
-              </div>
-            ) : formData.machineType === "double" ? (
-              // Double Tank Selection
-              <div className="space-y-8">
-                {/* Tank 1 */}
-                <div>
-                  <h4 className="text-sm font-medium text-charcoal dark:text-white mb-4">
-                    Tank 1:
-                  </h4>
-                  <div className="space-y-4 pl-4">
-                    {mixerTypes.map((type) => (
-                      <div key={`tank1-${type}`} className="flex items-start">
-                        <input
-                          type="checkbox"
-                          id={`tank1-${type}`}
-                          checked={formData.selectedMixers?.[0] === type}
-                          onChange={() => handleMixerChange(type, 0)}
-                          className="h-4 w-4 text-margarita border-gray-300 rounded focus:ring-margarita"
-                        />
-                        <div className="ml-3">
-                          <label
-                            htmlFor={`tank1-${type}`}
-                            className="text-sm font-medium text-charcoal dark:text-white"
-                          >
-                            {mixerDetails[type].label} (+$
-                            {mixerDetails[type].price.toFixed(2)})
-                          </label>
-                          <p className="text-xs text-charcoal/70 dark:text-white/70">
-                            {mixerDetails[type].description}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                    <div className="flex items-start">
-                      <input
-                        type="checkbox"
-                        id="tank1-no-mixer"
-                        checked={!formData.selectedMixers?.[0]}
-                        onChange={() => handleMixerChange(null, 0)}
-                        className="h-4 w-4 text-margarita border-gray-300 rounded focus:ring-margarita"
-                      />
-                      <div className="ml-3">
-                        <label
-                          htmlFor="tank1-no-mixer"
-                          className="text-sm font-medium text-charcoal dark:text-white"
-                        >
-                          No Mixer
-                        </label>
-                        <p className="text-xs text-charcoal/70 dark:text-white/70">
-                          Bring your own mixer for complete control over your
-                          drinks
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+          </p>
 
-                {/* Tank 2 */}
-                <div>
-                  <h4 className="text-sm font-medium text-charcoal dark:text-white mb-4">
-                    Tank 2:
-                  </h4>
-                  <div className="space-y-4 pl-4">
-                    {mixerTypes.map((type) => (
-                      <div key={`tank2-${type}`} className="flex items-start">
-                        <input
-                          type="checkbox"
-                          id={`tank2-${type}`}
-                          checked={formData.selectedMixers?.[1] === type}
-                          onChange={() => handleMixerChange(type, 1)}
-                          className="h-4 w-4 text-margarita border-gray-300 rounded focus:ring-margarita"
-                        />
-                        <div className="ml-3">
-                          <label
-                            htmlFor={`tank2-${type}`}
-                            className="text-sm font-medium text-charcoal dark:text-white"
-                          >
-                            {mixerDetails[type].label} (+$
-                            {mixerDetails[type].price.toFixed(2)})
-                          </label>
-                          <p className="text-xs text-charcoal/70 dark:text-white/70">
-                            {mixerDetails[type].description}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                    <div className="flex items-start">
-                      <input
-                        type="checkbox"
-                        id="tank2-no-mixer"
-                        checked={!formData.selectedMixers?.[1]}
-                        onChange={() => handleMixerChange(null, 1)}
-                        className="h-4 w-4 text-margarita border-gray-300 rounded focus:ring-margarita"
-                      />
-                      <div className="ml-3">
-                        <label
-                          htmlFor="tank2-no-mixer"
-                          className="text-sm font-medium text-charcoal dark:text-white"
-                        >
-                          No Mixer
-                        </label>
-                        <p className="text-xs text-charcoal/70 dark:text-white/70">
-                          Bring your own mixer for complete control over your
-                          drinks
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              // Triple Tank Selection
-              <div className="space-y-8">
-                {/* Tank 1 */}
-                <div>
-                  <h4 className="text-sm font-medium text-charcoal dark:text-white mb-4">
-                    Tank 1:
-                  </h4>
-                  <div className="space-y-4 pl-4">
-                    {mixerTypes.map((type) => (
-                      <div
-                        key={`tank1-triple-${type}`}
-                        className="flex items-start"
-                      >
-                        <input
-                          type="checkbox"
-                          id={`tank1-triple-${type}`}
-                          checked={formData.selectedMixers?.[0] === type}
-                          onChange={() => handleMixerChange(type, 0)}
-                          className="h-4 w-4 text-margarita border-gray-300 rounded focus:ring-margarita"
-                        />
-                        <div className="ml-3">
-                          <label
-                            htmlFor={`tank1-triple-${type}`}
-                            className="text-sm font-medium text-charcoal dark:text-white"
-                          >
-                            {mixerDetails[type].label} (+$
-                            {mixerDetails[type].price.toFixed(2)})
-                          </label>
-                          <p className="text-xs text-charcoal/70 dark:text-white/70">
-                            {mixerDetails[type].description}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                    <div className="flex items-start">
-                      <input
-                        type="checkbox"
-                        id="tank1-triple-no-mixer"
-                        checked={!formData.selectedMixers?.[0]}
-                        onChange={() => handleMixerChange(null, 0)}
-                        className="h-4 w-4 text-margarita border-gray-300 rounded focus:ring-margarita"
-                      />
-                      <div className="ml-3">
-                        <label
-                          htmlFor="tank1-triple-no-mixer"
-                          className="text-sm font-medium text-charcoal dark:text-white"
-                        >
-                          No Mixer
-                        </label>
-                        <p className="text-xs text-charcoal/70 dark:text-white/70">
-                          Bring your own mixer for complete control over your
-                          drinks
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+          {formData.machineType === "single" && (
+            <div className="space-y-2">
+              {getMixerTankSection(0, "")}
+            </div>
+          )}
 
-                {/* Tank 2 */}
-                <div>
-                  <h4 className="text-sm font-medium text-charcoal dark:text-white mb-4">
-                    Tank 2:
-                  </h4>
-                  <div className="space-y-4 pl-4">
-                    {mixerTypes.map((type) => (
-                      <div
-                        key={`tank2-triple-${type}`}
-                        className="flex items-start"
-                      >
-                        <input
-                          type="checkbox"
-                          id={`tank2-triple-${type}`}
-                          checked={formData.selectedMixers?.[1] === type}
-                          onChange={() => handleMixerChange(type, 1)}
-                          className="h-4 w-4 text-margarita border-gray-300 rounded focus:ring-margarita"
-                        />
-                        <div className="ml-3">
-                          <label
-                            htmlFor={`tank2-triple-${type}`}
-                            className="text-sm font-medium text-charcoal dark:text-white"
-                          >
-                            {mixerDetails[type].label} (+$
-                            {mixerDetails[type].price.toFixed(2)})
-                          </label>
-                          <p className="text-xs text-charcoal/70 dark:text-white/70">
-                            {mixerDetails[type].description}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                    <div className="flex items-start">
-                      <input
-                        type="checkbox"
-                        id="tank2-triple-no-mixer"
-                        checked={!formData.selectedMixers?.[1]}
-                        onChange={() => handleMixerChange(null, 1)}
-                        className="h-4 w-4 text-margarita border-gray-300 rounded focus:ring-margarita"
-                      />
-                      <div className="ml-3">
-                        <label
-                          htmlFor="tank2-triple-no-mixer"
-                          className="text-sm font-medium text-charcoal dark:text-white"
-                        >
-                          No Mixer
-                        </label>
-                        <p className="text-xs text-charcoal/70 dark:text-white/70">
-                          Bring your own mixer for complete control over your
-                          drinks
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+          {formData.machineType === "double" && (
+            <div className="space-y-6">
+              {getMixerTankSection(0, "Tank 1:")}
+              {getMixerTankSection(1, "Tank 2:")}
+            </div>
+          )}
 
-                {/* Tank 3 */}
-                <div>
-                  <h4 className="text-sm font-medium text-charcoal dark:text-white mb-4">
-                    Tank 3:
-                  </h4>
-                  <div className="space-y-4 pl-4">
-                    {mixerTypes.map((type) => (
-                      <div
-                        key={`tank3-triple-${type}`}
-                        className="flex items-start"
-                      >
-                        <input
-                          type="checkbox"
-                          id={`tank3-triple-${type}`}
-                          checked={formData.selectedMixers?.[2] === type}
-                          onChange={() => handleMixerChange(type, 2)}
-                          className="h-4 w-4 text-margarita border-gray-300 rounded focus:ring-margarita"
-                        />
-                        <div className="ml-3">
-                          <label
-                            htmlFor={`tank3-triple-${type}`}
-                            className="text-sm font-medium text-charcoal dark:text-white"
-                          >
-                            {mixerDetails[type].label} (+$
-                            {mixerDetails[type].price.toFixed(2)})
-                          </label>
-                          <p className="text-xs text-charcoal/70 dark:text-white/70">
-                            {mixerDetails[type].description}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                    <div className="flex items-start">
-                      <input
-                        type="checkbox"
-                        id="tank3-triple-no-mixer"
-                        checked={!formData.selectedMixers?.[2]}
-                        onChange={() => handleMixerChange(null, 2)}
-                        className="h-4 w-4 text-margarita border-gray-300 rounded focus:ring-margarita"
-                      />
-                      <div className="ml-3">
-                        <label
-                          htmlFor="tank3-triple-no-mixer"
-                          className="text-sm font-medium text-charcoal dark:text-white"
-                        >
-                          No Mixer
-                        </label>
-                        <p className="text-xs text-charcoal/70 dark:text-white/70">
-                          Bring your own mixer for complete control over your
-                          drinks
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
+          {formData.machineType === "triple" && (
+            <div className="space-y-6">
+              {getMixerTankSection(0, "Tank 1:")}
+              {getMixerTankSection(1, "Tank 2:")}
+              {getMixerTankSection(2, "Tank 3:")}
+            </div>
+          )}
         </div>
 
         {error && (
