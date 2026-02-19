@@ -1,6 +1,7 @@
 import { Metadata } from "next";
 import Script from "next/script";
 import ContactForm from "@/components/contact/ContactForm";
+import BookingCTA from "@/components/BookingCTA";
 
 // Add JSON-LD structured data for contact page
 const jsonLd = {
@@ -339,6 +340,13 @@ export default function ContactPage() {
               </div>
             </div>
           </div>
+
+          {/* Booking CTA */}
+          <BookingCTA
+            headline="Ready to Reserve Your Machine?"
+            subtext="Skip the back-and-forth — book your frozen drink machine online in minutes. Machines, mixers, and party extras all in one order."
+            className="mt-4"
+          />
         </div>
       </div>
     </>

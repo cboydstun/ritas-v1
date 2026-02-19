@@ -18,7 +18,6 @@ interface MachineCardProps {
 export default function MachineCard({
   machineType,
   name,
-  capacity,
   basePrice,
   isSelected,
   isAvailable = true,

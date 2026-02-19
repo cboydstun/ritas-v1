@@ -1,6 +1,7 @@
 import { Metadata } from "next";
 import Link from "next/link";
 import Script from "next/script";
+import BookingCTA from "@/components/BookingCTA";
 
 // Add JSON-LD structured data for Article
 const jsonLd = {
@@ -78,7 +79,8 @@ export default function AboutPage() {
                 <p className="text-xl text-charcoal/80 dark:text-white/80 mb-6">
                   What began as a vision to elevate local celebrations has grown
                   into San Antonio&apos;s trusted source for professional-grade
-                  frozen drink machine rentals.
+                  frozen drink machine rentals — plus everything else you need
+                  to make your party a hit.
                 </p>
                 <p className="text-xl text-charcoal/80 dark:text-white/80">
                   From backyard gatherings to corporate events, we&apos;ve
@@ -89,8 +91,128 @@ export default function AboutPage() {
               </div>
             </div>
 
+            {/* What We Offer */}
+            <div className="bg-white/90 dark:bg-charcoal/50 backdrop-blur-sm rounded-2xl p-8 shadow-xl mb-8">
+              <h2 className="text-3xl font-bold text-charcoal dark:text-white mb-6 text-center">
+                Everything We Offer
+              </h2>
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {/* Machines */}
+                <div className="bg-margarita/5 dark:bg-margarita/10 rounded-xl p-5">
+                  <div className="text-3xl mb-2">🧊</div>
+                  <h3 className="font-bold text-charcoal dark:text-white mb-1">
+                    Frozen Drink Machines
+                  </h3>
+                  <p className="text-sm text-charcoal/70 dark:text-white/70">
+                    Single (15L), Double (30L), and Triple (45L) tank machines —
+                    from intimate parties to large events.
+                  </p>
+                </div>
+                {/* Mixers */}
+                <div className="bg-margarita/5 dark:bg-margarita/10 rounded-xl p-5">
+                  <div className="text-3xl mb-2">🍹</div>
+                  <h3 className="font-bold text-charcoal dark:text-white mb-1">
+                    Mixer Flavors
+                  </h3>
+                  <p className="text-sm text-charcoal/70 dark:text-white/70">
+                    Margarita, Piña Colada, Strawberry Daiquiri, and Kool Aid
+                    (non-alcoholic) — one flavor per tank, mix and match on
+                    multi-tank machines.
+                  </p>
+                </div>
+                {/* Tables & Chairs */}
+                <div className="bg-margarita/5 dark:bg-margarita/10 rounded-xl p-5">
+                  <div className="text-3xl mb-2">🪑</div>
+                  <h3 className="font-bold text-charcoal dark:text-white mb-1">
+                    Table & Chairs Sets
+                  </h3>
+                  <p className="text-sm text-charcoal/70 dark:text-white/70">
+                    Six-foot folding table with six chairs — add as many sets as
+                    you need.
+                  </p>
+                </div>
+                {/* Cotton Candy */}
+                <div className="bg-margarita/5 dark:bg-margarita/10 rounded-xl p-5">
+                  <div className="text-3xl mb-2">🍭</div>
+                  <h3 className="font-bold text-charcoal dark:text-white mb-1">
+                    Cotton Candy Machine
+                  </h3>
+                  <p className="text-sm text-charcoal/70 dark:text-white/70">
+                    50 servings of pink vanilla and blue raspberry cotton candy
+                    — a guaranteed crowd-pleaser.
+                  </p>
+                </div>
+                {/* Bounce Castle */}
+                <div className="bg-margarita/5 dark:bg-margarita/10 rounded-xl p-5">
+                  <div className="text-3xl mb-2">🏰</div>
+                  <h3 className="font-bold text-charcoal dark:text-white mb-1">
+                    Inflatable Bounce Castle
+                  </h3>
+                  <p className="text-sm text-charcoal/70 dark:text-white/70">
+                    Keep the kids entertained all day while the adults enjoy
+                    their frozen drinks.
+                  </p>
+                </div>
+                {/* Popcorn */}
+                <div className="bg-margarita/5 dark:bg-margarita/10 rounded-xl p-5">
+                  <div className="text-3xl mb-2">🍿</div>
+                  <h3 className="font-bold text-charcoal dark:text-white mb-1">
+                    Popcorn Machine
+                  </h3>
+                  <p className="text-sm text-charcoal/70 dark:text-white/70">
+                    At least 100 servings of fresh popcorn — the perfect snack
+                    alongside your frozen drinks.
+                  </p>
+                </div>
+              </div>
+              <p className="text-center text-sm text-charcoal/60 dark:text-white/60 mt-6">
+                All extras are priced per day and added to your order during
+                checkout.{" "}
+                <Link href="/pricing" className="text-orange hover:underline">
+                  See full pricing →
+                </Link>
+              </p>
+            </div>
+
+            {/* Service Discount */}
+            <div className="bg-gradient-to-r from-orange/10 to-pink/10 dark:from-orange/5 dark:to-pink/5 border border-orange/20 rounded-2xl p-8 shadow-xl mb-8">
+              <div className="flex flex-col md:flex-row items-center gap-6">
+                <div className="text-5xl flex-shrink-0">🎖️</div>
+                <div>
+                  <h2 className="text-2xl font-bold text-charcoal dark:text-white mb-2">
+                    Proud to Support Our Community — 10% Off
+                  </h2>
+                  <p className="text-charcoal/70 dark:text-white/70 mb-3">
+                    We offer a{" "}
+                    <span className="font-bold text-orange">
+                      10% service discount
+                    </span>{" "}
+                    for military members, educators, police officers,
+                    firefighters, and medical professionals. Just check the
+                    discount box on the Review step when placing your order.
+                  </p>
+                  <ul className="flex flex-wrap gap-2">
+                    {[
+                      "🪖 Military",
+                      "📚 Educators",
+                      "👮 Police",
+                      "🚒 Firefighters",
+                      "🏥 Medical",
+                    ].map((group) => (
+                      <li
+                        key={group}
+                        className="px-3 py-1 bg-white/80 dark:bg-charcoal/40 rounded-full text-sm font-medium text-charcoal dark:text-white shadow-sm"
+                      >
+                        {group}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </div>
+
             {/* Why Choose Us Grid */}
-            <div className="grid md:grid-cols-3 gap-8 mb-24">
+            <div className="grid md:grid-cols-3 gap-8 mb-8">
               <div className="bg-white/80 dark:bg-charcoal/50 backdrop-blur-sm rounded-2xl p-8 shadow-xl">
                 <div className="text-4xl mb-4">🛡️</div>
                 <h3 className="text-xl font-bold text-charcoal dark:text-white mb-3">
@@ -125,7 +247,7 @@ export default function AboutPage() {
             </div>
 
             {/* Our Values */}
-            <div className="bg-white/90 dark:bg-charcoal/50 backdrop-blur-sm rounded-2xl p-12 shadow-xl mb-24">
+            <div className="bg-white/90 dark:bg-charcoal/50 backdrop-blur-sm rounded-2xl p-12 shadow-xl mb-8">
               <h2 className="text-4xl font-bold text-charcoal dark:text-white mb-12 text-center">
                 Our Values
               </h2>
@@ -175,19 +297,10 @@ export default function AboutPage() {
                   </div>
                 </div>
               </div>
-
-              <div className="text-center mt-8">
-                <Link
-                  href="/order"
-                  className="inline-block px-8 py-4 bg-margarita hover:bg-margarita/90 text-white font-semibold rounded-lg transition-colors text-lg"
-                >
-                  Start Your Order
-                </Link>
-              </div>
             </div>
 
             {/* Service Area */}
-            <div className="bg-gradient-to-r from-margarita/20 to-teal/20 dark:from-margarita/10 dark:to-teal/10 rounded-2xl p-12 shadow-xl">
+            <div className="bg-gradient-to-r from-margarita/20 to-teal/20 dark:from-margarita/10 dark:to-teal/10 rounded-2xl p-12 shadow-xl mb-8">
               <h2 className="text-4xl font-bold text-charcoal dark:text-white mb-8 text-center">
                 Serving San Antonio
               </h2>
@@ -204,15 +317,13 @@ export default function AboutPage() {
                   hospitality.
                 </p>
               </div>
-              <div className="text-center mt-8">
-                <Link
-                  href="/about"
-                  className="inline-block px-8 py-4 bg-margarita hover:bg-margarita/90 text-white font-semibold rounded-lg transition-colors text-lg"
-                >
-                  About Us
-                </Link>
-              </div>
             </div>
+
+            {/* Booking CTA */}
+            <BookingCTA
+              headline="Let's Make Your Event Unforgettable"
+              subtext="From single-tank margarita machines to full party packages with extras — we've got everything you need. Book online in minutes."
+            />
           </div>
         </div>
       </div>

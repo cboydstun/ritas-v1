@@ -1,6 +1,7 @@
 import { Metadata } from "next";
 import { mixerDetails } from "@/lib/rental-data";
 import Link from "next/link";
+import BookingCTA from "@/components/BookingCTA";
 
 // Get all mixer names except "non-alcoholic" for the mixer options text
 const alcoholicMixers = Object.entries(mixerDetails)
@@ -213,6 +214,13 @@ export default function FAQ() {
               </div>
             </div>
           </section>
+
+          {/* Booking CTA */}
+          <BookingCTA
+            headline="Still have questions?"
+            subtext="Reach out anytime or jump straight to booking — we're here to make your event perfect."
+            className="mb-8"
+          />
 
           {/* Payment & Policies */}
           <section

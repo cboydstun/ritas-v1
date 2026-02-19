@@ -1,11 +1,14 @@
 import { machinePackages, mixerDetails } from "@/lib/rental-data";
+import { extraItems } from "@/components/order/types";
 import { calculatePrice, formatPrice } from "@/lib/pricing";
 import { Metadata } from "next";
 import Script from "next/script";
 import Link from "next/link";
 import Image from "next/image";
+import BookingCTA from "@/components/BookingCTA";
 
 // Add JSON-LD structured data for products
+// Fix: calculatePrice now accepts MixerType[] (array), not a single MixerType string
 const jsonLd = {
   "@context": "https://schema.org",
   "@type": "ItemList",
@@ -26,7 +29,7 @@ const jsonLd = {
         },
         {
           "@type": "Offer",
-          price: calculatePrice("single", "non-alcoholic").total,
+          price: calculatePrice("single", ["non-alcoholic"]).total,
           priceCurrency: "USD",
           itemCondition: "https://schema.org/NewCondition",
           availability: "https://schema.org/InStock",
@@ -34,7 +37,7 @@ const jsonLd = {
         },
         {
           "@type": "Offer",
-          price: calculatePrice("single", "margarita").total,
+          price: calculatePrice("single", ["margarita"]).total,
           priceCurrency: "USD",
           itemCondition: "https://schema.org/NewCondition",
           availability: "https://schema.org/InStock",
@@ -42,7 +45,7 @@ const jsonLd = {
         },
         {
           "@type": "Offer",
-          price: calculatePrice("single", "pina-colada").total,
+          price: calculatePrice("single", ["pina-colada"]).total,
           priceCurrency: "USD",
           itemCondition: "https://schema.org/NewCondition",
           availability: "https://schema.org/InStock",
@@ -50,7 +53,7 @@ const jsonLd = {
         },
         {
           "@type": "Offer",
-          price: calculatePrice("single", "strawberry-daiquiri").total,
+          price: calculatePrice("single", ["strawberry-daiquiri"]).total,
           priceCurrency: "USD",
           itemCondition: "https://schema.org/NewCondition",
           availability: "https://schema.org/InStock",
@@ -74,7 +77,8 @@ const jsonLd = {
         },
         {
           "@type": "Offer",
-          price: calculatePrice("double", "non-alcoholic").total,
+          price: calculatePrice("double", ["non-alcoholic", "non-alcoholic"])
+            .total,
           priceCurrency: "USD",
           itemCondition: "https://schema.org/NewCondition",
           availability: "https://schema.org/InStock",
@@ -82,7 +86,7 @@ const jsonLd = {
         },
         {
           "@type": "Offer",
-          price: calculatePrice("double", "margarita").total,
+          price: calculatePrice("double", ["margarita", "margarita"]).total,
           priceCurrency: "USD",
           itemCondition: "https://schema.org/NewCondition",
           availability: "https://schema.org/InStock",
@@ -90,7 +94,7 @@ const jsonLd = {
         },
         {
           "@type": "Offer",
-          price: calculatePrice("double", "pina-colada").total,
+          price: calculatePrice("double", ["pina-colada", "pina-colada"]).total,
           priceCurrency: "USD",
           itemCondition: "https://schema.org/NewCondition",
           availability: "https://schema.org/InStock",
@@ -98,7 +102,10 @@ const jsonLd = {
         },
         {
           "@type": "Offer",
-          price: calculatePrice("double", "strawberry-daiquiri").total,
+          price: calculatePrice("double", [
+            "strawberry-daiquiri",
+            "strawberry-daiquiri",
+          ]).total,
           priceCurrency: "USD",
           itemCondition: "https://schema.org/NewCondition",
           availability: "https://schema.org/InStock",
@@ -122,7 +129,11 @@ const jsonLd = {
         },
         {
           "@type": "Offer",
-          price: calculatePrice("triple", "non-alcoholic").total,
+          price: calculatePrice("triple", [
+            "non-alcoholic",
+            "non-alcoholic",
+            "non-alcoholic",
+          ]).total,
           priceCurrency: "USD",
           itemCondition: "https://schema.org/NewCondition",
           availability: "https://schema.org/InStock",
@@ -130,7 +141,11 @@ const jsonLd = {
         },
         {
           "@type": "Offer",
-          price: calculatePrice("triple", "margarita").total,
+          price: calculatePrice("triple", [
+            "margarita",
+            "margarita",
+            "margarita",
+          ]).total,
           priceCurrency: "USD",
           itemCondition: "https://schema.org/NewCondition",
           availability: "https://schema.org/InStock",
@@ -138,7 +153,11 @@ const jsonLd = {
         },
         {
           "@type": "Offer",
-          price: calculatePrice("triple", "pina-colada").total,
+          price: calculatePrice("triple", [
+            "pina-colada",
+            "pina-colada",
+            "pina-colada",
+          ]).total,
           priceCurrency: "USD",
           itemCondition: "https://schema.org/NewCondition",
           availability: "https://schema.org/InStock",
@@ -146,7 +165,11 @@ const jsonLd = {
         },
         {
           "@type": "Offer",
-          price: calculatePrice("triple", "strawberry-daiquiri").total,
+          price: calculatePrice("triple", [
+            "strawberry-daiquiri",
+            "strawberry-daiquiri",
+            "strawberry-daiquiri",
+          ]).total,
           priceCurrency: "USD",
           itemCondition: "https://schema.org/NewCondition",
           availability: "https://schema.org/InStock",
@@ -234,10 +257,22 @@ export default function PricingPage() {
             </div>
 
             {/* Pricing Breakdown */}
-            <div className="bg-white/90 dark:bg-charcoal/50 backdrop-blur-sm rounded-2xl p-8 shadow-xl mb-16">
+            <div className="bg-white/90 dark:bg-charcoal/50 backdrop-blur-sm rounded-2xl p-8 shadow-xl mb-8">
               <h2 className="text-3xl font-bold text-charcoal dark:text-white mb-8 text-center">
                 Understanding Our Pricing
               </h2>
+
+              {/* Per-day pricing callout */}
+              <div className="bg-margarita/10 dark:bg-margarita/20 border border-margarita/30 rounded-xl p-4 mb-8 text-center">
+                <p className="text-charcoal dark:text-white font-medium">
+                  📅 Machine and mixer rates are{" "}
+                  <span className="font-bold text-orange">per day</span> — your
+                  total is calculated as rate × number of rental days. The
+                  delivery fee is a flat one-time charge. Party extras are also
+                  priced per day.
+                </p>
+              </div>
+
               <div className="max-w-3xl mx-auto">
                 <div className="grid grid-cols-3 gap-8 mb-8">
                   <div className="relative">
@@ -282,10 +317,11 @@ export default function PricingPage() {
                         15L Single Tank Machine
                       </p>
                       <p className="mb-2">
-                        Perfect for intimate gatherings and smaller events.
+                        Perfect for intimate gatherings and smaller events. Up
+                        to 1 mixer flavor.
                       </p>
                       <p className="font-semibold">
-                        Base Price: ${formatPrice(machinePackages[0].basePrice)}
+                        ${formatPrice(machinePackages[0].basePrice)}/day
                       </p>
                     </div>
                     <div>
@@ -294,10 +330,10 @@ export default function PricingPage() {
                       </p>
                       <p className="mb-2">
                         Ideal for larger events. Each tank can hold a different
-                        flavor.
+                        flavor. Up to 2 mixers.
                       </p>
                       <p className="font-semibold">
-                        Base Price: ${formatPrice(machinePackages[1].basePrice)}
+                        ${formatPrice(machinePackages[1].basePrice)}/day
                       </p>
                     </div>
                     <div>
@@ -305,40 +341,62 @@ export default function PricingPage() {
                         45L Triple Tank Machine
                       </p>
                       <p className="mb-2">
-                        The ultimate machine for large events and variety. Three
-                        different flavors.
+                        The ultimate machine for large events and variety. Up to
+                        3 different flavors.
                       </p>
                       <p className="font-semibold">
-                        Base Price: ${formatPrice(machinePackages[2].basePrice)}
+                        ${formatPrice(machinePackages[2].basePrice)}/day
                       </p>
                     </div>
                   </div>
 
                   <h4 className="text-lg font-semibold text-charcoal dark:text-white mb-4">
-                    Mixer Options
+                    Mixer Options{" "}
+                    <span className="text-sm font-normal text-charcoal/60 dark:text-white/60">
+                      (per tank, per day)
+                    </span>
                   </h4>
                   <div className="grid grid-cols-2 gap-4 mb-8">
                     <div>
                       <p>
-                        <span className="font-medium">Non-Alcoholic:</span> $
-                        {formatPrice(mixerDetails["non-alcoholic"].price)}
+                        <span className="font-medium">
+                          {mixerDetails["non-alcoholic"].label}:
+                        </span>{" "}
+                        ${formatPrice(mixerDetails["non-alcoholic"].price)}/day
+                      </p>
+                      <p className="text-xs text-charcoal/50 dark:text-white/50 mb-2">
+                        {mixerDetails["non-alcoholic"].description}
                       </p>
                       <p>
-                        <span className="font-medium">Margarita:</span> $
-                        {formatPrice(mixerDetails["margarita"].price)}
+                        <span className="font-medium">
+                          {mixerDetails["margarita"].label}:
+                        </span>{" "}
+                        ${formatPrice(mixerDetails["margarita"].price)}/day
+                      </p>
+                      <p className="text-xs text-charcoal/50 dark:text-white/50">
+                        {mixerDetails["margarita"].description}
                       </p>
                     </div>
                     <div>
                       <p>
-                        <span className="font-medium">Piña Colada:</span> $
-                        {formatPrice(mixerDetails["pina-colada"].price)}
+                        <span className="font-medium">
+                          {mixerDetails["pina-colada"].label}:
+                        </span>{" "}
+                        ${formatPrice(mixerDetails["pina-colada"].price)}/day
+                      </p>
+                      <p className="text-xs text-charcoal/50 dark:text-white/50 mb-2">
+                        {mixerDetails["pina-colada"].description}
                       </p>
                       <p>
                         <span className="font-medium">
-                          Strawberry Daiquiri:
+                          {mixerDetails["strawberry-daiquiri"].label}:
                         </span>{" "}
                         $
                         {formatPrice(mixerDetails["strawberry-daiquiri"].price)}
+                        /day
+                      </p>
+                      <p className="text-xs text-charcoal/50 dark:text-white/50">
+                        {mixerDetails["strawberry-daiquiri"].description}
                       </p>
                     </div>
                   </div>
@@ -348,9 +406,9 @@ export default function PricingPage() {
                   </h4>
                   <div className="grid grid-cols-3 gap-4 mb-8">
                     <p>
-                      <span className="font-medium">Delivery:</span>
+                      <span className="font-medium">Delivery & Setup:</span>
                       <br />
-                      $20.00
+                      $20.00 flat fee
                     </p>
                     <p>
                       <span className="font-medium">Sales Tax:</span>
@@ -372,6 +430,99 @@ export default function PricingPage() {
                       Start Your Order
                     </Link>
                   </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Party Extras */}
+            <div className="bg-white/90 dark:bg-charcoal/50 backdrop-blur-sm rounded-2xl p-8 shadow-xl mb-8">
+              <h2 className="text-3xl font-bold text-charcoal dark:text-white mb-2 text-center">
+                Party Extras
+              </h2>
+              <p className="text-charcoal/70 dark:text-white/70 text-center mb-8">
+                Add-ons to make your event even more memorable — all priced per
+                day.
+              </p>
+              <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                {extraItems.map((item) => (
+                  <div
+                    key={item.id}
+                    className="bg-white dark:bg-charcoal/30 rounded-xl overflow-hidden shadow-md flex flex-col"
+                  >
+                    <div className="relative w-full aspect-square">
+                      <Image
+                        src={item.image}
+                        alt={item.name}
+                        fill
+                        className="object-cover"
+                      />
+                    </div>
+                    <div className="p-4 flex flex-col flex-1">
+                      <h3 className="font-bold text-charcoal dark:text-white mb-1">
+                        {item.name}
+                      </h3>
+                      <p className="text-sm text-charcoal/70 dark:text-white/70 flex-1 mb-3">
+                        {item.description}
+                      </p>
+                      <div className="flex items-center justify-between">
+                        <span className="text-lg font-bold text-orange">
+                          ${formatPrice(item.price)}/day
+                        </span>
+                        {item.allowQuantity && (
+                          <span className="text-xs text-charcoal/50 dark:text-white/50 bg-margarita/10 px-2 py-1 rounded-full">
+                            Quantity available
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="text-center mt-8">
+                <Link
+                  href="/order"
+                  className="inline-block px-8 py-4 bg-margarita hover:bg-margarita/90 text-white font-semibold rounded-lg transition-colors text-lg"
+                >
+                  Add Extras to Your Order
+                </Link>
+              </div>
+            </div>
+
+            {/* Service Discount */}
+            <div className="bg-gradient-to-r from-orange/10 to-pink/10 dark:from-orange/5 dark:to-pink/5 border border-orange/20 rounded-2xl p-8 shadow-xl mb-8">
+              <div className="flex flex-col md:flex-row items-center gap-6">
+                <div className="text-5xl flex-shrink-0">🎖️</div>
+                <div>
+                  <h2 className="text-2xl font-bold text-charcoal dark:text-white mb-2">
+                    Service Discount — 10% Off
+                  </h2>
+                  <p className="text-charcoal/70 dark:text-white/70 mb-2">
+                    We&apos;re proud to offer a{" "}
+                    <span className="font-bold text-orange">
+                      10% discount on your entire order
+                    </span>{" "}
+                    for the following service professionals:
+                  </p>
+                  <ul className="flex flex-wrap gap-2 mt-3">
+                    {[
+                      "🪖 Military Members",
+                      "📚 Educators",
+                      "👮 Police Officers",
+                      "🚒 Firefighters",
+                      "🏥 Medical Professionals",
+                    ].map((group) => (
+                      <li
+                        key={group}
+                        className="px-3 py-1 bg-white/80 dark:bg-charcoal/40 rounded-full text-sm font-medium text-charcoal dark:text-white shadow-sm"
+                      >
+                        {group}
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="text-xs text-charcoal/50 dark:text-white/50 mt-3">
+                    Simply check the service discount box on the Review step of
+                    your order to apply.
+                  </p>
                 </div>
               </div>
             </div>
@@ -529,15 +680,10 @@ export default function PricingPage() {
                   </div>
                 </div>
               </div>
-              <div className="text-center mt-8">
-                <Link
-                  href="/about"
-                  className="inline-block px-8 py-4 bg-margarita hover:bg-margarita/90 text-white font-semibold rounded-lg transition-colors text-lg"
-                >
-                  About Us
-                </Link>
-              </div>
             </div>
+
+            {/* Booking CTA */}
+            <BookingCTA className="mt-8" />
           </div>
         </div>
       </div>

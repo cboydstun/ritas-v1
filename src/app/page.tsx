@@ -4,6 +4,7 @@ import HeroSection from "@/components/home/HeroSection";
 import SocialProofSection from "@/components/home/SocialProofSection";
 import AboutSection from "@/components/home/AboutSection";
 import MapSection from "@/components/home/MapSection";
+import BookingCTA from "@/components/BookingCTA";
 
 // Add JSON-LD structured data for LocalBusiness
 const jsonLd = {
@@ -60,6 +61,9 @@ export default function Home() {
         <SocialProofSection />
         <AboutSection />
         <MapSection />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
+          <BookingCTA />
+        </div>
       </main>
     </>
   );
