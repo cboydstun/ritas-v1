@@ -1,19 +1,15 @@
 import { OrderFormData } from "./types";
-import { MixerType } from "@/lib/rental-data";
 import { calculatePrice, formatPrice } from "@/lib/pricing";
 
 interface PricingSummaryProps {
   formData: OrderFormData;
-  isServiceDiscount?: boolean;
 }
 
-export function PricingSummary({
-  formData,
-  isServiceDiscount = false,
-}: PricingSummaryProps) {
+export function PricingSummary({ formData }: PricingSummaryProps) {
+  // Issue 1: pass selectedMixers array instead of selectedMixers[0]
   const priceBreakdown = calculatePrice(
     formData.machineType,
-    formData.selectedMixers[0] as MixerType,
+    formData.selectedMixers,
   );
 
   const perDayRate = priceBreakdown.basePrice + priceBreakdown.mixerPrice;
@@ -39,12 +35,8 @@ export function PricingSummary({
   const subtotal =
     perDayRate * rentalDays + priceBreakdown.deliveryFee + extrasTotal;
 
-  // Calculate service discount if applicable
-  const applyServiceDiscount =
-    formData.isServiceDiscount !== undefined
-      ? formData.isServiceDiscount
-      : isServiceDiscount;
-  const serviceDiscountAmount = applyServiceDiscount ? subtotal * 0.1 : 0;
+  // Issue 3: read exclusively from formData.isServiceDiscount
+  const serviceDiscountAmount = formData.isServiceDiscount ? subtotal * 0.1 : 0;
   const discountedSubtotal = subtotal - serviceDiscountAmount;
 
   const salesTax = discountedSubtotal * 0.0825;
@@ -153,7 +145,7 @@ export function PricingSummary({
         </div>
 
         {/* Service Discount */}
-        {applyServiceDiscount && (
+        {formData.isServiceDiscount && (
           <div className="flex justify-between text-green-600 dark:text-green-400">
             <span>Service Discount (10%)</span>
             <span>-${formatPrice(serviceDiscountAmount)}</span>

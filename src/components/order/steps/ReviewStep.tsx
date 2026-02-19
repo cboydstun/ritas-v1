@@ -8,29 +8,28 @@ export default function ReviewStep({
   formData,
   agreedToTerms = false,
   setAgreedToTerms = () => {},
-  isServiceDiscount = false,
   setIsServiceDiscount = () => {},
 }: StepProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  // Use isServiceDiscount from props for the checkbox state, but update formData when it changes
-  const applyServiceDiscount =
-    formData.isServiceDiscount !== undefined
-      ? formData.isServiceDiscount
-      : isServiceDiscount;
+  // Issue 3: read exclusively from formData.isServiceDiscount (single source of truth)
+  const applyServiceDiscount = formData.isServiceDiscount;
+
+  // Issue 1: pass selectedMixers array instead of selectedMixers[0]
   const priceBreakdown = calculatePrice(
     formData.machineType,
-    formData.selectedMixers[0] as MixerType,
+    formData.selectedMixers,
   );
 
   const perDayRate = priceBreakdown.basePrice + priceBreakdown.mixerPrice;
 
+  // Issue 2: append T00:00:00 to avoid UTC midnight timezone off-by-one
   const rentalDays = Math.max(
     1,
     Math.ceil(
-      (new Date(formData.returnDate).getTime() -
-        new Date(formData.rentalDate).getTime()) /
+      (new Date(formData.returnDate + "T00:00:00").getTime() -
+        new Date(formData.rentalDate + "T00:00:00").getTime()) /
         (1000 * 60 * 60 * 24),
     ),
   );
@@ -476,7 +475,6 @@ export default function ReviewStep({
               id="serviceDiscount"
               checked={applyServiceDiscount}
               onChange={(e) => {
-                // Update both the local state and the formData
                 setIsServiceDiscount(e.target.checked);
               }}
               className="w-4 h-4 text-orange rounded focus:ring-orange"

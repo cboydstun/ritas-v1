@@ -34,7 +34,7 @@ export interface OrderFormData {
     };
   };
   notes: string;
-  isServiceDiscount?: boolean;
+  isServiceDiscount: boolean;
 }
 
 export interface StepProps {

@@ -1,6 +1,6 @@
 import { ChangeEvent, useState } from "react";
 import { DayPicker, DateRange } from "react-day-picker";
-import { format, addDays, startOfDay } from "date-fns";
+import { format, addDays, startOfDay, parseISO } from "date-fns";
 import { StepProps, labelClassName, inputClassName } from "../types";
 import "react-day-picker/dist/style.css";
 
@@ -9,9 +9,11 @@ export default function DateSelectionStep({
   onInputChange,
   error,
 }: StepProps) {
+  // Issue 2: use parseISO so the calendar always shows the correct local date
+  // (new Date("YYYY-MM-DD") parses as UTC midnight, which can show the wrong day)
   const [range, setRange] = useState<DateRange | undefined>({
-    from: formData.rentalDate ? new Date(formData.rentalDate) : undefined,
-    to: formData.returnDate ? new Date(formData.returnDate) : undefined,
+    from: formData.rentalDate ? parseISO(formData.rentalDate) : undefined,
+    to: formData.returnDate ? parseISO(formData.returnDate) : undefined,
   });
 
   // Helper function to create a synthetic event

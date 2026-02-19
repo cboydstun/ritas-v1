@@ -27,6 +27,8 @@ describe("ReviewStep", () => {
       },
     },
     notes: "",
+    // Issue 3: isServiceDiscount now required and lives in formData
+    isServiceDiscount: false,
   };
 
   const mockSetAgreedToTerms = jest.fn();
@@ -40,12 +42,13 @@ describe("ReviewStep", () => {
         error={null}
         agreedToTerms={false}
         setAgreedToTerms={mockSetAgreedToTerms}
-        isServiceDiscount={false}
         setIsServiceDiscount={mockSetIsServiceDiscount}
       />,
     );
 
-    expect(screen.getByText(/Review Your Order/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Review & Confirm Your Order/i),
+    ).toBeInTheDocument();
     expect(screen.getByText(/Selected Machine/i)).toBeInTheDocument();
     expect(screen.getByText(/Pricing Details/i)).toBeInTheDocument();
   });
@@ -58,7 +61,6 @@ describe("ReviewStep", () => {
         error={null}
         agreedToTerms={false}
         setAgreedToTerms={mockSetAgreedToTerms}
-        isServiceDiscount={false}
         setIsServiceDiscount={mockSetIsServiceDiscount}
       />,
     );
@@ -76,15 +78,14 @@ describe("ReviewStep", () => {
     // Verify the setIsServiceDiscount was called with true
     expect(mockSetIsServiceDiscount).toHaveBeenCalledWith(true);
 
-    // Rerender with discount applied
+    // Issue 3: discount is now driven by formData.isServiceDiscount (not a prop)
     rerender(
       <ReviewStep
-        formData={mockFormData}
+        formData={{ ...mockFormData, isServiceDiscount: true }}
         onInputChange={jest.fn()}
         error={null}
         agreedToTerms={false}
         setAgreedToTerms={mockSetAgreedToTerms}
-        isServiceDiscount={true}
         setIsServiceDiscount={mockSetIsServiceDiscount}
       />,
     );
@@ -99,9 +100,9 @@ describe("ReviewStep", () => {
     // Verify the total amount is reduced
     expect(newTotal).toBeLessThan(initialTotal);
 
-    // Calculate expected discount (approximately 10% of subtotal)
-    // This is an approximate check since the exact calculation depends on tax and fees
-    const expectedDiscount = initialTotal * 0.09; // Slightly less than 10% due to tax and fees
+    // Calculate expected discount: 10% of subtotal; since tax/fees are also applied to
+    // the discounted subtotal, the total difference is approximately 10% of the full total.
+    const expectedDiscount = initialTotal * 0.1;
     const actualDiscount = initialTotal - newTotal;
 
     // Verify the discount amount is approximately correct (within $1)
@@ -116,7 +117,6 @@ describe("ReviewStep", () => {
         error={null}
         agreedToTerms={false}
         setAgreedToTerms={mockSetAgreedToTerms}
-        isServiceDiscount={false}
         setIsServiceDiscount={mockSetIsServiceDiscount}
       />,
     );

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, Suspense, useRef, useEffect } from "react";
+import { useState, Suspense } from "react";
 import OrderFormTracker from "./OrderFormTracker";
 import { MixerType } from "@/lib/rental-data";
 import { useSearchParams } from "next/navigation";
@@ -81,8 +81,10 @@ export default function OrderForm() {
   const [step, setStep] = useState<OrderStep>("date");
   const [error, setError] = useState<string | null>(null);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
-  const [isServiceDiscount, setIsServiceDiscount] = useState(false);
-  const dateAvailabilityErrorRef = useRef<string | null>(null);
+  // Issue 4: changed from useRef to useState so availability errors trigger re-renders
+  const [dateAvailabilityError, setDateAvailabilityError] = useState<
+    string | null
+  >(null);
 
   // Get initial machine type and mixer from URL once
   const initialMachineType =
@@ -102,7 +104,7 @@ export default function OrderForm() {
     capacity: capacityMap[initialMachineType] ?? 15,
     selectedMixers: initialSelectedMixers,
     selectedExtras: [],
-    price: calculatePrice(initialMachineType, initialSelectedMixers[0]).total,
+    price: calculatePrice(initialMachineType, initialSelectedMixers).total,
     rentalDate: "",
     rentalTime: "ANY",
     returnDate: "",
@@ -119,8 +121,14 @@ export default function OrderForm() {
       },
     },
     notes: "",
+    // Issue 3: isServiceDiscount lives exclusively in formData (no separate useState)
     isServiceDiscount: false,
   });
+
+  // Issue 3: setIsServiceDiscount updates formData directly (no separate state or useEffect)
+  const setIsServiceDiscount = (value: boolean) => {
+    setFormData((prev) => ({ ...prev, isServiceDiscount: value }));
+  };
 
   const handleInputChange = (
     e: React.ChangeEvent<
@@ -131,8 +139,8 @@ export default function OrderForm() {
 
     // Update returnDate when rentalDate changes
     if (name === "rentalDate") {
-      const nextDay = getNextDay(new Date(value));
-      const nextDayString = nextDay.toISOString().split("T")[0];
+      // Issue 2: getNextDay now accepts a YYYY-MM-DD string and returns one
+      const nextDayString = getNextDay(value);
 
       setFormData((prev: OrderFormData) => ({
         ...prev,
@@ -193,14 +201,6 @@ export default function OrderForm() {
     });
   };
 
-  // Update formData when isServiceDiscount changes
-  useEffect(() => {
-    setFormData((prev) => ({
-      ...prev,
-      isServiceDiscount,
-    }));
-  }, [isServiceDiscount]);
-
   const handleNextStep = () => {
     // Clear any previous errors
     setError(null);
@@ -240,9 +240,9 @@ export default function OrderForm() {
 
     // Validate machine step
     if (step === "machine") {
-      // Check for availability error first
-      if (dateAvailabilityErrorRef.current) {
-        setError(dateAvailabilityErrorRef.current);
+      // Issue 4: dateAvailabilityError is now state, so this also blocks navigation
+      if (dateAvailabilityError) {
+        setError(dateAvailabilityError);
         return;
       }
     }
@@ -342,10 +342,9 @@ export default function OrderForm() {
                 <MachineStep
                   formData={formData}
                   onInputChange={handleInputChange}
-                  error={error}
-                  onAvailabilityError={(errorMsg) => {
-                    dateAvailabilityErrorRef.current = errorMsg;
-                  }}
+                  // Issue 4: pass availability error so MachineStep shows it immediately
+                  error={dateAvailabilityError || error}
+                  onAvailabilityError={setDateAvailabilityError}
                 />
               )}
 
@@ -372,7 +371,7 @@ export default function OrderForm() {
                   error={error}
                   agreedToTerms={agreedToTerms}
                   setAgreedToTerms={setAgreedToTerms}
-                  isServiceDiscount={isServiceDiscount}
+                  // Issue 3: pass setter that updates formData.isServiceDiscount directly
                   setIsServiceDiscount={setIsServiceDiscount}
                 />
               )}
@@ -391,19 +390,13 @@ export default function OrderForm() {
         {/* Sticky Pricing Summary - Desktop */}
         <div className="hidden lg:block lg:col-span-1">
           <div className="sticky top-8">
-            <PricingSummary
-              formData={formData}
-              isServiceDiscount={isServiceDiscount}
-            />
+            <PricingSummary formData={formData} />
           </div>
         </div>
 
         {/* Mobile Pricing Summary - Shows at bottom */}
         <div className="lg:hidden">
-          <PricingSummary
-            formData={formData}
-            isServiceDiscount={isServiceDiscount}
-          />
+          <PricingSummary formData={formData} />
         </div>
       </div>
     </div>

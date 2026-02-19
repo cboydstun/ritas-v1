@@ -1,7 +1,11 @@
-export const getNextDay = (date: Date): Date => {
-  const nextDay = new Date(date);
-  nextDay.setDate(nextDay.getDate() + 1);
-  return nextDay;
+export const getNextDay = (dateStr: string): string => {
+  // Append T00:00:00 so the date is parsed as local midnight, not UTC midnight
+  const date = new Date(dateStr + "T00:00:00");
+  date.setDate(date.getDate() + 1);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 };
 
 export const validateEmail = (email: string): boolean => {

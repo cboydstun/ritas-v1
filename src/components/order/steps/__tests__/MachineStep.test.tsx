@@ -43,6 +43,7 @@ const createMockFormData = (
     address: { street: "", city: "", state: "", zipCode: "" },
   },
   notes: "",
+  isServiceDiscount: false,
   ...overrides,
 });
 
