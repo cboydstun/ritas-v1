@@ -1,23 +1,3 @@
-import { machinePackages, mixerDetails, MixerType } from "@/lib/rental-data";
-
-export const calculatePrice = (
-  machineType: "single" | "double",
-  selectedMixers: MixerType[],
-): number => {
-  // Get base price based on machine type
-  const machine = machinePackages.find((m) => m.type === machineType);
-  if (!machine) return 89.95; // Default to single tank price
-
-  let totalPrice = machine.basePrice;
-
-  // Add price for each selected mixer
-  selectedMixers.forEach((mixer) => {
-    totalPrice += mixerDetails[mixer].price;
-  });
-
-  return totalPrice;
-};
-
 export const getNextDay = (date: Date): Date => {
   const nextDay = new Date(date);
   nextDay.setDate(nextDay.getDate() + 1);
@@ -90,45 +70,4 @@ export const formatDateForDisplay = (isoDate: string): string => {
   if (!isoDate) return "";
   const [year, month, day] = isoDate.split("-");
   return `${month}-${day}-${year}`;
-};
-
-interface PricingDetails {
-  rentalDays: number;
-  perDayRate: number;
-  deliveryFee: number;
-  subtotal: number;
-  salesTax: number;
-  processingFee: number;
-  total: number;
-}
-
-export const calculatePricing = (
-  price: number,
-  rentalDate: string,
-  returnDate: string,
-): PricingDetails => {
-  const rentalDays = Math.max(
-    1,
-    Math.ceil(
-      (new Date(returnDate + "T00:00:00").getTime() -
-        new Date(rentalDate + "T00:00:00").getTime()) /
-        (1000 * 60 * 60 * 24),
-    ),
-  );
-  const perDayRate = price;
-  const deliveryFee = 20;
-  const subtotal = perDayRate * rentalDays + deliveryFee;
-  const salesTax = subtotal * 0.0825;
-  const processingFee = subtotal * 0.03;
-  const total = subtotal + salesTax + processingFee;
-
-  return {
-    rentalDays,
-    perDayRate,
-    deliveryFee,
-    subtotal,
-    salesTax,
-    processingFee,
-    total,
-  };
 };

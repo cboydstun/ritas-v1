@@ -1,9 +1,10 @@
-import { ChangeEvent, useState } from "react";
+import { ChangeEvent, useState, useEffect } from "react";
 import { StepProps } from "../types";
 import { mixerDetails, machinePackages, MixerType } from "@/lib/rental-data";
 import { format } from "date-fns";
 import MachineCard from "./MachineCard";
 import MixerCard from "./MixerCard";
+import { useAvailabilityCheck } from "@/hooks/useAvailabilityCheck";
 
 // Define the sub-steps for the machine step
 enum MachineSubStep {
@@ -42,11 +43,48 @@ export default function MachineStep({
   formData,
   onInputChange,
   error,
+  onAvailabilityError,
 }: StepProps) {
   // Track the current sub-step
   const [currentSubStep, setCurrentSubStep] = useState<MachineSubStep>(
     MachineSubStep.MachineType,
   );
+
+  const { checkAvailability, isChecking } = useAvailabilityCheck();
+
+  // Re-check availability whenever the machine type changes (or on mount if
+  // a machine was pre-selected via URL params and dates are already set).
+  useEffect(() => {
+    if (!formData.rentalDate || !onAvailabilityError) return;
+
+    let cancelled = false;
+
+    const run = async () => {
+      const result = await checkAvailability(
+        formData.machineType,
+        formData.capacity,
+        formData.rentalDate,
+      );
+
+      if (cancelled) return;
+
+      if (!result.available) {
+        onAvailabilityError(
+          result.error ||
+            `Sorry, the ${formData.machineType} tank machine is not available on your selected date. Please choose a different machine or date.`,
+        );
+      } else {
+        onAvailabilityError(null);
+      }
+    };
+
+    run();
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData.machineType, formData.rentalDate]);
 
   // Helper function to create a properly typed synthetic event
   const createSyntheticEvent = (name: string, value: string | string[]) => {
@@ -55,16 +93,12 @@ export default function MachineStep({
     } as unknown as ChangeEvent<HTMLInputElement>;
   };
 
-  const handleMachineSelect = (
-    machineType: "single" | "double" | "triple",
-  ) => {
+  const handleMachineSelect = (machineType: "single" | "double" | "triple") => {
     const pkg = machinePackages.find((p) => p.type === machineType)!;
     // Update machineType
     onInputChange(createSyntheticEvent("machineType", machineType));
     // Update capacity via separate event
-    onInputChange(
-      createSyntheticEvent("capacity", String(pkg.capacity)),
-    );
+    onInputChange(createSyntheticEvent("capacity", String(pkg.capacity)));
     // Clear selected mixers when machine type changes
     onInputChange(createSyntheticEvent("selectedMixers", []));
     // Advance to mixer substep
@@ -99,7 +133,11 @@ export default function MachineStep({
           if (tankIndex === 0) {
             newMixers = [mixer, ...newMixers.slice(1)];
           } else if (tankIndex === 1) {
-            newMixers = [...newMixers.slice(0, 1), mixer, ...newMixers.slice(2)];
+            newMixers = [
+              ...newMixers.slice(0, 1),
+              mixer,
+              ...newMixers.slice(2),
+            ];
           } else {
             newMixers = [...newMixers.slice(0, 2), mixer];
           }
@@ -265,9 +303,7 @@ export default function MachineStep({
           </p>
 
           {formData.machineType === "single" && (
-            <div className="space-y-2">
-              {getMixerTankSection(0, "")}
-            </div>
+            <div className="space-y-2">{getMixerTankSection(0, "")}</div>
           )}
 
           {formData.machineType === "double" && (
@@ -285,6 +321,32 @@ export default function MachineStep({
             </div>
           )}
         </div>
+
+        {isChecking && (
+          <div className="flex items-center space-x-2 text-sm text-charcoal/60 dark:text-white/60 px-4 py-3">
+            <svg
+              className="animate-spin h-4 w-4 text-margarita"
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+            >
+              <circle
+                className="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                strokeWidth="4"
+              />
+              <path
+                className="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+              />
+            </svg>
+            <span>Checking availability for your dates…</span>
+          </div>
+        )}
 
         {error && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative">

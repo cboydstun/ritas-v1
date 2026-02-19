@@ -134,8 +134,10 @@ describe("Machine Type Definitions", () => {
 
   describe("MixerCardProps interface", () => {
     it("accepts a valid MixerCardProps object", () => {
-      const onChange = (mixerType: MixerType | null, tankIndex: number) =>
-        ({ mixerType, tankIndex });
+      const onChange = (mixerType: MixerType | null, tankIndex: number) => ({
+        mixerType,
+        tankIndex,
+      });
       const props: MixerCardProps = {
         mixerType: "margarita",
         name: "Margarita Mixer",
@@ -150,8 +152,10 @@ describe("Machine Type Definitions", () => {
     });
 
     it("accepts null mixerType for No Mixer option", () => {
-      const onChange = (mixerType: MixerType | null, tankIndex: number) =>
-        ({ mixerType, tankIndex });
+      const onChange = (mixerType: MixerType | null, tankIndex: number) => ({
+        mixerType,
+        tankIndex,
+      });
       const props: MixerCardProps = {
         mixerType: null,
         name: "No Mixer",

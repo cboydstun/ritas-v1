@@ -75,14 +75,12 @@ describe("useAvailabilityCheck", () => {
     it("includes machineType in the request URL", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: jest
-          .fn()
-          .mockResolvedValueOnce({
-            available: true,
-            machineType: "single",
-            capacity: 15,
-            date: "2024-01-15",
-          }),
+        json: jest.fn().mockResolvedValueOnce({
+          available: true,
+          machineType: "single",
+          capacity: 15,
+          date: "2024-01-15",
+        }),
       });
 
       const { result } = renderHook(() => useAvailabilityCheck());
@@ -99,14 +97,12 @@ describe("useAvailabilityCheck", () => {
     it("includes capacity in the request URL", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: jest
-          .fn()
-          .mockResolvedValueOnce({
-            available: true,
-            machineType: "single",
-            capacity: 15,
-            date: "2024-01-15",
-          }),
+        json: jest.fn().mockResolvedValueOnce({
+          available: true,
+          machineType: "single",
+          capacity: 15,
+          date: "2024-01-15",
+        }),
       });
 
       const { result } = renderHook(() => useAvailabilityCheck());
@@ -123,14 +119,12 @@ describe("useAvailabilityCheck", () => {
     it("includes date in the request URL", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: jest
-          .fn()
-          .mockResolvedValueOnce({
-            available: true,
-            machineType: "single",
-            capacity: 15,
-            date: "2024-01-15",
-          }),
+        json: jest.fn().mockResolvedValueOnce({
+          available: true,
+          machineType: "single",
+          capacity: 15,
+          date: "2024-01-15",
+        }),
       });
 
       const { result } = renderHook(() => useAvailabilityCheck());
@@ -171,14 +165,12 @@ describe("useAvailabilityCheck", () => {
     it("sets isChecking to false after successful fetch", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: jest
-          .fn()
-          .mockResolvedValueOnce({
-            available: true,
-            machineType: "single",
-            capacity: 15,
-            date: "2024-01-15",
-          }),
+        json: jest.fn().mockResolvedValueOnce({
+          available: true,
+          machineType: "single",
+          capacity: 15,
+          date: "2024-01-15",
+        }),
       });
 
       const { result } = renderHook(() => useAvailabilityCheck());
@@ -193,14 +185,12 @@ describe("useAvailabilityCheck", () => {
     it("keeps error as null on successful fetch", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: jest
-          .fn()
-          .mockResolvedValueOnce({
-            available: true,
-            machineType: "single",
-            capacity: 15,
-            date: "2024-01-15",
-          }),
+        json: jest.fn().mockResolvedValueOnce({
+          available: true,
+          machineType: "single",
+          capacity: 15,
+          date: "2024-01-15",
+        }),
       });
 
       const { result } = renderHook(() => useAvailabilityCheck());
@@ -344,14 +334,12 @@ describe("useAvailabilityCheck", () => {
       // Second call succeeds
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: jest
-          .fn()
-          .mockResolvedValueOnce({
-            available: true,
-            machineType: "single",
-            capacity: 15,
-            date: "2024-01-15",
-          }),
+        json: jest.fn().mockResolvedValueOnce({
+          available: true,
+          machineType: "single",
+          capacity: 15,
+          date: "2024-01-15",
+        }),
       });
 
       await act(async () => {

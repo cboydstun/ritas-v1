@@ -91,9 +91,15 @@ export default function OrderForm() {
   const initialSelectedMixers = initialMixer ? [initialMixer as MixerType] : [];
 
   // Initialize form state with URL parameters
+  const capacityMap: Record<string, 15 | 30 | 45> = {
+    single: 15,
+    double: 30,
+    triple: 45,
+  };
+
   const [formData, setFormData] = useState<OrderFormData>({
     machineType: initialMachineType,
-    capacity: initialMachineType === "double" ? 30 : 15,
+    capacity: capacityMap[initialMachineType] ?? 15,
     selectedMixers: initialSelectedMixers,
     selectedExtras: [],
     price: calculatePrice(initialMachineType, initialSelectedMixers[0]).total,
@@ -116,22 +122,6 @@ export default function OrderForm() {
     isServiceDiscount: false,
   });
 
-  // Helper function to calculate rental days - used in handleInputChange
-  const calculateRentalDays = (
-    rentalDate: string,
-    returnDate: string,
-  ): number => {
-    if (!rentalDate || !returnDate) return 1;
-
-    const days = Math.ceil(
-      (new Date(returnDate).getTime() - new Date(rentalDate).getTime()) /
-        (1000 * 60 * 60 * 24),
-    );
-
-    // Always return at least 1 day
-    return Math.max(1, days);
-  };
-
   const handleInputChange = (
     e: React.ChangeEvent<
       HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
@@ -143,10 +133,6 @@ export default function OrderForm() {
     if (name === "rentalDate") {
       const nextDay = getNextDay(new Date(value));
       const nextDayString = nextDay.toISOString().split("T")[0];
-
-      // Use calculateRentalDays to get the rental duration
-      const days = calculateRentalDays(value, nextDayString);
-      console.log(`Rental duration: ${days} day(s)`);
 
       setFormData((prev: OrderFormData) => ({
         ...prev,
@@ -189,46 +175,23 @@ export default function OrderForm() {
     setFormData((prev: OrderFormData) => {
       const newData = { ...prev, [name]: value };
 
-      // Update price when machine type or mixer type changes
-      if (name === "machineType" || name === "selectedMixers") {
-        const newPrice = calculatePrice(
-          name === "machineType"
-            ? (value as "single" | "double" | "triple")
-            : prev.machineType,
-          name === "selectedMixers"
-            ? (value as unknown as MixerType[])[0]
-            : prev.selectedMixers[0],
-        ).total;
-
-        // Update capacity based on machine type
-        let newCapacity = prev.capacity;
-        if (name === "machineType") {
-          if (value === "single") {
-            newCapacity = 15;
-          } else if (value === "double") {
-            newCapacity = 30;
-          } else if (value === "triple") {
-            newCapacity = 45;
-          }
-        }
-
+      // Keep capacity in sync when machineType changes directly via this handler
+      // (MachineStep also fires a dedicated "capacity" event, but this is a safety net)
+      if (name === "machineType") {
+        const capacityMap: Record<string, 15 | 30 | 45> = {
+          single: 15,
+          double: 30,
+          triple: 45,
+        };
         return {
           ...newData,
-          price: newPrice,
-          capacity: newCapacity,
+          capacity: capacityMap[value] ?? prev.capacity,
         };
       }
 
       return newData;
     });
   };
-
-  // Reset service discount only when not on review step
-  useEffect(() => {
-    if (step !== "review") {
-      setIsServiceDiscount(false);
-    }
-  }, [step]);
 
   // Update formData when isServiceDiscount changes
   useEffect(() => {

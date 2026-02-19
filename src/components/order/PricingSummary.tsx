@@ -1,5 +1,5 @@
 import { OrderFormData } from "./types";
-import { MixerType, mixerDetails } from "@/lib/rental-data";
+import { MixerType } from "@/lib/rental-data";
 import { calculatePrice, formatPrice } from "@/lib/pricing";
 
 interface PricingSummaryProps {
@@ -18,14 +18,17 @@ export function PricingSummary({
 
   const perDayRate = priceBreakdown.basePrice + priceBreakdown.mixerPrice;
 
-  const rentalDays = Math.max(
-    1,
-    Math.ceil(
-      (new Date(formData.returnDate || Date.now()).getTime() -
-        new Date(formData.rentalDate || Date.now()).getTime()) /
-        (1000 * 60 * 60 * 24),
-    ),
-  );
+  const rentalDays =
+    formData.rentalDate && formData.returnDate
+      ? Math.max(
+          1,
+          Math.ceil(
+            (new Date(formData.returnDate + "T00:00:00").getTime() -
+              new Date(formData.rentalDate + "T00:00:00").getTime()) /
+              (1000 * 60 * 60 * 24),
+          ),
+        )
+      : 1;
 
   // Calculate extras total
   const extrasTotal = formData.selectedExtras.reduce(

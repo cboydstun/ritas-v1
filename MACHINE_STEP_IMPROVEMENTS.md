@@ -7,11 +7,12 @@
 ## 📋 **Phase 0: Setup & Planning**
 
 ### **Test File Structure**
+
 ```
 src/components/order/steps/__tests__/
 ├── MachineStep.test.tsx           # Main component tests
 ├── MachineCard.test.tsx           # Machine card component
-├── MixerCard.test.tsx             # Mixer card component  
+├── MixerCard.test.tsx             # Mixer card component
 ├── MachineComparison.test.tsx     # Comparison table
 ├── SmartRecommendations.test.tsx  # Recommendation engine
 └── __mocks__/
@@ -20,6 +21,7 @@ src/components/order/steps/__tests__/
 ```
 
 ### **Testing Tools Required**
+
 - Jest (already installed)
 - React Testing Library
 - @testing-library/user-event (for interactions)
@@ -31,9 +33,11 @@ src/components/order/steps/__tests__/
 ## 🔴 **Phase 1: RED - Write Failing Tests First**
 
 ### **1.1 Type Definitions Tests**
+
 **File:** `src/types/__tests__/machine.test.ts`
 
 **Test Suite: Machine Type Definitions**
+
 - ✅ Test: MachineConfig interface has required fields
 - ✅ Test: MachineType union type accepts valid values
 - ✅ Test: MachineAvailability interface structure
@@ -41,6 +45,7 @@ src/components/order/steps/__tests__/
 - ✅ Test: Type guards for machine validation
 
 **What to test:**
+
 - All required properties exist
 - Optional properties are correctly typed
 - Enums have correct values
@@ -49,9 +54,11 @@ src/components/order/steps/__tests__/
 ---
 
 ### **1.2 Machine Card Component Tests**
+
 **File:** `src/components/order/steps/__tests__/MachineCard.test.tsx`
 
 **Test Suite: MachineCard Rendering**
+
 - ✅ Test: Renders machine image
 - ✅ Test: Displays machine name (15L Single Tank)
 - ✅ Test: Shows guest capacity (20-30 guests)
@@ -62,6 +69,7 @@ src/components/order/steps/__tests__/
 - ✅ Test: Applies disabled styling when isAvailable=false
 
 **Test Suite: MachineCard Interactions**
+
 - ✅ Test: Calls onSelect with machineType on click
 - ✅ Test: Disabled card doesn't call onSelect
 - ✅ Test: Hover effect applies on mouse enter
@@ -69,6 +77,7 @@ src/components/order/steps/__tests__/
 - ✅ Test: Accessibility - has proper ARIA labels
 
 **Test Suite: MachineCard Edge Cases**
+
 - ✅ Test: Handles missing image gracefully
 - ✅ Test: Handles undefined price
 - ✅ Test: Renders without optional props
@@ -76,9 +85,11 @@ src/components/order/steps/__tests__/
 ---
 
 ### **1.3 Mixer Card Component Tests**
+
 **File:** `src/components/order/steps/__tests__/MixerCard.test.tsx`
 
 **Test Suite: MixerCard Rendering**
+
 - ✅ Test: Displays mixer image
 - ✅ Test: Shows mixer name
 - ✅ Test: Displays price with + symbol
@@ -87,6 +98,7 @@ src/components/order/steps/__tests__/
 - ✅ Test: Shows "No Mixer" option differently
 
 **Test Suite: MixerCard Interactions**
+
 - ✅ Test: Toggles selection on click
 - ✅ Test: Prevents multiple selections for single tank
 - ✅ Test: Allows multiple selections for multi-tank
@@ -96,9 +108,11 @@ src/components/order/steps/__tests__/
 ---
 
 ### **1.4 Machine Comparison Table Tests**
+
 **File:** `src/components/order/steps/__tests__/MachineComparison.test.tsx`
 
 **Test Suite: Comparison Table Rendering**
+
 - ✅ Test: Renders all machine types
 - ✅ Test: Displays all comparison features
 - ✅ Test: Shows checkmarks for included features
@@ -106,6 +120,7 @@ src/components/order/steps/__tests__/
 - ✅ Test: Mobile responsive - collapses correctly
 
 **Test Suite: Comparison Logic**
+
 - ✅ Test: Sorts features by importance
 - ✅ Test: Compares numeric values correctly
 - ✅ Test: Handles null/undefined feature values
@@ -113,9 +128,11 @@ src/components/order/steps/__tests__/
 ---
 
 ### **1.5 Smart Recommendations Tests**
+
 **File:** `src/components/order/steps/__tests__/SmartRecommendations.test.tsx`
 
 **Test Suite: Recommendation Algorithm**
+
 - ✅ Test: Suggests single tank for <30 guests
 - ✅ Test: Suggests double tank for 30-60 guests
 - ✅ Test: Suggests triple tank for 60+ guests
@@ -125,6 +142,7 @@ src/components/order/steps/__tests__/
 - ✅ Test: Returns null for invalid inputs
 
 **Test Suite: Recommendation Display**
+
 - ✅ Test: Shows recommendation message
 - ✅ Test: Displays relevant icon
 - ✅ Test: Allows dismissing recommendation
@@ -133,9 +151,11 @@ src/components/order/steps/__tests__/
 ---
 
 ### **1.6 Availability Indicator Tests**
+
 **File:** `src/components/order/steps/__tests__/AvailabilityIndicator.test.tsx`
 
 **Test Suite: Availability Display**
+
 - ✅ Test: Shows green checkmark when available
 - ✅ Test: Shows yellow warning for limited stock
 - ✅ Test: Shows red X when unavailable
@@ -143,6 +163,7 @@ src/components/order/steps/__tests__/
 - ✅ Test: Shows loading state while checking
 
 **Test Suite: Availability Logic**
+
 - ✅ Test: Fetches availability for selected dates
 - ✅ Test: Caches availability data
 - ✅ Test: Refetches on date change
@@ -152,9 +173,11 @@ src/components/order/steps/__tests__/
 ---
 
 ### **1.7 Main MachineStep Integration Tests**
+
 **File:** `src/components/order/steps/__tests__/MachineStep.test.tsx`
 
 **Test Suite: Component Initialization**
+
 - ✅ Test: Renders with default props
 - ✅ Test: Pre-selects machine from formData
 - ✅ Test: Pre-selects mixers from formData
@@ -162,6 +185,7 @@ src/components/order/steps/__tests__/
 - ✅ Test: Initializes at correct substep
 
 **Test Suite: Machine Selection Flow**
+
 - ✅ Test: Selecting machine updates formData
 - ✅ Test: Changes machine image on selection
 - ✅ Test: Progresses to mixer substep
@@ -169,6 +193,7 @@ src/components/order/steps/__tests__/
 - ✅ Test: Validates machine selection before next
 
 **Test Suite: Mixer Selection Flow**
+
 - ✅ Test: Single tank allows one mixer
 - ✅ Test: Double tank allows two mixers
 - ✅ Test: Triple tank allows three mixers
@@ -177,6 +202,7 @@ src/components/order/steps/__tests__/
 - ✅ Test: Updates price with mixer selection
 
 **Test Suite: Multi-Tank Tank Selection**
+
 - ✅ Test: Shows tank tabs for multi-tank
 - ✅ Test: Switches between tanks
 - ✅ Test: Maintains selections per tank
@@ -184,6 +210,7 @@ src/components/order/steps/__tests__/
 - ✅ Test: Validates all tanks have selections
 
 **Test Suite: Progress & Navigation**
+
 - ✅ Test: Shows substep progress dots
 - ✅ Test: Highlights current substep
 - ✅ Test: Advances substep on selection
@@ -191,12 +218,14 @@ src/components/order/steps/__tests__/
 - ✅ Test: Validates before allowing next step
 
 **Test Suite: Error Handling**
+
 - ✅ Test: Shows error for no machine selected
 - ✅ Test: Shows error for incomplete mixer selection
 - ✅ Test: Clears errors on valid selection
 - ✅ Test: Prevents progression with errors
 
 **Test Suite: Accessibility**
+
 - ✅ Test: All interactive elements have labels
 - ✅ Test: Keyboard navigation works
 - ✅ Test: Focus management is correct
@@ -208,12 +237,14 @@ src/components/order/steps/__tests__/
 ## 🟢 **Phase 2: GREEN - Implement Minimum Code to Pass**
 
 ### **2.1 Create Type Definitions**
+
 **File:** `src/types/machine.ts`
 
 **What to define:**
+
 - MachineType enum or union type
 - MachineConfig interface
-- MachineAvailability interface  
+- MachineAvailability interface
 - MachineRecommendation interface
 - MixerCardProps interface
 - MachineCardProps interface
@@ -223,9 +254,11 @@ src/components/order/steps/__tests__/
 ---
 
 ### **2.2 Create MachineCard Component**
+
 **File:** `src/components/order/steps/MachineCard.tsx`
 
 **Implementation order:**
+
 1. Create basic component structure
 2. Add props interface
 3. Render machine image
@@ -240,9 +273,11 @@ src/components/order/steps/__tests__/
 ---
 
 ### **2.3 Create MixerCard Component**
+
 **File:** `src/components/order/steps/MixerCard.tsx`
 
 **Implementation order:**
+
 1. Create component structure
 2. Render mixer image
 3. Add checkbox
@@ -256,13 +291,16 @@ src/components/order/steps/__tests__/
 ---
 
 ### **2.4 Create Supporting Components**
+
 **In order:**
+
 1. AvailabilityIndicator
 2. MachineComparison
 3. SmartRecommendations
 4. TankSelector (for multi-tank)
 
 **Each component:**
+
 - Write component
 - Run its test suite
 - Verify all tests pass
@@ -271,9 +309,11 @@ src/components/order/steps/__tests__/
 ---
 
 ### **2.5 Refactor MachineStep**
+
 **File:** `src/components/order/steps/MachineStep.tsx`
 
 **Implementation order:**
+
 1. Replace dropdown with card layout
 2. Integrate MachineCard components
 3. Add MixerCard components
@@ -289,9 +329,11 @@ src/components/order/steps/__tests__/
 ## 🔵 **Phase 3: REFACTOR - Improve Code Quality**
 
 ### **3.1 Extract Custom Hooks**
+
 **File:** `src/hooks/__tests__/useMachineSelection.test.ts`
 
 **Hook Tests:**
+
 - ✅ Test: Returns machine selection state
 - ✅ Test: Handles selection changes
 - ✅ Test: Validates selections
@@ -300,6 +342,7 @@ src/components/order/steps/__tests__/
 **File:** `src/hooks/__tests__/useAvailability.test.ts`
 
 **Hook Tests:**
+
 - ✅ Test: Fetches availability data
 - ✅ Test: Caches results
 - ✅ Test: Handles loading states
@@ -310,9 +353,11 @@ src/components/order/steps/__tests__/
 ---
 
 ### **3.2 Performance Optimization Tests**
+
 **File:** `src/components/order/steps/__tests__/MachineStep.performance.test.tsx`
 
 **Performance Tests:**
+
 - ✅ Test: Component memoization works
 - ✅ Test: No unnecessary re-renders
 - ✅ Test: Large lists virtualized
@@ -323,9 +368,11 @@ src/components/order/steps/__tests__/
 ---
 
 ### **3.3 Integration Tests**
+
 **File:** `src/components/order/__tests__/MachineStep.integration.test.tsx`
 
 **End-to-End Scenarios:**
+
 - ✅ Test: Complete machine + mixer selection flow
 - ✅ Test: Change machine after mixer selection
 - ✅ Test: Navigate back from next step
@@ -337,13 +384,16 @@ src/components/order/steps/__tests__/
 ## 📊 **Phase 4: Test Coverage & Quality**
 
 ### **4.1 Coverage Requirements**
+
 **Minimum thresholds:**
+
 - Line coverage: 90%
 - Branch coverage: 85%
 - Function coverage: 90%
 - Statement coverage: 90%
 
 **Generate report:**
+
 ```bash
 npm test -- --coverage
 ```
@@ -353,6 +403,7 @@ npm test -- --coverage
 ### **4.2 Test Quality Checks**
 
 **For each test:**
+
 - ✅ Has descriptive name
 - ✅ Tests one thing
 - ✅ Arrange-Act-Assert pattern
@@ -363,13 +414,16 @@ npm test -- --coverage
 ---
 
 ### **4.3 Snapshot Tests**
+
 **When to use:**
+
 - Component rendering (visual regression)
 - Props variations
 - Different states
 - Error messages
 
 **Update strategy:**
+
 - Review snapshots on change
 - Don't blindly update
 - Keep snapshots small
@@ -379,7 +433,9 @@ npm test -- --coverage
 ## 🔄 **Phase 5: Continuous Testing**
 
 ### **5.1 Test Scripts**
+
 **package.json additions:**
+
 ```
 "test:watch" - Watch mode during development
 "test:coverage" - Generate coverage report
@@ -390,7 +446,9 @@ npm test -- --coverage
 ---
 
 ### **5.2 Pre-commit Hooks**
+
 **Using Husky:**
+
 1. Run affected tests
 2. Check coverage thresholds
 3. Lint test files
@@ -399,7 +457,9 @@ npm test -- --coverage
 ---
 
 ### **5.3 CI/CD Integration**
+
 **GitHub Actions workflow:**
+
 1. Run all tests on PR
 2. Generate coverage report
 3. Comment coverage on PR
@@ -410,26 +470,31 @@ npm test -- --coverage
 ## 🎯 **TDD Best Practices Applied**
 
 ### **1. Write Tests First**
+
 - Never write code before test
 - Think through requirements
 - Design component API via tests
 
 ### **2. Minimal Implementation**
+
 - Write simplest code to pass test
 - No premature optimization
 - Refactor only when green
 
 ### **3. Test Behavior, Not Implementation**
+
 - Test what user sees/does
 - Don't test internal state
 - Don't test implementation details
 
 ### **4. Fast Feedback Loop**
+
 - Run tests frequently
 - Use watch mode
 - Fix failures immediately
 
 ### **5. Maintainable Tests**
+
 - Clear test names
 - Shared test utilities
 - DRY principles
@@ -440,21 +505,27 @@ npm test -- --coverage
 ## 📦 **Mock Strategies**
 
 ### **API Mocking**
+
 **Using MSW:**
+
 - Mock /api/v1/availability
 - Return different scenarios
 - Test error states
 - Test loading states
 
 ### **Component Mocking**
+
 **When to mock:**
+
 - External dependencies
 - Heavy components
 - Third-party libraries
 - Not sibling components
 
 ### **Data Mocking**
+
 **Factory pattern:**
+
 - Machine data factory
 - Mixer data factory
 - Availability data factory
@@ -465,6 +536,7 @@ npm test -- --coverage
 ## ✅ **Definition of Done**
 
 **A feature is complete when:**
+
 1. ✅ All tests written first (RED)
 2. ✅ Minimum code implemented (GREEN)
 3. ✅ Code refactored (REFACTOR)
@@ -481,16 +553,19 @@ npm test -- --coverage
 ## 📈 **Estimated Timeline**
 
 **Week 1: Testing Infrastructure**
+
 - Day 1-2: Write type tests & implement types
 - Day 3-4: Write MachineCard tests & implement
 - Day 5: Write MixerCard tests & implement
 
 **Week 2: Core Features**
+
 - Day 1-2: Write comparison table tests & implement
-- Day 3-4: Write recommendation tests & implement  
+- Day 3-4: Write recommendation tests & implement
 - Day 5: Write availability tests & implement
 
 **Week 3: Integration & Polish**
+
 - Day 1-2: Write main component integration tests
 - Day 3: Refactor and optimize
 - Day 4: Performance and accessibility
@@ -506,9 +581,9 @@ npm test -- --coverage
 4. **Repeat** → For each feature/requirement
 
 **Benefits:**
+
 - ✅ Better design
 - ✅ Living documentation
 - ✅ Confidence to refactor
 - ✅ Fewer bugs
 - ✅ Faster development (long-term)
-

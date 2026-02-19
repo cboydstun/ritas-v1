@@ -313,7 +313,9 @@ describe("MachineStep", () => {
       );
       expect(screen.getByText(/Margarita Mixer/i)).toBeInTheDocument();
       expect(screen.getByText(/Piña Colada Mixer/i)).toBeInTheDocument();
-      expect(screen.getByText(/Strawberry Daiquiri Mixer/i)).toBeInTheDocument();
+      expect(
+        screen.getByText(/Strawberry Daiquiri Mixer/i),
+      ).toBeInTheDocument();
       expect(screen.getByText(/Kool Aid/i)).toBeInTheDocument();
     });
 

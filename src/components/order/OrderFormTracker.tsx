@@ -81,7 +81,14 @@ export default function OrderFormTracker({
   // Extract relevant form data for each step (without sensitive information)
   const getFormContextForStep = (step: OrderStep, formData: OrderFormData) => {
     switch (step) {
-      case "delivery":
+      case "date":
+        return {
+          rentalDate: formData.rentalDate,
+          returnDate: formData.returnDate,
+          rentalTime: formData.rentalTime,
+          returnTime: formData.returnTime,
+        };
+      case "machine":
         return {
           machineType: formData.machineType,
           capacity: formData.capacity,
@@ -105,10 +112,6 @@ export default function OrderFormTracker({
         return {
           totalPrice: formData.price,
           hasExtras: (formData.selectedExtras?.length || 0) > 0,
-        };
-      case "payment":
-        return {
-          totalPrice: formData.price,
         };
       default:
         return {};
