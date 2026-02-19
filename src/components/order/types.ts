@@ -1,6 +1,6 @@
 import { MixerType } from "@/lib/rental-data";
 
-export type OrderStep = "delivery" | "details" | "extras" | "review";
+export type OrderStep = "date" | "machine" | "details" | "extras" | "review";
 
 export interface ExtraItem {
   id: string;
@@ -53,7 +53,8 @@ export interface StepProps {
 }
 
 export const steps: { id: OrderStep; label: string }[] = [
-  { id: "delivery", label: "Your Delivery" },
+  { id: "date", label: "Select Dates" },
+  { id: "machine", label: "Your Machine" },
   { id: "details", label: "Your Details" },
   { id: "extras", label: "Party Extras" },
   { id: "review", label: "Review & Confirm" },

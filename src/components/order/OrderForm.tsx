@@ -25,8 +25,16 @@ import { NavigationButtons } from "./NavigationButtons";
 import { PricingSummary } from "./PricingSummary";
 
 // Dynamically import step components with proper typing
-const DeliveryStep = dynamic<StepProps>(
-  () => import("./steps/DeliveryStep").then((mod) => mod.default),
+const DateSelectionStep = dynamic<StepProps>(
+  () => import("./steps/DateSelectionStep").then((mod) => mod.default),
+  {
+    loading: () => <StepSkeleton />,
+    ssr: false,
+  },
+);
+
+const MachineStep = dynamic<StepProps>(
+  () => import("./steps/MachineStep").then((mod) => mod.default),
   {
     loading: () => <StepSkeleton />,
     ssr: false,
@@ -70,7 +78,7 @@ const StepSkeleton = () => (
 
 export default function OrderForm() {
   const searchParams = useSearchParams();
-  const [step, setStep] = useState<OrderStep>("delivery");
+  const [step, setStep] = useState<OrderStep>("date");
   const [error, setError] = useState<string | null>(null);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [isServiceDiscount, setIsServiceDiscount] = useState(false);
@@ -239,16 +247,14 @@ export default function OrderForm() {
       setAgreedToTerms(false);
     }
 
-    // Validate delivery step
-    if (step === "delivery") {
-      // Check for availability error first
-      if (dateAvailabilityErrorRef.current) {
-        setError(dateAvailabilityErrorRef.current);
-        return;
-      }
-
+    // Validate date step
+    if (step === "date") {
       if (!formData.rentalDate) {
         setError("Please select a delivery date");
+        return;
+      }
+      if (!formData.returnDate) {
+        setError("Please select a return date");
         return;
       }
       if (!formData.rentalTime) {
@@ -259,16 +265,21 @@ export default function OrderForm() {
         setError("Delivery time must be between 8:00 AM and 6:00 PM");
         return;
       }
-      if (!formData.returnDate) {
-        setError("Please select a pick up date");
-        return;
-      }
       if (!formData.returnTime) {
         setError("Please select a pick up time");
         return;
       }
       if (!validateDeliveryTime(formData.returnTime)) {
         setError("Pick up time must be between 8:00 AM and 6:00 PM");
+        return;
+      }
+    }
+
+    // Validate machine step
+    if (step === "machine") {
+      // Check for availability error first
+      if (dateAvailabilityErrorRef.current) {
+        setError(dateAvailabilityErrorRef.current);
         return;
       }
     }
@@ -356,8 +367,16 @@ export default function OrderForm() {
 
             {/* Form Steps with Suspense boundary */}
             <Suspense fallback={<StepSkeleton />}>
-              {step === "delivery" && (
-                <DeliveryStep
+              {step === "date" && (
+                <DateSelectionStep
+                  formData={formData}
+                  onInputChange={handleInputChange}
+                  error={error}
+                />
+              )}
+
+              {step === "machine" && (
+                <MachineStep
                   formData={formData}
                   onInputChange={handleInputChange}
                   error={error}

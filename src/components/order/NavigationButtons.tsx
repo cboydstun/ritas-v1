@@ -18,7 +18,7 @@ export function NavigationButtons({
       <button
         onClick={onPrevious}
         className={`px-8 py-3 rounded-xl font-bold transition-all duration-300 ${
-          currentStep === "delivery"
+          currentStep === "date"
             ? "invisible"
             : "bg-light dark:bg-charcoal/30 text-charcoal dark:text-white hover:bg-light/80 dark:hover:bg-charcoal/50 hover:-translate-y-1"
         }`}
