@@ -22,6 +22,7 @@ import {
 import { calculatePrice } from "@/lib/pricing";
 import { ProgressBar } from "./ProgressBar";
 import { NavigationButtons } from "./NavigationButtons";
+import { PricingSummary } from "./PricingSummary";
 
 // Dynamically import step components with proper typing
 const DeliveryStep = dynamic<StepProps>(
@@ -56,14 +57,6 @@ const ReviewStep = dynamic<StepProps>(
   },
 );
 
-const PaymentStep = dynamic<StepProps>(
-  () => import("./steps/PaymentStep").then((mod) => mod.default),
-  {
-    loading: () => <StepSkeleton />,
-    ssr: false,
-  },
-);
-
 // Loading skeleton for step components
 const StepSkeleton = () => (
   <div className="animate-pulse space-y-4">
@@ -82,7 +75,6 @@ export default function OrderForm() {
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [isServiceDiscount, setIsServiceDiscount] = useState(false);
   const dateAvailabilityErrorRef = useRef<string | null>(null);
-  const [nextButtonClickCount, setNextButtonClickCount] = useState<number>(0);
 
   // Get initial machine type and mixer from URL once
   const initialMachineType =
@@ -223,14 +215,9 @@ export default function OrderForm() {
     });
   };
 
-  // Reset click counter when component mounts or when step changes
+  // Reset service discount only when not on review step
   useEffect(() => {
-    setNextButtonClickCount(0);
-  }, [step]);
-
-  // Reset service discount only when moving to steps before review
-  useEffect(() => {
-    if (step !== "review" && step !== "payment") {
+    if (step !== "review") {
       setIsServiceDiscount(false);
     }
   }, [step]);
@@ -244,9 +231,6 @@ export default function OrderForm() {
   }, [isServiceDiscount]);
 
   const handleNextStep = () => {
-    // Increment the click counter
-    setNextButtonClickCount((prevCount) => prevCount + 1);
-
     // Clear any previous errors
     setError(null);
 
@@ -331,15 +315,9 @@ export default function OrderForm() {
         setError("Please enter a valid ZIP code (e.g., 12345 or 12345-6789)");
         return;
       }
-      // Check if we should bypass ZIP code validation (after 5 clicks)
-      const shouldBypassZipValidation = nextButtonClickCount >= 5;
-
-      if (
-        !shouldBypassZipValidation &&
-        !isBexarCountyZipCode(formData.customer.address.zipCode)
-      ) {
+      if (!isBexarCountyZipCode(formData.customer.address.zipCode)) {
         setError(
-          "We only deliver within Bexar County, TX. Please enter a valid Bexar County ZIP code.",
+          "We only deliver within Bexar County, TX. Please enter a valid Bexar County ZIP code, or contact us for special delivery requests.",
         );
         return;
       }
@@ -352,9 +330,6 @@ export default function OrderForm() {
   };
 
   const handlePreviousStep = () => {
-    // Reset the click counter when going back
-    setNextButtonClickCount(0);
-
     const currentIndex = steps.findIndex((s) => s.id === step);
     if (currentIndex > 0) {
       if (step === "review") {
@@ -365,75 +340,89 @@ export default function OrderForm() {
   };
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-8">
+    <div className="max-w-7xl mx-auto px-4 py-8">
       {/* Track form step changes */}
       <OrderFormTracker currentStep={step} formData={formData} />
 
       <ProgressBar currentStep={step} />
 
-      <div className="bg-white/90 dark:bg-charcoal/50 backdrop-blur-lg rounded-2xl shadow-xl p-8 relative overflow-hidden">
-        {/* Decorative Elements */}
-        <div className="absolute -top-24 -right-24 w-48 h-48 bg-margarita/10 dark:bg-margarita/5 rounded-full blur-2xl" />
-        <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-orange/10 dark:bg-orange/5 rounded-full blur-2xl" />
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Main Form */}
+        <div className="lg:col-span-2">
+          <div className="bg-white/90 dark:bg-charcoal/50 backdrop-blur-lg rounded-2xl shadow-xl p-8 relative overflow-hidden">
+            {/* Decorative Elements */}
+            <div className="absolute -top-24 -right-24 w-48 h-48 bg-margarita/10 dark:bg-margarita/5 rounded-full blur-2xl" />
+            <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-orange/10 dark:bg-orange/5 rounded-full blur-2xl" />
 
-        {/* Form Steps with Suspense boundary */}
-        <Suspense fallback={<StepSkeleton />}>
-          {step === "delivery" && (
-            <DeliveryStep
-              formData={formData}
-              onInputChange={handleInputChange}
-              error={error}
-              onAvailabilityError={(errorMsg) => {
-                dateAvailabilityErrorRef.current = errorMsg;
-              }}
+            {/* Form Steps with Suspense boundary */}
+            <Suspense fallback={<StepSkeleton />}>
+              {step === "delivery" && (
+                <DeliveryStep
+                  formData={formData}
+                  onInputChange={handleInputChange}
+                  error={error}
+                  onAvailabilityError={(errorMsg) => {
+                    dateAvailabilityErrorRef.current = errorMsg;
+                  }}
+                />
+              )}
+
+              {step === "details" && (
+                <DetailsStep
+                  formData={formData}
+                  onInputChange={handleInputChange}
+                  error={error}
+                />
+              )}
+
+              {step === "extras" && (
+                <ExtrasStep
+                  formData={formData}
+                  onInputChange={handleInputChange}
+                  error={error}
+                />
+              )}
+
+              {step === "review" && (
+                <ReviewStep
+                  formData={formData}
+                  onInputChange={handleInputChange}
+                  error={error}
+                  agreedToTerms={agreedToTerms}
+                  setAgreedToTerms={setAgreedToTerms}
+                  isServiceDiscount={isServiceDiscount}
+                  setIsServiceDiscount={setIsServiceDiscount}
+                />
+              )}
+            </Suspense>
+
+            {/* Navigation Buttons */}
+            <NavigationButtons
+              currentStep={step}
+              onPrevious={handlePreviousStep}
+              onNext={handleNextStep}
+              isNextDisabled={step === "review" && !agreedToTerms}
             />
-          )}
+          </div>
+        </div>
 
-          {step === "details" && (
-            <DetailsStep
+        {/* Sticky Pricing Summary - Desktop */}
+        <div className="hidden lg:block lg:col-span-1">
+          <div className="sticky top-8">
+            <PricingSummary
               formData={formData}
-              onInputChange={handleInputChange}
-              error={error}
-            />
-          )}
-
-          {step === "extras" && (
-            <ExtrasStep
-              formData={formData}
-              onInputChange={handleInputChange}
-              error={error}
-            />
-          )}
-
-          {step === "review" && (
-            <ReviewStep
-              formData={formData}
-              onInputChange={handleInputChange}
-              error={error}
-              agreedToTerms={agreedToTerms}
-              setAgreedToTerms={setAgreedToTerms}
               isServiceDiscount={isServiceDiscount}
-              setIsServiceDiscount={setIsServiceDiscount}
             />
-          )}
+          </div>
+        </div>
 
-          {step === "payment" && (
-            <PaymentStep
-              formData={formData}
-              onInputChange={handleInputChange}
-              error={error}
-              isServiceDiscount={isServiceDiscount}
-            />
-          )}
-        </Suspense>
-
-        {/* Navigation Buttons */}
-        <NavigationButtons
-          currentStep={step}
-          onPrevious={handlePreviousStep}
-          onNext={handleNextStep}
-          isNextDisabled={step === "review" && !agreedToTerms}
-        />
+        {/* Mobile Pricing Summary - Shows at bottom */}
+        <div className="lg:hidden">
+          <PricingSummary
+            formData={formData}
+            isServiceDiscount={isServiceDiscount}
+          />
+        </div>
       </div>
     </div>
   );

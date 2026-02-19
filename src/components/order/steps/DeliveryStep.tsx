@@ -625,9 +625,34 @@ export default function DeliveryStep({
             )}
 
             {!isChecking && formData.rentalDate && !dateAvailabilityError && (
-              <p className="text-sm text-green-500 mt-1">
-                ✓ Machine available on this date
-              </p>
+              <div className="mt-3 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded-lg">
+                <div className="flex items-start space-x-2">
+                  <svg
+                    className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-green-800 dark:text-green-200">
+                      Great choice! This machine is available
+                    </p>
+                    <p className="text-xs text-green-700 dark:text-green-300 mt-1">
+                      {formData.machineType === "single" &&
+                        "Perfect for parties of 20-30 guests. Book now to secure your date!"}
+                      {formData.machineType === "double" &&
+                        "Ideal for 40-60 guests. Limited availability - reserve today!"}
+                      {formData.machineType === "triple" &&
+                        "Our largest machine for 70+ guests. High demand - book fast!"}
+                    </p>
+                  </div>
+                </div>
+              </div>
             )}
 
             {dateAvailabilityError && (

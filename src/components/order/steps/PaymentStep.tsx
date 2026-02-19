@@ -87,28 +87,26 @@ export default function PaymentStep({
 
       const result = await response.json();
 
-      // Show success message
-      alert(
-        "Booking confirmed! You will receive a confirmation email shortly.",
-      );
-
       // Build URL parameters for the success page
       const params = new URLSearchParams();
       params.append("bookingId", result.bookingId);
       params.append("machineType", formData.machineType);
+      params.append("customerName", formData.customer.name);
+      params.append("rentalDate", formData.rentalDate);
+      params.append("total", finalTotal.toFixed(2));
 
       // Add mixers to URL parameters
       if (formData.selectedMixers.length > 0) {
         params.append("mixers", formData.selectedMixers.join(","));
       }
 
-      // Redirect to success page
+      // Redirect to success page immediately (no alert)
       window.location.href = `/success?${params.toString()}`;
     } catch (error) {
       console.error("Booking submission error:", error);
-      alert(
-        `Failed to confirm booking: ${error instanceof Error ? error.message : "Unknown error"}`,
-      );
+      // Don't use alert - show inline error instead
+      setIsSubmitting(false);
+      throw error; // This will be caught by the error boundary or shown inline
     } finally {
       setIsSubmitting(false);
     }
@@ -119,6 +117,87 @@ export default function PaymentStep({
       <h2 className="text-2xl font-bold text-charcoal dark:text-white mb-6">
         Confirm Your Booking
       </h2>
+
+      {/* Trust Signals */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div className="bg-white/80 dark:bg-charcoal/30 rounded-lg p-4 border border-green-200 dark:border-green-700">
+          <div className="flex items-center space-x-3">
+            <div className="flex-shrink-0">
+              <svg
+                className="w-8 h-8 text-green-500"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-charcoal dark:text-white">
+                100% Satisfaction
+              </p>
+              <p className="text-xs text-charcoal/70 dark:text-white/70">
+                Guaranteed or refund
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white/80 dark:bg-charcoal/30 rounded-lg p-4 border border-blue-200 dark:border-blue-700">
+          <div className="flex items-center space-x-3">
+            <div className="flex-shrink-0">
+              <svg
+                className="w-8 h-8 text-blue-500"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-charcoal dark:text-white">
+                Secure Booking
+              </p>
+              <p className="text-xs text-charcoal/70 dark:text-white/70">
+                Your data is safe
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white/80 dark:bg-charcoal/30 rounded-lg p-4 border border-orange-200 dark:border-orange-700">
+          <div className="flex items-center space-x-3">
+            <div className="flex-shrink-0">
+              <svg
+                className="w-8 h-8 text-orange-500"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-charcoal dark:text-white">
+                On-Time Delivery
+              </p>
+              <p className="text-xs text-charcoal/70 dark:text-white/70">
+                Always punctual
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <div className="bg-white/80 dark:bg-charcoal/30 rounded-xl p-6 space-y-4">
         <div className="text-center">
@@ -193,9 +272,29 @@ export default function PaymentStep({
                 <span>Confirming Booking...</span>
               </div>
             ) : (
-              "Confirm Booking"
+              <span className="flex items-center justify-center space-x-2">
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+                <span>Confirm Booking</span>
+              </span>
             )}
           </button>
+
+          <p className="mt-3 text-xs text-charcoal/60 dark:text-white/60 text-center">
+            🔒 By confirming, you agree to our terms and conditions. No payment
+            required now - pay on delivery.
+          </p>
         </div>
       </div>
     </div>
