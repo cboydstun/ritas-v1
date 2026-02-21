@@ -189,7 +189,8 @@ function OrderDetails() {
                                 </li>
                                 <li>
                                   🥃 <strong>Optional BYOB:</strong> up to 1.75
-                                  L (one "handle") of liquor per tank if desired
+                                  L (one &ldquo;handle&rdquo;) of liquor per
+                                  tank if desired
                                 </li>
                               </ul>
                             </li>
@@ -221,7 +222,8 @@ function OrderDetails() {
                           selling alcohol. If you choose to add your own, please
                           limit to{" "}
                           <strong>
-                            one 1.75 L bottle (a "handle") per tank maximum
+                            one 1.75 L bottle (a &ldquo;handle&rdquo;) per tank
+                            maximum
                           </strong>{" "}
                           and always <strong>drink responsibly</strong>. 🥃
                         </p>
