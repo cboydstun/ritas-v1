@@ -49,6 +49,9 @@ export default function MachineStep({
   const [currentSubStep, setCurrentSubStep] = useState<MachineSubStep>(
     MachineSubStep.MachineType,
   );
+  // Soft warning shown when the availability API fails (network/server error)
+  // — does NOT block navigation, unlike a genuine "machine is booked" error.
+  const [apiWarning, setApiWarning] = useState<string | null>(null);
 
   const { checkAvailability, isChecking } = useAvailabilityCheck();
 
@@ -69,11 +72,22 @@ export default function MachineStep({
       if (cancelled) return;
 
       if (!result.available) {
-        onAvailabilityError(
-          result.error ||
-            `Sorry, the ${formData.machineType} tank machine is not available on your selected date. Please choose a different machine or date.`,
-        );
+        if (result.error) {
+          // API / network failure — warn the user but don't hard-block them.
+          // We'll confirm availability manually before accepting the booking.
+          setApiWarning(
+            "⚠️ We couldn't verify availability right now. You can still continue — we'll confirm your booking by phone.",
+          );
+          onAvailabilityError(null); // clear any hard block
+        } else {
+          // Genuine unavailability returned by the API
+          setApiWarning(null);
+          onAvailabilityError(
+            `Sorry, the ${formData.machineType} tank machine is not available on your selected date. Please choose a different machine or go back and pick another date.`,
+          );
+        }
       } else {
+        setApiWarning(null);
         onAvailabilityError(null);
       }
     };
@@ -348,6 +362,14 @@ export default function MachineStep({
           </div>
         )}
 
+        {/* Soft warning when availability API is unreachable — does NOT block Next */}
+        {apiWarning && !error && (
+          <div className="bg-yellow-50 border border-yellow-300 text-yellow-800 dark:bg-yellow-900/20 dark:border-yellow-600 dark:text-yellow-300 px-4 py-3 rounded relative text-sm">
+            {apiWarning}
+          </div>
+        )}
+
+        {/* Hard block error — machine genuinely unavailable */}
         {error && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative">
             {error}

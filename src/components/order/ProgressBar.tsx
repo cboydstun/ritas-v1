@@ -5,11 +5,21 @@ interface ProgressBarProps {
 }
 
 export function ProgressBar({ currentStep }: ProgressBarProps) {
-  const progress =
-    (steps.findIndex((s) => s.id === currentStep) / (steps.length - 1)) * 100;
+  const currentIndex = steps.findIndex((s) => s.id === currentStep);
+  const progress = (currentIndex / (steps.length - 1)) * 100;
 
   return (
     <div className="w-full max-w-4xl mx-auto mb-8 px-4">
+      {/* Step counter */}
+      <div className="flex justify-between items-center mb-2">
+        <span className="text-sm font-medium text-charcoal/70 dark:text-white/70">
+          Step {currentIndex + 1} of {steps.length}
+        </span>
+        <span className="text-sm font-semibold text-orange">
+          {steps[currentIndex].label}
+        </span>
+      </div>
+
       {/* Progress bar */}
       <div className="w-full h-2 bg-light dark:bg-charcoal/30 rounded-full overflow-hidden">
         <div

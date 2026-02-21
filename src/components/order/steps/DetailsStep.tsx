@@ -192,9 +192,8 @@ export default function DetailsStep({
             type="text"
             name="customer.address.state"
             value={formData.customer.address.state}
-            onChange={onInputChange}
-            placeholder="TX"
-            className={`${inputClassName} bg-gray-100 dark:bg-gray-800`}
+            readOnly
+            className={`${inputClassName} bg-gray-100 dark:bg-gray-700 cursor-default select-none`}
           />
           <p className="text-xs text-charcoal/70 dark:text-white/70 mt-1">
             We only deliver in Texas

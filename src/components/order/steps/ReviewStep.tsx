@@ -9,6 +9,7 @@ export default function ReviewStep({
   agreedToTerms = false,
   setAgreedToTerms = () => {},
   setIsServiceDiscount = () => {},
+  onSuccess,
 }: StepProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -109,6 +110,9 @@ export default function ReviewStep({
       if (formData.selectedMixers.length > 0) {
         params.append("mixers", formData.selectedMixers.join(","));
       }
+
+      // Clear the saved draft before redirecting so a future visit starts fresh
+      onSuccess?.();
 
       // Redirect to success page immediately (no alert)
       window.location.href = `/success?${params.toString()}`;

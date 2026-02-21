@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useState, Suspense, useEffect } from "react";
 import OrderFormTracker from "./OrderFormTracker";
 import { MixerType } from "@/lib/rental-data";
 import { useSearchParams } from "next/navigation";
@@ -23,6 +23,9 @@ import { calculatePrice } from "@/lib/pricing";
 import { ProgressBar } from "./ProgressBar";
 import { NavigationButtons } from "./NavigationButtons";
 import { PricingSummary } from "./PricingSummary";
+
+// localStorage key for draft persistence
+const DRAFT_KEY = "satx-ritas-order-draft";
 
 // Dynamically import step components with proper typing
 const DateSelectionStep = dynamic<StepProps>(
@@ -78,28 +81,24 @@ const StepSkeleton = () => (
 
 export default function OrderForm() {
   const searchParams = useSearchParams();
-  const [step, setStep] = useState<OrderStep>("date");
-  const [error, setError] = useState<string | null>(null);
-  const [agreedToTerms, setAgreedToTerms] = useState(false);
-  // Issue 4: changed from useRef to useState so availability errors trigger re-renders
-  const [dateAvailabilityError, setDateAvailabilityError] = useState<
-    string | null
-  >(null);
 
-  // Get initial machine type and mixer from URL once
+  // Get initial machine type and mixer from URL once.
+  // If URL params are present (e.g. clicking "Book Now" from the pricing page)
+  // we start fresh rather than restoring a previous draft.
   const initialMachineType =
-    (searchParams.get("machine") as "single" | "double" | "triple") || "single";
+    (searchParams.get("machine") as "single" | "double" | "triple") || "double";
   const initialMixer = searchParams.get("mixer");
   const initialSelectedMixers = initialMixer ? [initialMixer as MixerType] : [];
+  const hasUrlParams = searchParams.get("machine") !== null;
 
-  // Initialize form state with URL parameters
+  // Initialize form state with URL parameters and optional draft restore
   const capacityMap: Record<string, 15 | 30 | 45> = {
     single: 15,
     double: 30,
     triple: 45,
   };
 
-  const [formData, setFormData] = useState<OrderFormData>({
+  const buildDefaultFormData = (): OrderFormData => ({
     machineType: initialMachineType,
     capacity: capacityMap[initialMachineType] ?? 15,
     selectedMixers: initialSelectedMixers,
@@ -116,7 +115,7 @@ export default function OrderForm() {
       address: {
         street: "",
         city: "",
-        state: "",
+        state: "TX", // pre-filled — we only serve Texas
         zipCode: "",
       },
     },
@@ -124,6 +123,73 @@ export default function OrderForm() {
     // Issue 3: isServiceDiscount lives exclusively in formData (no separate useState)
     isServiceDiscount: false,
   });
+
+  // Attempt to restore a saved draft on first render (client-side only).
+  // Draft is ignored when URL params are present (user arrived via a "Book X" link).
+  const restoreDraft = (): {
+    formData: OrderFormData;
+    step: OrderStep;
+    hasDraft: boolean;
+  } => {
+    if (typeof window === "undefined" || hasUrlParams) {
+      return {
+        formData: buildDefaultFormData(),
+        step: "date",
+        hasDraft: false,
+      };
+    }
+    try {
+      const saved = localStorage.getItem(DRAFT_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved) as {
+          formData?: OrderFormData;
+          step?: OrderStep;
+        };
+        // Only restore if the draft has meaningful progress (a name entered)
+        if (parsed.formData?.customer?.name) {
+          return {
+            formData: { ...buildDefaultFormData(), ...parsed.formData },
+            step: parsed.step ?? "date",
+            hasDraft: true,
+          };
+        }
+      }
+    } catch {
+      // ignore malformed draft
+    }
+    return { formData: buildDefaultFormData(), step: "date", hasDraft: false };
+  };
+
+  // Single lazy initialisation so draft + step are consistent from the first render
+  const [initialised] = useState(restoreDraft);
+
+  const [step, setStep] = useState<OrderStep>(initialised.step);
+  const [formData, setFormData] = useState<OrderFormData>(initialised.formData);
+  const [draftRestored, setDraftRestored] = useState(initialised.hasDraft);
+  const [error, setError] = useState<string | null>(null);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
+  // Issue 4: changed from useRef to useState so availability errors trigger re-renders
+  const [dateAvailabilityError, setDateAvailabilityError] = useState<
+    string | null
+  >(null);
+
+  // Persist draft to localStorage whenever formData or step changes
+  useEffect(() => {
+    try {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify({ formData, step }));
+    } catch {
+      // ignore (private browsing, quota exceeded, etc.)
+    }
+  }, [formData, step]);
+
+  /** Clear draft — called by ReviewStep just before redirecting to success */
+  const clearDraft = () => {
+    try {
+      localStorage.removeItem(DRAFT_KEY);
+    } catch {
+      // ignore
+    }
+  };
 
   // Issue 3: setIsServiceDiscount updates formData directly (no separate state or useEffect)
   const setIsServiceDiscount = (value: boolean) => {
@@ -205,10 +271,8 @@ export default function OrderForm() {
     // Clear any previous errors
     setError(null);
 
-    // Reset agreedToTerms when moving away from review step
-    if (step !== "review") {
-      setAgreedToTerms(false);
-    }
+    // Scroll to top so the new step header is visible (especially on mobile)
+    window.scrollTo({ top: 0, behavior: "smooth" });
 
     // Validate date step
     if (step === "date") {
@@ -309,6 +373,8 @@ export default function OrderForm() {
       if (step === "review") {
         setAgreedToTerms(false);
       }
+      // Scroll to top so the previous step header is visible
+      window.scrollTo({ top: 0, behavior: "smooth" });
       setStep(steps[currentIndex - 1].id);
     }
   };
@@ -317,6 +383,27 @@ export default function OrderForm() {
     <div className="max-w-7xl mx-auto px-4 py-8">
       {/* Track form step changes */}
       <OrderFormTracker currentStep={step} formData={formData} />
+
+      {/* Draft restored banner */}
+      {draftRestored && (
+        <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg flex justify-between items-center">
+          <p className="text-sm text-blue-700 dark:text-blue-300">
+            📋 We restored your previous booking draft — pick up right where you
+            left off.
+          </p>
+          <button
+            onClick={() => {
+              clearDraft();
+              setFormData(buildDefaultFormData());
+              setStep("date");
+              setDraftRestored(false);
+            }}
+            className="text-xs text-blue-500 hover:text-blue-700 dark:hover:text-blue-300 underline ml-4 whitespace-nowrap"
+          >
+            Start fresh
+          </button>
+        </div>
+      )}
 
       <ProgressBar currentStep={step} />
 
@@ -373,6 +460,8 @@ export default function OrderForm() {
                   setAgreedToTerms={setAgreedToTerms}
                   // Issue 3: pass setter that updates formData.isServiceDiscount directly
                   setIsServiceDiscount={setIsServiceDiscount}
+                  // Clear draft before redirecting to success
+                  onSuccess={clearDraft}
                 />
               )}
             </Suspense>
@@ -382,7 +471,6 @@ export default function OrderForm() {
               currentStep={step}
               onPrevious={handlePreviousStep}
               onNext={handleNextStep}
-              isNextDisabled={step === "review" && !agreedToTerms}
             />
           </div>
         </div>
@@ -390,13 +478,13 @@ export default function OrderForm() {
         {/* Sticky Pricing Summary - Desktop */}
         <div className="hidden lg:block lg:col-span-1">
           <div className="sticky top-8">
-            <PricingSummary formData={formData} />
+            <PricingSummary formData={formData} currentStep={step} />
           </div>
         </div>
 
         {/* Mobile Pricing Summary - Shows at bottom */}
         <div className="lg:hidden">
-          <PricingSummary formData={formData} />
+          <PricingSummary formData={formData} currentStep={step} />
         </div>
       </div>
     </div>

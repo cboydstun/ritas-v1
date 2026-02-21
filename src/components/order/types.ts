@@ -50,6 +50,8 @@ export interface StepProps {
   onAvailabilityError?: (errorMsg: string | null) => void;
   isServiceDiscount?: boolean;
   setIsServiceDiscount?: (value: boolean) => void;
+  /** Called just before redirect to success page so the parent can clear the draft */
+  onSuccess?: () => void;
 }
 
 export const steps: { id: OrderStep; label: string }[] = [

@@ -78,8 +78,8 @@ export default function DateSelectionStep({
           </div>
         </div>
 
-        {/* Time Selection - Only show after dates are selected */}
-        {range?.from && range?.to && (
+        {/* Time Selection - Show after delivery date is selected (return time after both) */}
+        {range?.from && (
           <div className="bg-white dark:bg-charcoal/30 p-6 rounded-xl">
             <h3 className="text-lg font-semibold text-charcoal dark:text-white mb-4 text-center">
               Select Times

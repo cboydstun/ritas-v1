@@ -1,11 +1,12 @@
-import { OrderFormData } from "./types";
+import { OrderFormData, OrderStep } from "./types";
 import { calculatePrice, formatPrice } from "@/lib/pricing";
 
 interface PricingSummaryProps {
   formData: OrderFormData;
+  currentStep?: OrderStep;
 }
 
-export function PricingSummary({ formData }: PricingSummaryProps) {
+export function PricingSummary({ formData, currentStep }: PricingSummaryProps) {
   // Issue 1: pass selectedMixers array instead of selectedMixers[0]
   const priceBreakdown = calculatePrice(
     formData.machineType,
@@ -65,123 +66,147 @@ export function PricingSummary({ formData }: PricingSummaryProps) {
         </div>
       </div>
 
-      <div className="space-y-3 text-sm">
-        {/* Machine */}
-        <div className="flex justify-between">
-          <span className="text-charcoal/70 dark:text-white/70">
-            {formData.capacity}L{" "}
-            {formData.machineType === "single"
-              ? "Single"
-              : formData.machineType === "double"
-                ? "Double"
-                : "Triple"}{" "}
-            Tank
-          </span>
-          <span className="font-medium text-charcoal dark:text-white">
-            ${formatPrice(priceBreakdown.basePrice)}/day
-          </span>
+      {/* Placeholder shown on date step before a machine has been chosen */}
+      {currentStep === "date" && (
+        <div className="text-center py-6 text-charcoal/50 dark:text-white/50">
+          <svg
+            className="w-10 h-10 mx-auto mb-3 text-margarita/40"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={1.5}
+              d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"
+            />
+          </svg>
+          <p className="text-sm font-medium">Select your machine</p>
+          <p className="text-xs mt-1">Pricing will appear on the next step.</p>
         </div>
+      )}
 
-        {/* Mixers */}
-        {formData.selectedMixers.length > 0 && (
+      {/* Full breakdown shown from machine step onwards */}
+      {currentStep !== "date" && (
+        <div className="space-y-3 text-sm">
+          {/* Machine */}
           <div className="flex justify-between">
             <span className="text-charcoal/70 dark:text-white/70">
-              {formData.selectedMixers.length} Mixer
-              {formData.selectedMixers.length > 1 ? "s" : ""}
+              {formData.capacity}L{" "}
+              {formData.machineType === "single"
+                ? "Single"
+                : formData.machineType === "double"
+                  ? "Double"
+                  : "Triple"}{" "}
+              Tank
             </span>
             <span className="font-medium text-charcoal dark:text-white">
-              ${formatPrice(priceBreakdown.mixerPrice)}/day
+              ${formatPrice(priceBreakdown.basePrice)}/day
             </span>
           </div>
-        )}
 
-        {/* Rental Days */}
-        {formData.rentalDate && formData.returnDate && (
-          <div className="flex justify-between text-xs pt-2 border-t border-margarita/10">
-            <span className="text-charcoal/60 dark:text-white/60">
-              × {rentalDays} day{rentalDays > 1 ? "s" : ""}
-            </span>
-            <span className="font-medium text-charcoal dark:text-white">
-              ${formatPrice(perDayRate * rentalDays)}
-            </span>
-          </div>
-        )}
-
-        {/* Extras */}
-        {formData.selectedExtras.length > 0 && (
-          <>
-            <div className="pt-2 border-t border-margarita/10">
-              <div className="text-xs font-semibold text-charcoal/80 dark:text-white/80 mb-2">
-                Party Extras:
-              </div>
-              {formData.selectedExtras.map((extra) => (
-                <div key={extra.id} className="flex justify-between mb-1">
-                  <span className="text-charcoal/70 dark:text-white/70 text-xs">
-                    {extra.name}
-                    {extra.quantity && extra.quantity > 1
-                      ? ` (${extra.quantity}x)`
-                      : ""}
-                  </span>
-                  <span className="text-charcoal dark:text-white text-xs">
-                    $
-                    {formatPrice(
-                      extra.price * (extra.quantity || 1) * rentalDays,
-                    )}
-                  </span>
-                </div>
-              ))}
+          {/* Mixers */}
+          {formData.selectedMixers.length > 0 && (
+            <div className="flex justify-between">
+              <span className="text-charcoal/70 dark:text-white/70">
+                {formData.selectedMixers.length} Mixer
+                {formData.selectedMixers.length > 1 ? "s" : ""}
+              </span>
+              <span className="font-medium text-charcoal dark:text-white">
+                ${formatPrice(priceBreakdown.mixerPrice)}/day
+              </span>
             </div>
-          </>
-        )}
+          )}
 
-        {/* Delivery Fee */}
-        <div className="flex justify-between pt-2 border-t border-margarita/10">
-          <span className="text-charcoal/70 dark:text-white/70">
-            Delivery & Setup
-          </span>
-          <span className="font-medium text-charcoal dark:text-white">
-            ${formatPrice(priceBreakdown.deliveryFee)}
-          </span>
-        </div>
+          {/* Rental Days */}
+          {formData.rentalDate && formData.returnDate && (
+            <div className="flex justify-between text-xs pt-2 border-t border-margarita/10">
+              <span className="text-charcoal/60 dark:text-white/60">
+                × {rentalDays} day{rentalDays > 1 ? "s" : ""}
+              </span>
+              <span className="font-medium text-charcoal dark:text-white">
+                ${formatPrice(perDayRate * rentalDays)}
+              </span>
+            </div>
+          )}
 
-        {/* Service Discount */}
-        {formData.isServiceDiscount && (
-          <div className="flex justify-between text-green-600 dark:text-green-400">
-            <span>Service Discount (10%)</span>
-            <span>-${formatPrice(serviceDiscountAmount)}</span>
+          {/* Extras */}
+          {formData.selectedExtras.length > 0 && (
+            <>
+              <div className="pt-2 border-t border-margarita/10">
+                <div className="text-xs font-semibold text-charcoal/80 dark:text-white/80 mb-2">
+                  Party Extras:
+                </div>
+                {formData.selectedExtras.map((extra) => (
+                  <div key={extra.id} className="flex justify-between mb-1">
+                    <span className="text-charcoal/70 dark:text-white/70 text-xs">
+                      {extra.name}
+                      {extra.quantity && extra.quantity > 1
+                        ? ` (${extra.quantity}x)`
+                        : ""}
+                    </span>
+                    <span className="text-charcoal dark:text-white text-xs">
+                      $
+                      {formatPrice(
+                        extra.price * (extra.quantity || 1) * rentalDays,
+                      )}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+
+          {/* Delivery Fee */}
+          <div className="flex justify-between pt-2 border-t border-margarita/10">
+            <span className="text-charcoal/70 dark:text-white/70">
+              Delivery & Setup
+            </span>
+            <span className="font-medium text-charcoal dark:text-white">
+              ${formatPrice(priceBreakdown.deliveryFee)}
+            </span>
           </div>
-        )}
 
-        {/* Tax */}
-        <div className="flex justify-between">
-          <span className="text-charcoal/70 dark:text-white/70">
-            Sales Tax (8.25%)
-          </span>
-          <span className="font-medium text-charcoal dark:text-white">
-            ${formatPrice(salesTax)}
-          </span>
-        </div>
+          {/* Service Discount */}
+          {formData.isServiceDiscount && (
+            <div className="flex justify-between text-green-600 dark:text-green-400">
+              <span>Service Discount (10%)</span>
+              <span>-${formatPrice(serviceDiscountAmount)}</span>
+            </div>
+          )}
 
-        {/* Processing Fee */}
-        <div className="flex justify-between">
-          <span className="text-charcoal/70 dark:text-white/70">
-            Processing Fee (3%)
-          </span>
-          <span className="font-medium text-charcoal dark:text-white">
-            ${formatPrice(processingFee)}
-          </span>
-        </div>
+          {/* Tax */}
+          <div className="flex justify-between">
+            <span className="text-charcoal/70 dark:text-white/70">
+              Sales Tax (8.25%)
+            </span>
+            <span className="font-medium text-charcoal dark:text-white">
+              ${formatPrice(salesTax)}
+            </span>
+          </div>
 
-        {/* Total */}
-        <div className="flex justify-between pt-4 border-t-2 border-margarita/30">
-          <span className="text-lg font-bold text-charcoal dark:text-white">
-            Total
-          </span>
-          <span className="text-2xl font-bold text-orange">
-            ${formatPrice(finalTotal)}
-          </span>
+          {/* Processing Fee */}
+          <div className="flex justify-between">
+            <span className="text-charcoal/70 dark:text-white/70">
+              Processing Fee (3%)
+            </span>
+            <span className="font-medium text-charcoal dark:text-white">
+              ${formatPrice(processingFee)}
+            </span>
+          </div>
+
+          {/* Total */}
+          <div className="flex justify-between pt-4 border-t-2 border-margarita/30">
+            <span className="text-lg font-bold text-charcoal dark:text-white">
+              Total
+            </span>
+            <span className="text-2xl font-bold text-orange">
+              ${formatPrice(finalTotal)}
+            </span>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Trust badge */}
       <div className="mt-4 pt-4 border-t border-margarita/10">
