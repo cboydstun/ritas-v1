@@ -1,5 +1,6 @@
 import { OrderFormData, OrderStep } from "./types";
-import { calculatePrice, formatPrice } from "@/lib/pricing";
+import { computeOrderTotal } from "./utils";
+import { formatPrice } from "@/lib/pricing";
 
 interface PricingSummaryProps {
   formData: OrderFormData;
@@ -7,42 +8,17 @@ interface PricingSummaryProps {
 }
 
 export function PricingSummary({ formData, currentStep }: PricingSummaryProps) {
-  // Issue 1: pass selectedMixers array instead of selectedMixers[0]
-  const priceBreakdown = calculatePrice(
-    formData.machineType,
-    formData.selectedMixers,
-  );
-
-  const perDayRate = priceBreakdown.basePrice + priceBreakdown.mixerPrice;
-
-  const rentalDays =
-    formData.rentalDate && formData.returnDate
-      ? Math.max(
-          1,
-          Math.ceil(
-            (new Date(formData.returnDate + "T00:00:00").getTime() -
-              new Date(formData.rentalDate + "T00:00:00").getTime()) /
-              (1000 * 60 * 60 * 24),
-          ),
-        )
-      : 1;
-
-  // Calculate extras total
-  const extrasTotal = formData.selectedExtras.reduce(
-    (sum, item) => sum + item.price * (item.quantity || 1) * rentalDays,
-    0,
-  );
-
-  const subtotal =
-    perDayRate * rentalDays + priceBreakdown.deliveryFee + extrasTotal;
-
-  // Issue 3: read exclusively from formData.isServiceDiscount
-  const serviceDiscountAmount = formData.isServiceDiscount ? subtotal * 0.1 : 0;
-  const discountedSubtotal = subtotal - serviceDiscountAmount;
-
-  const salesTax = discountedSubtotal * 0.0825;
-  const processingFee = discountedSubtotal * 0.03;
-  const finalTotal = discountedSubtotal + salesTax + processingFee;
+  const {
+    basePrice,
+    mixerPrice,
+    deliveryFee,
+    perDayRate,
+    rentalDays,
+    serviceDiscountAmount,
+    salesTax,
+    processingFee,
+    finalTotal,
+  } = computeOrderTotal(formData);
 
   return (
     <div className="bg-white/95 dark:bg-charcoal/95 backdrop-blur-lg rounded-xl shadow-lg p-6 border-2 border-margarita/20">
@@ -102,7 +78,7 @@ export function PricingSummary({ formData, currentStep }: PricingSummaryProps) {
               Tank
             </span>
             <span className="font-medium text-charcoal dark:text-white">
-              ${formatPrice(priceBreakdown.basePrice)}/day
+              ${formatPrice(basePrice)}/day
             </span>
           </div>
 
@@ -114,7 +90,7 @@ export function PricingSummary({ formData, currentStep }: PricingSummaryProps) {
                 {formData.selectedMixers.length > 1 ? "s" : ""}
               </span>
               <span className="font-medium text-charcoal dark:text-white">
-                ${formatPrice(priceBreakdown.mixerPrice)}/day
+                ${formatPrice(mixerPrice)}/day
               </span>
             </div>
           )}
@@ -164,7 +140,7 @@ export function PricingSummary({ formData, currentStep }: PricingSummaryProps) {
               Delivery & Setup
             </span>
             <span className="font-medium text-charcoal dark:text-white">
-              ${formatPrice(priceBreakdown.deliveryFee)}
+              ${formatPrice(deliveryFee)}
             </span>
           </div>
 

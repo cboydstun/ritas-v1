@@ -90,7 +90,7 @@ export async function POST(request: Request) {
             `${extrasText}` +
             `Customer: ${rental.customer.name}\n` +
             `Phone: ${rental.customer.phone}\n` +
-            `Total: $${rentalData.price}\n` +
+            `Total: $${parseFloat(rentalData.price).toFixed(2)}\n` +
             `⚠️ INVOICE CUSTOMER FOR PAYMENT`,
           from: fromPhone,
           to: toPhone,
@@ -141,7 +141,7 @@ export async function POST(request: Request) {
                       .join(", ")}</li>`
                   : ""
               }
-              <li style="margin-bottom: 8px;">💰 Total Amount: $${rentalData.price}</li>
+              <li style="margin-bottom: 8px;">💰 Total Amount: $${parseFloat(rentalData.price).toFixed(2)}</li>
               <li style="margin-bottom: 8px;">⚡ Machine Capacity: ${rental.capacity}L</li>
             </ul>
           </div>
@@ -165,7 +165,7 @@ export async function POST(request: Request) {
           <div style="background-color: #fef3c7; border: 1px solid #fcd34d; padding: 15px; border-radius: 6px; margin: 20px 0;">
             <h3 style="margin: 0 0 10px 0; color: #92400e;">💳 Payment Information</h3>
             <p style="margin: 0; color: #92400e; font-weight: 500;">
-              We will send you an invoice for payment separately. You can pay by cash, check, or card when we deliver your rental.
+              We will contact you the day before your event to confirm your booking details. Once confirmed, we will send you an invoice that can be paid online. Cash on delivery is also accepted. No deposit is required. All sales are final — no refunds.
             </p>
           </div>
 

@@ -249,12 +249,11 @@ export default function FAQ() {
                   What is your cancellation policy?
                 </h3>
                 <p className="text-charcoal/80 dark:text-white/80">
-                  We understand plans can change. Cancellations made at least 7
-                  days before your event receive a full refund. For
-                  cancellations within 7 days, we will work with you to
-                  reschedule for a better date. If within 48 hours, we are
-                  unable to offer a refund or reschedule, but we will do our
-                  best to accommodate you.
+                  We understand plans can change. For that reason, we wait until
+                  the day before the event to send the invoice. We do not expect
+                  any payment until delivery. For those reasons, we do not offer
+                  any refunds. If you paid for a machine rental, then you will
+                  get your machine rental but there will be no refunds.
                 </p>
               </div>
               <div>

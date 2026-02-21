@@ -18,6 +18,7 @@ import {
   validatePhone,
   validateZipCode,
   isBexarCountyZipCode,
+  computeOrderTotal,
 } from "./utils";
 import { calculatePrice } from "@/lib/pricing";
 import { ProgressBar } from "./ProgressBar";
@@ -181,6 +182,31 @@ export default function OrderForm() {
       // ignore (private browsing, quota exceeded, etc.)
     }
   }, [formData, step]);
+
+  // Keep formData.price in sync with the true computed final total.
+  // This ensures the price stored in state (and in the localStorage draft) always
+  // matches what PricingSummary and ReviewStep display, rather than the stale
+  // single-day seed value set at initialisation.
+  useEffect(() => {
+    const { finalTotal } = computeOrderTotal(formData);
+    const rounded = Number(finalTotal.toFixed(2));
+    setFormData((prev) =>
+      prev.price === rounded ? prev : { ...prev, price: rounded },
+    );
+    // Only re-run when the fields that actually affect the price change.
+    // JSON.stringify the arrays so we don't re-run on every render due to
+    // new-but-equal array references.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    formData.machineType,
+    formData.rentalDate,
+    formData.returnDate,
+    formData.isServiceDiscount,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    JSON.stringify(formData.selectedMixers),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    JSON.stringify(formData.selectedExtras),
+  ]);
 
   /** Clear draft — called by ReviewStep just before redirecting to success */
   const clearDraft = () => {

@@ -2,7 +2,8 @@ import { useState } from "react";
 import Image from "next/image";
 import { StepProps } from "../types";
 import { mixerDetails, MixerType } from "@/lib/rental-data";
-import { calculatePrice, formatPrice } from "@/lib/pricing";
+import { formatPrice } from "@/lib/pricing";
+import { computeOrderTotal } from "../utils";
 
 export default function ReviewStep({
   formData,
@@ -14,49 +15,19 @@ export default function ReviewStep({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  // Issue 3: read exclusively from formData.isServiceDiscount (single source of truth)
+  const {
+    deliveryFee,
+    perDayRate,
+    rentalDays,
+    extrasTotal,
+    serviceDiscountAmount,
+    salesTax,
+    processingFee,
+    finalTotal,
+  } = computeOrderTotal(formData);
+
+  // Read from formData — single source of truth
   const applyServiceDiscount = formData.isServiceDiscount;
-
-  // Issue 1: pass selectedMixers array instead of selectedMixers[0]
-  const priceBreakdown = calculatePrice(
-    formData.machineType,
-    formData.selectedMixers,
-  );
-
-  const perDayRate = priceBreakdown.basePrice + priceBreakdown.mixerPrice;
-
-  // Issue 2: append T00:00:00 to avoid UTC midnight timezone off-by-one
-  const rentalDays = Math.max(
-    1,
-    Math.ceil(
-      (new Date(formData.returnDate + "T00:00:00").getTime() -
-        new Date(formData.rentalDate + "T00:00:00").getTime()) /
-        (1000 * 60 * 60 * 24),
-    ),
-  );
-
-  // Calculate extras total (per day × number of days)
-  const extrasTotal = formData.selectedExtras.reduce(
-    (sum, item) => sum + item.price * (item.quantity || 1) * rentalDays,
-    0,
-  );
-
-  // Recalculate subtotal including extras
-  const subtotal =
-    perDayRate * rentalDays + priceBreakdown.deliveryFee + extrasTotal;
-
-  // Calculate service discount if applicable
-  const serviceDiscountAmount = applyServiceDiscount ? subtotal * 0.1 : 0;
-
-  // Apply discount to subtotal
-  const discountedSubtotal = subtotal - serviceDiscountAmount;
-
-  // Recalculate tax and processing fee based on the discounted subtotal
-  const salesTax = discountedSubtotal * 0.0825; // 8.25% tax rate
-  const processingFee = discountedSubtotal * 0.03; // 3% processing fee
-
-  // Calculate the final total including extras and discount
-  const finalTotal = discountedSubtotal + salesTax + processingFee;
 
   const handleConfirmBooking = async () => {
     if (!agreedToTerms) {
@@ -211,6 +182,7 @@ export default function ReviewStep({
           </div>
         </div>
       </div>
+
       <div className="space-y-4">
         <div className="bg-white/80 dark:bg-charcoal/30 rounded-xl">
           <div className="relative w-full aspect-square mb-4">
@@ -220,7 +192,7 @@ export default function ReviewStep({
                   ? "/vevor-15l-slushy-2.jpg"
                   : formData.machineType === "double"
                     ? "/vevor-30l-slushy-2.png"
-                    : "/vevor-45l-slushy-1.webp" // Use double tank image for triple until we have a proper image
+                    : "/vevor-45l-slushy-1.webp"
               }
               alt={`${formData.capacity}L ${
                 formData.machineType === "single"
@@ -367,14 +339,7 @@ export default function ReviewStep({
               ))}
             </div>
             <p className="text-lg font-semibold text-orange mt-4">
-              Extras Total: $
-              {formatPrice(
-                formData.selectedExtras.reduce(
-                  (sum, item) =>
-                    sum + item.price * (item.quantity || 1) * rentalDays,
-                  0,
-                ),
-              )}
+              Extras Total: ${formatPrice(extrasTotal)}
             </p>
           </div>
         )}
@@ -420,21 +385,13 @@ export default function ReviewStep({
           <h3 className="font-semibold text-lg text-charcoal dark:text-white mb-4">
             Pricing Details
           </h3>
-          <p className=" text-charcoal/70 dark:text-white/70">
+          <p className="text-charcoal/70 dark:text-white/70">
             Rate: ${formatPrice(perDayRate)}/day × {rentalDays} day
             {rentalDays > 1 ? "s" : ""}
           </p>
           {formData.selectedExtras.length > 0 && (
-            <p className=" text-charcoal/70 dark:text-white/70">
-              Extras: $
-              {formatPrice(
-                formData.selectedExtras.reduce(
-                  (sum, item) =>
-                    sum + item.price * (item.quantity || 1) * rentalDays,
-                  0,
-                ),
-              )}{" "}
-              ($
+            <p className="text-charcoal/70 dark:text-white/70">
+              Extras: ${formatPrice(extrasTotal)} ($
               {formatPrice(
                 formData.selectedExtras.reduce(
                   (sum, item) => sum + item.price * (item.quantity || 1),
@@ -444,35 +401,29 @@ export default function ReviewStep({
               /day × {rentalDays} day{rentalDays > 1 ? "s" : ""})
             </p>
           )}
-          <p className=" text-charcoal/70 dark:text-white/70">
-            Delivery Fee: ${formatPrice(priceBreakdown.deliveryFee)}
+          <p className="text-charcoal/70 dark:text-white/70">
+            Delivery Fee: ${formatPrice(deliveryFee)}
           </p>
-          <p className=" text-charcoal/70 dark:text-white/70">
+          <p className="text-charcoal/70 dark:text-white/70">
             Subtotal: $
-            {formatPrice(
-              perDayRate * rentalDays +
-                priceBreakdown.deliveryFee +
-                formData.selectedExtras.reduce(
-                  (sum, item) =>
-                    sum + item.price * (item.quantity || 1) * rentalDays,
-                  0,
-                ),
-            )}
+            {formatPrice(perDayRate * rentalDays + deliveryFee + extrasTotal)}
           </p>
           {applyServiceDiscount && (
-            <p className=" text-charcoal/70 dark:text-white/70">
+            <p className="text-charcoal/70 dark:text-white/70">
               Service Discount (10%): -${formatPrice(serviceDiscountAmount)}
             </p>
           )}
-          <p className=" text-charcoal/70 dark:text-white/70">
+          <p className="text-charcoal/70 dark:text-white/70">
             Sales Tax (8.25%): ${formatPrice(salesTax)}
           </p>
-          <p className=" text-charcoal/70 dark:text-white/70">
+          <p className="text-charcoal/70 dark:text-white/70">
             Processing Fee (3%): ${formatPrice(processingFee)}
           </p>
           <p className="text-xl font-bold text-orange mb-4">
             Total Amount: ${formatPrice(finalTotal)}
           </p>
+
+          {/* Service discount checkbox — only visible on review step */}
           <div className="flex items-center space-x-2 mt-4 mb-4">
             <input
               type="checkbox"
@@ -514,9 +465,10 @@ export default function ReviewStep({
                   Payment Information
                 </h3>
                 <p className="mt-1 text-sm text-blue-700 dark:text-blue-300">
-                  We will send you an invoice for payment after your booking is
-                  confirmed. You can pay by cash, check, or card when we deliver
-                  your rental.
+                  We will contact you the day before your event to confirm your
+                  booking details. Once confirmed, we will send you an invoice
+                  that can be paid online. Cash on delivery is also accepted. No
+                  deposit is required. All sales are final — no refunds.
                 </p>
               </div>
             </div>
@@ -600,8 +552,9 @@ export default function ReviewStep({
             </button>
 
             <p className="mt-3 text-xs text-charcoal/60 dark:text-white/60 text-center">
-              🔒 By confirming, you agree to our terms and conditions. No
-              payment required now - pay on delivery.
+              🔒 No payment required now. We will contact you the day before
+              your event to confirm, then send an invoice. Cash on delivery also
+              accepted. All sales are final.
             </p>
           </div>
         </div>

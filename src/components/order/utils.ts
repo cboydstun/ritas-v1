@@ -75,3 +75,98 @@ export const formatDateForDisplay = (isoDate: string): string => {
   const [year, month, day] = isoDate.split("-");
   return `${month}-${day}-${year}`;
 };
+
+// ---------------------------------------------------------------------------
+// Centralised order-total calculation
+// Used by PricingSummary, ReviewStep, and OrderForm to ensure a single source
+// of truth for all pricing maths.
+// ---------------------------------------------------------------------------
+
+import { calculatePrice } from "@/lib/pricing";
+import { OrderFormData } from "./types";
+
+export interface OrderTotals {
+  basePrice: number;
+  mixerPrice: number;
+  deliveryFee: number;
+  perDayRate: number;
+  rentalDays: number;
+  extrasTotal: number;
+  subtotal: number;
+  serviceDiscountAmount: number;
+  discountedSubtotal: number;
+  salesTax: number;
+  processingFee: number;
+  /** The true checkout total — tax & fees applied to the multi-day discounted subtotal. */
+  finalTotal: number;
+}
+
+export function computeOrderTotal(formData: OrderFormData): OrderTotals {
+  const priceBreakdown = calculatePrice(
+    formData.machineType,
+    formData.selectedMixers,
+  );
+
+  const perDayRate = priceBreakdown.basePrice + priceBreakdown.mixerPrice;
+
+  const rentalDays =
+    formData.rentalDate && formData.returnDate
+      ? Math.max(
+          1,
+          Math.ceil(
+            (new Date(formData.returnDate + "T00:00:00").getTime() -
+              new Date(formData.rentalDate + "T00:00:00").getTime()) /
+              (1000 * 60 * 60 * 24),
+          ),
+        )
+      : 1;
+
+  const extrasTotal = Number(
+    formData.selectedExtras
+      .reduce(
+        (sum, item) => sum + item.price * (item.quantity || 1) * rentalDays,
+        0,
+      )
+      .toFixed(2),
+  );
+
+  // Subtotal = machine rate × days + delivery + extras
+  const subtotal = Number(
+    (
+      perDayRate * rentalDays +
+      priceBreakdown.deliveryFee +
+      extrasTotal
+    ).toFixed(2),
+  );
+
+  const serviceDiscountAmount = Number(
+    (formData.isServiceDiscount ? subtotal * 0.1 : 0).toFixed(2),
+  );
+
+  const discountedSubtotal = Number(
+    (subtotal - serviceDiscountAmount).toFixed(2),
+  );
+
+  // Tax and processing fee are applied to the post-discount subtotal
+  const salesTax = Number((discountedSubtotal * 0.0825).toFixed(2)); // 8.25%
+  const processingFee = Number((discountedSubtotal * 0.03).toFixed(2)); // 3%
+
+  const finalTotal = Number(
+    (discountedSubtotal + salesTax + processingFee).toFixed(2),
+  );
+
+  return {
+    basePrice: priceBreakdown.basePrice,
+    mixerPrice: priceBreakdown.mixerPrice,
+    deliveryFee: priceBreakdown.deliveryFee,
+    perDayRate,
+    rentalDays,
+    extrasTotal,
+    subtotal,
+    serviceDiscountAmount,
+    discountedSubtotal,
+    salesTax,
+    processingFee,
+    finalTotal,
+  };
+}
