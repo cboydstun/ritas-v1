@@ -100,7 +100,7 @@ export async function POST(req: NextRequest) {
             },
             ...(stepName && {
               "funnelData.exitStep": stepName,
-              ...(stepName === "payment" &&
+              ...(stepName === "review" &&
               existingThumbprint.funnelData?.completedSteps?.length === 4
                 ? {
                     "conversion.hasConverted": true,

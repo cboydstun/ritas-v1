@@ -191,11 +191,11 @@ export default function AnalyticsPage() {
 
     // Map step IDs to readable names
     const stepNames: Record<string, string> = {
-      "/order/delivery": "1. Delivery",
-      "/order/details": "2. Details",
-      "/order/extras": "3. Extras",
-      "/order/review": "4. Review",
-      "/order/payment": "5. Payment",
+      "/order/date": "1. Select Dates",
+      "/order/machine": "2. Your Machine",
+      "/order/details": "3. Your Details",
+      "/order/extras": "4. Party Extras",
+      "/order/review": "5. Review & Confirm",
     };
 
     const labels = analyticsData.orderSteps.map(
@@ -223,11 +223,11 @@ export default function AnalyticsPage() {
 
     // Map step IDs to readable names
     const stepNames: Record<string, string> = {
-      "/order/delivery": "1. Delivery",
-      "/order/details": "2. Details",
-      "/order/extras": "3. Extras",
-      "/order/review": "4. Review",
-      "/order/payment": "5. Payment",
+      "/order/date": "1. Select Dates",
+      "/order/machine": "2. Your Machine",
+      "/order/details": "3. Your Details",
+      "/order/extras": "4. Party Extras",
+      "/order/review": "5. Review & Confirm",
     };
 
     const labels = analyticsData.orderSteps.map(
@@ -260,11 +260,11 @@ export default function AnalyticsPage() {
 
     // Map step IDs to readable names
     const stepNames: Record<string, string> = {
-      delivery: "1. Delivery",
-      details: "2. Details",
-      extras: "3. Extras",
-      review: "4. Review",
-      payment: "5. Payment",
+      date: "1. Select Dates",
+      machine: "2. Your Machine",
+      details: "3. Your Details",
+      extras: "4. Party Extras",
+      review: "5. Review & Confirm",
     };
 
     const labels = analyticsData.stepAbandonment.map(
