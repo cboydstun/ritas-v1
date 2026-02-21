@@ -5,11 +5,7 @@ import { MargaritaRental, MachineType, MixerType } from "@/types/index";
 import { machinePackages, mixerDetails } from "@/lib/rental-data";
 import { extraItems } from "@/components/order/types";
 import { formatPrice } from "@/lib/pricing";
-
-// Constants for fee calculations
-const DELIVERY_FEE = 20;
-const SALES_TAX_RATE = 0.0825;
-const PROCESSING_FEE_RATE = 0.03;
+import type { SettingsOverrides } from "@/components/order/utils";
 
 interface CreateOrderModalProps {
   onClose: () => void;
@@ -18,6 +14,8 @@ interface CreateOrderModalProps {
 export default function CreateOrderModal({ onClose }: CreateOrderModalProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [settings, setSettings] = useState<SettingsOverrides | null>(null);
+  const [settingsLoading, setSettingsLoading] = useState(true);
   const [formData, setFormData] = useState<Partial<MargaritaRental>>({
     machineType: "single",
     capacity: 15,
@@ -43,6 +41,15 @@ export default function CreateOrderModal({ onClose }: CreateOrderModalProps) {
     status: "pending",
   });
 
+  // Fetch settings on mount
+  useEffect(() => {
+    fetch("/api/admin/settings")
+      .then((res) => res.json())
+      .then((data) => setSettings(data))
+      .catch(() => setSettings(null))
+      .finally(() => setSettingsLoading(false));
+  }, []);
+
   // Define the price details interface
   interface PriceDetails {
     basePrice: number;
@@ -59,6 +66,9 @@ export default function CreateOrderModal({ onClose }: CreateOrderModalProps) {
 
   // Calculate the total price based on selected machine, mixers, extras, and fees
   const calculateTotalPrice = useCallback((): PriceDetails => {
+    const DELIVERY_FEE = settings?.fees?.deliveryFee ?? 20;
+    const SALES_TAX_RATE = settings?.fees?.salesTaxRate ?? 0.0825;
+    const PROCESSING_FEE_RATE = settings?.fees?.processingFeeRate ?? 0.03;
     // Calculate rental days between rental and return dates
     const calculateRentalDaysInternal = () => {
       if (!formData.rentalDate || !formData.returnDate) return 1;
@@ -153,6 +163,7 @@ export default function CreateOrderModal({ onClose }: CreateOrderModalProps) {
     formData.selectedExtras,
     formData.rentalDate,
     formData.returnDate,
+    settings,
   ]);
 
   // Use effect to update price whenever relevant form fields change
@@ -330,6 +341,12 @@ export default function CreateOrderModal({ onClose }: CreateOrderModalProps) {
         <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
           Create New Order
         </h2>
+
+        {settingsLoading && (
+          <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-700 rounded-md text-sm text-gray-500 dark:text-gray-400">
+            Loading pricing settings...
+          </div>
+        )}
 
         {error && (
           <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-md">

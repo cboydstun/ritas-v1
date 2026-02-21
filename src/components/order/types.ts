@@ -52,6 +52,17 @@ export interface StepProps {
   setIsServiceDiscount?: (value: boolean) => void;
   /** Called just before redirect to success page so the parent can clear the draft */
   onSuccess?: () => void;
+  /** Delivery window start hour (0–23), defaults to 8 */
+  deliveryWindowStartHour?: number;
+  /** Delivery window end hour (0–23), defaults to 18 */
+  deliveryWindowEndHour?: number;
+  /** Dynamic mixer list from settings; falls back to rental-data defaults when absent */
+  mixers?: Array<{
+    id: string;
+    label: string;
+    description: string;
+    price: number;
+  }>;
 }
 
 export const steps: { id: OrderStep; label: string }[] = [

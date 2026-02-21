@@ -133,6 +133,129 @@ function OrderDetails() {
               )}
             </div>
 
+            {/* Mixer & Drink Preparation Guide */}
+            {mixers.length > 0 || machineType
+              ? (() => {
+                  const tankCount =
+                    machineType === "single"
+                      ? 1
+                      : machineType === "double"
+                        ? 2
+                        : 3;
+                  const capacityL =
+                    machineType === "single"
+                      ? 15
+                      : machineType === "double"
+                        ? 30
+                        : 45;
+
+                  return (
+                    <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-xl p-6">
+                      <h3 className="font-semibold text-lg text-charcoal dark:text-white mb-4">
+                        🍹 Mixer &amp; Drink Preparation Guide
+                      </h3>
+                      <p className="text-sm text-charcoal/60 dark:text-white/50 mb-4">
+                        Your machine holds <strong>{capacityL}L</strong> total
+                        across {tankCount} tank{tankCount > 1 ? "s" : ""} (
+                        {Math.round(capacityL / tankCount)}L per tank).
+                      </p>
+
+                      <ul className="space-y-3 mb-5">
+                        {Array.from({ length: tankCount }, (_, i) => {
+                          const mixerKey = mixers[i] as MixerType | undefined;
+                          const mixerLabel = mixerKey
+                            ? (mixerDetails[mixerKey]?.label ?? mixerKey)
+                            : null;
+                          const tankLabel =
+                            tankCount === 1 ? "Your Tank" : `Tank ${i + 1}`;
+
+                          return mixerLabel ? (
+                            <li
+                              key={i}
+                              className="p-4 bg-white dark:bg-charcoal/40 border-l-4 border-green-400 rounded-lg"
+                            >
+                              <p className="font-semibold text-charcoal dark:text-white mb-1">
+                                {tankLabel} — {mixerLabel}
+                              </p>
+                              <ul className="text-sm text-charcoal/70 dark:text-white/70 space-y-1">
+                                <li>
+                                  ✅ <strong>We bring:</strong> 1 × ½-gallon (64
+                                  oz) jug of {mixerLabel} concentrate
+                                </li>
+                                <li>
+                                  💧 <strong>You add:</strong> ~2 gallons of
+                                  water → ~2.5 gallons total (~40 servings of 8
+                                  oz)
+                                </li>
+                                <li>
+                                  🥃 <strong>Optional BYOB:</strong> up to 1.75
+                                  L (one "handle") of liquor per tank if desired
+                                </li>
+                              </ul>
+                            </li>
+                          ) : (
+                            <li
+                              key={i}
+                              className="p-4 bg-white dark:bg-charcoal/40 border-l-4 border-gray-300 dark:border-gray-600 rounded-lg"
+                            >
+                              <p className="font-semibold text-charcoal dark:text-white mb-1">
+                                {tankLabel} — No Mixer Selected
+                              </p>
+                              <p className="text-sm text-charcoal/70 dark:text-white/70">
+                                You will be providing your own mixer and water.
+                                Each tank holds up to 1.75 L of liquor if
+                                desired.
+                              </p>
+                            </li>
+                          );
+                        })}
+                      </ul>
+
+                      {/* TABC / no-alcohol warning */}
+                      <div className="bg-amber-50 dark:bg-amber-900/20 border-l-4 border-amber-400 rounded-lg p-4">
+                        <p className="text-sm font-semibold text-amber-800 dark:text-amber-300 mb-1">
+                          🚫 Alcohol Policy — Texas TABC
+                        </p>
+                        <p className="text-sm text-amber-700 dark:text-amber-400">
+                          We are prohibited by Texas law from providing or
+                          selling alcohol. If you choose to add your own, please
+                          limit to{" "}
+                          <strong>
+                            one 1.75 L bottle (a "handle") per tank maximum
+                          </strong>{" "}
+                          and always <strong>drink responsibly</strong>. 🥃
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })()
+              : null}
+
+            {/* Payment Process */}
+            <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-xl p-6">
+              <h3 className="font-semibold text-lg text-charcoal dark:text-white mb-3">
+                💳 What Happens Next — Payment
+              </h3>
+              <ol className="list-decimal list-inside space-y-2 text-charcoal/70 dark:text-white/70 text-sm">
+                <li>
+                  <strong>Day before your event</strong> — we will call or text
+                  you to confirm all booking details (date, time, address).
+                </li>
+                <li>
+                  <strong>After confirmation</strong> — we will send you an
+                  invoice you can pay online (card, PayPal, etc.).
+                </li>
+                <li>
+                  <strong>Cash on delivery</strong> is also accepted — no
+                  deposit required today.
+                </li>
+              </ol>
+              <p className="mt-3 text-xs text-charcoal/50 dark:text-white/40 italic">
+                All sales are final — no refunds. Please reference your Booking
+                ID in any communications with us.
+              </p>
+            </div>
+
             <div className="bg-white/80 dark:bg-charcoal/30 rounded-xl p-6">
               <h3 className="font-semibold text-lg text-charcoal dark:text-white mb-4">
                 Next Steps
@@ -142,8 +265,9 @@ function OrderDetails() {
                 order.
               </p>
               <p className="text-charcoal/70 dark:text-white/70">
-                Our team will contact you before your delivery date to confirm
-                the details.
+                Our team will contact you the{" "}
+                <strong>day before your event</strong> to confirm the details
+                and arrange payment.
               </p>
             </div>
           </div>

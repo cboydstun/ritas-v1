@@ -19,6 +19,7 @@ import {
   validateZipCode,
   isBexarCountyZipCode,
   computeOrderTotal,
+  type SettingsOverrides,
 } from "./utils";
 import { calculatePrice } from "@/lib/pricing";
 import { ProgressBar } from "./ProgressBar";
@@ -82,6 +83,32 @@ const StepSkeleton = () => (
 
 export default function OrderForm() {
   const searchParams = useSearchParams();
+
+  const [settings, setSettings] = useState<SettingsOverrides>({});
+
+  useEffect(() => {
+    fetch("/api/v1/settings")
+      .then((res) => res.json())
+      .then((data: SettingsOverrides) => setSettings(data))
+      .catch(() => {
+        // keep defaults on network error
+      });
+  }, []);
+
+  // Build ordered mixer list from settings for MachineStep
+  const settingsMixers = settings.mixers
+    ? Object.entries(settings.mixers).map(([id, m]) => ({
+        id,
+        label: m.label ?? id,
+        description: m.description ?? "",
+        price: m.price,
+      }))
+    : undefined;
+
+  const deliveryWindowStartHour =
+    settings?.operations?.deliveryWindowStartHour ?? 8;
+  const deliveryWindowEndHour =
+    settings?.operations?.deliveryWindowEndHour ?? 18;
 
   // Get initial machine type and mixer from URL once.
   // If URL params are present (e.g. clicking "Book Now" from the pricing page)
@@ -188,7 +215,7 @@ export default function OrderForm() {
   // matches what PricingSummary and ReviewStep display, rather than the stale
   // single-day seed value set at initialisation.
   useEffect(() => {
-    const { finalTotal } = computeOrderTotal(formData);
+    const { finalTotal } = computeOrderTotal(formData, settings);
     const rounded = Number(finalTotal.toFixed(2));
     setFormData((prev) =>
       prev.price === rounded ? prev : { ...prev, price: rounded },
@@ -206,6 +233,7 @@ export default function OrderForm() {
     JSON.stringify(formData.selectedMixers),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     JSON.stringify(formData.selectedExtras),
+    settings,
   ]);
 
   /** Clear draft — called by ReviewStep just before redirecting to success */
@@ -314,16 +342,44 @@ export default function OrderForm() {
         setError("Please select a delivery time");
         return;
       }
-      if (!validateDeliveryTime(formData.rentalTime)) {
-        setError("Delivery time must be between 8:00 AM and 6:00 PM");
+      if (
+        !validateDeliveryTime(
+          formData.rentalTime,
+          deliveryWindowStartHour,
+          deliveryWindowEndHour,
+        )
+      ) {
+        const startLabel =
+          deliveryWindowStartHour < 12
+            ? `${deliveryWindowStartHour}:00 AM`
+            : `${deliveryWindowStartHour - 12 || 12}:00 PM`;
+        const endLabel =
+          deliveryWindowEndHour < 12
+            ? `${deliveryWindowEndHour}:00 AM`
+            : `${deliveryWindowEndHour - 12 || 12}:00 PM`;
+        setError(`Delivery time must be between ${startLabel} and ${endLabel}`);
         return;
       }
       if (!formData.returnTime) {
         setError("Please select a pick up time");
         return;
       }
-      if (!validateDeliveryTime(formData.returnTime)) {
-        setError("Pick up time must be between 8:00 AM and 6:00 PM");
+      if (
+        !validateDeliveryTime(
+          formData.returnTime,
+          deliveryWindowStartHour,
+          deliveryWindowEndHour,
+        )
+      ) {
+        const startLabel =
+          deliveryWindowStartHour < 12
+            ? `${deliveryWindowStartHour}:00 AM`
+            : `${deliveryWindowStartHour - 12 || 12}:00 PM`;
+        const endLabel =
+          deliveryWindowEndHour < 12
+            ? `${deliveryWindowEndHour}:00 AM`
+            : `${deliveryWindowEndHour - 12 || 12}:00 PM`;
+        setError(`Pick up time must be between ${startLabel} and ${endLabel}`);
         return;
       }
     }
@@ -448,6 +504,8 @@ export default function OrderForm() {
                   formData={formData}
                   onInputChange={handleInputChange}
                   error={error}
+                  deliveryWindowStartHour={deliveryWindowStartHour}
+                  deliveryWindowEndHour={deliveryWindowEndHour}
                 />
               )}
 
@@ -458,6 +516,7 @@ export default function OrderForm() {
                   // Issue 4: pass availability error so MachineStep shows it immediately
                   error={dateAvailabilityError || error}
                   onAvailabilityError={setDateAvailabilityError}
+                  mixers={settingsMixers}
                 />
               )}
 
@@ -504,13 +563,21 @@ export default function OrderForm() {
         {/* Sticky Pricing Summary - Desktop */}
         <div className="hidden lg:block lg:col-span-1">
           <div className="sticky top-8">
-            <PricingSummary formData={formData} currentStep={step} />
+            <PricingSummary
+              formData={formData}
+              currentStep={step}
+              settings={settings}
+            />
           </div>
         </div>
 
         {/* Mobile Pricing Summary - Shows at bottom */}
         <div className="lg:hidden">
-          <PricingSummary formData={formData} currentStep={step} />
+          <PricingSummary
+            formData={formData}
+            currentStep={step}
+            settings={settings}
+          />
         </div>
       </div>
     </div>

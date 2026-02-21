@@ -52,12 +52,6 @@ const rentalSchema = new mongoose.Schema(
     },
     selectedMixers: {
       type: [String],
-      enum: [
-        "non-alcoholic",
-        "margarita",
-        "pina-colada",
-        "strawberry-daiquiri",
-      ],
       validate: [
         {
           validator: function (

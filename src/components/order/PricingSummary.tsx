@@ -1,13 +1,18 @@
 import { OrderFormData, OrderStep } from "./types";
-import { computeOrderTotal } from "./utils";
+import { computeOrderTotal, type SettingsOverrides } from "./utils";
 import { formatPrice } from "@/lib/pricing";
 
 interface PricingSummaryProps {
   formData: OrderFormData;
   currentStep?: OrderStep;
+  settings?: SettingsOverrides;
 }
 
-export function PricingSummary({ formData, currentStep }: PricingSummaryProps) {
+export function PricingSummary({
+  formData,
+  currentStep,
+  settings,
+}: PricingSummaryProps) {
   const {
     basePrice,
     mixerPrice,
@@ -18,7 +23,14 @@ export function PricingSummary({ formData, currentStep }: PricingSummaryProps) {
     salesTax,
     processingFee,
     finalTotal,
-  } = computeOrderTotal(formData);
+  } = computeOrderTotal(formData, settings);
+
+  const discountRate = settings?.fees?.serviceDiscountRate ?? 0.1;
+  const taxRate = settings?.fees?.salesTaxRate ?? 0.0825;
+  const processingRate = settings?.fees?.processingFeeRate ?? 0.03;
+
+  const pct = (rate: number) =>
+    `${(rate * 100).toFixed(2).replace(/\.?0+$/, "")}%`;
 
   return (
     <div className="bg-white/95 dark:bg-charcoal/95 backdrop-blur-lg rounded-xl shadow-lg p-6 border-2 border-margarita/20">
@@ -147,7 +159,7 @@ export function PricingSummary({ formData, currentStep }: PricingSummaryProps) {
           {/* Service Discount */}
           {formData.isServiceDiscount && (
             <div className="flex justify-between text-green-600 dark:text-green-400">
-              <span>Service Discount (10%)</span>
+              <span>Service Discount ({pct(discountRate)})</span>
               <span>-${formatPrice(serviceDiscountAmount)}</span>
             </div>
           )}
@@ -155,7 +167,7 @@ export function PricingSummary({ formData, currentStep }: PricingSummaryProps) {
           {/* Tax */}
           <div className="flex justify-between">
             <span className="text-charcoal/70 dark:text-white/70">
-              Sales Tax (8.25%)
+              Sales Tax ({pct(taxRate)})
             </span>
             <span className="font-medium text-charcoal dark:text-white">
               ${formatPrice(salesTax)}
@@ -165,7 +177,7 @@ export function PricingSummary({ formData, currentStep }: PricingSummaryProps) {
           {/* Processing Fee */}
           <div className="flex justify-between">
             <span className="text-charcoal/70 dark:text-white/70">
-              Processing Fee (3%)
+              Processing Fee ({pct(processingRate)})
             </span>
             <span className="font-medium text-charcoal dark:text-white">
               ${formatPrice(processingFee)}

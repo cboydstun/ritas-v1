@@ -59,13 +59,17 @@ export const isBexarCountyZipCode = (zipCode: string): boolean => {
   return bexarZips.includes(cleanZip);
 };
 
-export const validateDeliveryTime = (time: string): boolean => {
+export const validateDeliveryTime = (
+  time: string,
+  startHour: number = 8,
+  endHour: number = 18,
+): boolean => {
   if (time === "ANY") return true;
   if (!time) return false;
   const [hours, minutes] = time.split(":").map(Number);
   const timeInMinutes = hours * 60 + minutes;
-  const minTimeInMinutes = 8 * 60; // 8:00 AM
-  const maxTimeInMinutes = 18 * 60; // 6:00 PM
+  const minTimeInMinutes = startHour * 60;
+  const maxTimeInMinutes = endHour * 60;
   return timeInMinutes >= minTimeInMinutes && timeInMinutes <= maxTimeInMinutes;
 };
 
@@ -85,6 +89,29 @@ export const formatDateForDisplay = (isoDate: string): string => {
 import { calculatePrice } from "@/lib/pricing";
 import { OrderFormData } from "./types";
 
+export interface SettingsOverrides {
+  fees?: {
+    salesTaxRate?: number;
+    processingFeeRate?: number;
+    serviceDiscountRate?: number;
+    deliveryFee?: number;
+  };
+  extras?: Record<string, { price: number }>;
+  machines?: {
+    single?: { basePrice: number };
+    double?: { basePrice: number };
+    triple?: { basePrice: number };
+  };
+  mixers?: Record<
+    string,
+    { label?: string; description?: string; price: number }
+  >;
+  operations?: {
+    deliveryWindowStartHour?: number;
+    deliveryWindowEndHour?: number;
+  };
+}
+
 export interface OrderTotals {
   basePrice: number;
   mixerPrice: number;
@@ -101,10 +128,20 @@ export interface OrderTotals {
   finalTotal: number;
 }
 
-export function computeOrderTotal(formData: OrderFormData): OrderTotals {
+export function computeOrderTotal(
+  formData: OrderFormData,
+  settings?: SettingsOverrides,
+): OrderTotals {
   const priceBreakdown = calculatePrice(
     formData.machineType,
     formData.selectedMixers,
+    {
+      deliveryFee: settings?.fees?.deliveryFee,
+      salesTaxRate: settings?.fees?.salesTaxRate,
+      processingFeeRate: settings?.fees?.processingFeeRate,
+      machines: settings?.machines,
+      mixers: settings?.mixers,
+    },
   );
 
   const perDayRate = priceBreakdown.basePrice + priceBreakdown.mixerPrice;
@@ -123,10 +160,12 @@ export function computeOrderTotal(formData: OrderFormData): OrderTotals {
 
   const extrasTotal = Number(
     formData.selectedExtras
-      .reduce(
-        (sum, item) => sum + item.price * (item.quantity || 1) * rentalDays,
-        0,
-      )
+      .reduce((sum, item) => {
+        const overridePrice = settings?.extras?.[item.id]?.price;
+        const unitPrice =
+          overridePrice !== undefined ? overridePrice : item.price;
+        return sum + unitPrice * (item.quantity || 1) * rentalDays;
+      }, 0)
       .toFixed(2),
   );
 
@@ -139,8 +178,9 @@ export function computeOrderTotal(formData: OrderFormData): OrderTotals {
     ).toFixed(2),
   );
 
+  const discountRate = settings?.fees?.serviceDiscountRate ?? 0.1;
   const serviceDiscountAmount = Number(
-    (formData.isServiceDiscount ? subtotal * 0.1 : 0).toFixed(2),
+    (formData.isServiceDiscount ? subtotal * discountRate : 0).toFixed(2),
   );
 
   const discountedSubtotal = Number(
@@ -148,8 +188,12 @@ export function computeOrderTotal(formData: OrderFormData): OrderTotals {
   );
 
   // Tax and processing fee are applied to the post-discount subtotal
-  const salesTax = Number((discountedSubtotal * 0.0825).toFixed(2)); // 8.25%
-  const processingFee = Number((discountedSubtotal * 0.03).toFixed(2)); // 3%
+  const taxRate = settings?.fees?.salesTaxRate ?? 0.0825;
+  const processingRate = settings?.fees?.processingFeeRate ?? 0.03;
+  const salesTax = Number((discountedSubtotal * taxRate).toFixed(2));
+  const processingFee = Number(
+    (discountedSubtotal * processingRate).toFixed(2),
+  );
 
   const finalTotal = Number(
     (discountedSubtotal + salesTax + processingFee).toFixed(2),

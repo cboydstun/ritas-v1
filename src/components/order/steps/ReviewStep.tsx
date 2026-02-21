@@ -227,10 +227,8 @@ export default function ReviewStep({
               <ul className="list-disc list-inside">
                 {formData.selectedMixers[0] && (
                   <li>
-                    {
-                      mixerDetails[formData.selectedMixers[0] as MixerType]
-                        .label
-                    }
+                    {mixerDetails[formData.selectedMixers[0] as MixerType]
+                      ?.label ?? formData.selectedMixers[0]}
                   </li>
                 )}
               </ul>
@@ -241,10 +239,8 @@ export default function ReviewStep({
                   <p className="font-medium">Tank 1:</p>
                   {formData.selectedMixers[0] ? (
                     <p className="ml-4">
-                      {
-                        mixerDetails[formData.selectedMixers[0] as MixerType]
-                          .label
-                      }
+                      {mixerDetails[formData.selectedMixers[0] as MixerType]
+                        ?.label ?? formData.selectedMixers[0]}
                     </p>
                   ) : (
                     <p className="ml-4">No mixer - Bring your own</p>
@@ -254,10 +250,8 @@ export default function ReviewStep({
                   <p className="font-medium">Tank 2:</p>
                   {formData.selectedMixers[1] ? (
                     <p className="ml-4">
-                      {
-                        mixerDetails[formData.selectedMixers[1] as MixerType]
-                          .label
-                      }
+                      {mixerDetails[formData.selectedMixers[1] as MixerType]
+                        ?.label ?? formData.selectedMixers[1]}
                     </p>
                   ) : (
                     <p className="ml-4">No mixer - Bring your own</p>
@@ -271,10 +265,8 @@ export default function ReviewStep({
                   <p className="font-medium">Tank 1:</p>
                   {formData.selectedMixers[0] ? (
                     <p className="ml-4">
-                      {
-                        mixerDetails[formData.selectedMixers[0] as MixerType]
-                          .label
-                      }
+                      {mixerDetails[formData.selectedMixers[0] as MixerType]
+                        ?.label ?? formData.selectedMixers[0]}
                     </p>
                   ) : (
                     <p className="ml-4">No mixer - Bring your own</p>
@@ -284,10 +276,8 @@ export default function ReviewStep({
                   <p className="font-medium">Tank 2:</p>
                   {formData.selectedMixers[1] ? (
                     <p className="ml-4">
-                      {
-                        mixerDetails[formData.selectedMixers[1] as MixerType]
-                          .label
-                      }
+                      {mixerDetails[formData.selectedMixers[1] as MixerType]
+                        ?.label ?? formData.selectedMixers[1]}
                     </p>
                   ) : (
                     <p className="ml-4">No mixer - Bring your own</p>
@@ -297,10 +287,8 @@ export default function ReviewStep({
                   <p className="font-medium">Tank 3:</p>
                   {formData.selectedMixers[2] ? (
                     <p className="ml-4">
-                      {
-                        mixerDetails[formData.selectedMixers[2] as MixerType]
-                          .label
-                      }
+                      {mixerDetails[formData.selectedMixers[2] as MixerType]
+                        ?.label ?? formData.selectedMixers[2]}
                     </p>
                   ) : (
                     <p className="ml-4">No mixer - Bring your own</p>

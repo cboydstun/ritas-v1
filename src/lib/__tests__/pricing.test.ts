@@ -69,4 +69,47 @@ describe("calculatePrice", () => {
       expect(result.total).toBeCloseTo(expectedTotal, 2);
     });
   });
+
+  describe("overrides parameter", () => {
+    it("uses custom deliveryFee when override provided", () => {
+      const result = calculatePrice("single", [], { deliveryFee: 50 });
+      expect(result.deliveryFee).toBe(50);
+      // subtotal = 124.95 + 0 + 50 = 174.95
+      const expectedSubtotal = 174.95;
+      const expectedTax = expectedSubtotal * 0.0825;
+      const expectedProcessing = expectedSubtotal * 0.03;
+      expect(result.total).toBeCloseTo(
+        expectedSubtotal + expectedTax + expectedProcessing,
+        2,
+      );
+    });
+
+    it("uses custom salesTaxRate when override provided", () => {
+      const result = calculatePrice("single", [], { salesTaxRate: 0.1 });
+      const subtotal = 124.95 + 0 + 20; // 144.95
+      expect(result.salesTax).toBeCloseTo(subtotal * 0.1, 2);
+    });
+
+    it("uses custom machine basePrice when override provided", () => {
+      const result = calculatePrice("single", [], {
+        machines: { single: { basePrice: 200 } },
+      });
+      expect(result.basePrice).toBe(200);
+    });
+
+    it("uses custom mixer price when override provided", () => {
+      const result = calculatePrice("single", ["margarita"], {
+        mixers: { margarita: { price: 30 } },
+      });
+      expect(result.mixerPrice).toBe(30);
+    });
+
+    it("default behavior is unchanged when no overrides provided", () => {
+      const withoutOverrides = calculatePrice("single", ["margarita"]);
+      const withEmptyOverrides = calculatePrice("single", ["margarita"], {});
+      expect(withoutOverrides.total).toBe(withEmptyOverrides.total);
+      expect(withoutOverrides.basePrice).toBe(withEmptyOverrides.basePrice);
+      expect(withoutOverrides.deliveryFee).toBe(withEmptyOverrides.deliveryFee);
+    });
+  });
 });

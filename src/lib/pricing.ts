@@ -13,28 +13,51 @@ interface PriceBreakdown {
   total: number;
 }
 
+export interface PricingOverrides {
+  deliveryFee?: number;
+  salesTaxRate?: number;
+  processingFeeRate?: number;
+  machines?: {
+    single?: { basePrice: number };
+    double?: { basePrice: number };
+    triple?: { basePrice: number };
+  };
+  mixers?: Record<string, { price: number }>;
+}
+
 export function calculatePrice(
   machineType: "single" | "double" | "triple",
   mixers: MixerType[] = [],
+  overrides?: Partial<PricingOverrides>,
 ): PriceBreakdown {
   const machine = machinePackages.find((pkg) => pkg.type === machineType);
   if (!machine) {
     throw new Error(`Invalid machine type: ${machineType}`);
   }
 
-  const mixerPrice = mixers.reduce(
-    (sum, mixer) => sum + mixerDetails[mixer].price,
-    0,
-  );
+  const fee = overrides?.deliveryFee ?? DELIVERY_FEE;
+  const taxRate = overrides?.salesTaxRate ?? SALES_TAX_RATE;
+  const processingRate = overrides?.processingFeeRate ?? PROCESSING_FEE_RATE;
+  const machineBasePrice =
+    overrides?.machines?.[machineType]?.basePrice ?? machine.basePrice;
 
-  const subtotal = machine.basePrice + mixerPrice + DELIVERY_FEE;
-  const salesTax = subtotal * SALES_TAX_RATE;
-  const processingFee = subtotal * PROCESSING_FEE_RATE;
+  const mixerPrice = mixers.reduce((sum, mixer) => {
+    const overridePrice = overrides?.mixers?.[mixer]?.price;
+    const unitPrice =
+      overridePrice !== undefined
+        ? overridePrice
+        : (mixerDetails[mixer as MixerType]?.price ?? 0);
+    return sum + unitPrice;
+  }, 0);
+
+  const subtotal = machineBasePrice + mixerPrice + fee;
+  const salesTax = subtotal * taxRate;
+  const processingFee = subtotal * processingRate;
 
   return {
-    basePrice: machine.basePrice,
+    basePrice: machineBasePrice,
     mixerPrice,
-    deliveryFee: DELIVERY_FEE,
+    deliveryFee: fee,
     salesTax,
     processingFee,
     total: Number((subtotal + salesTax + processingFee).toFixed(2)),

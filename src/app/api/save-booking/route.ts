@@ -121,8 +121,8 @@ export async function POST(request: Request) {
         | undefined;
       const tankLabel = tankCount === 1 ? "Your Tank" : `Tank ${i + 1}`;
 
-      if (mixerKey && mixerDetails[mixerKey]) {
-        const name = mixerDetails[mixerKey].label;
+      if (mixerKey) {
+        const name = mixerDetails[mixerKey]?.label ?? mixerKey;
         return `
           <li style="margin-bottom: 12px; padding: 10px; background: #f0fdf4; border-left: 3px solid #22c55e; border-radius: 4px;">
             <strong>${tankLabel} — ${name}</strong><br/>

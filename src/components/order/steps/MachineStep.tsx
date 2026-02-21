@@ -13,7 +13,7 @@ enum MachineSubStep {
   NextButton = 2,
 }
 
-const mixerTypes: MixerType[] = [
+const defaultMixerTypes: MixerType[] = [
   "non-alcoholic",
   "margarita",
   "pina-colada",
@@ -44,7 +44,17 @@ export default function MachineStep({
   onInputChange,
   error,
   onAvailabilityError,
+  mixers: mixersProp,
 }: StepProps) {
+  // Use DB-driven mixer list when available, fall back to rental-data defaults
+  const resolvedMixers =
+    mixersProp ??
+    defaultMixerTypes.map((t) => ({
+      id: t,
+      label: mixerDetails[t].label,
+      description: mixerDetails[t].description,
+      price: mixerDetails[t].price,
+    }));
   // Track the current sub-step
   const [currentSubStep, setCurrentSubStep] = useState<MachineSubStep>(
     MachineSubStep.MachineType,
@@ -179,7 +189,7 @@ export default function MachineStep({
         </h4>
       )}
       <div className="grid grid-cols-1 gap-2">
-        {mixerTypes.map((type) => {
+        {resolvedMixers.map((mixer) => {
           const idPrefix =
             formData.machineType === "single"
               ? "single"
@@ -188,14 +198,14 @@ export default function MachineStep({
                 : `tank${tankIndex + 1}-triple`;
           return (
             <MixerCard
-              key={`${idPrefix}-${type}`}
-              mixerType={type}
-              name={mixerDetails[type].label}
-              price={mixerDetails[type].price}
-              description={mixerDetails[type].description}
-              isSelected={formData.selectedMixers?.[tankIndex] === type}
+              key={`${idPrefix}-${mixer.id}`}
+              mixerType={mixer.id as MixerType}
+              name={mixer.label}
+              price={mixer.price}
+              description={mixer.description}
+              isSelected={formData.selectedMixers?.[tankIndex] === mixer.id}
               tankIndex={tankIndex}
-              checkboxId={`${idPrefix}-${type}`}
+              checkboxId={`${idPrefix}-${mixer.id}`}
               onChange={handleMixerChange}
             />
           );

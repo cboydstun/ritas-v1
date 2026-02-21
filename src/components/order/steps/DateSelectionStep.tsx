@@ -4,11 +4,34 @@ import { format, addDays, startOfDay, parseISO } from "date-fns";
 import { StepProps, labelClassName, inputClassName } from "../types";
 import "react-day-picker/dist/style.css";
 
+function formatHour(h: number): string {
+  if (h === 0) return "12:00 AM";
+  if (h === 12) return "12:00 PM";
+  return h < 12 ? `${h}:00 AM` : `${h - 12}:00 PM`;
+}
+
+function generateTimeOptions(startHour: number, endHour: number) {
+  const options: { value: string; label: string }[] = [];
+  for (let h = startHour; h <= endHour; h++) {
+    options.push({
+      value: `${String(h).padStart(2, "0")}:00`,
+      label: formatHour(h),
+    });
+  }
+  return options;
+}
+
 export default function DateSelectionStep({
   formData,
   onInputChange,
   error,
+  deliveryWindowStartHour = 8,
+  deliveryWindowEndHour = 18,
 }: StepProps) {
+  const timeOptions = generateTimeOptions(
+    deliveryWindowStartHour,
+    deliveryWindowEndHour,
+  );
   // Issue 2: use parseISO so the calendar always shows the correct local date
   // (new Date("YYYY-MM-DD") parses as UTC midnight, which can show the wrong day)
   const [range, setRange] = useState<DateRange | undefined>({
@@ -94,17 +117,11 @@ export default function DateSelectionStep({
                   className={inputClassName}
                 >
                   <option value="ANY">ANY TIME</option>
-                  <option value="08:00">8:00 AM</option>
-                  <option value="09:00">9:00 AM</option>
-                  <option value="10:00">10:00 AM</option>
-                  <option value="11:00">11:00 AM</option>
-                  <option value="12:00">12:00 PM</option>
-                  <option value="13:00">1:00 PM</option>
-                  <option value="14:00">2:00 PM</option>
-                  <option value="15:00">3:00 PM</option>
-                  <option value="16:00">4:00 PM</option>
-                  <option value="17:00">5:00 PM</option>
-                  <option value="18:00">6:00 PM</option>
+                  {timeOptions.map(({ value, label }) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
                 </select>
               </div>
 
@@ -117,17 +134,11 @@ export default function DateSelectionStep({
                   className={inputClassName}
                 >
                   <option value="ANY">ANY TIME</option>
-                  <option value="08:00">8:00 AM</option>
-                  <option value="09:00">9:00 AM</option>
-                  <option value="10:00">10:00 AM</option>
-                  <option value="11:00">11:00 AM</option>
-                  <option value="12:00">12:00 PM</option>
-                  <option value="13:00">1:00 PM</option>
-                  <option value="14:00">2:00 PM</option>
-                  <option value="15:00">3:00 PM</option>
-                  <option value="16:00">4:00 PM</option>
-                  <option value="17:00">5:00 PM</option>
-                  <option value="18:00">6:00 PM</option>
+                  {timeOptions.map(({ value, label }) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
                 </select>
               </div>
             </div>
