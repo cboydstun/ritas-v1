@@ -4,6 +4,7 @@ import { Rental } from "@/models/rental";
 import twilio from "twilio";
 import { Resend } from "resend";
 import { nanoid } from "nanoid";
+import { mixerDetails } from "@/lib/rental-data";
 
 export async function POST(request: Request) {
   try {
@@ -105,6 +106,61 @@ export async function POST(request: Request) {
       );
     }
 
+    // ── Build dynamic mixer & drink guide for the confirmation email ──────
+    const tankCount =
+      rental.machineType === "single"
+        ? 1
+        : rental.machineType === "double"
+          ? 2
+          : 3;
+    const selectedMixers: string[] = rental.selectedMixers || [];
+
+    const tankRows = Array.from({ length: tankCount }, (_, i) => {
+      const mixerKey = selectedMixers[i] as
+        | keyof typeof mixerDetails
+        | undefined;
+      const tankLabel = tankCount === 1 ? "Your Tank" : `Tank ${i + 1}`;
+
+      if (mixerKey && mixerDetails[mixerKey]) {
+        const name = mixerDetails[mixerKey].label;
+        return `
+          <li style="margin-bottom: 12px; padding: 10px; background: #f0fdf4; border-left: 3px solid #22c55e; border-radius: 4px;">
+            <strong>${tankLabel} — ${name}</strong><br/>
+            <span style="font-size: 14px; color: #444; line-height: 1.7;">
+              ✅ <strong>We bring:</strong> 1 × ½-gallon (64 oz) jug of ${name} concentrate<br/>
+              💧 <strong>You add:</strong> ~2 gallons of water → ~2.5 gallons total (~40 servings of 8 oz)<br/>
+              🥃 <strong>Optional BYOB:</strong> up to 1.75 L (one "handle") of liquor per tank if desired
+            </span>
+          </li>`;
+      }
+
+      return `
+        <li style="margin-bottom: 12px; padding: 10px; background: #f9fafb; border-left: 3px solid #d1d5db; border-radius: 4px;">
+          <strong>${tankLabel} — No Mixer Selected</strong><br/>
+          <span style="font-size: 14px; color: #444;">
+            You will be providing your own mixer and water. Each tank holds up to 1.75 L of liquor if desired.
+          </span>
+        </li>`;
+    }).join("");
+
+    const mixerGuideHtml = `
+      <div style="background-color: #eff6ff; border: 1px solid #bfdbfe; padding: 15px; border-radius: 6px; margin: 20px 0;">
+        <h3 style="margin: 0 0 12px 0; color: #1d4ed8;">🍹 Your Mixer &amp; Drink Preparation Guide</h3>
+        <ul style="list-style-type: none; padding: 0; margin: 0 0 14px 0;">
+          ${tankRows}
+        </ul>
+        <div style="background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 12px; border-radius: 4px;">
+          <strong style="color: #92400e;">🚫 Alcohol Policy — Texas TABC</strong><br/>
+          <span style="font-size: 14px; color: #78350f; line-height: 1.6;">
+            We are prohibited by Texas law from providing or selling alcohol.
+            Many of our customers choose to add their own — if you do, please limit to
+            <strong>one 1.75 L bottle (a "handle") per tank maximum</strong>
+            and always <strong>drink responsibly</strong>. 🥃
+          </span>
+        </div>
+      </div>`;
+    // ─────────────────────────────────────────────────────────────────────
+
     // Configure Resend
     const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -145,6 +201,8 @@ export async function POST(request: Request) {
               <li style="margin-bottom: 8px;">⚡ Machine Capacity: ${rental.capacity}L</li>
             </ul>
           </div>
+
+          ${mixerGuideHtml}
 
           <div style="background-color: #fff; padding: 15px; border-radius: 6px; margin: 20px 0; border: 1px solid #e2e8f0;">
             <p style="margin: 0 0 10px 0;"><strong style="color: #2b6cb0;">Delivery Address:</strong></p>

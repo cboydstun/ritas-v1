@@ -23,22 +23,26 @@ export interface MachinePackage {
 export const mixerDetails: Record<MixerType, MixerDetails> = {
   "non-alcoholic": {
     label: "Kool Aid Grape or Cherry Mixer",
-    description: "Non-alcoholic, perfect for family events",
+    description:
+      "½ gal concentrate + 2 gal water = ~2.5 gal of drink. Naturally alcohol-free — perfect for all ages.",
     price: 19.95,
   },
   margarita: {
     label: "Margarita Mixer",
-    description: "Classic margarita mix, just add tequila",
+    description:
+      "½ gal concentrate + 2 gal water = ~2.5 gal of drink. Add your own tequila (max 1.75L/tank) — alcohol not included.",
     price: 19.95,
   },
   "pina-colada": {
     label: "Piña Colada Mixer",
-    description: "Tropical piña colada mix, just add rum",
+    description:
+      "½ gal concentrate + 2 gal water = ~2.5 gal of drink. Add your own rum (max 1.75L/tank) — alcohol not included.",
     price: 24.95,
   },
   "strawberry-daiquiri": {
     label: "Strawberry Daiquiri Mixer",
-    description: "Sweet strawberry daiquiri mix, just add rum",
+    description:
+      "½ gal concentrate + 2 gal water = ~2.5 gal of drink. Add your own rum (max 1.75L/tank) — alcohol not included.",
     price: 24.95,
   },
 };

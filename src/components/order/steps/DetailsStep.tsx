@@ -13,8 +13,15 @@ export default function DetailsStep({
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let value = e.target.value.replace(/\D/g, ""); // Remove all non-digits
 
+    // Strip US/Canada country code (+1) when autofill includes it
+    // e.g. "+1 (210) 555-1234" → "12105551234" → drop leading "1" → "2105551234"
+    if (value.length === 11 && value.startsWith("1")) {
+      value = value.slice(1);
+    }
+
+    // For any other oversized input, keep only the last 10 digits
     if (value.length > 10) {
-      value = value.slice(0, 10); // Limit to 10 digits
+      value = value.slice(-10);
     }
 
     // Format the phone number as (XXX)-XXX-XXXX
@@ -39,6 +46,26 @@ export default function DetailsStep({
     };
 
     onInputChange(syntheticEvent);
+  };
+
+  // When browser autofill fills "City, ST" into the city field (because the
+  // state field is read-only and autofill skips it), strip the state suffix
+  // so only the city name is stored.
+  const handleCityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let city = e.target.value;
+
+    // Match patterns like "San Antonio, TX" or "San Antonio, Texas"
+    const commaStatePattern = /^(.+),\s*[A-Za-z]{2,}$/;
+    const match = city.match(commaStatePattern);
+    if (match) {
+      city = match[1].trim();
+    }
+
+    const syntheticEvent = {
+      ...e,
+      target: { ...e.target, value: city, name: e.target.name },
+    };
+    onInputChange(syntheticEvent as React.ChangeEvent<HTMLInputElement>);
   };
 
   const handleZipCodeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -130,6 +157,7 @@ export default function DetailsStep({
               name="customer.name"
               value={formData.customer.name}
               onChange={onInputChange}
+              autoComplete="name"
               className={inputClassName}
               placeholder="Enter your full name"
             />
@@ -143,6 +171,7 @@ export default function DetailsStep({
             name="customer.email"
             value={formData.customer.email}
             onChange={onInputChange}
+            autoComplete="email"
             className={inputClassName}
             placeholder="your@email.com"
           />
@@ -155,6 +184,7 @@ export default function DetailsStep({
             name="customer.phone"
             value={formData.customer.phone}
             onChange={handlePhoneChange}
+            autoComplete="tel"
             className={inputClassName}
             placeholder="(123)-456-7890"
             pattern="\(\d{3}\)-\d{3}-\d{4}"
@@ -169,6 +199,7 @@ export default function DetailsStep({
             name="customer.address.street"
             value={formData.customer.address.street}
             onChange={onInputChange}
+            autoComplete="street-address"
             className={inputClassName}
             placeholder="Enter your street address"
           />
@@ -180,7 +211,8 @@ export default function DetailsStep({
             type="text"
             name="customer.address.city"
             value={formData.customer.address.city}
-            onChange={onInputChange}
+            onChange={handleCityChange}
+            autoComplete="address-level2"
             className={inputClassName}
             placeholder="City"
           />
@@ -193,6 +225,7 @@ export default function DetailsStep({
             name="customer.address.state"
             value={formData.customer.address.state}
             readOnly
+            autoComplete="address-level1"
             className={`${inputClassName} bg-gray-100 dark:bg-gray-700 cursor-default select-none`}
           />
           <p className="text-xs text-charcoal/70 dark:text-white/70 mt-1">
@@ -208,6 +241,7 @@ export default function DetailsStep({
               name="customer.address.zipCode"
               value={formData.customer.address.zipCode}
               onChange={handleZipCodeChange}
+              autoComplete="postal-code"
               className={`${inputClassName} ${
                 zipCodeError
                   ? "border-red-500 pr-10"

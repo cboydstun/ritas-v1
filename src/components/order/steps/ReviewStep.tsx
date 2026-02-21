@@ -309,6 +309,13 @@ export default function ReviewStep({
               </div>
             )}
           </div>
+          {/* TABC / BYOB reminder */}
+          <p className="text-xs text-charcoal/50 dark:text-white/40 italic mt-2">
+            🚫 Alcohol not included — Texas TABC prohibits us from providing it.
+            Add your own (max 1.75L per tank) if desired. Please drink
+            responsibly.
+          </p>
+
           <p className="text-xl font-bold text-orange mt-2">
             ${formatPrice(perDayRate)}/day
           </p>

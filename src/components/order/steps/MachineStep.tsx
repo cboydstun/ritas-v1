@@ -316,6 +316,37 @@ export default function MachineStep({
                 : "Select 3 Mixers"}
           </p>
 
+          {/* ── Mixer & Alcohol Education Panel ── */}
+          <div className="mb-4 space-y-2">
+            {/* What's included in each mixer kit */}
+            <div className="flex items-start gap-2 bg-teal/10 dark:bg-teal/5 border border-teal/30 dark:border-teal/20 rounded-lg p-3">
+              <span className="text-base leading-none mt-0.5 flex-shrink-0">
+                🍹
+              </span>
+              <p className="text-xs text-charcoal/80 dark:text-white/80 leading-relaxed">
+                <strong>What&apos;s included:</strong> Each mixer is a ½-gallon
+                concentrate. Combined with 2 gallons of water, one kit fills a
+                single tank with <strong>~2.5 gallons of finished drink</strong>{" "}
+                — ready to freeze and enjoy.
+              </p>
+            </div>
+
+            {/* TABC compliance + BYOB guidance */}
+            <div className="flex items-start gap-2 bg-orange/10 dark:bg-orange/5 border border-orange/30 dark:border-orange/20 rounded-lg p-3">
+              <span className="text-base leading-none mt-0.5 flex-shrink-0">
+                🚫
+              </span>
+              <p className="text-xs text-charcoal/80 dark:text-white/80 leading-relaxed">
+                <strong>Alcohol policy (Texas TABC):</strong> We are prohibited
+                by Texas law from providing or selling alcohol. Many customers
+                choose to add their own — each tank can hold up to{" "}
+                <strong>one 1.75L bottle (a &quot;handle&quot;)</strong> of
+                liquor. Please drink responsibly. 🥃
+              </p>
+            </div>
+          </div>
+          {/* ─────────────────────────────────── */}
+
           {formData.machineType === "single" && (
             <div className="space-y-2">{getMixerTankSection(0, "")}</div>
           )}
