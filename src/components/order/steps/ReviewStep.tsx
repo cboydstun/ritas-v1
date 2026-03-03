@@ -16,6 +16,8 @@ export default function ReviewStep({
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const {
+    basePrice,
+    mixerPrice,
     deliveryFee,
     perDayRate,
     rentalDays,
@@ -381,8 +383,19 @@ export default function ReviewStep({
             Pricing Details
           </h3>
           <p className="text-charcoal/70 dark:text-white/70">
+            Machine: ${formatPrice(basePrice)}/day
+          </p>
+          {formData.selectedMixers.length > 0 && (
+            <p className="text-charcoal/70 dark:text-white/70">
+              {formData.selectedMixers.length} Mixer
+              {formData.selectedMixers.length > 1 ? "s" : ""}: $
+              {formatPrice(mixerPrice)}/day
+            </p>
+          )}
+          <p className="text-charcoal/70 dark:text-white/70">
             Rate: ${formatPrice(perDayRate)}/day × {rentalDays} day
-            {rentalDays > 1 ? "s" : ""}
+            {rentalDays > 1 ? "s" : ""} = $
+            {formatPrice(perDayRate * rentalDays)}
           </p>
           {formData.selectedExtras.length > 0 && (
             <p className="text-charcoal/70 dark:text-white/70">
