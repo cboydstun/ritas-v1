@@ -5,6 +5,7 @@ import twilio from "twilio";
 import { Resend } from "resend";
 import { nanoid } from "nanoid";
 import { mixerDetails } from "@/lib/rental-data";
+import { calculatePrice, formatPrice } from "@/lib/pricing";
 
 export async function POST(request: Request) {
   try {
@@ -161,6 +162,104 @@ export async function POST(request: Request) {
       </div>`;
     // ─────────────────────────────────────────────────────────────────────
 
+    // ── Pricing breakdown for email ───────────────────────────────────────
+    const priceBreakdown = calculatePrice(
+      rental.machineType,
+      selectedMixers as Parameters<typeof calculatePrice>[1],
+    );
+
+    const rentalDays =
+      rental.rentalDate && rental.returnDate
+        ? Math.max(
+            1,
+            Math.ceil(
+              (new Date(rental.returnDate + "T00:00:00").getTime() -
+                new Date(rental.rentalDate + "T00:00:00").getTime()) /
+                (1000 * 60 * 60 * 24),
+            ),
+          )
+        : 1;
+
+    const perDayRate = priceBreakdown.basePrice + priceBreakdown.mixerPrice;
+
+    const emailExtrasTotal = (rental.selectedExtras || []).reduce(
+      (sum: number, item: { price: number; quantity?: number }) =>
+        sum + item.price * (item.quantity || 1) * rentalDays,
+      0,
+    );
+
+    const emailSubtotal =
+      perDayRate * rentalDays + priceBreakdown.deliveryFee + emailExtrasTotal;
+
+    const emailServiceDiscountAmount = rental.isServiceDiscount
+      ? emailSubtotal * 0.1
+      : 0;
+
+    const emailDiscountedSubtotal = emailSubtotal - emailServiceDiscountAmount;
+
+    const emailSalesTax = emailDiscountedSubtotal * 0.0825;
+    const emailProcessingFee = emailDiscountedSubtotal * 0.03;
+
+    const pricingBreakdownHtml = `
+      <div style="background-color: #fff; padding: 15px; border-radius: 6px; margin: 20px 0; border: 1px solid #e2e8f0;">
+        <p style="margin: 0 0 12px 0;"><strong style="color: #2b6cb0;">Pricing Breakdown:</strong></p>
+        <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+          <tr>
+            <td style="padding: 5px 0; color: #555;">Machine (${rental.capacity}L ${rental.machineType}):</td>
+            <td style="padding: 5px 0; text-align: right;">$${formatPrice(priceBreakdown.basePrice)}/day</td>
+          </tr>
+          ${
+            priceBreakdown.mixerPrice > 0
+              ? `<tr>
+            <td style="padding: 5px 0; color: #555;">${selectedMixers.length} Mixer${selectedMixers.length > 1 ? "s" : ""}:</td>
+            <td style="padding: 5px 0; text-align: right;">$${formatPrice(priceBreakdown.mixerPrice)}/day</td>
+          </tr>`
+              : ""
+          }
+          <tr style="border-top: 1px solid #e2e8f0;">
+            <td style="padding: 5px 0; color: #555;">Rate × ${rentalDays} day${rentalDays > 1 ? "s" : ""}:</td>
+            <td style="padding: 5px 0; text-align: right;">$${formatPrice(perDayRate * rentalDays)}</td>
+          </tr>
+          ${
+            emailExtrasTotal > 0
+              ? `<tr>
+            <td style="padding: 5px 0; color: #555;">Party Extras:</td>
+            <td style="padding: 5px 0; text-align: right;">$${formatPrice(emailExtrasTotal)}</td>
+          </tr>`
+              : ""
+          }
+          <tr>
+            <td style="padding: 5px 0; color: #555;">Delivery &amp; Setup:</td>
+            <td style="padding: 5px 0; text-align: right;">$${formatPrice(priceBreakdown.deliveryFee)}</td>
+          </tr>
+          <tr style="border-top: 1px solid #e2e8f0;">
+            <td style="padding: 5px 0; color: #555;">Subtotal:</td>
+            <td style="padding: 5px 0; text-align: right;">$${formatPrice(emailSubtotal)}</td>
+          </tr>
+          ${
+            rental.isServiceDiscount
+              ? `<tr>
+            <td style="padding: 5px 0; color: #16a34a;">Service Discount (10%):</td>
+            <td style="padding: 5px 0; text-align: right; color: #16a34a;">-$${formatPrice(emailServiceDiscountAmount)}</td>
+          </tr>`
+              : ""
+          }
+          <tr>
+            <td style="padding: 5px 0; color: #555;">Sales Tax (8.25%):</td>
+            <td style="padding: 5px 0; text-align: right;">$${formatPrice(emailSalesTax)}</td>
+          </tr>
+          <tr>
+            <td style="padding: 5px 0; color: #555;">Processing Fee (3%):</td>
+            <td style="padding: 5px 0; text-align: right;">$${formatPrice(emailProcessingFee)}</td>
+          </tr>
+          <tr style="border-top: 2px solid #2b6cb0;">
+            <td style="padding: 8px 0; font-weight: bold; font-size: 16px;">Total:</td>
+            <td style="padding: 8px 0; text-align: right; font-weight: bold; font-size: 16px; color: #ea580c;">$${parseFloat(rentalData.price).toFixed(2)}</td>
+          </tr>
+        </table>
+      </div>`;
+    // ─────────────────────────────────────────────────────────────────────
+
     // Configure Resend
     const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -186,7 +285,17 @@ export async function POST(request: Request) {
             <ul style="list-style-type: none; padding: 0; margin: 0;">
               <li style="margin-bottom: 8px;">🗓 Rental Date: ${rental.rentalDate} at ${rental.rentalTime}</li>
               <li style="margin-bottom: 8px;">🗓 Return Date: ${rental.returnDate} at ${rental.returnTime}</li>
-              <li style="margin-bottom: 8px;">🍹 Selected Mixers: ${rental.selectedMixers.join(", ")}</li>
+              <li style="margin-bottom: 8px;">🍹 Selected Mixers: ${
+                selectedMixers.length > 0
+                  ? selectedMixers
+                      .map(
+                        (m) =>
+                          mixerDetails[m as keyof typeof mixerDetails]?.label ??
+                          m,
+                      )
+                      .join(", ")
+                  : "None — Bring your own mixer"
+              }</li>
               ${
                 rental.selectedExtras && rental.selectedExtras.length > 0
                   ? `<li style="margin-bottom: 8px;">🎉 Party Extras: ${rental.selectedExtras
@@ -197,10 +306,11 @@ export async function POST(request: Request) {
                       .join(", ")}</li>`
                   : ""
               }
-              <li style="margin-bottom: 8px;">💰 Total Amount: $${parseFloat(rentalData.price).toFixed(2)}</li>
               <li style="margin-bottom: 8px;">⚡ Machine Capacity: ${rental.capacity}L</li>
             </ul>
           </div>
+
+          ${pricingBreakdownHtml}
 
           ${mixerGuideHtml}
 
