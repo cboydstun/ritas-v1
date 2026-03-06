@@ -23,7 +23,7 @@ describe("Settings Model", () => {
       const doc = new Settings({});
       expect(doc.machines.single.basePrice).toBe(124.95);
       expect(doc.machines.double.basePrice).toBe(149.95);
-      expect(doc.machines.triple.basePrice).toBe(175.95);
+      expect(doc.machines.triple.basePrice).toBe(174.95);
     });
 
     it("applies default mixer prices when mixers are omitted", () => {

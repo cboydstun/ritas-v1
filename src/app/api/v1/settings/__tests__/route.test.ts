@@ -26,7 +26,7 @@ const mockPublicSettings = {
   machines: {
     single: { basePrice: 124.95 },
     double: { basePrice: 149.95 },
-    triple: { basePrice: 175.95 },
+    triple: { basePrice: 174.95 },
   },
   mixers: {
     "non-alcoholic": { price: 19.95 },

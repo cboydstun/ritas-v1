@@ -46,7 +46,7 @@ const settingsSchema = new mongoose.Schema(
       triple: {
         basePrice: {
           type: Number,
-          default: 175.95,
+          default: 174.95,
           min: [0, "basePrice cannot be negative"],
         },
       },

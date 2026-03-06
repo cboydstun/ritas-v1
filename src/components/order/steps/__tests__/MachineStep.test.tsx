@@ -166,7 +166,7 @@ describe("MachineStep", () => {
       );
       expect(screen.getByText("$124.95")).toBeInTheDocument();
       expect(screen.getByText("$149.95")).toBeInTheDocument();
-      expect(screen.getByText("$175.95")).toBeInTheDocument();
+      expect(screen.getByText("$174.95")).toBeInTheDocument();
     });
 
     it("shows guest ranges in machine cards", () => {

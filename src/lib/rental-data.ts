@@ -86,7 +86,7 @@ export const machinePackages: MachinePackage[] = [
     capacity: 45,
     name: "45L Triple Tank Machine",
     description: "The ultimate machine for large events and variety",
-    basePrice: 175.95,
+    basePrice: 174.95,
     maxMixers: 3,
     features: [
       "45L Total Capacity",
