@@ -51,8 +51,8 @@ export function calculatePrice(
   }, 0);
 
   const subtotal = machineBasePrice + mixerPrice + fee;
-  const salesTax = subtotal * taxRate;
   const processingFee = subtotal * processingRate;
+  const salesTax = (subtotal + processingFee) * taxRate;
 
   return {
     basePrice: machineBasePrice,

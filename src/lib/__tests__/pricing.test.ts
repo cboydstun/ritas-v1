@@ -63,9 +63,9 @@ describe("calculatePrice", () => {
       const result = calculatePrice("single", []);
       // subtotal = 124.95 + 0 + 20 = 144.95
       const expectedSubtotal = 144.95;
-      const expectedTax = expectedSubtotal * 0.0825;
       const expectedProcessing = expectedSubtotal * 0.03;
-      const expectedTotal = expectedSubtotal + expectedTax + expectedProcessing;
+      const expectedTax = (expectedSubtotal + expectedProcessing) * 0.0825;
+      const expectedTotal = expectedSubtotal + expectedProcessing + expectedTax;
       expect(result.total).toBeCloseTo(expectedTotal, 2);
     });
   });
@@ -76,10 +76,10 @@ describe("calculatePrice", () => {
       expect(result.deliveryFee).toBe(50);
       // subtotal = 124.95 + 0 + 50 = 174.95
       const expectedSubtotal = 174.95;
-      const expectedTax = expectedSubtotal * 0.0825;
       const expectedProcessing = expectedSubtotal * 0.03;
+      const expectedTax = (expectedSubtotal + expectedProcessing) * 0.0825;
       expect(result.total).toBeCloseTo(
-        expectedSubtotal + expectedTax + expectedProcessing,
+        expectedSubtotal + expectedProcessing + expectedTax,
         2,
       );
     });
@@ -87,7 +87,8 @@ describe("calculatePrice", () => {
     it("uses custom salesTaxRate when override provided", () => {
       const result = calculatePrice("single", [], { salesTaxRate: 0.1 });
       const subtotal = 124.95 + 0 + 20; // 144.95
-      expect(result.salesTax).toBeCloseTo(subtotal * 0.1, 2);
+      const processingFee = subtotal * 0.03;
+      expect(result.salesTax).toBeCloseTo((subtotal + processingFee) * 0.1, 2);
     });
 
     it("uses custom machine basePrice when override provided", () => {
