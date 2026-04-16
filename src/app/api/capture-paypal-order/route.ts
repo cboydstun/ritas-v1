@@ -28,39 +28,18 @@ export async function POST(request: Request) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const sdkModule = paypalSdk as any;
 
-      // Log the SDK structure for debugging
-      console.log("SDK keys:", Object.keys(sdkModule));
-      if (sdkModule.default) {
-        console.log("SDK default keys:", Object.keys(sdkModule.default));
-        if (sdkModule.default.orders) {
-          console.log(
-            "SDK default.orders keys:",
-            Object.keys(sdkModule.default.orders),
-          );
-        }
-      }
-
       // In development mode, create a custom request object that works with our custom client
       if (process.env.NODE_ENV !== "production") {
-        console.log("Using development mode request object for capture");
-
-        // Create a custom request object with the properties our custom client expects
         // For capture requests, PayPal API expects an empty body or minimal data
         request_ = {
-          // Use a path that clearly indicates this is a capture request
           path: `/v2/checkout/orders/${orderId}/capture`,
           verb: "POST",
-          // Empty body for capture request as per PayPal documentation
           body: {},
           headers: {
             "Content-Type": "application/json",
             Prefer: "return=representation",
           },
         };
-
-        console.log(
-          `Creating capture request for order ${orderId} with path: ${request_.path}`,
-        );
       } else {
         // In production, use the standard SDK
         // Create the request object using the appropriate path
@@ -122,7 +101,10 @@ export async function POST(request: Request) {
             });
 
             // Format time to 12-hour format
-            const formattedTime = `${rental.rentalTime}${parseInt(hour) >= 12 ? "PM" : "AM"}`;
+            const hour24 = parseInt(hour);
+            const hour12 = hour24 % 12 || 12;
+            const mins = rental.rentalTime.split(":")[1];
+            const formattedTime = `${hour12}:${mins} ${hour24 >= 12 ? "PM" : "AM"}`;
 
             // Prepare extras text if any
             const extrasText =

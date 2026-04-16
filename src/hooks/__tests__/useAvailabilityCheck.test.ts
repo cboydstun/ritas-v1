@@ -10,9 +10,9 @@ import {
 } from "@jest/globals";
 import { useAvailabilityCheck } from "@/hooks/useAvailabilityCheck";
 
-// Mock fetch globally - typed to avoid version mismatch issues with @jest/globals
+// Mock fetch globally — typed as `any` to avoid Jest 30's strict `ResolveType<never>` constraint
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const mockFetch = jest.fn<() => Promise<any>>();
+const mockFetch = jest.fn() as any;
 const originalFetch = global.fetch;
 
 beforeEach(() => {
@@ -58,7 +58,7 @@ describe("useAvailabilityCheck", () => {
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: jest.fn().mockResolvedValueOnce(mockData),
+        json: jest.fn<() => Promise<unknown>>().mockResolvedValueOnce(mockData),
       });
 
       const { result } = renderHook(() => useAvailabilityCheck());
@@ -75,7 +75,7 @@ describe("useAvailabilityCheck", () => {
     it("includes machineType in the request URL", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: jest.fn().mockResolvedValueOnce({
+        json: jest.fn<() => Promise<unknown>>().mockResolvedValueOnce({
           available: true,
           machineType: "single",
           capacity: 15,
@@ -97,7 +97,7 @@ describe("useAvailabilityCheck", () => {
     it("includes capacity in the request URL", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: jest.fn().mockResolvedValueOnce({
+        json: jest.fn<() => Promise<unknown>>().mockResolvedValueOnce({
           available: true,
           machineType: "single",
           capacity: 15,
@@ -119,7 +119,7 @@ describe("useAvailabilityCheck", () => {
     it("includes date in the request URL", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: jest.fn().mockResolvedValueOnce({
+        json: jest.fn<() => Promise<unknown>>().mockResolvedValueOnce({
           available: true,
           machineType: "single",
           capacity: 15,
@@ -150,7 +150,7 @@ describe("useAvailabilityCheck", () => {
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: jest.fn().mockResolvedValueOnce(mockData),
+        json: jest.fn<() => Promise<unknown>>().mockResolvedValueOnce(mockData),
       });
 
       const { result } = renderHook(() => useAvailabilityCheck());
@@ -165,7 +165,7 @@ describe("useAvailabilityCheck", () => {
     it("sets isChecking to false after successful fetch", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: jest.fn().mockResolvedValueOnce({
+        json: jest.fn<() => Promise<unknown>>().mockResolvedValueOnce({
           available: true,
           machineType: "single",
           capacity: 15,
@@ -185,7 +185,7 @@ describe("useAvailabilityCheck", () => {
     it("keeps error as null on successful fetch", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: jest.fn().mockResolvedValueOnce({
+        json: jest.fn<() => Promise<unknown>>().mockResolvedValueOnce({
           available: true,
           machineType: "single",
           capacity: 15,
@@ -212,7 +212,7 @@ describe("useAvailabilityCheck", () => {
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: jest.fn().mockResolvedValueOnce(mockData),
+        json: jest.fn<() => Promise<unknown>>().mockResolvedValueOnce(mockData),
       });
 
       const { result } = renderHook(() => useAvailabilityCheck());
@@ -238,7 +238,7 @@ describe("useAvailabilityCheck", () => {
       mockFetch.mockResolvedValueOnce({
         ok: false,
         json: jest
-          .fn()
+          .fn<() => Promise<unknown>>()
           .mockResolvedValueOnce({ message: "Machine not available" }),
       });
 
@@ -254,7 +254,9 @@ describe("useAvailabilityCheck", () => {
     it("sets isChecking to false after error", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: false,
-        json: jest.fn().mockResolvedValueOnce({ message: "Error" }),
+        json: jest
+          .fn<() => Promise<unknown>>()
+          .mockResolvedValueOnce({ message: "Error" }),
       });
 
       const { result } = renderHook(() => useAvailabilityCheck());
@@ -270,7 +272,7 @@ describe("useAvailabilityCheck", () => {
       mockFetch.mockResolvedValueOnce({
         ok: false,
         json: jest
-          .fn()
+          .fn<() => Promise<unknown>>()
           .mockResolvedValueOnce({ message: "Machine unavailable" }),
       });
 
@@ -320,7 +322,9 @@ describe("useAvailabilityCheck", () => {
       // First call fails
       mockFetch.mockResolvedValueOnce({
         ok: false,
-        json: jest.fn().mockResolvedValueOnce({ message: "First error" }),
+        json: jest
+          .fn<() => Promise<unknown>>()
+          .mockResolvedValueOnce({ message: "First error" }),
       });
 
       const { result } = renderHook(() => useAvailabilityCheck());
@@ -334,7 +338,7 @@ describe("useAvailabilityCheck", () => {
       // Second call succeeds
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: jest.fn().mockResolvedValueOnce({
+        json: jest.fn<() => Promise<unknown>>().mockResolvedValueOnce({
           available: true,
           machineType: "single",
           capacity: 15,
@@ -361,7 +365,7 @@ describe("useAvailabilityCheck", () => {
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: jest.fn().mockResolvedValueOnce(mockData),
+        json: jest.fn<() => Promise<unknown>>().mockResolvedValueOnce(mockData),
       });
 
       const { result } = renderHook(() => useAvailabilityCheck());
@@ -388,7 +392,7 @@ describe("useAvailabilityCheck", () => {
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: jest.fn().mockResolvedValueOnce(mockData),
+        json: jest.fn<() => Promise<unknown>>().mockResolvedValueOnce(mockData),
       });
 
       const { result } = renderHook(() => useAvailabilityCheck());

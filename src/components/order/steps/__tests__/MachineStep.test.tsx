@@ -12,8 +12,6 @@ jest.mock("next/image", () => ({
   default: ({
     src,
     alt,
-    fill: _fill,
-    priority: _priority,
     className,
   }: {
     src: string;
@@ -21,6 +19,7 @@ jest.mock("next/image", () => ({
     fill?: boolean;
     priority?: boolean;
     className?: string;
+    // eslint-disable-next-line @next/next/no-img-element
   }) => <img src={src} alt={alt} className={className} />,
 }));
 

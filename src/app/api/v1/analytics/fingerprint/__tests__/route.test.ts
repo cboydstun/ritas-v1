@@ -2,6 +2,7 @@
  * @jest-environment node
  */
 import { POST } from "../route";
+import { NextRequest } from "next/server";
 
 // Mock MongoDB connection
 jest.mock("@/lib/mongodb", () => ({
@@ -40,7 +41,7 @@ const validComponents = {
 };
 
 function makeRequest(body: object) {
-  return new Request("http://localhost/api/v1/analytics/fingerprint", {
+  return new NextRequest("http://localhost/api/v1/analytics/fingerprint", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),

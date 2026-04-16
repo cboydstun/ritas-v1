@@ -26,22 +26,8 @@ export async function POST(request: Request) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const sdkModule = paypalSdk as any;
 
-      // Log the SDK structure for debugging
-      console.log("SDK keys:", Object.keys(sdkModule));
-      if (sdkModule.default) {
-        console.log("SDK default keys:", Object.keys(sdkModule.default));
-        if (sdkModule.default.orders) {
-          console.log(
-            "SDK default.orders keys:",
-            Object.keys(sdkModule.default.orders),
-          );
-        }
-      }
-
       // In development mode, create a custom request object that works with our custom client
       if (process.env.NODE_ENV !== "production") {
-        console.log("Using development mode request object");
-
         // Create a custom request object with the properties our custom client expects
         request_ = {
           path: "/v2/checkout/orders",

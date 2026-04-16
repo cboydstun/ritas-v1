@@ -5,11 +5,12 @@ import dbConnect from "@/lib/mongodb";
 import { BlackoutDate, createLocalDate } from "@/models/blackout-date";
 import mongoose from "mongoose";
 
+interface RouteParams {
+  params: Promise<{ id: string }>;
+}
+
 // GET /api/admin/blackout-dates/[id] - Get specific blackout date
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } },
-) {
+export async function GET(request: NextRequest, context: RouteParams) {
   try {
     // Check authentication
     const session = await getServerSession(authOptions);
@@ -17,7 +18,7 @@ export async function GET(
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
-    const { id } = params;
+    const { id } = await context.params;
 
     // Validate ObjectId
     if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -49,10 +50,7 @@ export async function GET(
 }
 
 // PUT /api/admin/blackout-dates/[id] - Update blackout date
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: { id: string } },
-) {
+export async function PUT(request: NextRequest, context: RouteParams) {
   try {
     // Check authentication
     const session = await getServerSession(authOptions);
@@ -60,7 +58,7 @@ export async function PUT(
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
-    const { id } = params;
+    const { id } = await context.params;
 
     // Validate ObjectId
     if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -167,10 +165,7 @@ export async function PUT(
 }
 
 // DELETE /api/admin/blackout-dates/[id] - Delete blackout date
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: { id: string } },
-) {
+export async function DELETE(request: NextRequest, context: RouteParams) {
   try {
     // Check authentication
     const session = await getServerSession(authOptions);
@@ -178,7 +173,7 @@ export async function DELETE(
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
-    const { id } = params;
+    const { id } = await context.params;
 
     // Validate ObjectId
     if (!mongoose.Types.ObjectId.isValid(id)) {

@@ -71,7 +71,7 @@ export function getRecommendation(
 ): MachineRecommendation | null {
   if (!guestCount || guestCount <= 0) return null;
 
-  const rentalDateObj = new Date(rentalDate);
+  const rentalDateObj = new Date(rentalDate + "T00:00:00");
   const month = rentalDateObj.getMonth();
   const dayOfWeek = rentalDateObj.getDay();
 

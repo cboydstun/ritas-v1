@@ -1,5 +1,4 @@
-import { describe, it, expect, jest } from "@jest/globals";
-import React from "react";
+import { describe, it, expect } from "@jest/globals";
 
 describe("DateSelectionStep", () => {
   it("should render calendar with delivery and return date pickers", () => {

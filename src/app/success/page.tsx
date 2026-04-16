@@ -12,13 +12,13 @@ function OrderDetails() {
   const searchParams = useSearchParams();
 
   // Get order details from URL parameters - handle both old PayPal flow and new booking flow
-  const orderId = searchParams.get("orderId");
-  const bookingId = searchParams.get("bookingId");
+  const orderId = searchParams?.get("orderId") ?? null;
+  const bookingId = searchParams?.get("bookingId") ?? null;
   const displayId = bookingId || orderId || "Unknown";
   const isManualInvoicing = Boolean(bookingId); // New booking flow uses bookingId
 
-  const machineType = searchParams.get("machineType") || "single";
-  const mixersParam = searchParams.get("mixers") || "";
+  const machineType = searchParams?.get("machineType") || "single";
+  const mixersParam = searchParams?.get("mixers") || "";
   const mixers = mixersParam ? mixersParam.split(",") : [];
 
   // Generate JSON-LD data

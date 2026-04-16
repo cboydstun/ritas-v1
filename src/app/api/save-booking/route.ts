@@ -67,7 +67,10 @@ export async function POST(request: Request) {
         });
 
         // Format time to 12-hour format
-        const formattedTime = `${rental.rentalTime}${parseInt(hour) >= 12 ? "PM" : "AM"}`;
+        const hour24 = parseInt(hour);
+        const hour12 = hour24 % 12 || 12;
+        const mins = rental.rentalTime.split(":")[1];
+        const formattedTime = `${hour12}:${mins} ${hour24 >= 12 ? "PM" : "AM"}`;
 
         // Prepare extras text if any
         const extrasText =

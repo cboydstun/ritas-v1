@@ -26,8 +26,6 @@ jest.mock("@/lib/auth", () => ({
   authOptions: {},
 }));
 
-const mockRequest = new Request("http://localhost:3000/api/admin/settings");
-
 const mockDefaultSettings = {
   key: "global",
   fees: {
@@ -94,11 +92,6 @@ describe("Admin Settings API", () => {
       });
       (Settings.findOne as jest.Mock).mockResolvedValue(null);
 
-      // Mock the Settings constructor to return a doc with toObject()
-      const mockDoc = {
-        ...mockDefaultSettings,
-        toObject: () => mockDefaultSettings,
-      };
       // When findOne returns null, the route does `new Settings({})`
       // We need to mock the constructor - skip deep constructor mock,
       // just verify the response shape is defaults

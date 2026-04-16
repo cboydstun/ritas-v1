@@ -1,3 +1,6 @@
+/**
+ * @jest-environment node
+ */
 import { GET, PUT, DELETE } from "../route";
 import { NextResponse } from "next/server";
 import { Contact } from "@/models/contact";
@@ -102,7 +105,8 @@ describe("Admin Contact API - Single Contact Operations", () => {
         user: { role: "admin" },
       });
 
-      // Mock contact data
+      // Mock contact data — use ISO strings for dates since JSON.stringify serializes Date → string
+      const now = new Date().toISOString();
       const mockContact = {
         _id: mockContactId,
         name: "Test User",
@@ -111,8 +115,8 @@ describe("Admin Contact API - Single Contact Operations", () => {
         eventDate: "2025-05-15",
         message: "Test message",
         status: "new",
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        createdAt: now,
+        updatedAt: now,
       };
 
       // Mock Contact.findById
@@ -168,7 +172,8 @@ describe("Admin Contact API - Single Contact Operations", () => {
         user: { role: "admin" },
       });
 
-      // Mock updated contact
+      // Mock updated contact — use ISO strings for dates since JSON.stringify serializes Date → string
+      const now = new Date().toISOString();
       const mockUpdatedContact = {
         _id: mockContactId,
         name: "Updated Name",
@@ -177,8 +182,8 @@ describe("Admin Contact API - Single Contact Operations", () => {
         eventDate: "2025-05-15",
         message: "Test message",
         status: "in-progress",
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        createdAt: now,
+        updatedAt: now,
       };
 
       // Mock Contact.findByIdAndUpdate

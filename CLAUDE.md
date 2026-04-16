@@ -12,6 +12,8 @@ npm run format       # Prettier (writes in place)
 npm test             # Jest (all tests)
 npm run test:watch   # Jest watch mode
 npm run test:machine # Run only machine-step tests
+npm run test:coverage # Jest with coverage report
+npm run test:ci      # Jest in CI mode with coverage
 ```
 
 Run a single test file: `npx jest src/components/order/steps/__tests__/SomeTest.test.tsx`
@@ -32,7 +34,21 @@ The order flow (`/order`) is a single client component `src/components/order/Ord
 
 ### Pricing
 
-All price math lives in `src/lib/pricing.ts`. Formula: `(basePrice + mixerPrice + deliveryFee) * (1 + taxRate + processingFeeRate)`. Default constants: delivery $20, sales tax 8.25%, processing 3%. The `PricingOverrides` type allows the admin `Settings` document to override any of these at runtime—fetch from `/api/v1/settings` and pass the overrides to `calculatePrice()`. Base machine prices come from `src/lib/rental-data.ts`.
+The single source of truth for all order totals is `computeOrderTotal()` in `src/components/order/utils.ts`. It wraps `calculatePrice()` from `src/lib/pricing.ts` and adds multi-day, extras, and discount logic:
+
+- `perDayRate = basePrice + mixerPrice`
+- `subtotal = perDayRate × rentalDays + deliveryFee + extrasTotal` (extras and machine rate are per-day; delivery is flat)
+- `serviceDiscountAmount = subtotal × discountRate` (default 10%, only if `isServiceDiscount` is set — military/service personnel perk)
+- `discountedSubtotal = subtotal − serviceDiscountAmount`
+- `processingFee = discountedSubtotal × processingFeeRate`
+- `salesTax = discountedSubtotal × salesTaxRate`
+- `finalTotal = discountedSubtotal + processingFee + salesTax`
+
+Default constants: delivery $20, sales tax 8.25%, processing 3%, service discount 10%. Base machine prices come from `src/lib/rental-data.ts`. The `PricingOverrides` type in `src/lib/pricing.ts` and `SettingsOverrides` in `utils.ts` allow the admin `Settings` document to override any of these at runtime.
+
+### Availability & Blackout Dates
+
+The `useAvailabilityCheck` hook (`src/hooks/useAvailabilityCheck.ts`) calls `GET /api/v1/availability?machineType=&capacity=&date=`. That route checks blackout dates first (from the `BlackoutDate` model), then looks for conflicting confirmed/pending rentals. Admins manage blackout date ranges via `/admin/blackout-dates` → `GET/POST /api/admin/blackout-dates` and `DELETE /api/admin/blackout-dates/[id]`.
 
 ### Database
 
@@ -46,19 +62,25 @@ NextAuth.js credentials provider. Config is in `src/lib/auth.ts`; admin credenti
 
 1. Client submits the review step → calls `POST /api/create-paypal-order` (server-side SDK creates a PayPal order, returns `orderID`).
 2. `PayPalCheckout.tsx` renders the PayPal button with that `orderID`.
-3. On buyer approval, client calls `POST /api/capture-paypal-order` which captures payment and saves the `Rental` document to MongoDB. After capture, Twilio SMS and Nodemailer/Resend email notifications fire server-side.
+3. On buyer approval, client calls `POST /api/capture-paypal-order` which captures payment and saves the `Rental` document to MongoDB. After capture, Twilio SMS and Nodemailer email notifications fire server-side.
+
+There is also `POST /api/save-booking` used for admin-created manual bookings (no PayPal). It generates a `bookingId` via nanoid and sends confirmation via Resend email + Twilio SMS.
 
 ### Notifications
 
-Triggered inside `/api/capture-paypal-order` after a successful payment capture: SMS via Twilio (`TWILIO_*` env vars) and email via both Nodemailer (Gmail SMTP) and Resend. Templates use `@react-email` components.
+Triggered after successful payment capture or manual booking: SMS via Twilio (`TWILIO_*` env vars) and email via Nodemailer (Gmail SMTP) for PayPal orders, or Resend (`RESEND_API_KEY`) for manual bookings and contact form submissions.
 
 ### Admin Settings Override
 
-The `Settings` Mongoose model stores a single document with runtime overrides for mixers, pricing rates, and delivery window hours. The public `/api/v1/settings` endpoint exposes these to the order form. Admin can update them via `/admin/settings` → `PATCH /api/admin/settings`.
+The `Settings` Mongoose model stores a single document with runtime overrides for mixers, pricing rates, extras prices, and delivery window hours. The public `/api/v1/settings` endpoint exposes these to the order form. Admin can update them via `/admin/settings` → `PATCH /api/admin/settings`. The `SettingsOverrides` type in `src/components/order/utils.ts` is what the order form uses.
 
 ### Analytics
 
 `FingerprintTracker.tsx` uses ThumbmarkJS to generate a browser fingerprint and posts it to `/api/v1/analytics/fingerprint` (stored in `Thumbprint` model). `OrderFormTracker.tsx` fires GA4/GTM events as users progress through order steps.
+
+## Date Handling
+
+Date strings throughout the codebase are in `YYYY-MM-DD` format. Always parse them as **local midnight** by appending `T00:00:00` (e.g. `new Date(dateStr + "T00:00:00")`). Omitting the suffix causes the date to be parsed as UTC midnight, which shifts the date by the user's UTC offset.
 
 ## Environment Variables
 
@@ -69,6 +91,7 @@ ADMIN_USERNAME, ADMIN_PASSWORD
 NEXTAUTH_SECRET, NEXTAUTH_URL
 TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER, USER_PHONE_NUMBER
 NODEMAILER_USERNAME, NODEMAILER_PASSWORD
+RESEND_API_KEY
 NEXT_PUBLIC_GTM_ID
 ```
 
