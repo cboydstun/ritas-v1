@@ -533,6 +533,7 @@ export default function OrderForm() {
                   formData={formData}
                   onInputChange={handleInputChange}
                   error={error}
+                  mixers={settingsMixers}
                 />
               )}
 

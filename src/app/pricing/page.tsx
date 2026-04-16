@@ -450,12 +450,14 @@ export default function PricingPage() {
                     className="bg-white dark:bg-charcoal/30 rounded-xl overflow-hidden shadow-md flex flex-col"
                   >
                     <div className="relative w-full aspect-square">
-                      <Image
-                        src={item.image}
-                        alt={item.name}
-                        fill
-                        className="object-cover"
-                      />
+                      {item.image && (
+                        <Image
+                          src={item.image}
+                          alt={item.name}
+                          fill
+                          className="object-cover"
+                        />
+                      )}
                     </div>
                     <div className="p-4 flex flex-col flex-1">
                       <h3 className="font-bold text-charcoal dark:text-white mb-1">

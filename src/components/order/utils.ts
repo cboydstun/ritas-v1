@@ -164,7 +164,8 @@ export function computeOrderTotal(
         const overridePrice = settings?.extras?.[item.id]?.price;
         const unitPrice =
           overridePrice !== undefined ? overridePrice : item.price;
-        return sum + unitPrice * (item.quantity || 1) * rentalDays;
+        const multiplier = item.pricingType === "flat" ? 1 : rentalDays;
+        return sum + unitPrice * (item.quantity || 1) * multiplier;
       }, 0)
       .toFixed(2),
   );

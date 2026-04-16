@@ -2,12 +2,25 @@ import Image from "next/image";
 import { StepProps, extraItems, ExtraItem } from "../types";
 import { useState } from "react";
 import { PlusIcon, MinusIcon } from "@heroicons/react/24/solid";
+import { mixerDetails } from "@/lib/rental-data";
 
 export default function ExtrasStep({
   formData,
   onInputChange,
   error,
+  mixers,
 }: StepProps) {
+  const mixerExtraItems: ExtraItem[] = (
+    mixers ?? Object.entries(mixerDetails).map(([id, m]) => ({ id, ...m }))
+  ).map((m) => ({
+    id: `mixer-bag-${m.id}`,
+    name: `${m.label} — Extra Bag`,
+    description: m.description,
+    price: m.price,
+    allowQuantity: true,
+    quantity: 1,
+    pricingType: "flat" as const,
+  }));
   // Local state to track selected extras
   const [selectedExtras, setSelectedExtras] = useState<ExtraItem[]>(
     formData.selectedExtras || [],
@@ -87,6 +100,110 @@ export default function ExtrasStep({
     return extra?.quantity || 1;
   };
 
+  const renderExtraCard = (extra: ExtraItem) => (
+    <div
+      key={extra.id}
+      className={`bg-white/80 dark:bg-charcoal/30 rounded-xl p-4 transition-all ${
+        isExtraSelected(extra.id)
+          ? "border-2 border-margarita"
+          : "border border-transparent hover:border-margarita/50"
+      }`}
+    >
+      <div className="flex flex-col sm:flex-row sm:items-start sm:space-x-4">
+        {extra.image && (
+          <div
+            className="flex-shrink-0 w-full sm:w-24 h-20 sm:h-24 relative rounded-lg overflow-hidden mb-3 sm:mb-0 mx-auto sm:mx-0"
+            style={{ maxWidth: "120px" }}
+          >
+            <Image
+              src={extra.image}
+              alt={extra.name}
+              fill
+              className="object-cover"
+            />
+          </div>
+        )}
+
+        <div className="flex-grow">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-2 sm:mb-0">
+            <h3 className="font-semibold text-lg text-charcoal dark:text-white text-center sm:text-left mb-1 sm:mb-0">
+              {extra.name}
+            </h3>
+            <span className="text-lg font-bold text-orange text-center sm:text-right mb-2 sm:mb-0">
+              ${extra.price.toFixed(2)}
+              {extra.pricingType === "flat" ? " flat" : "/day"}
+            </span>
+          </div>
+
+          <p className="text-charcoal/70 dark:text-white/70 text-sm mb-3 text-center sm:text-left">
+            {extra.description}
+          </p>
+
+          <div className="flex items-center justify-center sm:justify-start mt-2">
+            <input
+              type="checkbox"
+              id={`extra-${extra.id}`}
+              checked={isExtraSelected(extra.id)}
+              onChange={(e) => handleExtraChange(extra, e.target.checked)}
+              className="h-5 w-5 text-margarita border-gray-300 rounded focus:ring-margarita"
+            />
+            <label
+              htmlFor={`extra-${extra.id}`}
+              className="ml-2 text-charcoal dark:text-white cursor-pointer"
+            >
+              Add to my order
+            </label>
+          </div>
+
+          {extra.allowQuantity && isExtraSelected(extra.id) && (
+            <div className="flex flex-wrap items-center justify-center sm:justify-start mt-4 gap-2">
+              <span className="text-sm text-charcoal/70 dark:text-white/70 w-full sm:w-auto text-center sm:text-left">
+                Quantity:
+              </span>
+              <div className="flex items-center border border-gray-300 rounded">
+                <button
+                  type="button"
+                  onClick={() =>
+                    handleQuantityChange(
+                      extra.id,
+                      getExtraQuantity(extra.id) - 1,
+                    )
+                  }
+                  className="px-3 py-2 text-gray-500 hover:text-margarita focus:outline-none"
+                  disabled={getExtraQuantity(extra.id) <= 1}
+                  aria-label="Decrease quantity"
+                >
+                  <MinusIcon className="h-4 w-4" />
+                </button>
+                <span className="px-3 py-1 text-charcoal dark:text-white min-w-[40px] text-center">
+                  {getExtraQuantity(extra.id)}
+                </span>
+                <button
+                  type="button"
+                  onClick={() =>
+                    handleQuantityChange(
+                      extra.id,
+                      getExtraQuantity(extra.id) + 1,
+                    )
+                  }
+                  className="px-3 py-2 text-gray-500 hover:text-margarita focus:outline-none"
+                  aria-label="Increase quantity"
+                >
+                  <PlusIcon className="h-4 w-4" />
+                </button>
+              </div>
+              {getExtraQuantity(extra.id) > 1 && (
+                <span className="text-sm text-orange font-medium ml-2">
+                  ${(extra.price * getExtraQuantity(extra.id)).toFixed(2)}
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div className="space-y-8">
       <div className="text-center mb-8">
@@ -97,118 +214,24 @@ export default function ExtrasStep({
           Add optional extras to make your event even more special
         </p>
         <p className="text-charcoal/70 dark:text-white/70 text-sm mt-2">
-          Note: All extras are charged per day, just like the machine rental
+          Party extras are charged per day; mixer bags are a one-time flat fee.
         </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {extraItems.map((extra) => (
-          <div
-            key={extra.id}
-            className={`bg-white/80 dark:bg-charcoal/30 rounded-xl p-4 transition-all ${
-              isExtraSelected(extra.id)
-                ? "border-2 border-margarita"
-                : "border border-transparent hover:border-margarita/50"
-            }`}
-          >
-            {/* Mobile-optimized layout with flex-col on small screens and flex-row on larger screens */}
-            <div className="flex flex-col sm:flex-row sm:items-start sm:space-x-4">
-              {/* Image container - centered on mobile, left-aligned on larger screens */}
-              <div
-                className="flex-shrink-0 w-full sm:w-24 h-20 sm:h-24 relative rounded-lg overflow-hidden mb-3 sm:mb-0 mx-auto sm:mx-0"
-                style={{ maxWidth: "120px" }}
-              >
-                <Image
-                  src={extra.image}
-                  alt={extra.name}
-                  fill
-                  className="object-cover"
-                />
-              </div>
+        {extraItems.map(renderExtraCard)}
+      </div>
 
-              {/* Content container */}
-              <div className="flex-grow">
-                {/* Title and price - stack on mobile, side-by-side on larger screens */}
-                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-2 sm:mb-0">
-                  <h3 className="font-semibold text-lg text-charcoal dark:text-white text-center sm:text-left mb-1 sm:mb-0">
-                    {extra.name}
-                  </h3>
-                  <span className="text-lg font-bold text-orange text-center sm:text-right mb-2 sm:mb-0">
-                    ${extra.price.toFixed(2)}/day
-                  </span>
-                </div>
-
-                {/* Description */}
-                <p className="text-charcoal/70 dark:text-white/70 text-sm mb-3 text-center sm:text-left">
-                  {extra.description}
-                </p>
-
-                {/* Add to order checkbox - centered on mobile */}
-                <div className="flex items-center justify-center sm:justify-start mt-2">
-                  <input
-                    type="checkbox"
-                    id={`extra-${extra.id}`}
-                    checked={isExtraSelected(extra.id)}
-                    onChange={(e) => handleExtraChange(extra, e.target.checked)}
-                    className="h-5 w-5 text-margarita border-gray-300 rounded focus:ring-margarita"
-                  />
-                  <label
-                    htmlFor={`extra-${extra.id}`}
-                    className="ml-2 text-charcoal dark:text-white cursor-pointer"
-                  >
-                    Add to my order
-                  </label>
-                </div>
-
-                {/* Quantity controls - centered on mobile, improved touch targets */}
-                {extra.allowQuantity && isExtraSelected(extra.id) && (
-                  <div className="flex flex-wrap items-center justify-center sm:justify-start mt-4 gap-2">
-                    <span className="text-sm text-charcoal/70 dark:text-white/70 w-full sm:w-auto text-center sm:text-left">
-                      Quantity:
-                    </span>
-                    <div className="flex items-center border border-gray-300 rounded">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          handleQuantityChange(
-                            extra.id,
-                            getExtraQuantity(extra.id) - 1,
-                          )
-                        }
-                        className="px-3 py-2 text-gray-500 hover:text-margarita focus:outline-none"
-                        disabled={getExtraQuantity(extra.id) <= 1}
-                        aria-label="Decrease quantity"
-                      >
-                        <MinusIcon className="h-4 w-4" />
-                      </button>
-                      <span className="px-3 py-1 text-charcoal dark:text-white min-w-[40px] text-center">
-                        {getExtraQuantity(extra.id)}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          handleQuantityChange(
-                            extra.id,
-                            getExtraQuantity(extra.id) + 1,
-                          )
-                        }
-                        className="px-3 py-2 text-gray-500 hover:text-margarita focus:outline-none"
-                        aria-label="Increase quantity"
-                      >
-                        <PlusIcon className="h-4 w-4" />
-                      </button>
-                    </div>
-                    {getExtraQuantity(extra.id) > 1 && (
-                      <span className="text-sm text-orange font-medium ml-2">
-                        ${(extra.price * getExtraQuantity(extra.id)).toFixed(2)}
-                      </span>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        ))}
+      <div className="space-y-4">
+        <h3 className="text-xl font-bold text-charcoal dark:text-white">
+          Extra Mixer Bags
+        </h3>
+        <p className="text-charcoal/70 dark:text-white/70 text-sm">
+          Need more mixer? Each bag makes ~2.5 gallons — one-time flat fee.
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {mixerExtraItems.map(renderExtraCard)}
+        </div>
       </div>
 
       {error && (

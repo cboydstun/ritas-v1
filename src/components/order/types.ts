@@ -7,9 +7,10 @@ export interface ExtraItem {
   name: string;
   description: string;
   price: number;
-  image: string;
+  image?: string;
   allowQuantity?: boolean;
   quantity?: number;
+  pricingType?: "per-day" | "flat";
 }
 
 export interface OrderFormData {

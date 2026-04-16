@@ -56,7 +56,7 @@ MongoDB via Mongoose. Connection is cached in `src/lib/mongodb.ts` using a globa
 
 ### Authentication (Admin)
 
-NextAuth.js credentials provider. Config is in `src/lib/auth.ts`; admin credentials come from env vars `ADMIN_USERNAME`/`ADMIN_PASSWORD`. `src/middleware.ts` intercepts all `/admin/*` and `/api/admin/*` requests—unauthenticated page requests redirect to `/admin/login`, unauthenticated API requests return 401. Server components and API routes call `getServerSession(authOptions)` to verify access.
+NextAuth.js credentials provider with JWT session strategy (no database sessions). Config is in `src/lib/auth.ts`; admin credentials come from env vars `ADMIN_USERNAME`/`ADMIN_PASSWORD`. Auth is enforced in two layers: `src/middleware.ts` uses `getToken()` to reject unauthenticated requests early (page requests redirect to `/admin/login`, API requests return 401), and individual admin route handlers redundantly call `getServerSession(authOptions)` as defense-in-depth.
 
 ### PayPal Flow
 
@@ -77,6 +77,16 @@ The `Settings` Mongoose model stores a single document with runtime overrides fo
 ### Analytics
 
 `FingerprintTracker.tsx` uses ThumbmarkJS to generate a browser fingerprint and posts it to `/api/v1/analytics/fingerprint` (stored in `Thumbprint` model). `OrderFormTracker.tsx` fires GA4/GTM events as users progress through order steps.
+
+### Types
+
+Global shared types live in `src/types/index.ts` (`MachineType`, `MixerType`, `PaymentStatus`, `RentalStatus`, `MargaritaRental`). Machine-specific types and runtime type guards (`isMachineType`, `isMixerType`) are in `src/types/machine.ts`. Admin-only types are in `src/types/admin.ts`. PayPal SDK types are augmented in `src/types/paypal.d.ts`.
+
+### Key Library Exports
+
+- `src/lib/rental-data.ts` — `machinePackages` and `mixerDetails` constants (source of base prices and machine metadata)
+- `src/lib/pricing.ts` — `calculatePrice()` (core per-day price logic) and `formatPrice()` (currency display)
+- `src/lib/paypal-server.ts` — `initializePayPalSDK()` and `isValidPayPalEnv()` (called once per server boot)
 
 ## Date Handling
 
