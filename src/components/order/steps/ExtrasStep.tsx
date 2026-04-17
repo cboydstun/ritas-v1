@@ -13,8 +13,8 @@ export default function ExtrasStep({
   const mixerExtraItems: ExtraItem[] = (
     mixers ?? Object.entries(mixerDetails).map(([id, m]) => ({ id, ...m }))
   ).map((m) => ({
-    id: `mixer-bag-${m.id}`,
-    name: `${m.label} — Extra Bag`,
+    id: `mixer-${m.id}`,
+    name: `${m.label} — Extra Mixer`,
     description: m.description,
     price: m.price,
     allowQuantity: true,
@@ -214,7 +214,7 @@ export default function ExtrasStep({
           Add optional extras to make your event even more special
         </p>
         <p className="text-charcoal/70 dark:text-white/70 text-sm mt-2">
-          Party extras are charged per day; mixer bags are a one-time flat fee.
+          Party extras are charged per day; mixers are a one-time flat fee.
         </p>
       </div>
 
@@ -224,10 +224,10 @@ export default function ExtrasStep({
 
       <div className="space-y-4">
         <h3 className="text-xl font-bold text-charcoal dark:text-white">
-          Extra Mixer Bags
+          Extra Mixer
         </h3>
         <p className="text-charcoal/70 dark:text-white/70 text-sm">
-          Need more mixer? Each bag makes ~2.5 gallons — one-time flat fee.
+          Need more mixer? Each makes ~2.5 gallons — one-time flat fee.
         </p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {mixerExtraItems.map(renderExtraCard)}
