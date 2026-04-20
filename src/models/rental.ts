@@ -31,9 +31,9 @@ const paymentSchema = new mongoose.Schema({
 const extraItemSchema = new mongoose.Schema({
   id: { type: String, required: true },
   name: { type: String, required: true },
-  description: { type: String, required: true },
+  description: { type: String, required: false },
   price: { type: Number, required: true },
-  image: { type: String, required: true },
+  image: { type: String, required: false },
   allowQuantity: { type: Boolean, default: false },
   quantity: { type: Number, default: 1 },
 });
