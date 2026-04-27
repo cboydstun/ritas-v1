@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import dbConnect from "@/lib/mongodb";
 import { Rental } from "@/models/rental";
+import { Settings } from "@/models/settings";
 import twilio from "twilio";
 import { Resend } from "resend";
 import { nanoid } from "nanoid";
@@ -110,6 +111,22 @@ export async function POST(request: Request) {
       );
     }
 
+    // Fetch admin settings to price custom mixer types correctly in the email
+    const settingsDoc = (await Settings.findOne({ key: "global" }).lean()) as {
+      fees?: {
+        deliveryFee?: number;
+        salesTaxRate?: number;
+        processingFeeRate?: number;
+        serviceDiscountRate?: number;
+      };
+      machines?: {
+        single?: { basePrice: number };
+        double?: { basePrice: number };
+        triple?: { basePrice: number };
+      };
+      mixers?: Record<string, { price: number }>;
+    } | null;
+
     // ── Build dynamic mixer & drink guide for the confirmation email ──────
     const tankCount =
       rental.machineType === "single"
@@ -169,6 +186,13 @@ export async function POST(request: Request) {
     const priceBreakdown = calculatePrice(
       rental.machineType,
       selectedMixers as Parameters<typeof calculatePrice>[1],
+      {
+        deliveryFee: settingsDoc?.fees?.deliveryFee,
+        salesTaxRate: settingsDoc?.fees?.salesTaxRate,
+        processingFeeRate: settingsDoc?.fees?.processingFeeRate,
+        machines: settingsDoc?.machines,
+        mixers: settingsDoc?.mixers,
+      },
     );
 
     const rentalDays =
@@ -195,13 +219,15 @@ export async function POST(request: Request) {
       perDayRate * rentalDays + priceBreakdown.deliveryFee + emailExtrasTotal;
 
     const emailServiceDiscountAmount = rental.isServiceDiscount
-      ? emailSubtotal * 0.1
+      ? emailSubtotal * (settingsDoc?.fees?.serviceDiscountRate ?? 0.1)
       : 0;
 
     const emailDiscountedSubtotal = emailSubtotal - emailServiceDiscountAmount;
 
-    const emailSalesTax = emailDiscountedSubtotal * 0.0825;
-    const emailProcessingFee = emailDiscountedSubtotal * 0.03;
+    const emailSalesTax =
+      emailDiscountedSubtotal * (settingsDoc?.fees?.salesTaxRate ?? 0.0825);
+    const emailProcessingFee =
+      emailDiscountedSubtotal * (settingsDoc?.fees?.processingFeeRate ?? 0.03);
 
     const pricingBreakdownHtml = `
       <div style="background-color: #fff; padding: 15px; border-radius: 6px; margin: 20px 0; border: 1px solid #e2e8f0;">
