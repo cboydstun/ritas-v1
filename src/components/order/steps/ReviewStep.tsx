@@ -28,9 +28,6 @@ export default function ReviewStep({
     finalTotal,
   } = computeOrderTotal(formData);
 
-  // Read from formData — single source of truth
-  const applyServiceDiscount = formData.isServiceDiscount;
-
   const handleConfirmBooking = async () => {
     if (!agreedToTerms) {
       setSubmitError("Please agree to the terms and conditions");
@@ -59,7 +56,6 @@ export default function ReviewStep({
             returnTime: formData.returnTime,
             customer: formData.customer,
             notes: formData.notes,
-            isServiceDiscount: applyServiceDiscount,
           },
         }),
       });
@@ -416,11 +412,6 @@ export default function ReviewStep({
             Subtotal: $
             {formatPrice(perDayRate * rentalDays + deliveryFee + extrasTotal)}
           </p>
-          {applyServiceDiscount && (
-            <p className="text-charcoal/70 dark:text-white/70">
-              Service Discount (10%): -${formatPrice(serviceDiscountAmount)}
-            </p>
-          )}
           <p className="text-charcoal/70 dark:text-white/70">
             Sales Tax (8.25%): ${formatPrice(salesTax)}
           </p>
@@ -430,26 +421,6 @@ export default function ReviewStep({
           <p className="text-xl font-bold text-orange mb-4">
             Total Amount: ${formatPrice(finalTotal)}
           </p>
-
-          {/* Service discount checkbox — only visible on review step */}
-          <div className="flex items-center space-x-2 mt-4 mb-4">
-            <input
-              type="checkbox"
-              id="serviceDiscount"
-              checked={applyServiceDiscount}
-              onChange={(e) => {
-                setIsServiceDiscount(e.target.checked);
-              }}
-              className="w-4 h-4 text-orange rounded focus:ring-orange"
-            />
-            <label
-              htmlFor="serviceDiscount"
-              className="text-charcoal/70 dark:text-white/70"
-            >
-              I am a military member, educator, police officer, firefighter, or
-              medical professional — apply 10% discount.
-            </label>
-          </div>
 
           <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg p-4 mt-4">
             <div className="flex items-center space-x-3">
