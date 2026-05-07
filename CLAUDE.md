@@ -18,6 +18,8 @@ npm run test:ci      # Jest in CI mode with coverage
 
 Run a single test file: `npx jest src/components/order/steps/__tests__/SomeTest.test.tsx`
 
+Tests are co-located in `__tests__/` folders next to the code they cover. Jest is configured via `next/jest` with `jest-environment-jsdom`. The path alias `@/*` resolves to `src/*` (set in both `tsconfig.json` and `jest.config.js`).
+
 ## Stack
 
 Next.js 15 (App Router) · React 19 · TypeScript 5 · MongoDB/Mongoose · NextAuth.js v4 · PayPal · Tailwind CSS 3
@@ -56,7 +58,7 @@ MongoDB via Mongoose. Connection is cached in `src/lib/mongodb.ts` using a globa
 
 ### Authentication (Admin)
 
-NextAuth.js credentials provider with JWT session strategy (no database sessions). Config is in `src/lib/auth.ts`; admin credentials come from env vars `ADMIN_USERNAME`/`ADMIN_PASSWORD`. Auth is enforced in two layers: `src/middleware.ts` uses `getToken()` to reject unauthenticated requests early (page requests redirect to `/admin/login`, API requests return 401), and individual admin route handlers redundantly call `getServerSession(authOptions)` as defense-in-depth.
+NextAuth.js credentials provider with JWT session strategy (no database sessions). Config is in `src/lib/auth.ts`; admin credentials come from env vars `ADMIN_USERNAME`/`ADMIN_PASSWORD`. Auth is enforced in two layers: `src/middleware.ts` uses `getToken()` to reject unauthenticated requests early — it requires both a token and `token.role === "admin"` (page requests redirect to `/admin/login`, API requests return 401) — and individual admin route handlers redundantly call `getServerSession(authOptions)` as defense-in-depth. The middleware also force-redirects HTTP→HTTPS in production via `x-forwarded-proto`.
 
 ### PayPal Flow
 

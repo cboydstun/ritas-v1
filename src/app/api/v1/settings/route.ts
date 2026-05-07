@@ -20,6 +20,8 @@ export async function GET() {
       mixers: doc.mixers,
       extras: doc.extras,
       operations: doc.operations,
+      leaseTiers: doc.leaseTiers,
+      documentation: doc.documentation,
     });
   } catch (error) {
     console.error("Error fetching public settings:", error);

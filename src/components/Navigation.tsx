@@ -52,6 +52,12 @@ export default function Navigation() {
               FAQ
             </Link>
             <Link
+              href="/long-term-lease"
+              className="px-3 py-2 text-charcoal dark:text-white hover:text-margarita transition-colors"
+            >
+              Long-Term Lease
+            </Link>
+            <Link
               href="/contact"
               className="px-3 py-2 text-charcoal dark:text-white hover:text-margarita transition-colors"
             >
@@ -135,6 +141,13 @@ export default function Navigation() {
             onClick={closeMobileMenu}
           >
             FAQ
+          </Link>
+          <Link
+            href="/long-term-lease"
+            className="block px-3 py-4 text-base font-medium text-charcoal dark:text-white hover:text-margarita border-b border-gray-200 dark:border-gray-700"
+            onClick={closeMobileMenu}
+          >
+            Long-Term Lease
           </Link>
           <Link
             href="/contact"

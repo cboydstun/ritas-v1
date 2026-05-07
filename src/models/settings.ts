@@ -103,6 +103,70 @@ const settingsSchema = new mongoose.Schema(
         max: 23,
       },
     },
+    documentation: {
+      pdfUrl: { type: String, default: "" },
+      pdfLabel: {
+        type: String,
+        default: "Download Lease Documentation (PDF)",
+      },
+    },
+    leaseTiers: {
+      type: mongoose.Schema.Types.Mixed,
+      default: () => ({
+        "single-15": {
+          monthlyRate: 265,
+          placementFee: 100,
+          minimumTermMonths: 12,
+          bestFor:
+            "Smaller restaurants, daiquiri kiosks, and lower-volume bar programs.",
+          features: [
+            "15L single-tank capacity",
+            "One signature flavor on tap",
+            "Professional placement & install",
+            "Quarterly preventive maintenance",
+            "Mixer supply program available",
+            "Custom branding option",
+          ],
+          electrical: "Standard 110V, 15A circuit",
+          spaceRequirements: '24" x 24" countertop, 18" overhead clearance',
+        },
+        "double-30": {
+          monthlyRate: 295,
+          placementFee: 100,
+          minimumTermMonths: 12,
+          bestFor:
+            "Mexican restaurants, sports bars, and venues serving two flavors at moderate volume.",
+          features: [
+            "30L dual-tank capacity",
+            "Two flavors on tap simultaneously",
+            "Professional placement & install",
+            "Quarterly preventive maintenance",
+            "Mixer supply program available",
+            "Custom branding option",
+          ],
+          electrical: "Dedicated 115V, 20A circuit",
+          spaceRequirements: '30" x 24" countertop, 18" overhead clearance',
+        },
+        "triple-45": {
+          monthlyRate: 335,
+          placementFee: 100,
+          minimumTermMonths: 12,
+          bestFor:
+            "Hotel resorts, golf courses, drive-thru daiquiri shops, and high-volume venues.",
+          features: [
+            "45L triple-tank capacity",
+            "Three flavors on tap simultaneously",
+            "Professional placement & install",
+            "Quarterly preventive maintenance",
+            "Priority on-site service",
+            "Mixer supply program available",
+            "Custom branding option",
+          ],
+          electrical: "Dedicated 115V, 20A circuit",
+          spaceRequirements: '36" x 24" countertop, 18" overhead clearance',
+        },
+      }),
+    },
     updatedAt: { type: Date, default: Date.now },
     updatedBy: { type: String, default: "" },
   },
@@ -142,6 +206,22 @@ export type SettingsDocument = mongoose.Document & {
     deliveryWindowStartHour: number;
     deliveryWindowEndHour: number;
   };
+  documentation: {
+    pdfUrl: string;
+    pdfLabel: string;
+  };
+  leaseTiers: Record<
+    "single-15" | "double-30" | "triple-45",
+    {
+      monthlyRate: number;
+      placementFee: number;
+      minimumTermMonths: number;
+      bestFor: string;
+      features: string[];
+      electrical: string;
+      spaceRequirements: string;
+    }
+  >;
   updatedAt: Date;
   updatedBy: string;
 };

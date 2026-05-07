@@ -56,6 +56,14 @@ export default function Footer() {
               </li>
               <li>
                 <Link
+                  href="/long-term-lease"
+                  className="text-charcoal dark:text-white/80 hover:text-margarita dark:hover:text-margarita transition-colors"
+                >
+                  Long-Term Lease
+                </Link>
+              </li>
+              <li>
+                <Link
                   href="/contact"
                   className="text-charcoal dark:text-white/80 hover:text-margarita dark:hover:text-margarita transition-colors"
                 >

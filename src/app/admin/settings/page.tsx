@@ -2,12 +2,25 @@
 
 import { useState, useEffect } from "react";
 import AdminAuthCheck from "@/components/admin/AdminAuthCheck";
+import { leaseTiers as staticLeaseTiers } from "@/lib/lease-data";
 
 interface MixerEntry {
   id: string;
   label: string;
   description: string;
   price: number;
+}
+
+type LeaseTierId = "single-15" | "double-30" | "triple-45";
+
+interface LeaseTierSetting {
+  monthlyRate: number;
+  placementFee: number;
+  minimumTermMonths: number;
+  bestFor: string;
+  features: string[];
+  electrical: string;
+  spaceRequirements: string;
 }
 
 interface SettingsData {
@@ -28,6 +41,11 @@ interface SettingsData {
     deliveryWindowStartHour: number;
     deliveryWindowEndHour: number;
   };
+  documentation: {
+    pdfUrl: string;
+    pdfLabel: string;
+  };
+  leaseTiers: Record<LeaseTierId, LeaseTierSetting>;
 }
 
 function slugify(label: string) {
@@ -86,6 +104,24 @@ const defaultSettings: SettingsData = {
     deliveryWindowStartHour: 8,
     deliveryWindowEndHour: 18,
   },
+  documentation: {
+    pdfUrl: "",
+    pdfLabel: "Download Lease Documentation (PDF)",
+  },
+  leaseTiers: Object.fromEntries(
+    staticLeaseTiers.map((t) => [
+      t.id,
+      {
+        monthlyRate: t.monthlyRate,
+        placementFee: t.placementFee,
+        minimumTermMonths: t.minimumTermMonths,
+        bestFor: t.bestFor,
+        features: t.features,
+        electrical: t.electrical,
+        spaceRequirements: t.spaceRequirements,
+      },
+    ]),
+  ) as Record<LeaseTierId, LeaseTierSetting>,
 };
 
 function mixersToEntries(
@@ -210,7 +246,11 @@ export default function SettingsPage() {
         return res.json();
       })
       .then((data: SettingsData) => {
-        setSettings(data);
+        setSettings({
+          ...data,
+          leaseTiers: data.leaseTiers ?? defaultSettings.leaseTiers,
+          documentation: data.documentation ?? defaultSettings.documentation,
+        });
         setMixerEntries(mixersToEntries(data.mixers ?? defaultSettings.mixers));
       })
       .catch((err) =>
@@ -244,7 +284,11 @@ export default function SettingsPage() {
       }
 
       const updated: SettingsData = await res.json();
-      setSettings(updated);
+      setSettings({
+        ...updated,
+        leaseTiers: updated.leaseTiers ?? defaultSettings.leaseTiers,
+        documentation: updated.documentation ?? defaultSettings.documentation,
+      });
       setMixerEntries(
         mixersToEntries(updated.mixers ?? defaultSettings.mixers),
       );
@@ -737,6 +781,177 @@ export default function SettingsPage() {
             step="1"
             min="0"
           />
+        </SectionCard>
+
+        {/* Long-Term Lease Documentation */}
+        <SectionCard
+          title="Long-Term Lease Documentation"
+          onSave={() => saveSection("documentation")}
+          saving={saving.documentation ?? false}
+          saved={saved.documentation ?? false}
+          fullWidth
+        >
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                PDF URL
+              </label>
+              <input
+                type="url"
+                value={settings.documentation.pdfUrl}
+                onChange={(e) =>
+                  setSettings((s) => ({
+                    ...s,
+                    documentation: {
+                      ...s.documentation,
+                      pdfUrl: e.target.value,
+                    },
+                  }))
+                }
+                placeholder="https://drive.google.com/.../view"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+              />
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                Paste a URL to your hosted PDF (e.g. Google Drive share link,
+                Dropbox, S3). Leave empty to hide the download link from the
+                lease page.
+              </p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Button Label
+              </label>
+              <input
+                type="text"
+                value={settings.documentation.pdfLabel}
+                onChange={(e) =>
+                  setSettings((s) => ({
+                    ...s,
+                    documentation: {
+                      ...s.documentation,
+                      pdfLabel: e.target.value,
+                    },
+                  }))
+                }
+                placeholder="Download Lease Documentation (PDF)"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+              />
+            </div>
+          </div>
+        </SectionCard>
+
+        {/* Long-Term Lease Tiers */}
+        <SectionCard
+          title="Long-Term Lease Tiers"
+          onSave={() => saveSection("leaseTiers")}
+          saving={saving.leaseTiers ?? false}
+          saved={saved.leaseTiers ?? false}
+          fullWidth
+        >
+          <div className="space-y-6">
+            {staticLeaseTiers.map((tier) => {
+              const id = tier.id as LeaseTierId;
+              const current = settings.leaseTiers[id];
+              const updateTier = (patch: Partial<LeaseTierSetting>) =>
+                setSettings((s) => ({
+                  ...s,
+                  leaseTiers: {
+                    ...s.leaseTiers,
+                    [id]: { ...s.leaseTiers[id], ...patch },
+                  },
+                }));
+              return (
+                <div
+                  key={id}
+                  className="border border-gray-200 dark:border-gray-700 rounded-lg p-4"
+                >
+                  <h3 className="text-md font-semibold text-gray-900 dark:text-white mb-4">
+                    {tier.name}
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+                    <NumberInput
+                      label="Monthly Rate ($)"
+                      value={current.monthlyRate}
+                      onChange={(v) => updateTier({ monthlyRate: v })}
+                      step="1"
+                    />
+                    <NumberInput
+                      label="Placement Fee ($)"
+                      value={current.placementFee}
+                      onChange={(v) => updateTier({ placementFee: v })}
+                      step="1"
+                    />
+                    <NumberInput
+                      label="Minimum Term (months)"
+                      value={current.minimumTermMonths}
+                      onChange={(v) =>
+                        updateTier({ minimumTermMonths: Math.round(v) })
+                      }
+                      step="1"
+                      min="1"
+                    />
+                  </div>
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Best For
+                    </label>
+                    <input
+                      type="text"
+                      value={current.bestFor}
+                      onChange={(e) => updateTier({ bestFor: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+                    />
+                  </div>
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Features (one per line)
+                    </label>
+                    <textarea
+                      rows={6}
+                      value={current.features.join("\n")}
+                      onChange={(e) =>
+                        updateTier({
+                          features: e.target.value
+                            .split("\n")
+                            .map((line) => line.trim())
+                            .filter((line) => line.length > 0),
+                        })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm font-mono"
+                    />
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Electrical Requirements
+                      </label>
+                      <input
+                        type="text"
+                        value={current.electrical}
+                        onChange={(e) =>
+                          updateTier({ electrical: e.target.value })
+                        }
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Space Requirements
+                      </label>
+                      <input
+                        type="text"
+                        value={current.spaceRequirements}
+                        onChange={(e) =>
+                          updateTier({ spaceRequirements: e.target.value })
+                        }
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+                      />
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </SectionCard>
       </div>
     </AdminAuthCheck>
