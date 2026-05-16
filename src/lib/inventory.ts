@@ -98,7 +98,7 @@ export async function isMachineAvailable(
   const overlapping = await Rental.find({
     machineType,
     capacity,
-    status: { $in: ["pending", "confirmed", "in-progress"] },
+    status: { $in: ["pending", "pending_payment", "confirmed", "in-progress"] },
     rentalDate: { $lte: endDate },
     returnDate: { $gte: rentalDate },
   })

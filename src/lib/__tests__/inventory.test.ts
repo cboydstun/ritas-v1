@@ -125,6 +125,27 @@ describe("isMachineAvailable", () => {
       expect(result.reason).toMatch(/booked/i);
     });
 
+    it("counts pending_payment rentals against the cap", async () => {
+      mockSettingsInventory({ double: 3 });
+      mockOverlappingRentals([
+        { rentalDate: "2026-05-23", returnDate: "2026-05-23" },
+        { rentalDate: "2026-05-23", returnDate: "2026-05-23" },
+        { rentalDate: "2026-05-23", returnDate: "2026-05-23" },
+      ]);
+
+      const result = await isMachineAvailable(
+        "double",
+        30,
+        "2026-05-23",
+        "2026-05-23",
+      );
+
+      expect(result.available).toBe(false);
+      expect(
+        (Rental.find as jest.Mock).mock.calls[0][0].status.$in,
+      ).toEqual(expect.arrayContaining(["pending_payment"]));
+    });
+
     it("returns unavailable when inventory is 0", async () => {
       mockSettingsInventory({ triple: 0 });
       mockOverlappingRentals([]);
