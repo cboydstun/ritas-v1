@@ -124,6 +124,28 @@ export default function MachineStep({
           : null,
       );
 
+      // Auto-fallback: if the currently selected machine is unavailable but
+      // another type is available, switch to it (priority: triple > double > single).
+      if (
+        formData.machineType &&
+        next[formData.machineType as MachineType] === "unavailable"
+      ) {
+        const fallbackOrder: MachineType[] = ["triple", "double", "single"];
+        const fallback = fallbackOrder.find(
+          (t) => t !== formData.machineType && next[t] === "available",
+        );
+        if (fallback) {
+          const pkg = machinePackages.find((p) => p.type === fallback)!;
+          onInputChange(createSyntheticEvent("machineType", fallback));
+          onInputChange(
+            createSyntheticEvent("capacity", String(pkg.capacity)),
+          );
+          onInputChange(createSyntheticEvent("selectedMixers", []));
+          if (onAvailabilityError) onAvailabilityError(null);
+          return;
+        }
+      }
+
       if (
         onAvailabilityError &&
         formData.machineType &&
