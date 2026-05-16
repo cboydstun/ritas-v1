@@ -1,18 +1,15 @@
 import { NextResponse } from "next/server";
-import dbConnect from "@/lib/mongodb";
-import { Rental } from "@/models/rental";
-import { BlackoutDate, isDateBlackedOut } from "@/models/blackout-date";
+import { isMachineAvailable } from "@/lib/inventory";
 import { MachineType } from "@/types";
 
 export async function GET(request: Request) {
   try {
-    // Get query parameters
     const url = new URL(request.url);
     const machineType = url.searchParams.get("machineType") as MachineType;
     const capacityParam = url.searchParams.get("capacity");
     const date = url.searchParams.get("date");
+    const returnDateParam = url.searchParams.get("returnDate");
 
-    // Validate parameters
     if (!machineType || !capacityParam || !date) {
       return NextResponse.json(
         {
@@ -23,7 +20,6 @@ export async function GET(request: Request) {
       );
     }
 
-    // Validate machine type
     if (!["single", "double", "triple"].includes(machineType)) {
       return NextResponse.json(
         {
@@ -34,7 +30,6 @@ export async function GET(request: Request) {
       );
     }
 
-    // Validate capacity
     const capacity = parseInt(capacityParam, 10);
     if (![15, 30, 45].includes(capacity)) {
       return NextResponse.json(
@@ -43,7 +38,6 @@ export async function GET(request: Request) {
       );
     }
 
-    // Validate date format (YYYY-MM-DD)
     const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
     if (!dateRegex.test(date)) {
       return NextResponse.json(
@@ -52,54 +46,35 @@ export async function GET(request: Request) {
       );
     }
 
-    // Connect to database
-    await dbConnect();
-
-    // Check for blackout dates first
-    const blackoutDates = await BlackoutDate.find({
-      $or: [
-        {
-          startDate: { $lte: new Date(date) },
-          endDate: { $gte: new Date(date) },
-        },
-        {
-          startDate: { $lte: new Date(date) },
-          endDate: { $exists: false },
-        },
-      ],
-    });
-
-    // Check if the date is blacked out
-    const isBlackedOut = isDateBlackedOut(new Date(date), blackoutDates);
-
-    if (isBlackedOut) {
-      return NextResponse.json({
-        available: false,
-        machineType,
-        capacity,
-        date,
-        reason: "Date is not available due to blackout period",
-      });
+    if (returnDateParam) {
+      if (!dateRegex.test(returnDateParam)) {
+        return NextResponse.json(
+          { message: "Invalid returnDate format. Use YYYY-MM-DD" },
+          { status: 400 },
+        );
+      }
+      if (returnDateParam < date) {
+        return NextResponse.json(
+          { message: "returnDate must be on or after date" },
+          { status: 400 },
+        );
+      }
     }
 
-    // Check for conflicting rentals
-    const conflictingRentals = await Rental.find({
+    const result = await isMachineAvailable(
       machineType,
-      capacity,
-      status: { $in: ["pending", "confirmed", "in-progress"] },
-      rentalDate: { $lte: date },
-      returnDate: { $gte: date },
-    }).limit(1); // We only need to know if at least one exists
+      capacity as 15 | 30 | 45,
+      date,
+      returnDateParam ?? undefined,
+    );
 
-    // Determine availability
-    const available = conflictingRentals.length === 0;
-
-    // Return response
     return NextResponse.json({
-      available,
+      available: result.available,
       machineType,
       capacity,
       date,
+      ...(returnDateParam ? { returnDate: returnDateParam } : {}),
+      ...(result.reason ? { reason: result.reason } : {}),
     });
   } catch (error) {
     console.error("Error checking machine availability:", error);

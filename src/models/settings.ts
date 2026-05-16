@@ -35,6 +35,11 @@ const settingsSchema = new mongoose.Schema(
           default: 124.95,
           min: [0, "basePrice cannot be negative"],
         },
+        inventory: {
+          type: Number,
+          default: 3,
+          min: [0, "inventory cannot be negative"],
+        },
       },
       double: {
         basePrice: {
@@ -42,12 +47,22 @@ const settingsSchema = new mongoose.Schema(
           default: 149.95,
           min: [0, "basePrice cannot be negative"],
         },
+        inventory: {
+          type: Number,
+          default: 3,
+          min: [0, "inventory cannot be negative"],
+        },
       },
       triple: {
         basePrice: {
           type: Number,
           default: 174.95,
           min: [0, "basePrice cannot be negative"],
+        },
+        inventory: {
+          type: Number,
+          default: 2,
+          min: [0, "inventory cannot be negative"],
         },
       },
     },
@@ -196,9 +211,9 @@ export type SettingsDocument = mongoose.Document & {
     serviceDiscountRate: number;
   };
   machines: {
-    single: { basePrice: number };
-    double: { basePrice: number };
-    triple: { basePrice: number };
+    single: { basePrice: number; inventory: number };
+    double: { basePrice: number; inventory: number };
+    triple: { basePrice: number; inventory: number };
   };
   mixers: Record<string, { label: string; description: string; price: number }>;
   extras: Record<string, { price: number }>;

@@ -77,6 +77,7 @@ export default function MachineStep({
         formData.machineType,
         formData.capacity,
         formData.rentalDate,
+        formData.returnDate,
       );
 
       if (cancelled) return;
@@ -93,7 +94,7 @@ export default function MachineStep({
           // Genuine unavailability returned by the API
           setApiWarning(null);
           onAvailabilityError(
-            `Sorry, the ${formData.machineType} tank machine is not available on your selected date. Please choose a different machine or go back and pick another date.`,
+            `Sorry, our ${formData.machineType} tank machines are fully booked for one or more days in your selected range. Please choose a different machine or go back and pick another date.`,
           );
         }
       } else {
@@ -108,7 +109,7 @@ export default function MachineStep({
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [formData.machineType, formData.rentalDate]);
+  }, [formData.machineType, formData.rentalDate, formData.returnDate]);
 
   // Helper function to create a properly typed synthetic event
   const createSyntheticEvent = (name: string, value: string | string[]) => {

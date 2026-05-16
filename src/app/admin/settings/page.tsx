@@ -31,9 +31,9 @@ interface SettingsData {
     serviceDiscountRate: number;
   };
   machines: {
-    single: { basePrice: number };
-    double: { basePrice: number };
-    triple: { basePrice: number };
+    single: { basePrice: number; inventory: number };
+    double: { basePrice: number; inventory: number };
+    triple: { basePrice: number; inventory: number };
   };
   mixers: Record<string, { label: string; description: string; price: number }>;
   extras: Record<string, { price: number }>;
@@ -64,9 +64,9 @@ const defaultSettings: SettingsData = {
     serviceDiscountRate: 0.1,
   },
   machines: {
-    single: { basePrice: 124.95 },
-    double: { basePrice: 149.95 },
-    triple: { basePrice: 174.95 },
+    single: { basePrice: 124.95, inventory: 3 },
+    double: { basePrice: 149.95, inventory: 3 },
+    triple: { basePrice: 174.95, inventory: 2 },
   },
   mixers: {
     "non-alcoholic": {
@@ -248,6 +248,32 @@ export default function SettingsPage() {
       .then((data: SettingsData) => {
         setSettings({
           ...data,
+          machines: {
+            single: {
+              basePrice:
+                data.machines?.single?.basePrice ??
+                defaultSettings.machines.single.basePrice,
+              inventory:
+                data.machines?.single?.inventory ??
+                defaultSettings.machines.single.inventory,
+            },
+            double: {
+              basePrice:
+                data.machines?.double?.basePrice ??
+                defaultSettings.machines.double.basePrice,
+              inventory:
+                data.machines?.double?.inventory ??
+                defaultSettings.machines.double.inventory,
+            },
+            triple: {
+              basePrice:
+                data.machines?.triple?.basePrice ??
+                defaultSettings.machines.triple.basePrice,
+              inventory:
+                data.machines?.triple?.inventory ??
+                defaultSettings.machines.triple.inventory,
+            },
+          },
           leaseTiers: data.leaseTiers ?? defaultSettings.leaseTiers,
           documentation: data.documentation ?? defaultSettings.documentation,
         });
@@ -286,6 +312,32 @@ export default function SettingsPage() {
       const updated: SettingsData = await res.json();
       setSettings({
         ...updated,
+        machines: {
+          single: {
+            basePrice:
+              updated.machines?.single?.basePrice ??
+              defaultSettings.machines.single.basePrice,
+            inventory:
+              updated.machines?.single?.inventory ??
+              defaultSettings.machines.single.inventory,
+          },
+          double: {
+            basePrice:
+              updated.machines?.double?.basePrice ??
+              defaultSettings.machines.double.basePrice,
+            inventory:
+              updated.machines?.double?.inventory ??
+              defaultSettings.machines.double.inventory,
+          },
+          triple: {
+            basePrice:
+              updated.machines?.triple?.basePrice ??
+              defaultSettings.machines.triple.basePrice,
+            inventory:
+              updated.machines?.triple?.inventory ??
+              defaultSettings.machines.triple.inventory,
+          },
+        },
         leaseTiers: updated.leaseTiers ?? defaultSettings.leaseTiers,
         documentation: updated.documentation ?? defaultSettings.documentation,
       });
@@ -474,7 +526,7 @@ export default function SettingsPage() {
                 ...s,
                 machines: {
                   ...s.machines,
-                  single: { basePrice: v },
+                  single: { ...s.machines.single, basePrice: v },
                 },
               }))
             }
@@ -487,7 +539,7 @@ export default function SettingsPage() {
                 ...s,
                 machines: {
                   ...s.machines,
-                  double: { basePrice: v },
+                  double: { ...s.machines.double, basePrice: v },
                 },
               }))
             }
@@ -500,11 +552,81 @@ export default function SettingsPage() {
                 ...s,
                 machines: {
                   ...s.machines,
-                  triple: { basePrice: v },
+                  triple: { ...s.machines.triple, basePrice: v },
                 },
               }))
             }
           />
+        </SectionCard>
+
+        {/* Machine Inventory */}
+        <SectionCard
+          title="Machine Inventory"
+          onSave={() => saveSection("inventory")}
+          saving={saving.inventory ?? false}
+          saved={saved.inventory ?? false}
+          fullWidth
+        >
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+            How many units of each machine you own. Customers will not be able
+            to book a machine on dates when all units are already reserved.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <NumberInput
+              label="Single Tank Units"
+              value={settings.machines.single.inventory}
+              onChange={(v) =>
+                setSettings((s) => ({
+                  ...s,
+                  machines: {
+                    ...s.machines,
+                    single: {
+                      ...s.machines.single,
+                      inventory: Math.max(0, Math.round(v)),
+                    },
+                  },
+                }))
+              }
+              step="1"
+              min="0"
+            />
+            <NumberInput
+              label="Double Tank Units"
+              value={settings.machines.double.inventory}
+              onChange={(v) =>
+                setSettings((s) => ({
+                  ...s,
+                  machines: {
+                    ...s.machines,
+                    double: {
+                      ...s.machines.double,
+                      inventory: Math.max(0, Math.round(v)),
+                    },
+                  },
+                }))
+              }
+              step="1"
+              min="0"
+            />
+            <NumberInput
+              label="Triple Tank Units"
+              value={settings.machines.triple.inventory}
+              onChange={(v) =>
+                setSettings((s) => ({
+                  ...s,
+                  machines: {
+                    ...s.machines,
+                    triple: {
+                      ...s.machines.triple,
+                      inventory: Math.max(0, Math.round(v)),
+                    },
+                  },
+                }))
+              }
+              step="1"
+              min="0"
+            />
+          </div>
         </SectionCard>
 
         {/* Mixers — full CRUD */}

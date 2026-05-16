@@ -3,6 +3,7 @@ import { initializePayPalSDK } from "@/lib/paypal-server";
 import dbConnect from "@/lib/mongodb";
 import { Rental } from "@/models/rental";
 import { Settings } from "@/models/settings";
+import { isMachineAvailable } from "@/lib/inventory";
 import {
   computeOrderTotal,
   type SettingsOverrides,
@@ -20,6 +21,30 @@ export async function POST(request: Request) {
         { message: "Missing required data" },
         { status: 400 },
       );
+    }
+
+    // Inventory pre-check — refuse to capture payment if all units of this
+    // machine type are already booked for any day in the requested range.
+    // Runs before paypalClient.execute(...) so we never charge a card for a
+    // booking we can't honor.
+    if (rentalData?.machineType && rentalData?.rentalDate) {
+      await dbConnect();
+      const availability = await isMachineAvailable(
+        rentalData.machineType,
+        rentalData.capacity,
+        rentalData.rentalDate,
+        rentalData.returnDate,
+      );
+      if (!availability.available) {
+        return NextResponse.json(
+          {
+            message:
+              availability.reason ??
+              "This machine is no longer available for the selected dates. Please pick a different date or machine.",
+          },
+          { status: 409 },
+        );
+      }
     }
 
     // Defense-in-depth: recompute the authoritative amount server-side when

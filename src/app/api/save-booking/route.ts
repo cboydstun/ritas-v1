@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import dbConnect from "@/lib/mongodb";
 import { Rental } from "@/models/rental";
 import { Settings } from "@/models/settings";
+import { isMachineAvailable } from "@/lib/inventory";
 import twilio from "twilio";
 import { Resend } from "resend";
 import { nanoid } from "nanoid";
@@ -29,6 +30,25 @@ export async function POST(request: Request) {
 
     // Connect to MongoDB
     await dbConnect();
+
+    // Inventory pre-check — refuse to persist the booking if all units of
+    // this machine type are already booked for any day in the requested range.
+    const availability = await isMachineAvailable(
+      rentalData.machineType,
+      rentalData.capacity,
+      rentalData.rentalDate,
+      rentalData.returnDate,
+    );
+    if (!availability.available) {
+      return NextResponse.json(
+        {
+          message:
+            availability.reason ??
+            "This machine is no longer available for the selected dates. Please pick a different date or machine.",
+        },
+        { status: 409 },
+      );
+    }
 
     // Fetch admin settings so the booking total reflects any pricing overrides
     const settingsDoc = (await Settings.findOne({ key: "global" }).lean()) as {

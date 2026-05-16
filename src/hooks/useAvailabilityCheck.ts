@@ -23,13 +23,15 @@ export function useAvailabilityCheck() {
     machineType: MachineType,
     capacity: 15 | 30 | 45,
     date: string,
+    returnDate?: string,
   ): Promise<AvailabilityResult> => {
     setIsChecking(true);
     setError(null);
 
     try {
+      const returnDateQuery = returnDate ? `&returnDate=${returnDate}` : "";
       const response = await fetch(
-        `/api/v1/availability?machineType=${machineType}&capacity=${capacity}&date=${date}`,
+        `/api/v1/availability?machineType=${machineType}&capacity=${capacity}&date=${date}${returnDateQuery}`,
       );
 
       if (!response.ok) {
