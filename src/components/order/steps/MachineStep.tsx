@@ -5,6 +5,9 @@ import { format } from "date-fns";
 import MachineCard from "./MachineCard";
 import MixerCard from "./MixerCard";
 import { useAvailabilityCheck } from "@/hooks/useAvailabilityCheck";
+import type { MachineType } from "@/types";
+
+type AvailabilityState = "loading" | "available" | "unavailable" | "error";
 
 // Define the sub-steps for the machine step
 enum MachineSubStep {
@@ -63,53 +66,82 @@ export default function MachineStep({
   // — does NOT block navigation, unlike a genuine "machine is booked" error.
   const [apiWarning, setApiWarning] = useState<string | null>(null);
 
+  // Per-machine-type availability so each card can be disabled independently
+  // before the customer commits to a choice.
+  const [availabilityByType, setAvailabilityByType] = useState<
+    Record<MachineType, AvailabilityState>
+  >({ single: "loading", double: "loading", triple: "loading" });
+
   const { checkAvailability, isChecking } = useAvailabilityCheck();
 
-  // Re-check availability whenever the machine type changes (or on mount if
-  // a machine was pre-selected via URL params and dates are already set).
+  // Check all three machine types in parallel so the cards reflect inventory
+  // up front — re-runs when the date range or the selected machine changes
+  // so the hard-block error stays in sync.
   useEffect(() => {
-    if (!formData.rentalDate || !onAvailabilityError) return;
+    if (!formData.rentalDate) return;
+    const types: MachineType[] = ["single", "double", "triple"];
+
+    setAvailabilityByType({
+      single: "loading",
+      double: "loading",
+      triple: "loading",
+    });
 
     let cancelled = false;
 
-    const run = async () => {
-      const result = await checkAvailability(
-        formData.machineType,
-        formData.capacity,
-        formData.rentalDate,
-        formData.returnDate,
-      );
-
+    Promise.all(
+      types.map((t) => {
+        const pkg = machinePackages.find((p) => p.type === t)!;
+        return checkAvailability(
+          t,
+          pkg.capacity,
+          formData.rentalDate,
+          formData.returnDate,
+        ).then((res) => ({ t, res }));
+      }),
+    ).then((entries) => {
       if (cancelled) return;
 
-      if (!result.available) {
-        if (result.error) {
-          // API / network failure — warn the user but don't hard-block them.
-          // We'll confirm availability manually before accepting the booking.
-          setApiWarning(
-            "⚠️ We couldn't verify availability right now. You can still continue — we'll confirm your booking by phone.",
-          );
-          onAvailabilityError(null); // clear any hard block
+      const next: Record<MachineType, AvailabilityState> = {
+        single: "available",
+        double: "available",
+        triple: "available",
+      };
+      let anyApiError = false;
+      for (const { t, res } of entries) {
+        if (res.error) {
+          next[t] = "error";
+          anyApiError = true;
         } else {
-          // Genuine unavailability returned by the API
-          setApiWarning(null);
-          onAvailabilityError(
-            `Sorry, our ${formData.machineType} tank machines are fully booked for one or more days in your selected range. Please choose a different machine or go back and pick another date.`,
-          );
+          next[t] = res.available ? "available" : "unavailable";
         }
-      } else {
-        setApiWarning(null);
+      }
+      setAvailabilityByType(next);
+
+      setApiWarning(
+        anyApiError
+          ? "⚠️ We couldn't verify availability right now. You can still continue — we'll confirm your booking by phone."
+          : null,
+      );
+
+      if (
+        onAvailabilityError &&
+        formData.machineType &&
+        next[formData.machineType as MachineType] === "unavailable"
+      ) {
+        onAvailabilityError(
+          `Sorry, our ${formData.machineType} tank machines are fully booked for one or more days in your selected range. Please choose a different machine or go back and pick another date.`,
+        );
+      } else if (onAvailabilityError) {
         onAvailabilityError(null);
       }
-    };
-
-    run();
+    });
 
     return () => {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [formData.machineType, formData.rentalDate, formData.returnDate]);
+  }, [formData.rentalDate, formData.returnDate, formData.machineType]);
 
   // Helper function to create a properly typed synthetic event
   const createSyntheticEvent = (name: string, value: string | string[]) => {
@@ -119,6 +151,7 @@ export default function MachineStep({
   };
 
   const handleMachineSelect = (machineType: "single" | "double" | "triple") => {
+    if (availabilityByType[machineType] === "unavailable") return;
     const pkg = machinePackages.find((p) => p.type === machineType)!;
     // Update machineType
     onInputChange(createSyntheticEvent("machineType", machineType));
@@ -301,6 +334,7 @@ export default function MachineStep({
                 capacity={pkg.capacity}
                 basePrice={pkg.basePrice}
                 isSelected={formData.machineType === pkg.type}
+                isAvailable={availabilityByType[pkg.type] !== "unavailable"}
                 isPopular={machinePopular[pkg.type]}
                 onSelect={handleMachineSelect}
                 image={machineImages[pkg.type]}
