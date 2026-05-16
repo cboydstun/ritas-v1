@@ -2,6 +2,12 @@ import { NextResponse } from "next/server";
 import { initializePayPalSDK } from "@/lib/paypal-server";
 import dbConnect from "@/lib/mongodb";
 import { Rental } from "@/models/rental";
+import { Settings } from "@/models/settings";
+import {
+  computeOrderTotal,
+  type SettingsOverrides,
+} from "@/components/order/utils";
+import type { OrderFormData } from "@/components/order/types";
 
 export async function POST(request: Request) {
   try {
@@ -13,6 +19,53 @@ export async function POST(request: Request) {
         { status: 400 },
       );
     }
+
+    // Defense-in-depth: when rentalData is provided, recompute the amount
+    // server-side via computeOrderTotal so PayPal charges (and our persisted
+    // Rental.payment.amount) cannot drift from the QuickBooks invoice math.
+    // Falls back to the client-supplied amount if rentalData is omitted.
+    let serverAmount = parseFloat(amount);
+    if (rentalData) {
+      await dbConnect();
+      const settingsDoc = (await Settings.findOne({
+        key: "global",
+      }).lean()) as {
+        fees?: {
+          deliveryFee?: number;
+          salesTaxRate?: number;
+          processingFeeRate?: number;
+          serviceDiscountRate?: number;
+        };
+        machines?: {
+          single?: { basePrice: number };
+          double?: { basePrice: number };
+          triple?: { basePrice: number };
+        };
+        mixers?: Record<string, { price: number }>;
+        extras?: Record<string, { price: number }>;
+      } | null;
+
+      const overrides: SettingsOverrides = {
+        fees: settingsDoc?.fees,
+        machines: settingsDoc?.machines,
+        mixers: settingsDoc?.mixers,
+        extras: settingsDoc?.extras,
+      };
+
+      const { finalTotal } = computeOrderTotal(
+        {
+          machineType: rentalData.machineType,
+          selectedMixers: rentalData.selectedMixers ?? [],
+          selectedExtras: rentalData.selectedExtras ?? [],
+          rentalDate: rentalData.rentalDate,
+          returnDate: rentalData.returnDate,
+          isServiceDiscount: rentalData.isServiceDiscount ?? false,
+        } as OrderFormData,
+        overrides,
+      );
+      serverAmount = finalTotal;
+    }
+    const serverAmountString = serverAmount.toFixed(2);
 
     // Import PayPal SDK dynamically
     const paypalSdk = await import("@paypal/checkout-server-sdk");
@@ -38,7 +91,7 @@ export async function POST(request: Request) {
               {
                 amount: {
                   currency_code: currency,
-                  value: amount.toString(),
+                  value: serverAmountString,
                 },
               },
             ],
@@ -76,7 +129,7 @@ export async function POST(request: Request) {
             {
               amount: {
                 currency_code: currency,
-                value: amount.toString(),
+                value: serverAmountString,
               },
             },
           ],
@@ -94,7 +147,7 @@ export async function POST(request: Request) {
     // If rental data is provided, create a pending rental
     if (rentalData) {
       try {
-        await dbConnect();
+        // dbConnect was already awaited above when we recomputed serverAmount
 
         // Create a new rental with pending status
         const rental = new Rental({
@@ -102,7 +155,7 @@ export async function POST(request: Request) {
           capacity: rentalData.capacity,
           selectedMixers: rentalData.selectedMixers,
           selectedExtras: rentalData.selectedExtras || [],
-          price: rentalData.price,
+          price: serverAmount,
           rentalDate: rentalData.rentalDate,
           rentalTime: rentalData.rentalTime,
           returnDate: rentalData.returnDate,
@@ -124,7 +177,7 @@ export async function POST(request: Request) {
           status: "pending",
           payment: {
             paypalTransactionId: order.result.id,
-            amount: parseFloat(amount),
+            amount: serverAmount,
             status: "pending",
             date: new Date(),
           },

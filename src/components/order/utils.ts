@@ -124,7 +124,9 @@ export interface OrderTotals {
   discountedSubtotal: number;
   salesTax: number;
   processingFee: number;
-  /** The true checkout total — tax & fees applied to the multi-day discounted subtotal. */
+  /** Total without the 3% card-processing fee — sales tax applied to discounted subtotal only. Matches QuickBooks "Cash Price". */
+  cashPrice: number;
+  /** The true checkout total — matches QuickBooks "Online Price (with 3% card fee)". */
   finalTotal: number;
 }
 
@@ -188,16 +190,25 @@ export function computeOrderTotal(
     (subtotal - serviceDiscountAmount).toFixed(2),
   );
 
-  // Tax and processing fee are applied to the post-discount subtotal
+  // Matches the QuickBooks invoice: processing fee is a taxable line item, so
+  // sales tax is applied to (discountedSubtotal + processingFee).
   const taxRate = settings?.fees?.salesTaxRate ?? 0.0825;
   const processingRate = settings?.fees?.processingFeeRate ?? 0.03;
-  const salesTax = Number((discountedSubtotal * taxRate).toFixed(2));
   const processingFee = Number(
     (discountedSubtotal * processingRate).toFixed(2),
   );
+  const salesTax = Number(
+    ((discountedSubtotal + processingFee) * taxRate).toFixed(2),
+  );
+
+  // Cash Price = what a customer pays when settling in cash on delivery (no
+  // card-processing fee, tax on subtotal only). Mirrors QB's "Cash Price" line.
+  const cashPrice = Number(
+    (discountedSubtotal + discountedSubtotal * taxRate).toFixed(2),
+  );
 
   const finalTotal = Number(
-    (discountedSubtotal + salesTax + processingFee).toFixed(2),
+    (discountedSubtotal + processingFee + salesTax).toFixed(2),
   );
 
   return {
@@ -212,6 +223,7 @@ export function computeOrderTotal(
     discountedSubtotal,
     salesTax,
     processingFee,
+    cashPrice,
     finalTotal,
   };
 }

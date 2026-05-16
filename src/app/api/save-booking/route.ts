@@ -6,7 +6,12 @@ import twilio from "twilio";
 import { Resend } from "resend";
 import { nanoid } from "nanoid";
 import { mixerDetails } from "@/lib/rental-data";
-import { calculatePrice, formatPrice } from "@/lib/pricing";
+import { formatPrice } from "@/lib/pricing";
+import {
+  computeOrderTotal,
+  type SettingsOverrides,
+} from "@/components/order/utils";
+import type { OrderFormData } from "@/components/order/types";
 
 export async function POST(request: Request) {
   try {
@@ -25,6 +30,63 @@ export async function POST(request: Request) {
     // Connect to MongoDB
     await dbConnect();
 
+    // Fetch admin settings so the booking total reflects any pricing overrides
+    const settingsDoc = (await Settings.findOne({ key: "global" }).lean()) as {
+      fees?: {
+        deliveryFee?: number;
+        salesTaxRate?: number;
+        processingFeeRate?: number;
+        serviceDiscountRate?: number;
+      };
+      machines?: {
+        single?: { basePrice: number };
+        double?: { basePrice: number };
+        triple?: { basePrice: number };
+      };
+      mixers?: Record<string, { price: number }>;
+      extras?: Record<string, { price: number }>;
+    } | null;
+
+    // ── Authoritative server-side total ──────────────────────────────────
+    // Reuses computeOrderTotal — the same function PricingSummary renders
+    // for the customer — so the email, SMS, and DB payment.amount all match
+    // exactly what was shown on the order page (including flat-priced extras,
+    // admin extras-price overrides, and the service discount).
+    const overrides: SettingsOverrides = {
+      fees: settingsDoc?.fees,
+      machines: settingsDoc?.machines,
+      mixers: settingsDoc?.mixers,
+      extras: settingsDoc?.extras,
+    };
+
+    const totals = computeOrderTotal(
+      {
+        machineType: rentalData.machineType,
+        selectedMixers: rentalData.selectedMixers ?? [],
+        selectedExtras: rentalData.selectedExtras ?? [],
+        rentalDate: rentalData.rentalDate,
+        returnDate: rentalData.returnDate,
+        isServiceDiscount: rentalData.isServiceDiscount ?? false,
+      } as OrderFormData,
+      overrides,
+    );
+
+    const {
+      basePrice,
+      mixerPrice,
+      deliveryFee,
+      perDayRate,
+      rentalDays,
+      extrasTotal: emailExtrasTotal,
+      subtotal: emailSubtotal,
+      serviceDiscountAmount: emailServiceDiscountAmount,
+      salesTax: emailSalesTax,
+      processingFee: emailProcessingFee,
+      cashPrice: emailCashPrice,
+      finalTotal: emailTotal,
+    } = totals;
+    // ─────────────────────────────────────────────────────────────────────
+
     // Create a new rental with pending payment status
     const rental = new Rental({
       ...rentalData,
@@ -34,7 +96,7 @@ export async function POST(request: Request) {
       status: "pending_payment", // Different from "pending" - indicates we're waiting for manual payment
       payment: {
         paypalTransactionId: null, // No PayPal transaction
-        amount: parseFloat(rentalData.price),
+        amount: emailTotal,
         status: "pending",
         date: new Date(),
       },
@@ -96,7 +158,7 @@ export async function POST(request: Request) {
             `${extrasText}` +
             `Customer: ${rental.customer.name}\n` +
             `Phone: ${rental.customer.phone}\n` +
-            `Total: $${parseFloat(rentalData.price).toFixed(2)}\n` +
+            `Total: $${emailTotal.toFixed(2)}\n` +
             `⚠️ INVOICE CUSTOMER FOR PAYMENT`,
           from: fromPhone,
           to: toPhone,
@@ -110,22 +172,6 @@ export async function POST(request: Request) {
         "Twilio credentials not fully configured - skipping SMS notification",
       );
     }
-
-    // Fetch admin settings to price custom mixer types correctly in the email
-    const settingsDoc = (await Settings.findOne({ key: "global" }).lean()) as {
-      fees?: {
-        deliveryFee?: number;
-        salesTaxRate?: number;
-        processingFeeRate?: number;
-        serviceDiscountRate?: number;
-      };
-      machines?: {
-        single?: { basePrice: number };
-        double?: { basePrice: number };
-        triple?: { basePrice: number };
-      };
-      mixers?: Record<string, { price: number }>;
-    } | null;
 
     // ── Build dynamic mixer & drink guide for the confirmation email ──────
     const tankCount =
@@ -182,66 +228,19 @@ export async function POST(request: Request) {
       </div>`;
     // ─────────────────────────────────────────────────────────────────────
 
-    // ── Pricing breakdown for email ───────────────────────────────────────
-    const priceBreakdown = calculatePrice(
-      rental.machineType,
-      selectedMixers as Parameters<typeof calculatePrice>[1],
-      {
-        deliveryFee: settingsDoc?.fees?.deliveryFee,
-        salesTaxRate: settingsDoc?.fees?.salesTaxRate,
-        processingFeeRate: settingsDoc?.fees?.processingFeeRate,
-        machines: settingsDoc?.machines,
-        mixers: settingsDoc?.mixers,
-      },
-    );
-
-    const rentalDays =
-      rental.rentalDate && rental.returnDate
-        ? Math.max(
-            1,
-            Math.ceil(
-              (new Date(rental.returnDate + "T00:00:00").getTime() -
-                new Date(rental.rentalDate + "T00:00:00").getTime()) /
-                (1000 * 60 * 60 * 24),
-            ),
-          )
-        : 1;
-
-    const perDayRate = priceBreakdown.basePrice + priceBreakdown.mixerPrice;
-
-    const emailExtrasTotal = (rental.selectedExtras || []).reduce(
-      (sum: number, item: { price: number; quantity?: number }) =>
-        sum + item.price * (item.quantity || 1) * rentalDays,
-      0,
-    );
-
-    const emailSubtotal =
-      perDayRate * rentalDays + priceBreakdown.deliveryFee + emailExtrasTotal;
-
-    const emailServiceDiscountAmount = rental.isServiceDiscount
-      ? emailSubtotal * (settingsDoc?.fees?.serviceDiscountRate ?? 0.1)
-      : 0;
-
-    const emailDiscountedSubtotal = emailSubtotal - emailServiceDiscountAmount;
-
-    const emailSalesTax =
-      emailDiscountedSubtotal * (settingsDoc?.fees?.salesTaxRate ?? 0.0825);
-    const emailProcessingFee =
-      emailDiscountedSubtotal * (settingsDoc?.fees?.processingFeeRate ?? 0.03);
-
     const pricingBreakdownHtml = `
       <div style="background-color: #fff; padding: 15px; border-radius: 6px; margin: 20px 0; border: 1px solid #e2e8f0;">
         <p style="margin: 0 0 12px 0;"><strong style="color: #2b6cb0;">Pricing Breakdown:</strong></p>
         <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
           <tr>
             <td style="padding: 5px 0; color: #555;">Machine (${rental.capacity}L ${rental.machineType}):</td>
-            <td style="padding: 5px 0; text-align: right;">$${formatPrice(priceBreakdown.basePrice)}/day</td>
+            <td style="padding: 5px 0; text-align: right;">$${formatPrice(basePrice)}/day</td>
           </tr>
           ${
-            priceBreakdown.mixerPrice > 0
+            mixerPrice > 0
               ? `<tr>
-            <td style="padding: 5px 0; color: #555;">${selectedMixers.length} Mixer${selectedMixers.length > 1 ? "s" : ""}:</td>
-            <td style="padding: 5px 0; text-align: right;">$${formatPrice(priceBreakdown.mixerPrice)}/day</td>
+            <td style="padding: 5px 0; color: #555;">${(rentalData.selectedMixers ?? []).length} Mixer${(rentalData.selectedMixers ?? []).length > 1 ? "s" : ""}:</td>
+            <td style="padding: 5px 0; text-align: right;">$${formatPrice(mixerPrice)}/day</td>
           </tr>`
               : ""
           }
@@ -259,7 +258,7 @@ export async function POST(request: Request) {
           }
           <tr>
             <td style="padding: 5px 0; color: #555;">Delivery &amp; Setup:</td>
-            <td style="padding: 5px 0; text-align: right;">$${formatPrice(priceBreakdown.deliveryFee)}</td>
+            <td style="padding: 5px 0; text-align: right;">$${formatPrice(deliveryFee)}</td>
           </tr>
           <tr style="border-top: 1px solid #e2e8f0;">
             <td style="padding: 5px 0; color: #555;">Subtotal:</td>
@@ -274,16 +273,20 @@ export async function POST(request: Request) {
               : ""
           }
           <tr>
+            <td style="padding: 5px 0; color: #555;">Processing Fee (3%):</td>
+            <td style="padding: 5px 0; text-align: right;">$${formatPrice(emailProcessingFee)}</td>
+          </tr>
+          <tr>
             <td style="padding: 5px 0; color: #555;">Sales Tax (8.25%):</td>
             <td style="padding: 5px 0; text-align: right;">$${formatPrice(emailSalesTax)}</td>
           </tr>
           <tr>
-            <td style="padding: 5px 0; color: #555;">Processing Fee (3%):</td>
-            <td style="padding: 5px 0; text-align: right;">$${formatPrice(emailProcessingFee)}</td>
+            <td style="padding: 5px 0; color: #777; font-size: 13px;">Cash Price (no card fee):</td>
+            <td style="padding: 5px 0; text-align: right; color: #777; font-size: 13px;">$${formatPrice(emailCashPrice)}</td>
           </tr>
           <tr style="border-top: 2px solid #2b6cb0;">
             <td style="padding: 8px 0; font-weight: bold; font-size: 16px;">Total:</td>
-            <td style="padding: 8px 0; text-align: right; font-weight: bold; font-size: 16px; color: #ea580c;">$${parseFloat(rentalData.price).toFixed(2)}</td>
+            <td style="padding: 8px 0; text-align: right; font-weight: bold; font-size: 16px; color: #ea580c;">$${formatPrice(emailTotal)}</td>
           </tr>
         </table>
       </div>`;

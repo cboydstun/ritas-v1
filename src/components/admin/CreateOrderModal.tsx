@@ -61,6 +61,7 @@ export default function CreateOrderModal({ onClose }: CreateOrderModalProps) {
     subtotal: number;
     salesTax: number;
     processingFee: number;
+    cashPrice: number;
     total: number;
   }
 
@@ -92,6 +93,8 @@ export default function CreateOrderModal({ onClose }: CreateOrderModalProps) {
 
     // Default values if no machine is selected
     if (!selectedMachine) {
+      const fallbackProcessing = DELIVERY_FEE * PROCESSING_FEE_RATE;
+      const fallbackTax = (DELIVERY_FEE + fallbackProcessing) * SALES_TAX_RATE;
       return {
         basePrice: 0,
         mixerPrice: 0,
@@ -100,9 +103,10 @@ export default function CreateOrderModal({ onClose }: CreateOrderModalProps) {
         extrasTotal: 0,
         deliveryFee: DELIVERY_FEE,
         subtotal: DELIVERY_FEE,
-        salesTax: DELIVERY_FEE * SALES_TAX_RATE,
-        processingFee: DELIVERY_FEE * PROCESSING_FEE_RATE,
-        total: DELIVERY_FEE * (1 + SALES_TAX_RATE + PROCESSING_FEE_RATE),
+        salesTax: fallbackTax,
+        processingFee: fallbackProcessing,
+        cashPrice: DELIVERY_FEE + DELIVERY_FEE * SALES_TAX_RATE,
+        total: DELIVERY_FEE + fallbackProcessing + fallbackTax,
       };
     }
 
@@ -137,12 +141,12 @@ export default function CreateOrderModal({ onClose }: CreateOrderModalProps) {
     // Calculate subtotal including delivery fee
     const subtotal = perDayRate * rentalDays + DELIVERY_FEE + extrasTotal;
 
-    // Calculate tax and processing fee
-    const salesTax = subtotal * SALES_TAX_RATE;
+    // Match the QuickBooks invoice: processing fee is a taxable line, so tax
+    // is applied to (subtotal + processingFee).
     const processingFee = subtotal * PROCESSING_FEE_RATE;
-
-    // Calculate final total
-    const total = subtotal + salesTax + processingFee;
+    const salesTax = (subtotal + processingFee) * SALES_TAX_RATE;
+    const cashPrice = subtotal + subtotal * SALES_TAX_RATE;
+    const total = subtotal + processingFee + salesTax;
 
     return {
       basePrice,
@@ -154,6 +158,7 @@ export default function CreateOrderModal({ onClose }: CreateOrderModalProps) {
       subtotal,
       salesTax,
       processingFee,
+      cashPrice,
       total,
     };
   }, [
@@ -803,15 +808,20 @@ export default function CreateOrderModal({ onClose }: CreateOrderModalProps) {
                         </div>
 
                         <div className="flex justify-between text-sm text-gray-700 dark:text-gray-300">
-                          <span>Sales Tax (8.25%):</span>
-                          <span>${formatPrice(priceDetails.salesTax)}</span>
-                        </div>
-
-                        <div className="flex justify-between text-sm text-gray-700 dark:text-gray-300">
                           <span>Processing Fee (3%):</span>
                           <span>
                             ${formatPrice(priceDetails.processingFee)}
                           </span>
+                        </div>
+
+                        <div className="flex justify-between text-sm text-gray-700 dark:text-gray-300">
+                          <span>Sales Tax (8.25%):</span>
+                          <span>${formatPrice(priceDetails.salesTax)}</span>
+                        </div>
+
+                        <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
+                          <span>Cash Price (no card fee):</span>
+                          <span>${formatPrice(priceDetails.cashPrice)}</span>
                         </div>
                       </>
                     );

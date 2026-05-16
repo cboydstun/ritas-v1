@@ -82,9 +82,14 @@ describe("computeOrderTotal with settings overrides", () => {
 
   it("uses default rates when no settings provided", () => {
     const result = computeOrderTotal(baseFormData);
-    // subtotal = 124.95 * 1 + 20 = 144.95; tax = 144.95 * 0.0825
-    expect(result.salesTax).toBeCloseTo(144.95 * 0.0825, 2);
-    expect(result.processingFee).toBeCloseTo(144.95 * 0.03, 2);
+    // subtotal = 124.95 * 1 + 20 = 144.95
+    // processingFee = 144.95 * 0.03 = 4.35 (rounded)
+    // salesTax = (144.95 + 4.35) * 0.0825 = 12.32 (rounded) — QB math
+    // cashPrice = 144.95 + 144.95 * 0.0825 = 156.91
+    expect(result.processingFee).toBeCloseTo(4.35, 2);
+    expect(result.salesTax).toBeCloseTo(12.32, 2);
+    expect(result.cashPrice).toBeCloseTo(156.91, 2);
+    expect(result.finalTotal).toBeCloseTo(161.62, 2);
   });
 
   it("applies custom serviceDiscountRate", () => {
@@ -96,11 +101,14 @@ describe("computeOrderTotal with settings overrides", () => {
     expect(result.serviceDiscountAmount).toBeCloseTo(144.95 * 0.2, 2);
   });
 
-  it("applies custom salesTaxRate from settings", () => {
+  it("applies custom salesTaxRate from settings — tax base includes processing fee", () => {
     const result = computeOrderTotal(baseFormData, {
       fees: { salesTaxRate: 0.1 },
     });
-    expect(result.salesTax).toBeCloseTo(144.95 * 0.1, 2);
+    // processingFee = 144.95 * 0.03 = 4.35
+    // salesTax = (144.95 + 4.35) * 0.1 = 14.93
+    expect(result.processingFee).toBeCloseTo(4.35, 2);
+    expect(result.salesTax).toBeCloseTo(14.93, 2);
   });
 
   it("applies custom deliveryFee from settings", () => {
@@ -110,5 +118,47 @@ describe("computeOrderTotal with settings overrides", () => {
     // subtotal = 124.95 + 50 = 174.95
     expect(result.deliveryFee).toBe(50);
     expect(result.subtotal).toBeCloseTo(174.95, 2);
+  });
+
+  it("matches the QuickBooks reference invoice (45L triple + 2 mixers + 1 flat extra + 2 per-day extras, 1 day)", () => {
+    // QB invoice: machine $174.95 + Margarita $19.95 + Strawberry Daiquiri $24.95
+    // + Pina Colada extra mixer $24.95 (flat) + Popcorn $49.95 + Cotton Candy $49.95 + Delivery $20
+    // = items $364.70 → processing $10.94 → tax $30.99 → cash $394.79 → online $406.63
+    const qbForm: OrderFormData = {
+      ...baseFormData,
+      machineType: "triple",
+      capacity: 45,
+      selectedMixers: ["margarita", "strawberry-daiquiri"],
+      selectedExtras: [
+        {
+          id: "mixer-pina-colada",
+          name: "Pina Colada Extra Mixer",
+          description: "",
+          price: 24.95,
+          quantity: 1,
+          pricingType: "flat",
+        },
+        {
+          id: "popcorn-machine",
+          name: "Popcorn Machine",
+          description: "",
+          price: 49.95,
+          quantity: 1,
+        },
+        {
+          id: "cotton-candy",
+          name: "Cotton Candy Machine",
+          description: "",
+          price: 49.95,
+          quantity: 1,
+        },
+      ],
+    };
+    const result = computeOrderTotal(qbForm);
+    expect(result.subtotal).toBeCloseTo(364.7, 2);
+    expect(result.processingFee).toBeCloseTo(10.94, 2);
+    expect(result.salesTax).toBeCloseTo(30.99, 2);
+    expect(result.cashPrice).toBeCloseTo(394.79, 2);
+    expect(result.finalTotal).toBeCloseTo(406.63, 2);
   });
 });

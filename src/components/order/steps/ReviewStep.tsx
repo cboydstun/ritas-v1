@@ -25,6 +25,7 @@ export default function ReviewStep({
     serviceDiscountAmount,
     salesTax,
     processingFee,
+    cashPrice,
     finalTotal,
   } = computeOrderTotal(formData);
 
@@ -49,6 +50,7 @@ export default function ReviewStep({
             capacity: formData.capacity,
             selectedMixers: formData.selectedMixers,
             selectedExtras: formData.selectedExtras,
+            isServiceDiscount: formData.isServiceDiscount ?? false,
             price: finalTotal,
             rentalDate: formData.rentalDate,
             rentalTime: formData.rentalTime,
@@ -413,10 +415,13 @@ export default function ReviewStep({
             {formatPrice(perDayRate * rentalDays + deliveryFee + extrasTotal)}
           </p>
           <p className="text-charcoal/70 dark:text-white/70">
-            Sales Tax (8.25%): ${formatPrice(salesTax)}
+            Processing Fee (3%): ${formatPrice(processingFee)}
           </p>
           <p className="text-charcoal/70 dark:text-white/70">
-            Processing Fee (3%): ${formatPrice(processingFee)}
+            Sales Tax (8.25%): ${formatPrice(salesTax)}
+          </p>
+          <p className="text-charcoal/60 dark:text-white/60 text-sm">
+            Cash Price (no card fee): ${formatPrice(cashPrice)}
           </p>
           <p className="text-xl font-bold text-orange mb-4">
             Total Amount: ${formatPrice(finalTotal)}

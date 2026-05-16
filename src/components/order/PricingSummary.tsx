@@ -22,6 +22,7 @@ export function PricingSummary({
     serviceDiscountAmount,
     salesTax,
     processingFee,
+    cashPrice,
     finalTotal,
   } = computeOrderTotal(formData, settings);
 
@@ -164,6 +165,16 @@ export function PricingSummary({
             </div>
           )}
 
+          {/* Processing Fee — taxable line item, shown before tax to match the QuickBooks invoice */}
+          <div className="flex justify-between">
+            <span className="text-charcoal/70 dark:text-white/70">
+              Processing Fee ({pct(processingRate)})
+            </span>
+            <span className="font-medium text-charcoal dark:text-white">
+              ${formatPrice(processingFee)}
+            </span>
+          </div>
+
           {/* Tax */}
           <div className="flex justify-between">
             <span className="text-charcoal/70 dark:text-white/70">
@@ -174,17 +185,17 @@ export function PricingSummary({
             </span>
           </div>
 
-          {/* Processing Fee */}
-          <div className="flex justify-between">
-            <span className="text-charcoal/70 dark:text-white/70">
-              Processing Fee ({pct(processingRate)})
+          {/* Cash Price — what the customer pays if settling in cash on delivery (no card fee) */}
+          <div className="flex justify-between text-xs pt-2 border-t border-margarita/10">
+            <span className="text-charcoal/60 dark:text-white/60">
+              Cash Price (no card fee)
             </span>
-            <span className="font-medium text-charcoal dark:text-white">
-              ${formatPrice(processingFee)}
+            <span className="font-medium text-charcoal/80 dark:text-white/80">
+              ${formatPrice(cashPrice)}
             </span>
           </div>
 
-          {/* Total */}
+          {/* Total — Online Price with 3% card fee */}
           <div className="flex justify-between pt-4 border-t-2 border-margarita/30">
             <span className="text-lg font-bold text-charcoal dark:text-white">
               Total

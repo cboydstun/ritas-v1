@@ -2,6 +2,12 @@ import { NextResponse } from "next/server";
 import { initializePayPalSDK } from "@/lib/paypal-server";
 import dbConnect from "@/lib/mongodb";
 import { Rental } from "@/models/rental";
+import { Settings } from "@/models/settings";
+import {
+  computeOrderTotal,
+  type SettingsOverrides,
+} from "@/components/order/utils";
+import type { OrderFormData } from "@/components/order/types";
 import twilio from "twilio";
 import nodemailer from "nodemailer";
 
@@ -15,6 +21,54 @@ export async function POST(request: Request) {
         { status: 400 },
       );
     }
+
+    // Defense-in-depth: recompute the authoritative amount server-side when
+    // rentalData is available, so the SMS, persisted payment.amount, and
+    // confirmation email all match the QuickBooks invoice math. PayPal itself
+    // captures whatever amount was set during create-paypal-order; this
+    // server-side recompute ensures our local records agree to the cent.
+    let serverAmount = parseFloat(amount);
+    if (rentalData) {
+      await dbConnect();
+      const settingsDoc = (await Settings.findOne({
+        key: "global",
+      }).lean()) as {
+        fees?: {
+          deliveryFee?: number;
+          salesTaxRate?: number;
+          processingFeeRate?: number;
+          serviceDiscountRate?: number;
+        };
+        machines?: {
+          single?: { basePrice: number };
+          double?: { basePrice: number };
+          triple?: { basePrice: number };
+        };
+        mixers?: Record<string, { price: number }>;
+        extras?: Record<string, { price: number }>;
+      } | null;
+
+      const overrides: SettingsOverrides = {
+        fees: settingsDoc?.fees,
+        machines: settingsDoc?.machines,
+        mixers: settingsDoc?.mixers,
+        extras: settingsDoc?.extras,
+      };
+
+      const { finalTotal } = computeOrderTotal(
+        {
+          machineType: rentalData.machineType,
+          selectedMixers: rentalData.selectedMixers ?? [],
+          selectedExtras: rentalData.selectedExtras ?? [],
+          rentalDate: rentalData.rentalDate,
+          returnDate: rentalData.returnDate,
+          isServiceDiscount: rentalData.isServiceDiscount ?? false,
+        } as OrderFormData,
+        overrides,
+      );
+      serverAmount = finalTotal;
+    }
+    const serverAmountString = serverAmount.toFixed(2);
 
     // Import PayPal SDK dynamically
     const paypalSdk = await import("@paypal/checkout-server-sdk");
@@ -128,7 +182,7 @@ export async function POST(request: Request) {
                 `${extrasText}` +
                 `Customer: ${rental.customer.name}\n` +
                 `Phone: ${rental.customer.phone}\n` +
-                `Total: $${amount}`,
+                `Total: $${serverAmountString}`,
               from: fromPhone,
               to: toPhone,
             });
@@ -159,7 +213,7 @@ export async function POST(request: Request) {
           status: "confirmed",
           payment: {
             paypalTransactionId: capture.result.id,
-            amount: parseFloat(amount),
+            amount: serverAmount,
             status: "completed",
             date: new Date(),
           },
@@ -185,7 +239,7 @@ export async function POST(request: Request) {
             status: "confirmed",
             payment: {
               paypalTransactionId: capture.result.id,
-              amount: parseFloat(amount),
+              amount: serverAmount,
               status: "completed",
               date: new Date(),
             },
@@ -243,7 +297,7 @@ export async function POST(request: Request) {
                         .join(", ")}</li>`
                     : ""
                 }
-                <li style="margin-bottom: 8px;">💰 Total Amount: $${amount}</li>
+                <li style="margin-bottom: 8px;">💰 Total Amount: $${serverAmountString}</li>
                 <li style="margin-bottom: 8px;">⚡ Machine Capacity: ${updatedRental.capacity}L</li>
               </ul>
             </div>
