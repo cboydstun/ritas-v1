@@ -18,7 +18,9 @@ npm run test:ci      # Jest in CI mode with coverage
 
 Run a single test file: `npx jest src/components/order/steps/__tests__/SomeTest.test.tsx`
 
-Tests are co-located in `__tests__/` folders next to the code they cover. Jest is configured via `next/jest` with `jest-environment-jsdom`. The path alias `@/*` resolves to `src/*` (set in both `tsconfig.json` and `jest.config.js`).
+Tests are co-located in `__tests__/` folders next to the code they cover. Jest is configured via `next/jest` with `jest-environment-jsdom`. The path alias `@/*` resolves to `src/*` (set in both `tsconfig.json` and `jest.config.js`). Test scripts pass `--passWithNoTests`, so a filter that matches nothing exits 0 — check the reported test count, don't trust a green exit alone.
+
+`next.config.ts` sets `typescript.ignoreBuildErrors: true`, so **`npm run build` does not fail on type errors**. Run `npx tsc --noEmit` to actually typecheck.
 
 ## Stack
 
@@ -28,7 +30,9 @@ Next.js 15 (App Router) · React 19 · TypeScript 5 · MongoDB/Mongoose · NextA
 
 ### Routing & Pages
 
-`src/app/` uses the Next.js App Router. Public pages live at the root (`/order`, `/pricing`, etc.). Admin pages are under `src/app/admin/` and are protected by middleware. API routes are split between `src/app/api/v1/` (public) and `src/app/api/admin/` (auth-required).
+`src/app/` uses the Next.js App Router. Public pages live at the root (`/order`, `/pricing`, `/long-term-lease`, etc.). Admin pages are under `src/app/admin/` and are protected by middleware. API routes are split between `src/app/api/v1/` (public) and `src/app/api/admin/` (auth-required). The PayPal routes (`/api/create-paypal-order`, `/api/capture-paypal-order`) and `/api/save-booking` sit outside both namespaces at `src/app/api/`.
+
+Two customer-facing verticals share this codebase: **event rentals** (the `/order` wizard, PayPal, `Rental` model) and **long-term commercial leases** (`/long-term-lease`, an inquiry form only — no payment, `LeaseInquiry` model).
 
 ### Multi-Step Order Form
 
@@ -48,13 +52,28 @@ The single source of truth for all order totals is `computeOrderTotal()` in `src
 
 Default constants: delivery $20, sales tax 8.25%, processing 3%, service discount 10%. Base machine prices come from `src/lib/rental-data.ts`. The `PricingOverrides` type in `src/lib/pricing.ts` and `SettingsOverrides` in `utils.ts` allow the admin `Settings` document to override any of these at runtime.
 
-### Availability & Blackout Dates
+### Availability & Inventory
 
-The `useAvailabilityCheck` hook (`src/hooks/useAvailabilityCheck.ts`) calls `GET /api/v1/availability?machineType=&capacity=&date=`. That route checks blackout dates first (from the `BlackoutDate` model), then looks for conflicting confirmed/pending rentals. Admins manage blackout date ranges via `/admin/blackout-dates` → `GET/POST /api/admin/blackout-dates` and `DELETE /api/admin/blackout-dates/[id]`.
+`isMachineAvailable()` in `src/lib/inventory.ts` is the single source of truth for "can this machine be booked". `GET /api/v1/availability?machineType=&capacity=&date=&returnDate=` is a thin validating wrapper over it (`returnDate` optional, defaults to `date`). The algorithm:
+
+1. Expand `[rentalDate, returnDate]` into every `YYYY-MM-DD` day in range.
+2. Reject if any day falls in a `BlackoutDate` range (`isDateBlackedOut`).
+3. Look up the per-type unit count via `getMachineInventory()` — reads `Settings.machines[type].inventory`; reject outright if `0`.
+4. Count overlapping `Rental` docs **per day** (statuses `pending`, `pending_payment`, `confirmed`, `in-progress`); reject if any single day has `booked >= inventory`.
+
+So a machine type is bookable while units remain, not simply because one rental exists. Note the fallback `DEFAULT_INVENTORY` in `inventory.ts` is `1` per type, whereas the `Settings` schema defaults are `single: 3, double: 3, triple: 2` — the constant only applies when no Settings document or no configured value exists.
+
+`MachineStep.tsx` checks all three machine types **in parallel** on mount so every card shows live availability, greys out unavailable ones, and auto-switches the selection to another available type (priority `triple > double > single`) when the current pick is unavailable. `useAvailabilityCheck` (`src/hooks/useAvailabilityCheck.ts`) wraps the single-type fetch.
+
+Admins manage blackout date ranges via `/admin/blackout-dates` → `GET/POST /api/admin/blackout-dates` and `DELETE /api/admin/blackout-dates/[id]`.
+
+### Long-Term Lease Flow
+
+`/long-term-lease` renders three tiers (`single-15`, `double-30`, `triple-45`) via `LeaseTierCard.tsx`. Baseline tier data lives in `src/lib/lease-data.ts` (`leaseTiers`); `mergeLeaseTiers(overrides)` shallow-merges the admin `Settings.leaseTiers` overrides on top, so pricing/specs are editable at runtime without a deploy. `LeaseInquiryForm.tsx` posts to `POST /api/v1/lease-inquiries` (stored in the `LeaseInquiry` model, `src/models/leaseInquiry.ts`); admins triage them at `/admin/lease-inquiries` → `GET /api/admin/lease-inquiries`, `PATCH/DELETE /api/admin/lease-inquiries/[id]`. `LEASE_BUSINESS_TYPES` and `LEASE_TERMS` in `lease-data.ts` are the form's dropdown sources.
 
 ### Database
 
-MongoDB via Mongoose. Connection is cached in `src/lib/mongodb.ts` using a global variable to avoid creating new connections on every serverless invocation. Models live in `src/models/`: `rental.ts`, `thumbprint.ts`, `contact.ts`, `blackout-date.ts`, `settings.ts`.
+MongoDB via Mongoose. Connection is cached in `src/lib/mongodb.ts` using a global variable to avoid creating new connections on every serverless invocation. Models live in `src/models/`: `rental.ts`, `thumbprint.ts`, `contact.ts`, `blackout-date.ts`, `settings.ts`, `leaseInquiry.ts`. Every model uses the `mongoose.models.X || mongoose.model(...)` guard — keep that pattern or hot reload throws `OverwriteModelError`.
 
 ### Authentication (Admin)
 
@@ -74,11 +93,29 @@ Triggered after successful payment capture or manual booking: SMS via Twilio (`T
 
 ### Admin Settings Override
 
-The `Settings` Mongoose model stores a single document with runtime overrides for mixers, pricing rates, extras prices, and delivery window hours. The public `/api/v1/settings` endpoint exposes these to the order form. Admin can update them via `/admin/settings` → `PATCH /api/admin/settings`. The `SettingsOverrides` type in `src/components/order/utils.ts` is what the order form uses.
+The `Settings` model (`src/models/settings.ts`) stores **one singleton document keyed `{ key: "global" }`** — always query it with that filter. It holds runtime overrides for:
+
+- `fees` — `deliveryFee`, `salesTaxRate`, `processingFeeRate`, `serviceDiscountRate`
+- `machines.{single,double,triple}` — `basePrice` **and** `inventory` (drives availability, see above)
+- `mixers` / `extras` / `leaseTiers` — `Schema.Types.Mixed` maps with schema-level defaults
+- `operations` — `deliveryWindowStartHour` / `EndHour`, guarded by a `pre("validate")` hook requiring end > start
+- `documentation` — lease PDF URL/label
+
+`GET /api/v1/settings` is public and returns only these whitelisted fields; if no document exists it instantiates a non-persisted `new Settings({})` so callers always get the schema defaults. Admin edits go through `/admin/settings` → `PATCH /api/admin/settings`. The order form consumes this through the `SettingsOverrides` type in `src/components/order/utils.ts`.
+
+Because mixers, extras, and lease tiers are `Mixed`, Mongoose does not deep-validate or dirty-track them — reassign the whole object (or `markModified`) when updating.
 
 ### Analytics
 
-`FingerprintTracker.tsx` uses ThumbmarkJS to generate a browser fingerprint and posts it to `/api/v1/analytics/fingerprint` (stored in `Thumbprint` model). `OrderFormTracker.tsx` fires GA4/GTM events as users progress through order steps.
+`FingerprintTracker.tsx` uses ThumbmarkJS to generate a browser fingerprint and posts it to `/api/v1/analytics/fingerprint` (stored in `Thumbprint` model). `OrderFormTracker.tsx` fires GA4/GTM events as users progress through order steps. `GET /api/admin/analytics` aggregates visitor and funnel data for `/admin/analytics` (Chart.js via `react-chartjs-2`).
+
+### Reviews
+
+`GET /api/v1/reviews` is a server-side proxy to `https://satxbounce.com/api/v1/reviews` with `next: { revalidate: 3600 }`. It exists so the browser never calls the external host directly (the CSP `connect-src` would block it) and so responses are cached for an hour.
+
+### Security Headers & CSP
+
+`next.config.ts` attaches HSTS, `X-Frame-Options`, `Permissions-Policy`, and a hand-written **Content-Security-Policy** to every route. The allowlists currently cover PayPal, Google Analytics/GTM, and `google.com` frames only — **adding any new third-party script, iframe, font, or fetch target requires editing that CSP string**, or it will silently fail in the browser. `compiler.removeConsole` strips `console.*` in production builds. Longer write-ups live in `docs/security.md` and `docs/auth-implementation.md`.
 
 ### Types
 
@@ -88,6 +125,8 @@ Global shared types live in `src/types/index.ts` (`MachineType`, `MixerType`, `P
 
 - `src/lib/rental-data.ts` — `machinePackages` and `mixerDetails` constants (source of base prices and machine metadata)
 - `src/lib/pricing.ts` — `calculatePrice()` (core per-day price logic) and `formatPrice()` (currency display)
+- `src/lib/inventory.ts` — `isMachineAvailable()` and `getMachineInventory()` (all availability decisions)
+- `src/lib/lease-data.ts` — `leaseTiers`, `mergeLeaseTiers()`, lease form enums
 - `src/lib/paypal-server.ts` — `initializePayPalSDK()` and `isValidPayPalEnv()` (called once per server boot)
 
 ## Date Handling
