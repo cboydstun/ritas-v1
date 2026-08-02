@@ -1,4 +1,6 @@
 import { MixerType } from "@/lib/rental-data";
+// Type-only, so the cycle with ./utils is erased at compile time.
+import type { SettingsOverrides } from "./utils";
 
 export type OrderStep = "date" | "machine" | "details" | "extras" | "review";
 
@@ -70,6 +72,13 @@ export interface StepProps {
     description: string;
     price: number;
   }>;
+  /**
+   * Admin pricing overrides from `/api/v1/settings`. Steps that compute or
+   * display totals must pass this to `computeOrderTotal`, or they will show
+   * hardcoded defaults while the sidebar and the emailed invoice show the
+   * real, overridden figures.
+   */
+  settings?: SettingsOverrides;
 }
 
 export const steps: { id: OrderStep; label: string }[] = [

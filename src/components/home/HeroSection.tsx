@@ -6,11 +6,17 @@ export default function HeroSection() {
     <div className="relative min-h-[90vh] flex items-center overflow-hidden bg-gradient-to-br from-light via-margarita/10 to-teal/20 dark:from-charcoal dark:via-margarita/5 dark:to-teal/10">
       {/* Hero Image */}
       <div className="absolute inset-0 pointer-events-none">
+        {/* Decorative backdrop at 30% opacity, so it carries no alt text and
+            is hidden from assistive tech. It stays `priority` because it does
+            paint behind the hero copy. */}
         <Image
           src="/hero-image.jpg"
-          alt="Frozen margarita machine with drinks"
+          alt=""
+          aria-hidden="true"
           fill
           priority
+          sizes="100vw"
+          quality={60}
           className="object-cover opacity-30"
         />
       </div>

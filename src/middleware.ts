@@ -1,6 +1,16 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
+import { SITE_URL } from "@/lib/site";
+
+/** The one host this app will redirect to, taken from the canonical origin. */
+function allowedHost(): string | null {
+  try {
+    return new URL(SITE_URL).host;
+  } catch {
+    return null;
+  }
+}
 
 // Define permanent redirects
 const PERMANENT_REDIRECTS: Record<string, string> = {
@@ -17,7 +27,10 @@ export async function middleware(request: NextRequest) {
   ) {
     const secureUrl = request.nextUrl.clone();
     secureUrl.protocol = "https";
-    secureUrl.host = request.headers.get("host") || request.nextUrl.host;
+    // Deliberately NOT the Host header: trusting it turned this into a
+    // cacheable open redirect (`Host: evil.com` + `x-forwarded-proto: http`
+    // returned a 301 to https://evil.com/<path>).
+    secureUrl.host = allowedHost() ?? request.nextUrl.host;
     return NextResponse.redirect(secureUrl, { status: 301 });
   }
 
@@ -33,11 +46,6 @@ export async function middleware(request: NextRequest) {
   if (pathname.startsWith("/admin") || pathname.startsWith("/api/admin")) {
     // Skip auth check for login page
     if (pathname === "/admin/login") {
-      return NextResponse.next();
-    }
-
-    // Skip auth check for NextAuth API routes
-    if (pathname.startsWith("/api/auth")) {
       return NextResponse.next();
     }
 
@@ -65,5 +73,12 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+  // Scoped to the routes this middleware actually protects. It previously ran
+  // on every public request — including every static page — purely to consult
+  // an empty PERMANENT_REDIRECTS map. Vercel already forces HTTPS at the edge,
+  // and HSTS is set in next.config.ts.
+  //
+  // Note: adding a public-page entry to PERMANENT_REDIRECTS means widening
+  // this matcher to cover it.
+  matcher: ["/admin/:path*", "/api/admin/:path*"],
 };

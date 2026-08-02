@@ -107,6 +107,88 @@ describe("ReviewStep", () => {
     );
   });
 
+  // The review step used to call computeOrderTotal(formData) with no settings
+  // argument, so it displayed hardcoded defaults while the sidebar, the email
+  // and payment.amount all used the admin overrides.
+  it("applies admin pricing overrides to the displayed total", () => {
+    const readTotal = () =>
+      parseFloat(
+        screen
+          .getByText(/Total Amount:/i)
+          .textContent?.replace(/[^0-9.]/g, "") || "0",
+      );
+
+    const { rerender } = render(
+      <ReviewStep
+        formData={mockFormData}
+        onInputChange={jest.fn()}
+        error={null}
+        agreedToTerms={false}
+        setAgreedToTerms={mockSetAgreedToTerms}
+      />,
+    );
+    const defaultTotal = readTotal();
+
+    rerender(
+      <ReviewStep
+        formData={mockFormData}
+        onInputChange={jest.fn()}
+        error={null}
+        agreedToTerms={false}
+        setAgreedToTerms={mockSetAgreedToTerms}
+        settings={{ fees: { deliveryFee: 200 } }}
+      />,
+    );
+
+    expect(readTotal()).toBeGreaterThan(defaultTotal);
+  });
+
+  it("labels the tax rate from settings rather than hardcoding it", () => {
+    render(
+      <ReviewStep
+        formData={mockFormData}
+        onInputChange={jest.fn()}
+        error={null}
+        agreedToTerms={false}
+        setAgreedToTerms={mockSetAgreedToTerms}
+        settings={{ fees: { salesTaxRate: 0.1 } }}
+      />,
+    );
+
+    expect(screen.getByText(/Sales Tax \(10%\)/i)).toBeInTheDocument();
+  });
+
+  it("charges flat-priced extras once, not per rental day", () => {
+    render(
+      <ReviewStep
+        formData={{
+          ...mockFormData,
+          rentalDate: "2025-04-15",
+          returnDate: "2025-04-18",
+          selectedExtras: [
+            {
+              id: "mixer-margarita",
+              name: "Margarita Mixer — Extra Mixer",
+              description: "",
+              price: 19.95,
+              quantity: 1,
+              pricingType: "flat",
+            },
+          ],
+        }}
+        onInputChange={jest.fn()}
+        error={null}
+        agreedToTerms={false}
+        setAgreedToTerms={mockSetAgreedToTerms}
+      />,
+    );
+
+    // The line item must not read "$19.95/day × 3 days = $59.85" while the
+    // extras total correctly says $19.95.
+    expect(screen.queryByText(/59\.85/)).toBeNull();
+    expect(screen.getByText(/Extras Total: \$19\.95/i)).toBeInTheDocument();
+  });
+
   it("toggles the agreed to terms checkbox", () => {
     render(
       <ReviewStep

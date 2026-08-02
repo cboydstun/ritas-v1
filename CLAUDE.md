@@ -22,17 +22,19 @@ Tests are co-located in `__tests__/` folders next to the code they cover. Jest i
 
 `next.config.ts` sets `typescript.ignoreBuildErrors: true`, so **`npm run build` does not fail on type errors**. Run `npx tsc --noEmit` to actually typecheck.
 
+`npm run lint` calls `eslint .` directly (`next lint` is removed in Next 16). `eslint.config.mjs` must keep its `ignores` entry for `.next/` — without it ESLint walks the build output and reports thousands of bogus errors in minified chunks.
+
 ## Stack
 
-Next.js 15 (App Router) · React 19 · TypeScript 5 · MongoDB/Mongoose · NextAuth.js v4 · PayPal · Tailwind CSS 3
+Next.js 15 (App Router) · React 19 · TypeScript 5 · MongoDB/Mongoose · NextAuth.js v4 · Zod · Tailwind CSS 3
 
 ## Architecture
 
 ### Routing & Pages
 
-`src/app/` uses the Next.js App Router. Public pages live at the root (`/order`, `/pricing`, `/long-term-lease`, etc.). Admin pages are under `src/app/admin/` and are protected by middleware. API routes are split between `src/app/api/v1/` (public) and `src/app/api/admin/` (auth-required). The PayPal routes (`/api/create-paypal-order`, `/api/capture-paypal-order`) and `/api/save-booking` sit outside both namespaces at `src/app/api/`.
+`src/app/` uses the Next.js App Router. Public pages live at the root (`/order`, `/pricing`, `/long-term-lease`, etc.). Admin pages are under `src/app/admin/` and are protected by middleware. API routes are split between `src/app/api/v1/` (public) and `src/app/api/admin/` (auth-required). `/api/save-booking` (the public checkout) and `/api/cron/release-holds` sit outside both namespaces at `src/app/api/`.
 
-Two customer-facing verticals share this codebase: **event rentals** (the `/order` wizard, PayPal, `Rental` model) and **long-term commercial leases** (`/long-term-lease`, an inquiry form only — no payment, `LeaseInquiry` model).
+Two customer-facing verticals share this codebase: **event rentals** (the `/order` wizard, `Rental` model) and **long-term commercial leases** (`/long-term-lease`, an inquiry form only — no payment, `LeaseInquiry` model).
 
 ### Multi-Step Order Form
 
@@ -43,14 +45,18 @@ The order flow (`/order`) is a single client component `src/components/order/Ord
 The single source of truth for all order totals is `computeOrderTotal()` in `src/components/order/utils.ts`. It wraps `calculatePrice()` from `src/lib/pricing.ts` and adds multi-day, extras, and discount logic:
 
 - `perDayRate = basePrice + mixerPrice`
-- `subtotal = perDayRate × rentalDays + deliveryFee + extrasTotal` (extras and machine rate are per-day; delivery is flat)
-- `serviceDiscountAmount = subtotal × discountRate` (default 10%, only if `isServiceDiscount` is set — military/service personnel perk)
+- `rentalDays = calculateRentalDays(rentalDate, returnDate)` — diffs **UTC** calendar dates, minimum 1. Do not reintroduce a millisecond diff of local-midnight `Date`s: a DST fall-back day is 25 hours, which billed one night as two.
+- `subtotal = perDayRate × rentalDays + deliveryFee + extrasTotal` (machine rate is per-day; delivery is flat; each extra is per-day unless its catalog entry says `pricingType: "flat"`)
+- `serviceDiscountAmount = subtotal × discountRate` — **retired**. No UI sets it and no server route accepts it from a request body; the field survives only for legacy bookings.
 - `discountedSubtotal = subtotal − serviceDiscountAmount`
+
 - `processingFee = discountedSubtotal × processingFeeRate`
 - `salesTax = (discountedSubtotal + processingFee) × salesTaxRate` — the processing fee is a taxable line item, matching the QuickBooks invoice
 - `finalTotal = discountedSubtotal + processingFee + salesTax`
 
-Default constants: delivery $20, sales tax 8.25%, processing 3%, service discount 10%. Base machine prices come from `src/lib/rental-data.ts`. The `PricingOverrides` type in `src/lib/pricing.ts` and `SettingsOverrides` in `utils.ts` allow the admin `Settings` document to override any of these at runtime.
+Extras prices always come from `buildExtrasCatalog()` in `src/lib/extras-catalog.ts` (the static items in `types.ts` plus one `mixer-*` entry per flavour, with admin overrides folded in). `computeOrderTotal` looks each `selectedExtras[].id` up there and **ignores any `price`/`pricingType` on the item itself** — those may have arrived in a request body. Any UI that renders extras line items must use the same catalog, or the lines will not sum to the total.
+
+Default constants: delivery $20, sales tax 8.25%, processing 3%. Base machine prices come from `src/lib/rental-data.ts`. The `PricingOverrides` type in `src/lib/pricing.ts` and `SettingsOverrides` in `utils.ts` allow the admin `Settings` document to override any of these at runtime.
 
 ### Availability & Inventory
 
@@ -61,7 +67,11 @@ Default constants: delivery $20, sales tax 8.25%, processing 3%, service discoun
 3. Look up the per-type unit count via `getMachineInventory()` — reads `Settings.machines[type].inventory`; reject outright if `0`.
 4. Count overlapping `Rental` docs **per day** (statuses `pending`, `pending_payment`, `confirmed`, `in-progress`); reject if any single day has `booked >= inventory`.
 
-So a machine type is bookable while units remain, not simply because one rental exists. Note the fallback `DEFAULT_INVENTORY` in `inventory.ts` is `1` per type, whereas the `Settings` schema defaults are `single: 3, double: 3, triple: 2` — the constant only applies when no Settings document or no configured value exists.
+So a machine type is bookable while units remain, not simply because one rental exists. `DEFAULT_INVENTORY` in `inventory.ts` matches the `Settings` schema defaults (`single: 3, double: 3, triple: 2`) and applies only when no Settings document or configured value exists — keep the two in sync.
+
+`isMachineAvailable` accepts an `excludeRentalId` option so a booking is not blocked by its own hold. `/api/save-booking` uses it to re-check after the write and roll back on oversell, which closes the check-then-write race on the last unit.
+
+Because `pending` and `pending_payment` count against inventory, unpaid holds must expire. `releaseStaleHolds()` cancels them after `STALE_HOLD_MINUTES` (120); it runs from the `/api/cron/release-holds` Vercel cron (see `vercel.json`, guarded by `CRON_SECRET`) and again at the top of `/api/save-booking` as a safety net.
 
 `MachineStep.tsx` checks all three machine types **in parallel** on mount so every card shows live availability, greys out unavailable ones, and auto-switches the selection to another available type (priority `triple > double > single`) when the current pick is unavailable. `useAvailabilityCheck` (`src/hooks/useAvailabilityCheck.ts`) wraps the single-type fetch.
 
@@ -77,19 +87,31 @@ MongoDB via Mongoose. Connection is cached in `src/lib/mongodb.ts` using a globa
 
 ### Authentication (Admin)
 
-NextAuth.js credentials provider with JWT session strategy (no database sessions). Config is in `src/lib/auth.ts`; admin credentials come from env vars `ADMIN_USERNAME`/`ADMIN_PASSWORD`. Auth is enforced in two layers: `src/middleware.ts` uses `getToken()` to reject unauthenticated requests early — it requires both a token and `token.role === "admin"` (page requests redirect to `/admin/login`, API requests return 401) — and individual admin route handlers redundantly call `getServerSession(authOptions)` as defense-in-depth. The middleware also force-redirects HTTP→HTTPS in production via `x-forwarded-proto`.
+NextAuth.js credentials provider with JWT session strategy (no database sessions). Config is in `src/lib/auth.ts`. The username comes from `ADMIN_USERNAME`; the password is checked against the bcrypt hash in `ADMIN_PASSWORD_HASH`, falling back (with a warning) to plaintext `ADMIN_PASSWORD` if the hash is unset. Both comparisons are constant-time and the credentials callback is IP rate-limited. Auth is enforced in two layers: `src/middleware.ts` uses `getToken()` to reject unauthenticated requests early — it requires both a token and `token.role === "admin"` (page requests redirect to `/admin/login`, API requests return 401) — and individual admin route handlers redundantly call `getServerSession(authOptions)` as defense-in-depth. The middleware also force-redirects HTTP→HTTPS in production via `x-forwarded-proto`, using the host from `SITE_URL` rather than the `Host` header (trusting the header made it an open redirect). Its matcher is scoped to `/admin/*` and `/api/admin/*` — widen it if `PERMANENT_REDIRECTS` ever gains a public-page entry.
 
-### PayPal Flow
+### Checkout Flow
 
-1. Client submits the review step → calls `POST /api/create-paypal-order` (server-side SDK creates a PayPal order, returns `orderID`).
-2. `PayPalCheckout.tsx` renders the PayPal button with that `orderID`.
-3. On buyer approval, client calls `POST /api/capture-paypal-order` which captures payment and saves the `Rental` document to MongoDB. After capture, Twilio SMS and Nodemailer email notifications fire server-side.
+There is **no online payment**. `ReviewStep.tsx` posts to `POST /api/save-booking`, which is the public customer checkout endpoint (unauthenticated by design). It generates a `bookingId` via nanoid, persists a `Rental` with status `pending_payment`, and sends confirmation via Resend email + Twilio SMS. The customer is invoiced afterwards out-of-band.
 
-There is also `POST /api/save-booking` used for admin-created manual bookings (no PayPal). It generates a `bookingId` via nanoid and sends confirmation via Resend email + Twilio SMS.
+The PayPal integration was removed — the component had no importers and its routes charged nobody. Only `Rental.paypalOrderId` and the `pending` status value remain, for historical documents.
+
+`/api/save-booking` never trusts the request body for money:
+
+- The body is parsed by `rentalDataSchema` (`src/lib/validation.ts`); unknown fields are stripped.
+- `capacity` is **derived** from `machineType`, never read from the request.
+- `selectedExtras` is re-resolved through `resolveSelectedExtras()` (`src/lib/extras-catalog.ts`); only `id` and `quantity` are honoured, prices come from the catalog, and unknown ids are a 400.
+- `price` and `payment.amount` are both set from the server-side `computeOrderTotal`.
+- `isServiceDiscount` is hard-coded `false`.
+
+### Public API Hardening
+
+All four public write routes (`/api/save-booking`, `/api/v1/contacts`, `/api/v1/lease-inquiries`, `/api/v1/analytics/fingerprint`) go through `guardPublicWrite()` in `src/lib/api-guard.ts`, which applies a per-IP fixed-window rate limit and a body-size cap before parsing JSON. The limiter (`src/lib/rate-limit.ts`) uses Upstash Redis when `UPSTASH_REDIS_REST_URL`/`_TOKEN` are set and falls back to per-instance memory otherwise. Each route then parses through a zod schema and builds its Mongo document from an explicit field list — never `Model.create(body)`.
+
+Customer-supplied strings interpolated into notification email must go through `escapeHtml()` from `src/lib/validation.ts`.
 
 ### Notifications
 
-Triggered after successful payment capture or manual booking: SMS via Twilio (`TWILIO_*` env vars) and email via Nodemailer (Gmail SMTP) for PayPal orders, or Resend (`RESEND_API_KEY`) for manual bookings and contact form submissions.
+Triggered after a booking, contact submission, or lease inquiry: SMS via Twilio (`TWILIO_*` env vars) and email via Resend (`RESEND_API_KEY`). Escape every customer-supplied value with `escapeHtml()` before interpolating it into an email body.
 
 ### Admin Settings Override
 
@@ -115,19 +137,21 @@ Because mixers, extras, and lease tiers are `Mixed`, Mongoose does not deep-vali
 
 ### Security Headers & CSP
 
-`next.config.ts` attaches HSTS, `X-Frame-Options`, `Permissions-Policy`, and a hand-written **Content-Security-Policy** to every route. The allowlists currently cover PayPal, Google Analytics/GTM, and `google.com` frames only — **adding any new third-party script, iframe, font, or fetch target requires editing that CSP string**, or it will silently fail in the browser. `compiler.removeConsole` strips `console.*` in production builds. Longer write-ups live in `docs/security.md` and `docs/auth-implementation.md`.
+`next.config.ts` attaches HSTS, `X-Frame-Options`, `Permissions-Policy`, and a hand-written **Content-Security-Policy** to every route. The allowlists cover Google Analytics/GTM (including `region1.`/`analytics.google.com`, where GA4 actually sends beacons) and `google.com` frames only — **adding any new third-party script, iframe, font, or fetch target requires editing that CSP string**, or it will silently fail in the browser. `script-src` still needs `'unsafe-inline'` for the GTM/GA bootstrap and JSON-LD blocks; moving those to a nonce is the outstanding hardening step. `compiler.removeConsole` strips `console.*` in production builds. Longer write-ups live in `docs/security.md` and `docs/auth-implementation.md`.
 
 ### Types
 
-Global shared types live in `src/types/index.ts` (`MachineType`, `MixerType`, `PaymentStatus`, `RentalStatus`, `MargaritaRental`). Machine-specific types and runtime type guards (`isMachineType`, `isMixerType`) are in `src/types/machine.ts`. Admin-only types are in `src/types/admin.ts`. PayPal SDK types are augmented in `src/types/paypal.d.ts`.
+Global shared types live in `src/types/index.ts` (`MachineType`, `MixerType`, `PaymentStatus`, `RentalStatus`, `MargaritaRental`). Machine-specific types and runtime type guards (`isMachineType`, `isMixerType`) are in `src/types/machine.ts`. Admin-only types are in `src/types/admin.ts`.
 
 ### Key Library Exports
 
 - `src/lib/rental-data.ts` — `machinePackages` and `mixerDetails` constants (source of base prices and machine metadata)
 - `src/lib/pricing.ts` — `calculatePrice()` (core per-day price logic) and `formatPrice()` (currency display)
-- `src/lib/inventory.ts` — `isMachineAvailable()` and `getMachineInventory()` (all availability decisions)
+- `src/lib/inventory.ts` — `isMachineAvailable()`, `getMachineInventory()`, `releaseStaleHolds()` (all availability decisions)
 - `src/lib/lease-data.ts` — `leaseTiers`, `mergeLeaseTiers()`, lease form enums
-- `src/lib/paypal-server.ts` — `initializePayPalSDK()` and `isValidPayPalEnv()` (called once per server boot)
+- `src/lib/extras-catalog.ts` — `buildExtrasCatalog()`, `resolveSelectedExtras()` (authoritative add-on pricing)
+- `src/lib/validation.ts` — zod request schemas, `MACHINE_CAPACITY`, `escapeHtml()`
+- `src/lib/api-guard.ts` / `src/lib/rate-limit.ts` — `guardPublicWrite()` for public write routes
 
 ## Date Handling
 
@@ -137,13 +161,13 @@ Date strings throughout the codebase are in `YYYY-MM-DD` format. Always parse th
 
 ```
 MONGODB_URI, MONGODB_DB
-NEXT_PUBLIC_PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET, PAYPAL_LIVE_MODE
-ADMIN_USERNAME, ADMIN_PASSWORD
+ADMIN_USERNAME, ADMIN_PASSWORD_HASH   (legacy fallback: ADMIN_PASSWORD)
 NEXTAUTH_SECRET, NEXTAUTH_URL
 TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER, USER_PHONE_NUMBER
-NODEMAILER_USERNAME, NODEMAILER_PASSWORD
 RESEND_API_KEY
 NEXT_PUBLIC_GTM_ID
+CRON_SECRET
+UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN   (optional; shared rate-limit store)
 ```
 
 See `.env.sample` for the full list.

@@ -279,8 +279,8 @@ export default function PricingPage() {
                       alt="Single Tank Frozen Drink Machine"
                       width={800}
                       height={600}
+                      sizes="(min-width: 768px) 33vw, 100vw"
                       className="w-full h-full object-cover rounded-lg"
-                      priority
                     />
                   </div>
                   <div className="relative">
@@ -289,8 +289,8 @@ export default function PricingPage() {
                       alt="Double Tank Frozen Drink Machine"
                       width={800}
                       height={600}
+                      sizes="(min-width: 768px) 33vw, 100vw"
                       className="w-full h-full object-cover rounded-lg"
-                      priority
                     />
                   </div>
                   <div className="relative">
@@ -299,8 +299,8 @@ export default function PricingPage() {
                       alt="Triple Tank Frozen Drink Machine"
                       width={800}
                       height={600}
+                      sizes="(min-width: 768px) 33vw, 100vw"
                       className="w-full h-full object-cover rounded-lg"
-                      priority
                     />
                   </div>
                 </div>
@@ -453,6 +453,7 @@ export default function PricingPage() {
                           src={item.image}
                           alt={item.name}
                           fill
+                          sizes="(min-width: 768px) 25vw, 50vw"
                           className="object-cover"
                         />
                       )}

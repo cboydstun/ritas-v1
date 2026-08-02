@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState, useRef, useCallback } from "react";
-import { getFingerprint } from "@thumbmarkjs/thumbmarkjs";
 import { OrderStep, OrderFormData } from "./types";
 
 interface OrderFormTrackerProps {
@@ -19,8 +18,10 @@ export default function OrderFormTracker({
 
   const trackStepChange = useCallback(async () => {
     try {
-      // Get fingerprint (only once per session)
+      // Get fingerprint (only once per session). Imported lazily so the
+      // fingerprinting library stays out of the /order entry bundle.
       if (!fingerprintRef.current) {
+        const { getFingerprint } = await import("@thumbmarkjs/thumbmarkjs");
         fingerprintRef.current = await getFingerprint();
       }
 

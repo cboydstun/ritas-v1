@@ -123,7 +123,9 @@ describe("POST /api/v1/analytics/fingerprint", () => {
 
     it("returns 400 when components is missing", async () => {
       mockFindOne.mockResolvedValue(null);
-      const req = makeRequest({ fingerprintHash: "a1b2c3d4e5f60718293a4b5c6d7e8f90" });
+      const req = makeRequest({
+        fingerprintHash: "a1b2c3d4e5f60718293a4b5c6d7e8f90",
+      });
       const res = await POST(req);
       expect(res.status).toBe(400);
       const body = await res.json();

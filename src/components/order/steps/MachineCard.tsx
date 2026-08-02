@@ -51,6 +51,7 @@ export default function MachineCard({
           src={image}
           alt={name}
           fill
+          sizes="(min-width: 768px) 200px, 33vw"
           className="object-cover rounded-lg"
         />
       </div>

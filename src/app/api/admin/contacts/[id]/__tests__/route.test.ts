@@ -32,7 +32,9 @@ jest.mock("@/lib/auth", () => ({
 }));
 
 describe("Admin Contact API - Single Contact Operations", () => {
-  const mockContactId = "mock-contact-id";
+  // Must be a real ObjectId: the routes now 404 on malformed ids rather than
+  // letting Mongoose throw a CastError and returning 500.
+  const mockContactId = "507f1f77bcf86cd799439011";
   const mockContext = {
     params: Promise.resolve({ id: mockContactId }),
   };

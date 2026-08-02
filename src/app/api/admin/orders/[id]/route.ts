@@ -3,6 +3,24 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import dbConnect from "@/lib/mongodb";
 import { Rental } from "@/models/rental";
+import mongoose from "mongoose";
+
+/** Fields an admin may change on an existing order. */
+const EDITABLE_ORDER_FIELDS = [
+  "machineType",
+  "capacity",
+  "selectedMixers",
+  "selectedExtras",
+  "price",
+  "rentalDate",
+  "rentalTime",
+  "returnDate",
+  "returnTime",
+  "customer",
+  "notes",
+  "status",
+  "payment",
+] as const;
 
 interface RouteParams {
   params: Promise<{
@@ -48,18 +66,26 @@ export async function PUT(request: Request, context: RouteParams) {
 
   const { id } = await context.params;
 
+  // An invalid id produced a Mongoose CastError and a 500 instead of a 404.
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return NextResponse.json({ message: "Order not found" }, { status: 404 });
+  }
+
   try {
     const data = await request.json();
     await dbConnect();
 
-    const rental = await Rental.findByIdAndUpdate(
-      id,
-      { ...data, updatedAt: new Date() },
-      {
-        new: true, // Return updated document
-        runValidators: true, // Run schema validators
-      },
-    ).select("-__v");
+    // Whitelist the fields an admin may edit. Spreading the body allowed
+    // writes to `_id`, `createdAt` and anything else the schema declares.
+    const update: Record<string, unknown> = { updatedAt: new Date() };
+    for (const field of EDITABLE_ORDER_FIELDS) {
+      if (data[field] !== undefined) update[field] = data[field];
+    }
+
+    const rental = await Rental.findByIdAndUpdate(id, update, {
+      new: true, // Return updated document
+      runValidators: true, // Run schema validators
+    }).select("-__v");
 
     if (!rental) {
       return NextResponse.json({ message: "Order not found" }, { status: 404 });

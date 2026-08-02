@@ -150,8 +150,8 @@ export default function AboutSection() {
                   alt="Frozen Margarita"
                   width={400}
                   height={256}
+                  sizes="(min-width: 768px) 400px, 100vw"
                   className="w-full h-auto object-cover"
-                  priority
                 />
               </div>
               <div className="rounded-lg h-64 overflow-hidden">

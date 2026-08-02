@@ -8,8 +8,9 @@ export async function GET() {
   try {
     const session = await getServerSession(authOptions);
 
-    // Check if user is authenticated
-    if (!session) {
+    // Assert the admin role too, matching every other admin route — a session
+    // alone would be enough here the moment a second provider is added.
+    if (!session || session.user?.role !== "admin") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 

@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import { getFingerprint } from "@thumbmarkjs/thumbmarkjs";
 
 export default function FingerprintTracker() {
   const pathname = usePathname();
@@ -21,7 +20,10 @@ export default function FingerprintTracker() {
     // Track page view with retry logic
     const trackPageView = async (retryCount = 0, maxRetries = 3) => {
       try {
-        // Get fingerprint
+        // Imported lazily: this component is mounted in the root layout, so a
+        // static import put the whole fingerprinting library in the shared
+        // client bundle for every page, including the homepage LCP path.
+        const { getFingerprint } = await import("@thumbmarkjs/thumbmarkjs");
         const fingerprintResult = await getFingerprint();
 
         // Validate fingerprint was generated

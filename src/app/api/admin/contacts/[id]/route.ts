@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import dbConnect from "@/lib/mongodb";
 import { Contact } from "@/models/contact";
+import mongoose from "mongoose";
 
 interface RouteParams {
   params: Promise<{
@@ -51,18 +52,24 @@ export async function PUT(request: Request, context: RouteParams) {
 
   const { id } = await context.params;
 
+  // An invalid id produced a Mongoose CastError and a 500 instead of a 404.
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return NextResponse.json({ message: "Contact not found" }, { status: 404 });
+  }
+
   try {
     const data = await request.json();
     await dbConnect();
 
-    const contact = await Contact.findByIdAndUpdate(
-      id,
-      { ...data, updatedAt: new Date() },
-      {
-        new: true, // Return updated document
-        runValidators: true, // Run schema validators
-      },
-    ).select("-__v");
+    // Triage only changes status; spreading the body allowed writes to `_id`
+    // and `createdAt` as well.
+    const update: Record<string, unknown> = { updatedAt: new Date() };
+    if (data.status !== undefined) update.status = data.status;
+
+    const contact = await Contact.findByIdAndUpdate(id, update, {
+      new: true, // Return updated document
+      runValidators: true, // Run schema validators
+    }).select("-__v");
 
     if (!contact) {
       return NextResponse.json(

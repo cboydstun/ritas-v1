@@ -13,10 +13,19 @@ export async function GET() {
 
     const doc = settings.toObject();
 
+    // `machines` carries per-type `inventory` alongside `basePrice`; only the
+    // price is any of the browser's business.
+    const machines = Object.fromEntries(
+      Object.entries(doc.machines ?? {}).map(([type, config]) => [
+        type,
+        { basePrice: (config as { basePrice?: number })?.basePrice },
+      ]),
+    );
+
     // Return only public-safe fields
     return NextResponse.json({
       fees: doc.fees,
-      machines: doc.machines,
+      machines,
       mixers: doc.mixers,
       extras: doc.extras,
       operations: doc.operations,

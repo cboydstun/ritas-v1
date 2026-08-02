@@ -82,13 +82,18 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="light">
-      <GoogleAnalytics />
-      <GoogleTagManager />
+    // suppressHydrationWarning is required by next-themes, which sets the
+    // theme class on <html> before React hydrates. The class was previously
+    // hardcoded to "light", fighting the provider.
+    <html lang="en" suppressHydrationWarning>
       <body
         className={`${poppins.className} flex flex-col min-h-screen bg-white dark:bg-charcoal dark:text-white`}
       >
+        {/* Analytics belongs inside <body>; between <html> and <body> is
+            invalid markup that only worked via React 19 script hoisting. */}
         <GoogleTagManagerNoscript />
+        <GoogleAnalytics />
+        <GoogleTagManager />
         <SessionProvider>
           <ThemeWrapper>
             <Navigation />

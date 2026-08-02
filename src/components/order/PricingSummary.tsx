@@ -1,6 +1,7 @@
 import { OrderFormData, OrderStep } from "./types";
 import { computeOrderTotal, type SettingsOverrides } from "./utils";
 import { formatPrice } from "@/lib/pricing";
+import { buildExtrasCatalog } from "@/lib/extras-catalog";
 
 interface PricingSummaryProps {
   formData: OrderFormData;
@@ -32,6 +33,11 @@ export function PricingSummary({
 
   const pct = (rate: number) =>
     `${(rate * 100).toFixed(2).replace(/\.?0+$/, "")}%`;
+
+  const extrasCatalog = buildExtrasCatalog({
+    extras: settings?.extras,
+    mixers: settings?.mixers,
+  });
 
   return (
     <div className="bg-white/95 dark:bg-charcoal/95 backdrop-blur-lg rounded-xl shadow-lg p-6 border-2 border-margarita/20">
@@ -127,22 +133,31 @@ export function PricingSummary({
                 <div className="text-xs font-semibold text-charcoal/80 dark:text-white/80 mb-2">
                   Party Extras:
                 </div>
-                {formData.selectedExtras.map((extra) => (
-                  <div key={extra.id} className="flex justify-between mb-1">
-                    <span className="text-charcoal/70 dark:text-white/70 text-xs">
-                      {extra.name}
-                      {extra.quantity && extra.quantity > 1
-                        ? ` (${extra.quantity}x)`
-                        : ""}
-                    </span>
-                    <span className="text-charcoal dark:text-white text-xs">
-                      $
-                      {formatPrice(
-                        extra.price * (extra.quantity || 1) * rentalDays,
-                      )}
-                    </span>
-                  </div>
-                ))}
+                {formData.selectedExtras.map((extra) => {
+                  // Mirror computeOrderTotal: catalog price, and flat items
+                  // are charged once rather than multiplied by rentalDays.
+                  const catalogItem = extrasCatalog.get(extra.id);
+                  if (!catalogItem) return null;
+
+                  const quantity = catalogItem.allowQuantity
+                    ? extra.quantity || 1
+                    : 1;
+                  const multiplier =
+                    catalogItem.pricingType === "flat" ? 1 : rentalDays;
+
+                  return (
+                    <div key={extra.id} className="flex justify-between mb-1">
+                      <span className="text-charcoal/70 dark:text-white/70 text-xs">
+                        {catalogItem.name}
+                        {quantity > 1 ? ` (${quantity}x)` : ""}
+                      </span>
+                      <span className="text-charcoal dark:text-white text-xs">
+                        $
+                        {formatPrice(catalogItem.price * quantity * multiplier)}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             </>
           )}

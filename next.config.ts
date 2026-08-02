@@ -5,10 +5,8 @@ const securityHeaders = [
     key: "Strict-Transport-Security",
     value: "max-age=63072000; includeSubDomains; preload",
   },
-  {
-    key: "X-XSS-Protection",
-    value: "1; mode=block",
-  },
+  // X-XSS-Protection is deliberately omitted: the legacy auditor it enabled
+  // is gone from modern browsers and was itself an XSS vector.
   {
     key: "X-Content-Type-Options",
     value: "nosniff",
@@ -27,19 +25,25 @@ const securityHeaders = [
   },
   {
     key: "Content-Security-Policy",
+    // 'unsafe-inline' is still required by the GTM/GA bootstrap snippets and
+    // the JSON-LD blocks; moving those to a nonce is the remaining hardening
+    // step. 'unsafe-eval' is gone — only the (now deleted) PayPal SDK wanted it.
+    //
+    // The analytics allowlists below must cover where GA4 actually sends
+    // beacons (region1./analytics.google.com) and the GTM noscript iframe;
+    // omitting them silently dropped measurement rather than failing loudly.
     value: `
       default-src 'self';
-      script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.paypal.com https://www.google-analytics.com https://www.googletagmanager.com;
+      script-src 'self' 'unsafe-inline' https://*.google-analytics.com https://*.googletagmanager.com;
       style-src 'self' 'unsafe-inline';
-      img-src 'self' data: https://*.paypal.com https://www.google-analytics.com https://www.googletagmanager.com;
+      img-src 'self' data: https://*.google-analytics.com https://*.googletagmanager.com https://*.analytics.google.com https://www.google.com;
       font-src 'self';
-      connect-src 'self' https://*.paypal.com https://www.google-analytics.com https://www.googletagmanager.com;
-      frame-src 'self' https://*.paypal.com https://www.google.com;
+      connect-src 'self' https://*.google-analytics.com https://*.googletagmanager.com https://*.analytics.google.com;
+      frame-src 'self' https://*.googletagmanager.com https://www.google.com;
       object-src 'none';
       base-uri 'self';
       form-action 'self';
       frame-ancestors 'self';
-      block-all-mixed-content;
       upgrade-insecure-requests;
     `
       .replace(/\s+/g, " ")
@@ -73,7 +77,7 @@ const nextConfig: NextConfig = {
     minimumCacheTTL: 60,
   },
   experimental: {
-    optimizePackageImports: ["@headlessui/react", "@heroicons/react"],
+    optimizePackageImports: ["@heroicons/react"],
   },
   webpack: (config, { dev, isServer }) => {
     // Production optimizations

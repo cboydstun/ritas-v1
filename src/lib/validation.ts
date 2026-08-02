@@ -59,7 +59,10 @@ const addressSchema = z.object({
   street: z.string().trim().min(1).max(200),
   city: z.string().trim().min(1).max(100),
   state: z.string().trim().min(2).max(50),
-  zipCode: z.string().trim().regex(/^\d{5}(-\d{4})?$/, "Invalid ZIP code"),
+  zipCode: z
+    .string()
+    .trim()
+    .regex(/^\d{5}(-\d{4})?$/, "Invalid ZIP code"),
 });
 
 const customerSchema = z.object({

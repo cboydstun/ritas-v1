@@ -4,12 +4,14 @@ import { StepProps } from "../types";
 import { mixerDetails, MixerType } from "@/lib/rental-data";
 import { formatPrice } from "@/lib/pricing";
 import { computeOrderTotal } from "../utils";
+import { buildExtrasCatalog } from "@/lib/extras-catalog";
 
 export default function ReviewStep({
   formData,
   agreedToTerms = false,
   setAgreedToTerms = () => {},
   onSuccess,
+  settings,
 }: StepProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -25,7 +27,17 @@ export default function ReviewStep({
     processingFee,
     cashPrice,
     finalTotal,
-  } = computeOrderTotal(formData);
+  } = computeOrderTotal(formData, settings);
+
+  const taxRate = settings?.fees?.salesTaxRate ?? 0.0825;
+  const processingRate = settings?.fees?.processingFeeRate ?? 0.03;
+  const pct = (rate: number) => `${Number((rate * 100).toFixed(4))}%`;
+
+  // Extras catalog prices, so line items agree with the computed total.
+  const extrasCatalog = buildExtrasCatalog({
+    extras: settings?.extras,
+    mixers: settings?.mixers,
+  });
 
   const handleConfirmBooking = async () => {
     if (!agreedToTerms) {
@@ -43,13 +55,16 @@ export default function ReviewStep({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
+          // `price` and `isServiceDiscount` are deliberately not sent: the
+          // server computes the total itself and strips both anyway. Extras
+          // are sent as id + quantity only, for the same reason.
           rentalData: {
             machineType: formData.machineType,
-            capacity: formData.capacity,
             selectedMixers: formData.selectedMixers,
-            selectedExtras: formData.selectedExtras,
-            isServiceDiscount: formData.isServiceDiscount ?? false,
-            price: finalTotal,
+            selectedExtras: formData.selectedExtras.map((extra) => ({
+              id: extra.id,
+              quantity: extra.quantity ?? 1,
+            })),
             rentalDate: formData.rentalDate,
             rentalTime: formData.rentalTime,
             returnDate: formData.returnDate,
@@ -118,11 +133,14 @@ export default function ReviewStep({
               </svg>
             </div>
             <div>
+              {/* Previously promised "guaranteed or refund", directly
+                  contradicting the no-refunds terms further down this page
+                  and in the FAQ. */}
               <p className="text-sm font-semibold text-charcoal dark:text-white">
-                100% Satisfaction
+                Fully Serviced
               </p>
               <p className="text-xs text-charcoal/70 dark:text-white/70">
-                Guaranteed or refund
+                Delivery, setup &amp; cleanup included
               </p>
             </div>
           </div>
@@ -200,8 +218,8 @@ export default function ReviewStep({
                     : "Triple"
               } Tank Machine`}
               fill
+              sizes="(min-width: 768px) 50vw, 100vw"
               className="object-cover rounded-lg"
-              priority
             />
           </div>
           <h3 className="font-semibold text-lg text-charcoal dark:text-white mb-4">
@@ -313,23 +331,34 @@ export default function ReviewStep({
               Selected Extras
             </h3>
             <div className="space-y-2">
-              {formData.selectedExtras.map((extra) => (
-                <div key={extra.id} className="flex justify-between">
-                  <p className="text-charcoal/70 dark:text-white/70">
-                    {extra.name}{" "}
-                    {extra.quantity && extra.quantity > 1
-                      ? `(${extra.quantity}x)`
-                      : ""}
-                  </p>
-                  <p className="text-charcoal/70 dark:text-white/70">
-                    ${formatPrice(extra.price * (extra.quantity || 1))}/day ×{" "}
-                    {rentalDays} day{rentalDays > 1 ? "s" : ""} = $
-                    {formatPrice(
-                      extra.price * (extra.quantity || 1) * rentalDays,
-                    )}
-                  </p>
-                </div>
-              ))}
+              {formData.selectedExtras.map((extra) => {
+                // Mirror computeOrderTotal exactly: catalog price, and flat
+                // items are charged once rather than per day. Rendering
+                // everything as "/day × N" made the line items disagree with
+                // the total for every flat-priced add-on.
+                const catalogItem = extrasCatalog.get(extra.id);
+                if (!catalogItem) return null;
+
+                const quantity = catalogItem.allowQuantity
+                  ? extra.quantity || 1
+                  : 1;
+                const isFlat = catalogItem.pricingType === "flat";
+                const unitTotal = catalogItem.price * quantity;
+                const lineTotal = isFlat ? unitTotal : unitTotal * rentalDays;
+
+                return (
+                  <div key={extra.id} className="flex justify-between">
+                    <p className="text-charcoal/70 dark:text-white/70">
+                      {catalogItem.name} {quantity > 1 ? `(${quantity}x)` : ""}
+                    </p>
+                    <p className="text-charcoal/70 dark:text-white/70">
+                      {isFlat || rentalDays === 1
+                        ? `$${formatPrice(lineTotal)}`
+                        : `$${formatPrice(unitTotal)}/day × ${rentalDays} days = $${formatPrice(lineTotal)}`}
+                    </p>
+                  </div>
+                );
+              })}
             </div>
             <p className="text-lg font-semibold text-orange mt-4">
               Extras Total: ${formatPrice(extrasTotal)}
@@ -413,10 +442,11 @@ export default function ReviewStep({
             {formatPrice(perDayRate * rentalDays + deliveryFee + extrasTotal)}
           </p>
           <p className="text-charcoal/70 dark:text-white/70">
-            Processing Fee (3%): ${formatPrice(processingFee)}
+            Processing Fee ({pct(processingRate)}): $
+            {formatPrice(processingFee)}
           </p>
           <p className="text-charcoal/70 dark:text-white/70">
-            Sales Tax (8.25%): ${formatPrice(salesTax)}
+            Sales Tax ({pct(taxRate)}): ${formatPrice(salesTax)}
           </p>
           <p className="text-charcoal/60 dark:text-white/60 text-sm">
             Cash Price (no card fee): ${formatPrice(cashPrice)}

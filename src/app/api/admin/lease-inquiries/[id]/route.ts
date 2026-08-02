@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import dbConnect from "@/lib/mongodb";
 import { LeaseInquiry } from "@/models/leaseInquiry";
+import mongoose from "mongoose";
 
 interface RouteParams {
   params: Promise<{
@@ -47,18 +48,27 @@ export async function PUT(request: Request, context: RouteParams) {
 
   const { id } = await context.params;
 
+  // An invalid id produced a Mongoose CastError and a 500 instead of a 404.
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return NextResponse.json(
+      { message: "Lease inquiry not found" },
+      { status: 404 },
+    );
+  }
+
   try {
     const data = await request.json();
     await dbConnect();
 
-    const inquiry = await LeaseInquiry.findByIdAndUpdate(
-      id,
-      { ...data, updatedAt: new Date() },
-      {
-        new: true,
-        runValidators: true,
-      },
-    ).select("-__v");
+    // Triage only changes status; spreading the body allowed writes to `_id`
+    // and `createdAt` as well.
+    const update: Record<string, unknown> = { updatedAt: new Date() };
+    if (data.status !== undefined) update.status = data.status;
+
+    const inquiry = await LeaseInquiry.findByIdAndUpdate(id, update, {
+      new: true,
+      runValidators: true,
+    }).select("-__v");
 
     if (!inquiry) {
       return NextResponse.json(

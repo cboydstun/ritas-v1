@@ -539,6 +539,9 @@ export default function OrderForm() {
                   error={error}
                   agreedToTerms={agreedToTerms}
                   setAgreedToTerms={setAgreedToTerms}
+                  // Without this the review total ignores admin pricing
+                  // overrides and disagrees with the sidebar and the invoice.
+                  settings={settings}
                   // Clear draft before redirecting to success
                   onSuccess={clearDraft}
                 />

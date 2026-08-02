@@ -119,6 +119,7 @@ export default function ExtrasStep({
               src={extra.image}
               alt={extra.name}
               fill
+              sizes="120px"
               className="object-cover"
             />
           </div>
