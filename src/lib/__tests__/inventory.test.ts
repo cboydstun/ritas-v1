@@ -1,7 +1,7 @@
 /**
  * @jest-environment node
  */
-import { isMachineAvailable } from "../inventory";
+import { isMachineAvailable, STALE_HOLD_MINUTES } from "../inventory";
 import { Rental } from "@/models/rental";
 import { Settings } from "@/models/settings";
 import { BlackoutDate } from "@/models/blackout-date";
@@ -141,8 +141,17 @@ describe("isMachineAvailable", () => {
       );
 
       expect(result.available).toBe(false);
-      expect((Rental.find as jest.Mock).mock.calls[0][0].status.$in).toEqual(
-        expect.arrayContaining(["pending_payment"]),
+      // Unpaid holds live in the $or branch that also carries the age cutoff.
+      const statuses = (Rental.find as jest.Mock).mock.calls[0][0].$or.flatMap(
+        (clause: { status: { $in: string[] } }) => clause.status.$in,
+      );
+      expect(statuses).toEqual(
+        expect.arrayContaining([
+          "pending",
+          "pending_payment",
+          "confirmed",
+          "in-progress",
+        ]),
       );
     });
 
@@ -311,6 +320,53 @@ describe("isMachineAvailable", () => {
       );
 
       expect(result.available).toBe(true);
+    });
+  });
+  describe("stale hold expiry", () => {
+    // Availability must not depend on the cleanup job having run: the Hobby
+    // plan caps cron at once a day, so an abandoned hold could otherwise block
+    // a unit for up to 24 hours. Expiry is enforced in the query instead.
+    it("only counts unpaid holds newer than the cutoff", async () => {
+      mockSettingsInventory({ single: 3 });
+      mockOverlappingRentals([]);
+      mockBlackouts([]);
+
+      await isMachineAvailable("single", 15, "2026-06-15", "2026-06-15");
+
+      const query = (Rental.find as jest.Mock).mock.calls[0][0];
+      expect(query.$or).toHaveLength(2);
+
+      const settled = query.$or.find((clause: { status: { $in: string[] } }) =>
+        clause.status.$in.includes("confirmed"),
+      );
+      const holds = query.$or.find((clause: { status: { $in: string[] } }) =>
+        clause.status.$in.includes("pending"),
+      );
+
+      // Paid/active bookings always count, with no age condition.
+      expect(settled.createdAt).toBeUndefined();
+      expect(settled.status.$in).toEqual(["confirmed", "in-progress"]);
+
+      // Unpaid holds count only while recent.
+      expect(holds.status.$in).toEqual(["pending", "pending_payment"]);
+      expect(holds.createdAt.$gte).toBeInstanceOf(Date);
+
+      const ageMinutes =
+        (Date.now() - holds.createdAt.$gte.getTime()) / (1000 * 60);
+      expect(ageMinutes).toBeCloseTo(STALE_HOLD_MINUTES, 0);
+    });
+
+    it("excludes a named rental so a booking cannot block itself", async () => {
+      mockSettingsInventory({ single: 3 });
+      mockOverlappingRentals([]);
+      mockBlackouts([]);
+
+      await isMachineAvailable("single", 15, "2026-06-15", "2026-06-15", {
+        excludeRentalId: "507f1f77bcf86cd799439011",
+      });
+
+      const query = (Rental.find as jest.Mock).mock.calls[0][0];
+      expect(query._id).toEqual({ $ne: "507f1f77bcf86cd799439011" });
     });
   });
 });

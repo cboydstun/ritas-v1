@@ -3,7 +3,8 @@
   "crons": [
     {
       "path": "/api/cron/release-holds",
-      "schedule": "*/30 * * * *"
+      "_comment": "Daily is the Hobby-plan limit. Cadence does not affect correctness: isMachineAvailable already ignores holds older than STALE_HOLD_MINUTES, so this job is housekeeping that keeps the status field tidy.",
+      "schedule": "0 9 * * *"
     }
   ]
 }

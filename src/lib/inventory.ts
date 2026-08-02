@@ -29,7 +29,12 @@ const DEFAULT_INVENTORY: Record<MachineType, number> = {
  *
  * `pending` / `pending_payment` rentals count against availability, and
  * nothing ever expired them — so every abandoned checkout consumed a unit
- * permanently. `releaseStaleHolds` cancels them past this age.
+ * permanently.
+ *
+ * `isMachineAvailable` enforces this at query time, so a hold stops blocking
+ * a unit the moment it ages out. `releaseStaleHolds` then flips the stored
+ * status to "cancelled" as housekeeping — it keeps the admin views honest but
+ * is not what makes availability correct.
  */
 export const STALE_HOLD_MINUTES = 120;
 
@@ -140,12 +145,24 @@ export async function isMachineAvailable(
     };
   }
 
+  // An unpaid hold stops counting once it is older than STALE_HOLD_MINUTES,
+  // whether or not `releaseStaleHolds` has cancelled it yet. Expiry is treated
+  // as a property of the query rather than of the stored document, so
+  // availability is correct even if the cleanup job is delayed or never runs.
+  const holdCutoff = new Date(Date.now() - STALE_HOLD_MINUTES * 60 * 1000);
+
   const overlapQuery: Record<string, unknown> = {
     machineType,
     capacity,
-    status: { $in: ["pending", "pending_payment", "confirmed", "in-progress"] },
     rentalDate: { $lte: endDate },
     returnDate: { $gte: rentalDate },
+    $or: [
+      { status: { $in: ["confirmed", "in-progress"] } },
+      {
+        status: { $in: ["pending", "pending_payment"] },
+        createdAt: { $gte: holdCutoff },
+      },
+    ],
   };
   if (options?.excludeRentalId) {
     overlapQuery._id = { $ne: options.excludeRentalId };
