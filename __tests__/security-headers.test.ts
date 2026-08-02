@@ -106,6 +106,17 @@ describe("Content-Security-Policy", () => {
       ).toBe(true);
     });
 
+    // fmt=4 makes this endpoint return JavaScript, injected as a <script>;
+    // the same URL is also requested as a pixel, so it needs both directives.
+    it("allows the remarketing tag loaded as a script", () => {
+      expect(
+        permits(
+          "script-src",
+          "https://googleads.g.doubleclick.net/pagead/viewthroughconversion/16908257875/?fmt=4",
+        ),
+      ).toBe(true);
+    });
+
     it("allows the conversion linker frame", () => {
       expect(permits("frame-src", "https://td.doubleclick.net/td/ga/rul")).toBe(
         true,

@@ -42,7 +42,10 @@ export const securityHeaders = [
     // doubleclick.net and googleadservices.com are where the Google Ads
     // conversion tags in GTM container GTM-NRQ9HDL9 (AW-16908257875) report,
     // and where GA4's Google Signals does its cookie matching. They fail the
-    // same silent way if unlisted.
+    // same silent way if unlisted. googleads.g.doubleclick.net/pagead/
+    // viewthroughconversion is requested BOTH as a pixel and — when the tag
+    // appends fmt=4 — as JavaScript injected via a <script> element, so
+    // doubleclick belongs in script-src as well as img-src.
     //
     // gstatic.com serves the Google Ads call-tracking loader
     // (www.gstatic.com/wcm/loader.js, Website Call Metrics — the phone-number
@@ -52,7 +55,7 @@ export const securityHeaders = [
     // where that loader reports calls.
     value: `
       default-src 'self';
-      script-src 'self' 'unsafe-inline' https://*.google-analytics.com https://*.googletagmanager.com https://www.googleadservices.com https://*.gstatic.com;
+      script-src 'self' 'unsafe-inline' https://*.google-analytics.com https://*.googletagmanager.com https://www.googleadservices.com https://*.gstatic.com https://*.doubleclick.net https://doubleclick.net;
       style-src 'self' 'unsafe-inline';
       img-src 'self' data: https://*.google-analytics.com https://google-analytics.com https://*.googletagmanager.com https://*.analytics.google.com https://analytics.google.com https://www.google.com https://*.doubleclick.net https://doubleclick.net https://www.googleadservices.com https://*.gstatic.com;
       font-src 'self';
