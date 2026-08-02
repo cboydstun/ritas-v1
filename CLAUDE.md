@@ -129,7 +129,9 @@ Because mixers, extras, and lease tiers are `Mixed`, Mongoose does not deep-vali
 
 ### Analytics
 
-`FingerprintTracker.tsx` uses ThumbmarkJS to generate a browser fingerprint and posts it to `/api/v1/analytics/fingerprint` (stored in `Thumbprint` model). `OrderFormTracker.tsx` fires GA4/GTM events as users progress through order steps. `GET /api/admin/analytics` aggregates visitor and funnel data for `/admin/analytics` (Chart.js via `react-chartjs-2`).
+`FingerprintTracker.tsx` uses ThumbmarkJS to generate a browser fingerprint and posts it to `/api/v1/analytics/fingerprint` (stored in `Thumbprint` model). `OrderFormTracker.tsx` does the same per order step — despite the name it touches neither `dataLayer` nor `gtag`, so the funnel is reconstructed from first-party fingerprint rows, not from GA4. `GET /api/admin/analytics` aggregates visitor and funnel data for `/admin/analytics` (Chart.js via `react-chartjs-2`).
+
+GA4 itself receives only automatic pageviews and enhanced measurement. `GoogleAnalytics.tsx` loads gtag with `NEXT_PUBLIC_GA_MEASUREMENT_ID` and is the **only** path by which GA4 gets data: the GTM container in `NEXT_PUBLIC_GTM_ID` carries just the Google Ads conversion tags, no GA4 tag, so the two do not double-count. Both components render in production builds only. No custom GA4 events are emitted anywhere in the codebase.
 
 ### Reviews
 
@@ -137,7 +139,9 @@ Because mixers, extras, and lease tiers are `Mixed`, Mongoose does not deep-vali
 
 ### Security Headers & CSP
 
-`next.config.ts` attaches HSTS, `X-Frame-Options`, `Permissions-Policy`, and a hand-written **Content-Security-Policy** to every route. The allowlists cover Google Analytics/GTM (including `region1.`/`analytics.google.com`, where GA4 actually sends beacons) and `google.com` frames only — **adding any new third-party script, iframe, font, or fetch target requires editing that CSP string**, or it will silently fail in the browser. `script-src` still needs `'unsafe-inline'` for the GTM/GA bootstrap and JSON-LD blocks; moving those to a nonce is the outstanding hardening step. `compiler.removeConsole` strips `console.*` in production builds. Longer write-ups live in `docs/security.md` and `docs/auth-implementation.md`.
+`next.config.ts` attaches HSTS, `X-Frame-Options`, `Permissions-Policy`, and a hand-written **Content-Security-Policy** to every route. The allowlists cover Google Analytics/GTM, `doubleclick.net`/`googleadservices.com` (Google Ads conversions and GA4 Google Signals) and `google.com` frames only — **adding any new third-party script, iframe, font, or fetch target requires editing that CSP string**, or it will silently fail in the browser.
+
+Wildcard the host unless you are certain of the exact subdomain. `connect-src` once listed the bare host `www.google-analytics.com`, which does not match `region1.google-analytics.com` — the regional endpoint GA4 actually beacons to — so every hit was blocked and the property reported "data collection isn't active" with nothing failing server-side. `__tests__/security-headers.test.ts` now asserts the policy against the concrete third-party URLs to keep that class of regression loud. `script-src` still needs `'unsafe-inline'` for the GTM/GA bootstrap and JSON-LD blocks; moving those to a nonce is the outstanding hardening step. `compiler.removeConsole` strips `console.*` in production builds. Longer write-ups live in `docs/security.md` and `docs/auth-implementation.md`.
 
 ### Types
 
@@ -165,7 +169,7 @@ ADMIN_USERNAME, ADMIN_PASSWORD_HASH   (legacy fallback: ADMIN_PASSWORD)
 NEXTAUTH_SECRET, NEXTAUTH_URL
 TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER, USER_PHONE_NUMBER
 RESEND_API_KEY
-NEXT_PUBLIC_GTM_ID
+NEXT_PUBLIC_GTM_ID, NEXT_PUBLIC_GA_MEASUREMENT_ID   (production only; unset means no GA4 data)
 CRON_SECRET
 UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN   (optional; shared rate-limit store)
 ```

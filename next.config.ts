@@ -1,6 +1,6 @@
 import type { NextConfig } from "next";
 
-const securityHeaders = [
+export const securityHeaders = [
   {
     key: "Strict-Transport-Security",
     value: "max-age=63072000; includeSubDomains; preload",
@@ -32,14 +32,23 @@ const securityHeaders = [
     // The analytics allowlists below must cover where GA4 actually sends
     // beacons (region1./analytics.google.com) and the GTM noscript iframe;
     // omitting them silently dropped measurement rather than failing loudly.
+    // That is not hypothetical: connect-src once named the exact host
+    // www.google-analytics.com, so every /g/collect beacon to the regional
+    // endpoint region1.google-analytics.com was blocked and GA4 reported
+    // "data collection isn't active". Keep these host-wildcarded.
+    //
+    // doubleclick.net and googleadservices.com are where the Google Ads
+    // conversion tags in GTM container GTM-NRQ9HDL9 (AW-16908257875) report,
+    // and where GA4's Google Signals does its cookie matching. They fail the
+    // same silent way if unlisted.
     value: `
       default-src 'self';
-      script-src 'self' 'unsafe-inline' https://*.google-analytics.com https://*.googletagmanager.com;
+      script-src 'self' 'unsafe-inline' https://*.google-analytics.com https://*.googletagmanager.com https://www.googleadservices.com;
       style-src 'self' 'unsafe-inline';
-      img-src 'self' data: https://*.google-analytics.com https://*.googletagmanager.com https://*.analytics.google.com https://www.google.com;
+      img-src 'self' data: https://*.google-analytics.com https://*.googletagmanager.com https://*.analytics.google.com https://www.google.com https://*.doubleclick.net https://www.googleadservices.com;
       font-src 'self';
-      connect-src 'self' https://*.google-analytics.com https://*.googletagmanager.com https://*.analytics.google.com;
-      frame-src 'self' https://*.googletagmanager.com https://www.google.com;
+      connect-src 'self' https://*.google-analytics.com https://*.googletagmanager.com https://*.analytics.google.com https://*.doubleclick.net https://www.googleadservices.com;
+      frame-src 'self' https://*.googletagmanager.com https://www.google.com https://*.doubleclick.net https://www.googleadservices.com;
       object-src 'none';
       base-uri 'self';
       form-action 'self';
