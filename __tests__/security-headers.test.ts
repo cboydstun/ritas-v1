@@ -60,7 +60,13 @@ describe("Content-Security-Policy", () => {
   });
 
   describe("GA4", () => {
+    // gtag picks its collect host at runtime from config Google controls, so
+    // every host it is known to use must be permitted. analytics.google.com
+    // is the bare registrable domain — a *.analytics.google.com wildcard does
+    // NOT cover it, which is the regression that killed collection outright.
     it.each([
+      "https://analytics.google.com/g/collect",
+      "https://region1.analytics.google.com/g/collect",
       "https://region1.google-analytics.com/g/collect",
       "https://www.google-analytics.com/g/collect",
     ])("allows a beacon to %s", (url) => {
@@ -117,5 +123,13 @@ describe("Content-Security-Policy", () => {
     expect(permits("connect-src", "https://evil.example.com/collect")).toBe(
       false,
     );
+  });
+
+  it("models the wildcard rule that caused the outage", () => {
+    // Guards the matcher itself: if this ever passes, `permits` has stopped
+    // modelling CSP and the assertions above are worthless.
+    expect(
+      permits("connect-src", "https://notanalytics.google.com.evil.test/x"),
+    ).toBe(false);
   });
 });
