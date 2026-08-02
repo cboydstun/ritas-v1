@@ -140,15 +140,10 @@ describe("POST /api/v1/contacts", () => {
     consoleErrorSpy.mockRestore();
   });
 
-  it("should return 400 for invalid data", async () => {
+  it("should return 400 for invalid data without touching the database", async () => {
+    // Incomplete bodies are now rejected by the schema before Mongo is
+    // involved, rather than surfacing as a Mongoose ValidationError.
     const requestData = { name: "Test User" };
-
-    // Throw a real Error with ValidationError name (route checks `instanceof Error`)
-    const validationError = new Error(
-      "Contact validation failed: email: Path `email` is required.",
-    );
-    validationError.name = "ValidationError";
-    (Contact.create as jest.Mock).mockRejectedValue(validationError);
 
     const request = new Request("http://localhost:3000/api/v1/contacts", {
       method: "POST",
@@ -160,8 +155,33 @@ describe("POST /api/v1/contacts", () => {
 
     expect(response).toBeInstanceOf(NextResponse);
     expect(response.status).toBe(400);
+    expect(Contact.create).not.toHaveBeenCalled();
 
     const responseData = await response.json();
-    expect(responseData.message).toBe("Invalid contact data");
+    expect(responseData.message).toMatch(/email/);
+  });
+
+  it("should not let the caller set status or timestamps", async () => {
+    const request = new Request("http://localhost:3000/api/v1/contacts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: "Test User",
+        email: "test@example.com",
+        phone: "2105551234",
+        eventDate: "2030-06-01",
+        message: "Hello",
+        status: "completed",
+        createdAt: "1999-01-01",
+        _id: "deadbeefdeadbeefdeadbeef",
+      }),
+    });
+
+    await POST(request);
+
+    const created = (Contact.create as jest.Mock).mock.calls[0][0];
+    expect(created).not.toHaveProperty("status");
+    expect(created).not.toHaveProperty("createdAt");
+    expect(created).not.toHaveProperty("_id");
   });
 });

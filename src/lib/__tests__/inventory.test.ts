@@ -225,9 +225,31 @@ describe("isMachineAvailable", () => {
   });
 
   describe("inventory defaults", () => {
-    it("defaults to 1 when settings doc is missing", async () => {
+    // The fallbacks must match the Settings schema defaults (single 3,
+    // double 3, triple 2), otherwise availability changes the moment an
+    // admin first saves settings.
+    it("falls back to 3 single units when the settings doc is missing", async () => {
       mockSettingsInventory(null);
       mockOverlappingRentals([
+        { rentalDate: "2026-06-15", returnDate: "2026-06-15" },
+        { rentalDate: "2026-06-15", returnDate: "2026-06-15" },
+      ]);
+
+      const result = await isMachineAvailable(
+        "single",
+        15,
+        "2026-06-15",
+        "2026-06-15",
+      );
+
+      expect(result.available).toBe(true);
+    });
+
+    it("rejects once the fallback inventory is exhausted", async () => {
+      mockSettingsInventory(null);
+      mockOverlappingRentals([
+        { rentalDate: "2026-06-15", returnDate: "2026-06-15" },
+        { rentalDate: "2026-06-15", returnDate: "2026-06-15" },
         { rentalDate: "2026-06-15", returnDate: "2026-06-15" },
       ]);
 
@@ -241,15 +263,16 @@ describe("isMachineAvailable", () => {
       expect(result.available).toBe(false);
     });
 
-    it("defaults to 1 when inventory field is missing on machine", async () => {
+    it("falls back to 2 triple units when the inventory field is missing", async () => {
       mockSettingsInventory({});
       mockOverlappingRentals([
+        { rentalDate: "2026-06-15", returnDate: "2026-06-15" },
         { rentalDate: "2026-06-15", returnDate: "2026-06-15" },
       ]);
 
       const result = await isMachineAvailable(
-        "double",
-        30,
+        "triple",
+        45,
         "2026-06-15",
         "2026-06-15",
       );

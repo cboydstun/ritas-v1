@@ -52,7 +52,7 @@ function existingVisitor(
   overrides: Partial<{ completedSteps: string[] }> = {},
 ) {
   return {
-    fingerprintHash: "hash-abc",
+    fingerprintHash: "a1b2c3d4e5f60718293a4b5c6d7e8f90",
     device: { type: "desktop" },
     funnelData: {
       completedSteps: overrides.completedSteps ?? [],
@@ -80,9 +80,50 @@ describe("POST /api/v1/analytics/fingerprint", () => {
       expect(body.error).toMatch(/fingerprintHash/);
     });
 
+    it("rejects a Mongo operator object as the fingerprintHash", async () => {
+      mockFindOne.mockResolvedValue(null);
+      // A truthiness check let this through, so the filter became
+      // { fingerprintHash: { $ne: null } } — matching an arbitrary existing
+      // visitor and then writing to it.
+      const req = makeRequest({
+        fingerprintHash: { $ne: null },
+        components: validComponents,
+      });
+      const res = await POST(req);
+
+      expect(res.status).toBe(400);
+      expect(mockFindOne).not.toHaveBeenCalled();
+      expect(mockFindOneAndUpdate).not.toHaveBeenCalled();
+    });
+
+    it("rejects a non-hex fingerprintHash", async () => {
+      mockFindOne.mockResolvedValue(null);
+      const req = makeRequest({
+        fingerprintHash: "../../etc/passwd",
+        components: validComponents,
+      });
+      const res = await POST(req);
+
+      expect(res.status).toBe(400);
+      expect(mockFindOneAndUpdate).not.toHaveBeenCalled();
+    });
+
+    it("caps the visits array so one document cannot grow unbounded", async () => {
+      mockFindOne.mockResolvedValue(existingVisitor());
+      const req = makeRequest({
+        fingerprintHash: "a1b2c3d4e5f60718293a4b5c6d7e8f90",
+        components: validComponents,
+      });
+      await POST(req);
+
+      const updateDoc = mockFindOneAndUpdate.mock.calls[0][1];
+      expect(updateDoc.$push.visits).toHaveProperty("$slice");
+      expect(updateDoc.$push.visits.$slice).toBeLessThan(0);
+    });
+
     it("returns 400 when components is missing", async () => {
       mockFindOne.mockResolvedValue(null);
-      const req = makeRequest({ fingerprintHash: "hash-abc" });
+      const req = makeRequest({ fingerprintHash: "a1b2c3d4e5f60718293a4b5c6d7e8f90" });
       const res = await POST(req);
       expect(res.status).toBe(400);
       const body = await res.json();
@@ -98,7 +139,7 @@ describe("POST /api/v1/analytics/fingerprint", () => {
     it('extracts "date" from /order/date page', async () => {
       mockFindOne.mockResolvedValue(null);
       const req = makeRequest({
-        fingerprintHash: "hash-abc",
+        fingerprintHash: "a1b2c3d4e5f60718293a4b5c6d7e8f90",
         components: validComponents,
         page: "/order/date",
       });
@@ -113,7 +154,7 @@ describe("POST /api/v1/analytics/fingerprint", () => {
     it('extracts "machine" from /order/machine page', async () => {
       mockFindOne.mockResolvedValue(null);
       const req = makeRequest({
-        fingerprintHash: "hash-abc",
+        fingerprintHash: "a1b2c3d4e5f60718293a4b5c6d7e8f90",
         components: validComponents,
         page: "/order/machine",
       });
@@ -127,7 +168,7 @@ describe("POST /api/v1/analytics/fingerprint", () => {
     it("does not set funnel fields for non-order pages", async () => {
       mockFindOne.mockResolvedValue(null);
       const req = makeRequest({
-        fingerprintHash: "hash-abc",
+        fingerprintHash: "a1b2c3d4e5f60718293a4b5c6d7e8f90",
         components: validComponents,
         page: "/",
       });
@@ -154,7 +195,7 @@ describe("POST /api/v1/analytics/fingerprint", () => {
       );
 
       const req = makeRequest({
-        fingerprintHash: "hash-abc",
+        fingerprintHash: "a1b2c3d4e5f60718293a4b5c6d7e8f90",
         components: validComponents,
         page: "/order/review",
       });
@@ -175,7 +216,7 @@ describe("POST /api/v1/analytics/fingerprint", () => {
       );
 
       const req = makeRequest({
-        fingerprintHash: "hash-abc",
+        fingerprintHash: "a1b2c3d4e5f60718293a4b5c6d7e8f90",
         components: validComponents,
         page: "/order/review",
       });
@@ -195,7 +236,7 @@ describe("POST /api/v1/analytics/fingerprint", () => {
       );
 
       const req = makeRequest({
-        fingerprintHash: "hash-abc",
+        fingerprintHash: "a1b2c3d4e5f60718293a4b5c6d7e8f90",
         components: validComponents,
         page: "/order/payment",
       });
@@ -214,7 +255,7 @@ describe("POST /api/v1/analytics/fingerprint", () => {
       );
 
       const req = makeRequest({
-        fingerprintHash: "hash-abc",
+        fingerprintHash: "a1b2c3d4e5f60718293a4b5c6d7e8f90",
         components: validComponents,
         page: "/order/extras",
       });
@@ -234,7 +275,7 @@ describe("POST /api/v1/analytics/fingerprint", () => {
     it("returns isNewVisitor: true for first-time visitors", async () => {
       mockFindOne.mockResolvedValue(null);
       const req = makeRequest({
-        fingerprintHash: "hash-new",
+        fingerprintHash: "0f1e2d3c4b5a69788796a5b4c3d2e1f0",
         components: validComponents,
         page: "/order/date",
       });
@@ -249,7 +290,7 @@ describe("POST /api/v1/analytics/fingerprint", () => {
     it("returns isNewVisitor: false for returning visitors", async () => {
       mockFindOne.mockResolvedValue(existingVisitor());
       const req = makeRequest({
-        fingerprintHash: "hash-abc",
+        fingerprintHash: "a1b2c3d4e5f60718293a4b5c6d7e8f90",
         components: validComponents,
         page: "/",
       });

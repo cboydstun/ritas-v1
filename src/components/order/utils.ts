@@ -1,3 +1,5 @@
+import { buildExtrasCatalog } from "@/lib/extras-catalog";
+
 export const getNextDay = (dateStr: string): string => {
   // Append T00:00:00 so the date is parsed as local midnight, not UTC midnight
   const date = new Date(dateStr + "T00:00:00");
@@ -6,6 +8,30 @@ export const getNextDay = (dateStr: string): string => {
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+};
+
+/**
+ * Whole calendar days between two YYYY-MM-DD strings, minimum 1.
+ *
+ * Differencing local-midnight timestamps is wrong across a DST boundary: in
+ * America/Chicago, 2025-11-02 → 2025-11-03 is 25 hours, which a ceil() of the
+ * millisecond difference reports as 2 days — billing a one-night rental twice.
+ * Comparing UTC-normalised calendar dates keeps every day exactly 24 hours.
+ */
+export const calculateRentalDays = (
+  rentalDate: string,
+  returnDate: string,
+): number => {
+  const toUtcDay = (dateStr: string): number => {
+    const [year, month, day] = dateStr.split("-").map(Number);
+    return Date.UTC(year, month - 1, day);
+  };
+
+  const diffDays = Math.round(
+    (toUtcDay(returnDate) - toUtcDay(rentalDate)) / (1000 * 60 * 60 * 24),
+  );
+
+  return Number.isFinite(diffDays) ? Math.max(1, diffDays) : 1;
 };
 
 export const validateEmail = (email: string): boolean => {
@@ -150,24 +176,28 @@ export function computeOrderTotal(
 
   const rentalDays =
     formData.rentalDate && formData.returnDate
-      ? Math.max(
-          1,
-          Math.ceil(
-            (new Date(formData.returnDate + "T00:00:00").getTime() -
-              new Date(formData.rentalDate + "T00:00:00").getTime()) /
-              (1000 * 60 * 60 * 24),
-          ),
-        )
+      ? calculateRentalDays(formData.rentalDate, formData.returnDate)
       : 1;
+
+  // Prices and pricingType come from the catalog, never from the item objects
+  // themselves — those may have arrived in a request body. An id that isn't in
+  // the catalog contributes nothing; the API layer rejects such ids outright.
+  const extrasCatalog = buildExtrasCatalog({
+    extras: settings?.extras,
+    mixers: settings?.mixers,
+  });
 
   const extrasTotal = Number(
     formData.selectedExtras
       .reduce((sum, item) => {
-        const overridePrice = settings?.extras?.[item.id]?.price;
-        const unitPrice =
-          overridePrice !== undefined ? overridePrice : item.price;
-        const multiplier = item.pricingType === "flat" ? 1 : rentalDays;
-        return sum + unitPrice * (item.quantity || 1) * multiplier;
+        const catalogItem = extrasCatalog.get(item.id);
+        if (!catalogItem) return sum;
+
+        const quantity = catalogItem.allowQuantity
+          ? Math.max(1, Math.floor(Number(item.quantity) || 1))
+          : 1;
+        const multiplier = catalogItem.pricingType === "flat" ? 1 : rentalDays;
+        return sum + catalogItem.price * quantity * multiplier;
       }, 0)
       .toFixed(2),
   );

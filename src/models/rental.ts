@@ -2,6 +2,14 @@ import mongoose from "mongoose";
 import { MachineType, PaymentStatus, RentalStatus } from "@/types";
 import { ExtraItem } from "@/components/order/types";
 
+/** Tank count per machine type — duplicated from validation.ts to keep the
+ *  model free of any dependency on the request-validation layer. */
+const MACHINE_CAPACITY: Record<MachineType, number> = {
+  single: 15,
+  double: 30,
+  triple: 45,
+};
+
 const addressSchema = new mongoose.Schema({
   street: { type: String, required: true },
   city: { type: String, required: true },
@@ -49,6 +57,18 @@ const rentalSchema = new mongoose.Schema(
       type: Number,
       required: true,
       enum: [15, 30, 45],
+      validate: {
+        // Availability is counted per (machineType, capacity) pair, so a
+        // mismatched pair matched no existing rentals and slipped past every
+        // availability check. The mapping is fixed — enforce it.
+        validator: function (
+          this: mongoose.Document & { machineType: MachineType },
+          capacity: number,
+        ) {
+          return MACHINE_CAPACITY[this.machineType] === capacity;
+        },
+        message: "Capacity does not match the selected machine type",
+      },
     },
     selectedMixers: {
       type: [String],
@@ -151,6 +171,19 @@ rentalSchema.pre("save", function (next) {
   this.updatedAt = new Date();
   next();
 });
+
+// Availability is the hottest query in the app — MachineStep checks all three
+// machine types in parallel on every mount — and it ran as a collection scan.
+rentalSchema.index({
+  machineType: 1,
+  capacity: 1,
+  status: 1,
+  rentalDate: 1,
+  returnDate: 1,
+});
+rentalSchema.index({ bookingId: 1 }, { sparse: true });
+// Drives the stale-hold reaper.
+rentalSchema.index({ status: 1, createdAt: 1 });
 
 // Only create the model if it hasn't been created already
 export const Rental =

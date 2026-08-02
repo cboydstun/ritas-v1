@@ -140,13 +140,8 @@ describe("POST /api/v1/lease-inquiries", () => {
     consoleErrorSpy.mockRestore();
   });
 
-  it("should return 400 for invalid data", async () => {
-    const validationError = new Error(
-      "LeaseInquiry validation failed: businessName: Path `businessName` is required.",
-    );
-    validationError.name = "ValidationError";
-    (LeaseInquiry.create as jest.Mock).mockRejectedValue(validationError);
-
+  it("should return 400 for invalid data without touching the database", async () => {
+    // The schema rejects incomplete bodies before Mongo is involved.
     const request = new Request(
       "http://localhost:3000/api/v1/lease-inquiries",
       {
@@ -160,8 +155,9 @@ describe("POST /api/v1/lease-inquiries", () => {
 
     expect(response).toBeInstanceOf(NextResponse);
     expect(response.status).toBe(400);
+    expect(LeaseInquiry.create).not.toHaveBeenCalled();
 
     const responseData = await response.json();
-    expect(responseData.message).toBe("Invalid lease inquiry data");
+    expect(responseData.message).toMatch(/businessName/);
   });
 });

@@ -4,8 +4,43 @@ import {
   getNextDay,
   validateDeliveryTime,
   computeOrderTotal,
+  calculateRentalDays,
 } from "@/components/order/utils";
 import { OrderFormData } from "@/components/order/types";
+
+describe("calculateRentalDays", () => {
+  it("counts a same-day rental as one day", () => {
+    expect(calculateRentalDays("2025-06-01", "2025-06-01")).toBe(1);
+  });
+
+  it("counts one night as one day", () => {
+    expect(calculateRentalDays("2025-06-01", "2025-06-02")).toBe(1);
+  });
+
+  it("counts whole calendar days across a longer span", () => {
+    expect(calculateRentalDays("2025-06-01", "2025-06-04")).toBe(3);
+  });
+
+  it("does not overcharge across the DST fall-back boundary", () => {
+    // 2025-11-02 is the US fall-back date: 25 hours long in local time.
+    // Differencing local-midnight timestamps and rounding up reported 2 days,
+    // billing a one-night rental twice.
+    expect(calculateRentalDays("2025-11-02", "2025-11-03")).toBe(1);
+  });
+
+  it("does not undercharge across the DST spring-forward boundary", () => {
+    // 2025-03-09 is 23 hours long in local time.
+    expect(calculateRentalDays("2025-03-09", "2025-03-10")).toBe(1);
+  });
+
+  it("counts a multi-day span containing a DST change correctly", () => {
+    expect(calculateRentalDays("2025-11-01", "2025-11-04")).toBe(3);
+  });
+
+  it("never returns less than one day", () => {
+    expect(calculateRentalDays("2025-06-04", "2025-06-01")).toBe(1);
+  });
+});
 
 describe("getNextDay (Issue 2 — timezone safety)", () => {
   it("returns the next calendar day for a YYYY-MM-DD string", () => {
@@ -160,5 +195,70 @@ describe("computeOrderTotal with settings overrides", () => {
     expect(result.salesTax).toBeCloseTo(30.99, 2);
     expect(result.cashPrice).toBeCloseTo(394.79, 2);
     expect(result.finalTotal).toBeCloseTo(406.63, 2);
+  });
+
+  describe("extras pricing comes from the catalog, not the payload", () => {
+    it("ignores a price supplied on the extra itself", () => {
+      const tampered: OrderFormData = {
+        ...baseFormData,
+        selectedExtras: [
+          {
+            id: "table-chairs",
+            name: "Table & Chairs Set",
+            description: "",
+            price: -500,
+            quantity: 1,
+          },
+        ],
+      };
+
+      const result = computeOrderTotal(tampered);
+      // Catalog price is 19.95, charged per day for a 1-day rental.
+      expect(result.extrasTotal).toBeCloseTo(19.95, 2);
+      expect(result.finalTotal).toBeGreaterThan(0);
+    });
+
+    it("cannot be driven negative by a crafted extra", () => {
+      const tampered: OrderFormData = {
+        ...baseFormData,
+        selectedExtras: [
+          {
+            id: "totally-made-up",
+            name: "Discount",
+            description: "",
+            price: -1000,
+            quantity: 5,
+          },
+        ],
+      };
+
+      const result = computeOrderTotal(tampered);
+      // Unknown ids contribute nothing; the API layer rejects them outright.
+      expect(result.extrasTotal).toBe(0);
+      expect(result.finalTotal).toBeCloseTo(161.62, 2);
+    });
+
+    it("honours the catalog pricingType rather than the payload's", () => {
+      const twoDays: OrderFormData = {
+        ...baseFormData,
+        rentalDate: "2025-06-01",
+        returnDate: "2025-06-03",
+        selectedExtras: [
+          {
+            id: "mixer-margarita",
+            name: "Margarita Mixer — Extra Mixer",
+            description: "",
+            price: 19.95,
+            quantity: 1,
+            // Claiming per-day on a flat item would double the charge.
+            pricingType: "per-day",
+          },
+        ],
+      };
+
+      const result = computeOrderTotal(twoDays);
+      expect(result.rentalDays).toBe(2);
+      expect(result.extrasTotal).toBeCloseTo(19.95, 2);
+    });
   });
 });

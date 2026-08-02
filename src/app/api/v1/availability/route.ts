@@ -2,6 +2,17 @@ import { NextResponse } from "next/server";
 import { isMachineAvailable } from "@/lib/inventory";
 import { MachineType } from "@/types";
 
+/** Longest rental window the availability check will expand. */
+const MAX_RANGE_DAYS = 90;
+
+function spanInDays(start: string, end: string): number {
+  const toUtc = (value: string) => {
+    const [year, month, day] = value.split("-").map(Number);
+    return Date.UTC(year, month - 1, day);
+  };
+  return Math.round((toUtc(end) - toUtc(start)) / (1000 * 60 * 60 * 24));
+}
+
 export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
@@ -56,6 +67,14 @@ export async function GET(request: Request) {
       if (returnDateParam < date) {
         return NextResponse.json(
           { message: "returnDate must be on or after date" },
+          { status: 400 },
+        );
+      }
+      // The range is expanded day by day, so an unbounded span (?date=1000-01-01
+      // &returnDate=9999-12-31) burns seconds of CPU per anonymous request.
+      if (spanInDays(date, returnDateParam) > MAX_RANGE_DAYS) {
+        return NextResponse.json(
+          { message: `Date range cannot exceed ${MAX_RANGE_DAYS} days` },
           { status: 400 },
         );
       }

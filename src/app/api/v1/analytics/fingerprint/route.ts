@@ -2,6 +2,18 @@ import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongodb";
 import { Thumbprint } from "@/models/thumbprint";
 import { headers } from "next/headers";
+import { guardPublicWrite } from "@/lib/api-guard";
+import { fingerprintHashSchema } from "@/lib/validation";
+
+/**
+ * Cap on retained per-visitor visit entries. `$push` was unbounded, so a
+ * client pinning one hash could grow a single document past Mongo's 16 MB
+ * limit, after which every write for that visitor fails permanently.
+ */
+const MAX_RETAINED_VISITS = 200;
+
+const asString = (value: unknown, fallback = ""): string =>
+  typeof value === "string" ? value : fallback;
 
 /**
  * API route for storing fingerprint data
@@ -9,19 +21,30 @@ import { headers } from "next/headers";
  */
 export async function POST(req: NextRequest) {
   try {
-    const data = await req.json();
+    const guard = await guardPublicWrite(req, {
+      route: "fingerprint",
+      limit: 60,
+      windowSeconds: 600,
+      maxBytes: 32 * 1024,
+    });
+    if (!guard.ok) return guard.response;
 
-    // Validate required fields
-    if (!data.fingerprintHash) {
-      console.error("Validation error: Missing fingerprintHash");
+    const data = guard.data as Record<string, unknown>;
+
+    // Must be a hex digest. A truthiness check let `{"$ne": null}` through,
+    // which matched an arbitrary existing visitor document and then wrote to
+    // it — an unauthenticated caller could overwrite anyone's analytics record.
+    const hashResult = fingerprintHashSchema.safeParse(data?.fingerprintHash);
+    if (!hashResult.success) {
       return NextResponse.json(
         {
           success: false,
-          error: "Missing required field: fingerprintHash",
+          error: "Missing or invalid field: fingerprintHash",
         },
         { status: 400 },
       );
     }
+    const fingerprintHash = hashResult.data;
 
     if (!data.components) {
       console.error("Validation error: Missing components");
@@ -51,7 +74,8 @@ export async function POST(req: NextRequest) {
 
     // Get user agent from headers
     const headersList = await headers();
-    const userAgent = headersList.get("user-agent") || data.userAgent || "";
+    const userAgent =
+      headersList.get("user-agent") || asString(data.userAgent) || "";
 
     // Determine device type based on user agent
     let deviceType: "desktop" | "tablet" | "mobile" | "other" = "other";
@@ -64,30 +88,34 @@ export async function POST(req: NextRequest) {
     }
 
     // Prepare the new visit data
+    const page = asString(data.page, "/").slice(0, 500);
     const newVisit = {
       timestamp: new Date(),
-      page: data.page || "/",
-      referrer: data.referrer || null,
-      timeSpentMs: data.timeSpentMs || 0,
+      page,
+      referrer: asString(data.referrer).slice(0, 500) || null,
+      timeSpentMs: Number.isFinite(Number(data.timeSpentMs))
+        ? Math.max(0, Number(data.timeSpentMs))
+        : 0,
       formContext: data.formContext || {},
-      fieldInteractions: data.fieldInteractions || [],
+      fieldInteractions: Array.isArray(data.fieldInteractions)
+        ? data.fieldInteractions.slice(0, 100)
+        : [],
     };
 
     // Prepare funnel data updates if this is an order form page
-    const stepName =
-      data.page && data.page.startsWith("/order/")
-        ? data.page.split("/").pop() || ""
-        : null;
+    const stepName = page.startsWith("/order/")
+      ? page.split("/").pop() || ""
+      : null;
 
     // Check if this fingerprint already exists
     const existingThumbprint = await Thumbprint.findOne({
-      fingerprintHash: data.fingerprintHash,
+      fingerprintHash: fingerprintHash,
     });
 
     if (existingThumbprint) {
       // Use atomic findOneAndUpdate for existing records
       await Thumbprint.findOneAndUpdate(
-        { fingerprintHash: data.fingerprintHash },
+        { fingerprintHash: fingerprintHash },
         {
           // Set fields
           $set: {
@@ -112,9 +140,10 @@ export async function POST(req: NextRequest) {
           },
           // Increment fields
           $inc: { visitCount: 1 },
-          // Push to arrays
+          // Push to arrays, keeping only the most recent visits so one
+          // visitor's document cannot grow without bound.
           $push: {
-            visits: newVisit,
+            visits: { $each: [newVisit], $slice: -MAX_RETAINED_VISITS },
             ...(stepName &&
             !existingThumbprint.funnelData?.completedSteps?.includes(stepName)
               ? {
@@ -129,17 +158,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({
         success: true,
         isNewVisitor: false,
-        fingerprintHash: data.fingerprintHash,
+        fingerprintHash: fingerprintHash,
       });
     } else {
       // Use findOneAndUpdate with upsert for new records
       // This handles the case where the document might have been created
       // between our check and insert
       await Thumbprint.findOneAndUpdate(
-        { fingerprintHash: data.fingerprintHash },
+        { fingerprintHash: fingerprintHash },
         {
           $setOnInsert: {
-            fingerprintHash: data.fingerprintHash,
+            fingerprintHash: fingerprintHash,
             components: data.components,
             firstSeen: new Date(),
             visitCount: 1,
@@ -162,7 +191,7 @@ export async function POST(req: NextRequest) {
             }),
           },
           $push: {
-            visits: newVisit,
+            visits: { $each: [newVisit], $slice: -MAX_RETAINED_VISITS },
             ...(stepName
               ? {
                   "funnelData.completedSteps": stepName,
@@ -179,7 +208,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({
         success: true,
         isNewVisitor: true,
-        fingerprintHash: data.fingerprintHash,
+        fingerprintHash: fingerprintHash,
       });
     }
   } catch (error) {

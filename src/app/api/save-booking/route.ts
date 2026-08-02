@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import dbConnect from "@/lib/mongodb";
 import { Rental } from "@/models/rental";
 import { Settings } from "@/models/settings";
-import { isMachineAvailable } from "@/lib/inventory";
+import { isMachineAvailable, releaseStaleHolds } from "@/lib/inventory";
 import twilio from "twilio";
 import { Resend } from "resend";
 import { nanoid } from "nanoid";
@@ -13,17 +13,60 @@ import {
   type SettingsOverrides,
 } from "@/components/order/utils";
 import type { OrderFormData } from "@/components/order/types";
+import { resolveSelectedExtras } from "@/lib/extras-catalog";
+import { guardPublicWrite } from "@/lib/api-guard";
+import {
+  MACHINE_CAPACITY,
+  escapeHtml,
+  firstIssueMessage,
+  rentalDataSchema,
+} from "@/lib/validation";
+
+/** Render a rate like 0.0825 as "8.25%" so labels track the real settings. */
+const pct = (rate: number): string => `${Number((rate * 100).toFixed(4))}%`;
+
+/**
+ * "14:00" → "2:00 PM". The delivery-window picker defaults to the "ANY"
+ * sentinel, which the old formatter fed to parseInt and rendered as the
+ * nonsense "12:undefined AM" in every operator SMS.
+ */
+function formatDeliveryTime(time: string): string {
+  if (!time || time === "ANY") return "Any Time";
+
+  const [hourPart, minutePart] = time.split(":");
+  const hour24 = parseInt(hourPart, 10);
+  if (!Number.isFinite(hour24) || !minutePart) return "Any Time";
+
+  const hour12 = hour24 % 12 || 12;
+  return `${hour12}:${minutePart} ${hour24 >= 12 ? "PM" : "AM"}`;
+}
 
 export async function POST(request: Request) {
   try {
-    const { rentalData } = await request.json();
+    // Every booking persists a rental and fans out to Twilio and Resend, so
+    // an unthrottled caller costs money and holds inventory hostage.
+    const guard = await guardPublicWrite(request, {
+      route: "save-booking",
+      limit: 5,
+      windowSeconds: 600,
+    });
+    if (!guard.ok) return guard.response;
 
-    if (!rentalData) {
+    const body = guard.data as { rentalData?: unknown } | null;
+
+    const parsed = rentalDataSchema.safeParse(body?.rentalData);
+    if (!parsed.success) {
       return NextResponse.json(
-        { message: "Missing rental data" },
+        { message: firstIssueMessage(parsed.error) },
         { status: 400 },
       );
     }
+    const rentalData = parsed.data;
+
+    // Capacity is derived, never taken from the request: a mismatched
+    // machineType/capacity pair used to match zero existing rentals and so
+    // sailed past the availability check entirely.
+    const capacity = MACHINE_CAPACITY[rentalData.machineType];
 
     // Generate a unique booking ID
     const bookingId = nanoid(10).toUpperCase();
@@ -31,11 +74,16 @@ export async function POST(request: Request) {
     // Connect to MongoDB
     await dbConnect();
 
+    // Abandoned checkouts hold units indefinitely otherwise. The cron job is
+    // the primary sweeper; this call keeps the booking path correct even if
+    // the schedule is not configured.
+    await releaseStaleHolds();
+
     // Inventory pre-check — refuse to persist the booking if all units of
     // this machine type are already booked for any day in the requested range.
     const availability = await isMachineAvailable(
       rentalData.machineType,
-      rentalData.capacity,
+      capacity,
       rentalData.rentalDate,
       rentalData.returnDate,
     );
@@ -79,14 +127,29 @@ export async function POST(request: Request) {
       extras: settingsDoc?.extras,
     };
 
+    // Add-ons are re-resolved against the server catalog, so name, price and
+    // pricingType come from our data rather than the request body.
+    const { extras: selectedExtras, unknownIds } = resolveSelectedExtras(
+      rentalData.selectedExtras,
+      { extras: settingsDoc?.extras, mixers: settingsDoc?.mixers },
+    );
+    if (unknownIds.length > 0) {
+      return NextResponse.json(
+        { message: "One or more selected extras are not available" },
+        { status: 400 },
+      );
+    }
+
     const totals = computeOrderTotal(
       {
         machineType: rentalData.machineType,
-        selectedMixers: rentalData.selectedMixers ?? [],
-        selectedExtras: rentalData.selectedExtras ?? [],
+        selectedMixers: rentalData.selectedMixers,
+        selectedExtras,
         rentalDate: rentalData.rentalDate,
         returnDate: rentalData.returnDate,
-        isServiceDiscount: rentalData.isServiceDiscount ?? false,
+        // The service discount was retired from the product. It is applied by
+        // hand at invoicing time for legacy cases and is never client-settable.
+        isServiceDiscount: false,
       } as OrderFormData,
       overrides,
     );
@@ -99,19 +162,42 @@ export async function POST(request: Request) {
       rentalDays,
       extrasTotal: emailExtrasTotal,
       subtotal: emailSubtotal,
-      serviceDiscountAmount: emailServiceDiscountAmount,
       salesTax: emailSalesTax,
       processingFee: emailProcessingFee,
       cashPrice: emailCashPrice,
       finalTotal: emailTotal,
     } = totals;
+
+    const taxRate = settingsDoc?.fees?.salesTaxRate ?? 0.0825;
+    const processingRate = settingsDoc?.fees?.processingFeeRate ?? 0.03;
     // ─────────────────────────────────────────────────────────────────────
 
-    // Create a new rental with pending payment status
+    // Built field by field rather than spreading the request body: `price`
+    // used to be whatever the browser computed, which could disagree with the
+    // server-side `payment.amount` sitting right beside it.
     const rental = new Rental({
-      ...rentalData,
-      selectedExtras: rentalData.selectedExtras || [],
-      isServiceDiscount: rentalData.isServiceDiscount || false,
+      machineType: rentalData.machineType,
+      capacity,
+      selectedMixers: rentalData.selectedMixers,
+      selectedExtras,
+      price: emailTotal,
+      rentalDate: rentalData.rentalDate,
+      rentalTime: rentalData.rentalTime,
+      returnDate: rentalData.returnDate,
+      returnTime: rentalData.returnTime,
+      customer: {
+        name: rentalData.customer.name,
+        email: rentalData.customer.email,
+        phone: rentalData.customer.phone,
+        address: {
+          street: rentalData.customer.address.street,
+          city: rentalData.customer.address.city,
+          state: rentalData.customer.address.state,
+          zipCode: rentalData.customer.address.zipCode,
+        },
+      },
+      notes: rentalData.notes,
+      isServiceDiscount: false,
       bookingId,
       status: "pending_payment", // Different from "pending" - indicates we're waiting for manual payment
       payment: {
@@ -124,6 +210,28 @@ export async function POST(request: Request) {
 
     const savedRental = await rental.save();
 
+    // The check above and this write are not atomic, so two concurrent
+    // requests could both claim the last unit. Re-count now that our own hold
+    // is persisted (excluding it), and roll back if we oversold.
+    const recheck = await isMachineAvailable(
+      rentalData.machineType,
+      capacity,
+      rentalData.rentalDate,
+      rentalData.returnDate,
+      { excludeRentalId: savedRental._id.toString() },
+    );
+    if (!recheck.available) {
+      await Rental.deleteOne({ _id: savedRental._id });
+      return NextResponse.json(
+        {
+          message:
+            recheck.reason ??
+            "This machine was just booked for the selected dates. Please pick a different date or machine.",
+        },
+        { status: 409 },
+      );
+    }
+
     // Send SMS notification if Twilio credentials are configured
     const accountSid = process.env.TWILIO_ACCOUNT_SID;
     const authToken = process.env.TWILIO_AUTH_TOKEN;
@@ -135,7 +243,6 @@ export async function POST(request: Request) {
       try {
         // Parse the rental date and time
         const [year, month, day] = rental.rentalDate.split("-");
-        const [hour] = rental.rentalTime.split(":");
         const rentalDateTime = new Date(
           parseInt(year),
           parseInt(month) - 1,
@@ -149,11 +256,7 @@ export async function POST(request: Request) {
           day: "numeric",
         });
 
-        // Format time to 12-hour format
-        const hour24 = parseInt(hour);
-        const hour12 = hour24 % 12 || 12;
-        const mins = rental.rentalTime.split(":")[1];
-        const formattedTime = `${hour12}:${mins} ${hour24 >= 12 ? "PM" : "AM"}`;
+        const formattedTime = formatDeliveryTime(rental.rentalTime);
 
         // Prepare extras text if any
         const extrasText =
@@ -284,20 +387,12 @@ export async function POST(request: Request) {
             <td style="padding: 5px 0; color: #555;">Subtotal:</td>
             <td style="padding: 5px 0; text-align: right;">$${formatPrice(emailSubtotal)}</td>
           </tr>
-          ${
-            rental.isServiceDiscount
-              ? `<tr>
-            <td style="padding: 5px 0; color: #16a34a;">Service Discount (10%):</td>
-            <td style="padding: 5px 0; text-align: right; color: #16a34a;">-$${formatPrice(emailServiceDiscountAmount)}</td>
-          </tr>`
-              : ""
-          }
           <tr>
-            <td style="padding: 5px 0; color: #555;">Processing Fee (3%):</td>
+            <td style="padding: 5px 0; color: #555;">Processing Fee (${pct(processingRate)}):</td>
             <td style="padding: 5px 0; text-align: right;">$${formatPrice(emailProcessingFee)}</td>
           </tr>
           <tr>
-            <td style="padding: 5px 0; color: #555;">Sales Tax (8.25%):</td>
+            <td style="padding: 5px 0; color: #555;">Sales Tax (${pct(taxRate)}):</td>
             <td style="padding: 5px 0; text-align: right;">$${formatPrice(emailSalesTax)}</td>
           </tr>
           <tr>
@@ -325,7 +420,7 @@ export async function POST(request: Request) {
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333; background-color: #f9fafb; border-radius: 8px;">
           <h1 style="color: #2b6cb0; text-align: center; margin-bottom: 30px; padding-bottom: 15px; border-bottom: 2px solid #e2e8f0;">Booking Confirmed!</h1>
-          <p style="font-size: 16px;">Dear ${rental.customer.name},</p>
+          <p style="font-size: 16px;">Dear ${escapeHtml(rental.customer.name)},</p>
           <p style="font-size: 16px;">Thank you for booking with SATX Ritas! Your rental for a ${rental.machineType} machine has been confirmed.</p>
           
           <div style="background-color: #fff; padding: 15px; border-radius: 6px; margin: 20px 0; border: 1px solid #e2e8f0;">
@@ -369,16 +464,16 @@ export async function POST(request: Request) {
           <div style="background-color: #fff; padding: 15px; border-radius: 6px; margin: 20px 0; border: 1px solid #e2e8f0;">
             <p style="margin: 0 0 10px 0;"><strong style="color: #2b6cb0;">Delivery Address:</strong></p>
             <p style="margin: 0;">
-              ${rental.customer.address.street}<br>
-              ${rental.customer.address.city}, ${rental.customer.address.state} ${rental.customer.address.zipCode}
+              ${escapeHtml(rental.customer.address.street)}<br>
+              ${escapeHtml(rental.customer.address.city)}, ${escapeHtml(rental.customer.address.state)} ${escapeHtml(rental.customer.address.zipCode)}
             </p>
           </div>
 
           <div style="background-color: #fff; padding: 15px; border-radius: 6px; margin: 20px 0; border: 1px solid #e2e8f0;">
             <p style="margin: 0 0 10px 0;"><strong style="color: #2b6cb0;">Contact Information:</strong></p>
             <ul style="list-style-type: none; padding: 0; margin: 0;">
-              <li style="margin-bottom: 8px;">📱 Phone: ${rental.customer.phone}</li>
-              <li style="margin-bottom: 8px;">📧 Email: ${rental.customer.email}</li>
+              <li style="margin-bottom: 8px;">📱 Phone: ${escapeHtml(rental.customer.phone)}</li>
+              <li style="margin-bottom: 8px;">📧 Email: ${escapeHtml(rental.customer.email)}</li>
             </ul>
           </div>
 
@@ -424,12 +519,10 @@ export async function POST(request: Request) {
       });
     }
 
+    // Detail stays in the logs — Mongoose validation and MongoServerError
+    // messages expose collection names, field paths and index names.
     return NextResponse.json(
-      {
-        message: "Failed to save booking",
-        error: error instanceof Error ? error.message : "Unknown error",
-        timestamp: new Date().toISOString(),
-      },
+      { message: "Failed to save booking" },
       { status: 500 },
     );
   }

@@ -4,6 +4,12 @@ import { LeaseInquiry } from "@/models/leaseInquiry";
 import { leaseTiers, type LeaseTierId } from "@/lib/lease-data";
 import { Resend } from "resend";
 import twilio from "twilio";
+import { guardPublicWrite } from "@/lib/api-guard";
+import {
+  escapeHtml,
+  firstIssueMessage,
+  leaseInquirySchema,
+} from "@/lib/validation";
 
 const tierNameById = (id: string) =>
   leaseTiers.find((t) => t.id === (id as LeaseTierId))?.name ?? id;
@@ -14,10 +20,36 @@ const tierNameById = (id: string) =>
  */
 export async function POST(request: Request) {
   try {
-    const data = await request.json();
+    const guard = await guardPublicWrite(request, {
+      route: "lease-inquiries",
+      limit: 5,
+      windowSeconds: 600,
+    });
+    if (!guard.ok) return guard.response;
+
+    const parsed = leaseInquirySchema.safeParse(guard.data);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { message: firstIssueMessage(parsed.error) },
+        { status: 400 },
+      );
+    }
+
     await dbConnect();
 
-    const inquiry = await LeaseInquiry.create(data);
+    // Explicit fields only — `LeaseInquiry.create(rawBody)` let callers set
+    // `status` and the timestamps.
+    const inquiry = await LeaseInquiry.create({
+      businessName: parsed.data.businessName,
+      businessType: parsed.data.businessType,
+      contactName: parsed.data.contactName,
+      email: parsed.data.email,
+      phone: parsed.data.phone,
+      address: parsed.data.address,
+      preferredTerm: parsed.data.preferredTerm,
+      machinesOfInterest: parsed.data.machinesOfInterest,
+      message: parsed.data.message,
+    });
 
     const machinesList: string = (inquiry.machinesOfInterest ?? [])
       .map(tierNameById)
@@ -66,15 +98,15 @@ export async function POST(request: Request) {
             <div style="background-color: #fff; padding: 15px; border-radius: 6px; margin: 20px 0; border: 1px solid #e2e8f0;">
               <p style="margin: 0 0 10px 0;"><strong style="color: #2b6cb0;">Business Details:</strong></p>
               <ul style="list-style-type: none; padding: 0; margin: 0;">
-                <li style="margin-bottom: 8px;"><strong>Business:</strong> ${inquiry.businessName}</li>
-                <li style="margin-bottom: 8px;"><strong>Type:</strong> ${inquiry.businessType}</li>
-                <li style="margin-bottom: 8px;"><strong>Contact:</strong> ${inquiry.contactName}</li>
-                <li style="margin-bottom: 8px;"><strong>Email:</strong> ${inquiry.email}</li>
-                <li style="margin-bottom: 8px;"><strong>Phone:</strong> ${inquiry.phone}</li>
-                <li style="margin-bottom: 8px;"><strong>Address:</strong> ${inquiry.address.street}, ${inquiry.address.city}, ${inquiry.address.state} ${inquiry.address.zip}</li>
-                <li style="margin-bottom: 8px;"><strong>Preferred Term:</strong> ${inquiry.preferredTerm}</li>
-                <li style="margin-bottom: 8px;"><strong>Machines of Interest:</strong> ${machinesList || "(none specified)"}</li>
-                <li style="margin-bottom: 8px;"><strong>Message:</strong> ${inquiry.message || "(none)"}</li>
+                <li style="margin-bottom: 8px;"><strong>Business:</strong> ${escapeHtml(inquiry.businessName)}</li>
+                <li style="margin-bottom: 8px;"><strong>Type:</strong> ${escapeHtml(inquiry.businessType)}</li>
+                <li style="margin-bottom: 8px;"><strong>Contact:</strong> ${escapeHtml(inquiry.contactName)}</li>
+                <li style="margin-bottom: 8px;"><strong>Email:</strong> ${escapeHtml(inquiry.email)}</li>
+                <li style="margin-bottom: 8px;"><strong>Phone:</strong> ${escapeHtml(inquiry.phone)}</li>
+                <li style="margin-bottom: 8px;"><strong>Address:</strong> ${escapeHtml(inquiry.address.street)}, ${escapeHtml(inquiry.address.city)}, ${escapeHtml(inquiry.address.state)} ${escapeHtml(inquiry.address.zip)}</li>
+                <li style="margin-bottom: 8px;"><strong>Preferred Term:</strong> ${escapeHtml(inquiry.preferredTerm)}</li>
+                <li style="margin-bottom: 8px;"><strong>Machines of Interest:</strong> ${escapeHtml(machinesList) || "(none specified)"}</li>
+                <li style="margin-bottom: 8px;"><strong>Message:</strong> ${escapeHtml(inquiry.message) || "(none)"}</li>
                 <li style="margin-bottom: 8px;"><strong>Submitted:</strong> ${new Date().toLocaleString()}</li>
               </ul>
             </div>
@@ -96,12 +128,10 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error("Error creating lease inquiry:", error);
 
+    // Detail stays in the logs rather than going back to the caller.
     if (error instanceof Error && error.name === "ValidationError") {
       return NextResponse.json(
-        {
-          message: "Invalid lease inquiry data",
-          details: error.message,
-        },
+        { message: "Invalid lease inquiry data" },
         { status: 400 },
       );
     }

@@ -3,6 +3,8 @@ import dbConnect from "@/lib/mongodb";
 import { Contact } from "@/models/contact";
 import { Resend } from "resend";
 import twilio from "twilio";
+import { guardPublicWrite } from "@/lib/api-guard";
+import { contactSchema, escapeHtml, firstIssueMessage } from "@/lib/validation";
 
 /**
  * API route for submitting contact form
@@ -10,11 +12,32 @@ import twilio from "twilio";
  */
 export async function POST(request: Request) {
   try {
-    const data = await request.json();
+    const guard = await guardPublicWrite(request, {
+      route: "contacts",
+      limit: 5,
+      windowSeconds: 600,
+    });
+    if (!guard.ok) return guard.response;
+
+    const parsed = contactSchema.safeParse(guard.data);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { message: firstIssueMessage(parsed.error) },
+        { status: 400 },
+      );
+    }
+
     await dbConnect();
 
-    // Create the contact
-    const contact = await Contact.create(data);
+    // Explicit fields only — `Contact.create(rawBody)` let callers set
+    // `status`, `createdAt` and anything else the schema declares.
+    const contact = await Contact.create({
+      name: parsed.data.name,
+      email: parsed.data.email,
+      phone: parsed.data.phone,
+      eventDate: parsed.data.eventDate,
+      message: parsed.data.message,
+    });
 
     // Send SMS notification if Twilio credentials are configured
     const accountSid = process.env.TWILIO_ACCOUNT_SID;
@@ -62,11 +85,11 @@ export async function POST(request: Request) {
             <div style="background-color: #fff; padding: 15px; border-radius: 6px; margin: 20px 0; border: 1px solid #e2e8f0;">
               <p style="margin: 0 0 10px 0;"><strong style="color: #2b6cb0;">Contact Details:</strong></p>
               <ul style="list-style-type: none; padding: 0; margin: 0;">
-                <li style="margin-bottom: 8px;"><strong>Name:</strong> ${contact.name}</li>
-                <li style="margin-bottom: 8px;"><strong>Email:</strong> ${contact.email}</li>
-                <li style="margin-bottom: 8px;"><strong>Phone:</strong> ${contact.phone}</li>
-                <li style="margin-bottom: 8px;"><strong>Event Date:</strong> ${contact.eventDate}</li>
-                <li style="margin-bottom: 8px;"><strong>Message:</strong> ${contact.message}</li>
+                <li style="margin-bottom: 8px;"><strong>Name:</strong> ${escapeHtml(contact.name)}</li>
+                <li style="margin-bottom: 8px;"><strong>Email:</strong> ${escapeHtml(contact.email)}</li>
+                <li style="margin-bottom: 8px;"><strong>Phone:</strong> ${escapeHtml(contact.phone)}</li>
+                <li style="margin-bottom: 8px;"><strong>Event Date:</strong> ${escapeHtml(contact.eventDate)}</li>
+                <li style="margin-bottom: 8px;"><strong>Message:</strong> ${escapeHtml(contact.message)}</li>
                 <li style="margin-bottom: 8px;"><strong>Submitted:</strong> ${new Date().toLocaleString()}</li>
               </ul>
             </div>
@@ -87,13 +110,11 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error("Error creating contact:", error);
 
-    // Check for validation errors
+    // Detail stays in the logs — Mongoose validation messages expose field
+    // paths and index names.
     if (error instanceof Error && error.name === "ValidationError") {
       return NextResponse.json(
-        {
-          message: "Invalid contact data",
-          details: error.message,
-        },
+        { message: "Invalid contact data" },
         { status: 400 },
       );
     }

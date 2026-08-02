@@ -10,7 +10,17 @@ const compat = new FlatCompat({
 });
 
 const eslintConfig = [
+  {
+    // Without this ESLint walks the build output and reports thousands of
+    // bogus errors in minified chunks.
+    ignores: [".next/**", "out/**", "build/**", "coverage/**", "next-env.d.ts"],
+  },
   ...compat.extends("next/core-web-vitals", "next/typescript"),
+  {
+    // CommonJS config files at the repo root legitimately use require().
+    files: ["*.js", "*.cjs"],
+    rules: { "@typescript-eslint/no-require-imports": "off" },
+  },
 ];
 
 export default eslintConfig;
