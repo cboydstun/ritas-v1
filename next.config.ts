@@ -43,13 +43,20 @@ export const securityHeaders = [
     // conversion tags in GTM container GTM-NRQ9HDL9 (AW-16908257875) report,
     // and where GA4's Google Signals does its cookie matching. They fail the
     // same silent way if unlisted.
+    //
+    // gstatic.com serves the Google Ads call-tracking loader
+    // (www.gstatic.com/wcm/loader.js, Website Call Metrics — the phone-number
+    // swap). Nothing in this repo requests it; the GTM container injects it at
+    // runtime, so it will never turn up in a grep of src/. www.google.com is
+    // where Ads posts conversions (/pagead/1p-conversion, /ccm/collect) and
+    // where that loader reports calls.
     value: `
       default-src 'self';
-      script-src 'self' 'unsafe-inline' https://*.google-analytics.com https://*.googletagmanager.com https://www.googleadservices.com;
+      script-src 'self' 'unsafe-inline' https://*.google-analytics.com https://*.googletagmanager.com https://www.googleadservices.com https://*.gstatic.com;
       style-src 'self' 'unsafe-inline';
-      img-src 'self' data: https://*.google-analytics.com https://google-analytics.com https://*.googletagmanager.com https://*.analytics.google.com https://analytics.google.com https://www.google.com https://*.doubleclick.net https://doubleclick.net https://www.googleadservices.com;
+      img-src 'self' data: https://*.google-analytics.com https://google-analytics.com https://*.googletagmanager.com https://*.analytics.google.com https://analytics.google.com https://www.google.com https://*.doubleclick.net https://doubleclick.net https://www.googleadservices.com https://*.gstatic.com;
       font-src 'self';
-      connect-src 'self' https://*.google-analytics.com https://google-analytics.com https://*.googletagmanager.com https://*.analytics.google.com https://analytics.google.com https://*.doubleclick.net https://doubleclick.net https://www.googleadservices.com;
+      connect-src 'self' https://*.google-analytics.com https://google-analytics.com https://*.googletagmanager.com https://*.analytics.google.com https://analytics.google.com https://*.doubleclick.net https://doubleclick.net https://www.googleadservices.com https://www.google.com https://*.gstatic.com;
       frame-src 'self' https://*.googletagmanager.com https://www.google.com https://*.doubleclick.net https://www.googleadservices.com;
       object-src 'none';
       base-uri 'self';

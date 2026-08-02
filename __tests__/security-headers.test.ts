@@ -117,6 +117,23 @@ describe("Content-Security-Policy", () => {
         permits("script-src", "https://www.googleadservices.com/pagead/conversion.js"),
       ).toBe(true);
     });
+
+    // Injected by the GTM container, never by our own code, so a repo grep
+    // gives no warning that this origin is load-bearing.
+    it("allows the call-tracking (WCM) loader", () => {
+      expect(permits("script-src", "https://www.gstatic.com/wcm/loader.js")).toBe(
+        true,
+      );
+    });
+
+    it("allows conversion beacons to google.com", () => {
+      expect(
+        permits(
+          "connect-src",
+          "https://www.google.com/pagead/1p-conversion/16908257875/",
+        ),
+      ).toBe(true);
+    });
   });
 
   it("still refuses an unrelated third-party origin", () => {
