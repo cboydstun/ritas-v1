@@ -1,6 +1,7 @@
 import "./globals.css";
 import { Metadata } from "next";
 import { Poppins } from "next/font/google";
+import { SITE_URL } from "@/lib/site";
 
 const poppins = Poppins({
   subsets: ["latin"],
@@ -11,9 +12,7 @@ const poppins = Poppins({
 
 export const metadata: Metadata = {
   metadataBase: new URL(
-    process.env.NODE_ENV === "production"
-      ? "https://satxritas.com"
-      : "http://localhost:3000",
+    process.env.NODE_ENV === "production" ? SITE_URL : "http://localhost:3000",
   ),
   title: "Ritas Rentals",
   description:

@@ -1,6 +1,7 @@
 import { Metadata } from "next";
 import Link from "next/link";
 import BookingCTA from "@/components/BookingCTA";
+import { SITE_URL } from "@/lib/site";
 
 // Add JSON-LD structured data for Article
 const jsonLd = {
@@ -10,25 +11,25 @@ const jsonLd = {
     "About SATX Ritas Rentals - San Antonio's Premium Frozen Drink Machine Rental Service",
   description:
     "Learn about SATX Ritas Rentals, our story, values, and commitment to creating unforgettable events in San Antonio with premium frozen drink machines.",
-  image: "https://satxritas.com/og-image.jpg",
+  image: `${SITE_URL}/og-image.jpg`,
   datePublished: "2024-01-01T00:00:00+00:00",
   dateModified: new Date().toISOString(),
   author: {
     "@type": "Organization",
     name: "SATX Ritas Rentals",
-    url: "https://satxritas.com",
+    url: SITE_URL,
   },
   publisher: {
     "@type": "Organization",
     name: "SATX Ritas Rentals",
     logo: {
       "@type": "ImageObject",
-      url: "https://satxritas.com/og-image.jpg",
+      url: `${SITE_URL}/og-image.jpg`,
     },
   },
   mainEntityOfPage: {
     "@type": "WebPage",
-    "@id": "https://satxritas.com/about",
+    "@id": `${SITE_URL}/about`,
   },
 };
 

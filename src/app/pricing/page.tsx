@@ -5,6 +5,7 @@ import { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
 import BookingCTA from "@/components/BookingCTA";
+import { SITE_URL } from "@/lib/site";
 
 // Add JSON-LD structured data for products
 // Fix: calculatePrice now accepts MixerType[] (array), not a single MixerType string
@@ -16,7 +17,7 @@ const jsonLd = {
       "@type": "Product",
       name: machinePackages[0].name,
       description: machinePackages[0].description,
-      image: "https://satxritas.com/og-image.jpg",
+      image: `${SITE_URL}/og-image.jpg`,
       offers: [
         {
           "@type": "Offer",
@@ -64,7 +65,7 @@ const jsonLd = {
       "@type": "Product",
       name: machinePackages[1].name,
       description: machinePackages[1].description,
-      image: "https://satxritas.com/og-image.jpg",
+      image: `${SITE_URL}/og-image.jpg`,
       offers: [
         {
           "@type": "Offer",
@@ -116,7 +117,7 @@ const jsonLd = {
       "@type": "Product",
       name: machinePackages[2].name,
       description: machinePackages[2].description,
-      image: "https://satxritas.com/og-image.jpg",
+      image: `${SITE_URL}/og-image.jpg`,
       offers: [
         {
           "@type": "Offer",

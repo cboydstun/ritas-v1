@@ -1,3 +1,5 @@
+import { SITE_URL } from "@/lib/site";
+
 export function generateOrderJsonLd(orderId: string, machineType: string) {
   return {
     "@context": "https://schema.org",
@@ -7,7 +9,7 @@ export function generateOrderJsonLd(orderId: string, machineType: string) {
     merchant: {
       "@type": "Organization",
       name: "SATX Ritas Rentals",
-      logo: "https://satxritas.com/og-image.jpg",
+      logo: `${SITE_URL}/og-image.jpg`,
     },
     acceptedOffer: {
       "@type": "Offer",
@@ -20,7 +22,7 @@ export function generateOrderJsonLd(orderId: string, machineType: string) {
     },
     potentialAction: {
       "@type": "ViewAction",
-      target: "https://satxritas.com/contact",
+      target: `${SITE_URL}/contact`,
     },
   };
 }

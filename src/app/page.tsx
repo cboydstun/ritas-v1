@@ -4,17 +4,18 @@ import SocialProofSection from "@/components/home/SocialProofSection";
 import AboutSection from "@/components/home/AboutSection";
 import MapSection from "@/components/home/MapSection";
 import BookingCTA from "@/components/BookingCTA";
+import { SITE_URL } from "@/lib/site";
 
 // Add JSON-LD structured data for LocalBusiness
 const jsonLd = {
   "@context": "https://schema.org",
   "@type": "LocalBusiness",
   name: "SATX Ritas Rentals",
-  image: "https://satxritas.com/og-image.jpg",
+  image: `${SITE_URL}/og-image.jpg`,
   description:
     "Premium frozen drink machine rentals in San Antonio, TX. Perfect for parties, weddings, and events.",
-  "@id": "https://satxritas.com",
-  url: "https://satxritas.com",
+  "@id": SITE_URL,
+  url: SITE_URL,
   telephone: "+1-512-210-0194",
   email: "satxbounce@gmail.com",
   priceRange: "$$",

@@ -6,7 +6,12 @@
  * preview or local build. Page-level canonical URLs resolve against
  * `metadataBase` in `app/layout.tsx` instead, which is environment-aware.
  */
-export const SITE_URL = "https://satxritas.com";
+/**
+ * Must be the host that actually serves pages: the apex `satxritas.com`
+ * issues a 308 to `www`, so emitting the apex in canonicals, the sitemap and
+ * JSON-LD `@id`s pointed every machine-readable reference at a redirect.
+ */
+export const SITE_URL = "https://www.satxritas.com";
 
 /** Stable schema.org `@id` for the LocalBusiness node shared across pages. */
 export const BUSINESS_ID = `${SITE_URL}/#business`;

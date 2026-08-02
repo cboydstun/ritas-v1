@@ -1,6 +1,7 @@
 import { Metadata } from "next";
 import ContactForm from "@/components/contact/ContactForm";
 import BookingCTA from "@/components/BookingCTA";
+import { SITE_URL } from "@/lib/site";
 
 // Add JSON-LD structured data for contact page
 const jsonLd = {
@@ -12,7 +13,7 @@ const jsonLd = {
   mainEntity: {
     "@type": "LocalBusiness",
     name: "SATX Ritas Rentals",
-    image: "https://satxritas.com/og-image.jpg",
+    image: `${SITE_URL}/og-image.jpg`,
     telephone: "+1-512-210-0194",
     email: "satxbounce@gmail.com",
     openingHoursSpecification: [
@@ -50,7 +51,7 @@ const jsonLd = {
       "@type": "ReserveAction",
       target: {
         "@type": "EntryPoint",
-        urlTemplate: "https://satxritas.com/order",
+        urlTemplate: `${SITE_URL}/order`,
         inLanguage: "en-US",
         actionPlatform: [
           "http://schema.org/DesktopWebPlatform",

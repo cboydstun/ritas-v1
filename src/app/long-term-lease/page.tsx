@@ -3,6 +3,7 @@ import BookingCTA from "@/components/BookingCTA";
 import LeaseTierCard from "@/components/lease/LeaseTierCard";
 import LeaseInquiryForm from "@/components/lease/LeaseInquiryForm";
 import { mergeLeaseTiers } from "@/lib/lease-data";
+import { SITE_URL } from "@/lib/site";
 
 const jsonLd = {
   "@context": "https://schema.org",
@@ -18,7 +19,7 @@ const jsonLd = {
   provider: {
     "@type": "Organization",
     name: "SATX Ritas Rentals",
-    url: "https://satxritas.com",
+    url: SITE_URL,
     telephone: "+1-512-210-0194",
     email: "satxbounce@gmail.com",
     address: {
