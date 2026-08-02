@@ -49,8 +49,14 @@ export interface StepProps {
   agreedToTerms?: boolean;
   setAgreedToTerms?: (value: boolean) => void;
   onAvailabilityError?: (errorMsg: string | null) => void;
+  /**
+   * The service/military discount is no longer offered to customers — the
+   * self-serve checkbox was abused and was hard to reconcile. Nothing in the
+   * order wizard sets this. The flag survives only so admins can apply a
+   * discount by hand and so `computeOrderTotal` still honours existing
+   * bookings that carry it.
+   */
   isServiceDiscount?: boolean;
-  setIsServiceDiscount?: (value: boolean) => void;
   /** Called just before redirect to success page so the parent can clear the draft */
   onSuccess?: () => void;
   /** Delivery window start hour (0–23), defaults to 8 */

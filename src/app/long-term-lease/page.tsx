@@ -1,5 +1,4 @@
 import { Metadata } from "next";
-import Script from "next/script";
 import BookingCTA from "@/components/BookingCTA";
 import LeaseTierCard from "@/components/lease/LeaseTierCard";
 import LeaseInquiryForm from "@/components/lease/LeaseInquiryForm";
@@ -22,6 +21,14 @@ const jsonLd = {
     url: "https://satxritas.com",
     telephone: "+1-512-210-0194",
     email: "satxbounce@gmail.com",
+    address: {
+      "@type": "PostalAddress",
+      streetAddress: "5106 Stormy Autumn",
+      addressLocality: "San Antonio",
+      addressRegion: "TX",
+      postalCode: "78247",
+      addressCountry: "US",
+    },
   },
 };
 
@@ -111,8 +118,7 @@ export default async function LongTermLeasePage() {
 
   return (
     <>
-      <Script
-        id="long-term-lease-jsonld"
+      <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />

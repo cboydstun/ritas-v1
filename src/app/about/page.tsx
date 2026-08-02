@@ -1,6 +1,5 @@
 import { Metadata } from "next";
 import Link from "next/link";
-import Script from "next/script";
 import BookingCTA from "@/components/BookingCTA";
 
 // Add JSON-LD structured data for Article
@@ -42,12 +41,11 @@ export const metadata: Metadata = {
 export default function AboutPage() {
   return (
     <>
-      <Script
-        id="about-jsonld"
+      <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <div className="min-h-screen bg-gradient-to-br from-light via-margarita/10 to-teal/20 dark:from-charcoal dark:via-margarita/5 dark:to-teal/10">
+      <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-light via-margarita/10 to-teal/20 dark:from-charcoal dark:via-margarita/5 dark:to-teal/10">
         {/* Decorative Elements */}
         <div className="absolute inset-0 pointer-events-none">
           <div className="absolute top-20 left-10 w-32 h-32 bg-orange/10 dark:bg-orange/5 rounded-full blur-2xl animate-pulse" />
@@ -172,43 +170,6 @@ export default function AboutPage() {
                   See full pricing →
                 </Link>
               </p>
-            </div>
-
-            {/* Service Discount */}
-            <div className="bg-gradient-to-r from-orange/10 to-pink/10 dark:from-orange/5 dark:to-pink/5 border border-orange/20 rounded-2xl p-8 shadow-xl mb-8">
-              <div className="flex flex-col md:flex-row items-center gap-6">
-                <div className="text-5xl flex-shrink-0">🎖️</div>
-                <div>
-                  <h2 className="text-2xl font-bold text-charcoal dark:text-white mb-2">
-                    Proud to Support Our Community — 10% Off
-                  </h2>
-                  <p className="text-charcoal/70 dark:text-white/70 mb-3">
-                    We offer a{" "}
-                    <span className="font-bold text-orange">
-                      10% service discount
-                    </span>{" "}
-                    for military members, educators, police officers,
-                    firefighters, and medical professionals. Just check the
-                    discount box on the Review step when placing your order.
-                  </p>
-                  <ul className="flex flex-wrap gap-2">
-                    {[
-                      "🪖 Military",
-                      "📚 Educators",
-                      "👮 Police",
-                      "🚒 Firefighters",
-                      "🏥 Medical",
-                    ].map((group) => (
-                      <li
-                        key={group}
-                        className="px-3 py-1 bg-white/80 dark:bg-charcoal/40 rounded-full text-sm font-medium text-charcoal dark:text-white shadow-sm"
-                      >
-                        {group}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
             </div>
 
             {/* Why Choose Us Grid */}

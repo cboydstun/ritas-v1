@@ -47,7 +47,7 @@ The single source of truth for all order totals is `computeOrderTotal()` in `src
 - `serviceDiscountAmount = subtotal × discountRate` (default 10%, only if `isServiceDiscount` is set — military/service personnel perk)
 - `discountedSubtotal = subtotal − serviceDiscountAmount`
 - `processingFee = discountedSubtotal × processingFeeRate`
-- `salesTax = discountedSubtotal × salesTaxRate`
+- `salesTax = (discountedSubtotal + processingFee) × salesTaxRate` — the processing fee is a taxable line item, matching the QuickBooks invoice
 - `finalTotal = discountedSubtotal + processingFee + salesTax`
 
 Default constants: delivery $20, sales tax 8.25%, processing 3%, service discount 10%. Base machine prices come from `src/lib/rental-data.ts`. The `PricingOverrides` type in `src/lib/pricing.ts` and `SettingsOverrides` in `utils.ts` allow the admin `Settings` document to override any of these at runtime.

@@ -245,11 +245,6 @@ export default function OrderForm() {
     }
   };
 
-  // Issue 3: setIsServiceDiscount updates formData directly (no separate state or useEffect)
-  const setIsServiceDiscount = (value: boolean) => {
-    setFormData((prev) => ({ ...prev, isServiceDiscount: value }));
-  };
-
   const handleInputChange = (
     e: React.ChangeEvent<
       HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
@@ -544,8 +539,6 @@ export default function OrderForm() {
                   error={error}
                   agreedToTerms={agreedToTerms}
                   setAgreedToTerms={setAgreedToTerms}
-                  // Issue 3: pass setter that updates formData.isServiceDiscount directly
-                  setIsServiceDiscount={setIsServiceDiscount}
                   // Clear draft before redirecting to success
                   onSuccess={clearDraft}
                 />

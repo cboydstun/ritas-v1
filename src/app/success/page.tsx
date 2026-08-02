@@ -3,7 +3,6 @@
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { mixerDetails, MixerType } from "@/lib/rental-data";
-import Script from "next/script";
 import { generateOrderJsonLd } from "./jsonld";
 import { Suspense } from "react";
 
@@ -26,8 +25,7 @@ function OrderDetails() {
 
   return (
     <>
-      <Script
-        id="order-jsonld"
+      <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdData) }}
       />

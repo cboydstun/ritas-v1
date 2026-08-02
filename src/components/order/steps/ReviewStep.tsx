@@ -9,7 +9,6 @@ export default function ReviewStep({
   formData,
   agreedToTerms = false,
   setAgreedToTerms = () => {},
-  setIsServiceDiscount = () => {},
   onSuccess,
 }: StepProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -22,7 +21,6 @@ export default function ReviewStep({
     perDayRate,
     rentalDays,
     extrasTotal,
-    serviceDiscountAmount,
     salesTax,
     processingFee,
     cashPrice,

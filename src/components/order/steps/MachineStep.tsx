@@ -137,9 +137,7 @@ export default function MachineStep({
         if (fallback) {
           const pkg = machinePackages.find((p) => p.type === fallback)!;
           onInputChange(createSyntheticEvent("machineType", fallback));
-          onInputChange(
-            createSyntheticEvent("capacity", String(pkg.capacity)),
-          );
+          onInputChange(createSyntheticEvent("capacity", String(pkg.capacity)));
           onInputChange(createSyntheticEvent("selectedMixers", []));
           if (onAvailabilityError) onAvailabilityError(null);
           return;

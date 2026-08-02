@@ -74,11 +74,6 @@ const nextConfig: NextConfig = {
   },
   experimental: {
     optimizePackageImports: ["@headlessui/react", "@heroicons/react"],
-    turbo: {
-      rules: {
-        // Add any webpack loaders if needed
-      },
-    },
   },
   webpack: (config, { dev, isServer }) => {
     // Production optimizations

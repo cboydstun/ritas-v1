@@ -1,5 +1,4 @@
 import { Metadata } from "next";
-import Script from "next/script";
 import HeroSection from "@/components/home/HeroSection";
 import SocialProofSection from "@/components/home/SocialProofSection";
 import AboutSection from "@/components/home/AboutSection";
@@ -16,14 +15,15 @@ const jsonLd = {
     "Premium frozen drink machine rentals in San Antonio, TX. Perfect for parties, weddings, and events.",
   "@id": "https://satxritas.com",
   url: "https://satxritas.com",
-  telephone: "+1-210-000-0000",
+  telephone: "+1-512-210-0194",
+  email: "satxbounce@gmail.com",
   priceRange: "$$",
   address: {
     "@type": "PostalAddress",
-    streetAddress: "123 Main St",
+    streetAddress: "5106 Stormy Autumn",
     addressLocality: "San Antonio",
     addressRegion: "TX",
-    postalCode: "78201",
+    postalCode: "78247",
     addressCountry: "US",
   },
   geo: {
@@ -51,8 +51,7 @@ export const metadata: Metadata = {
 export default function Home() {
   return (
     <>
-      <Script
-        id="home-jsonld"
+      <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />

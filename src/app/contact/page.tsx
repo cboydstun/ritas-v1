@@ -1,5 +1,4 @@
 import { Metadata } from "next";
-import Script from "next/script";
 import ContactForm from "@/components/contact/ContactForm";
 import BookingCTA from "@/components/BookingCTA";
 
@@ -14,8 +13,8 @@ const jsonLd = {
     "@type": "LocalBusiness",
     name: "SATX Ritas Rentals",
     image: "https://satxritas.com/og-image.jpg",
-    telephone: "(210) 555-0123",
-    email: "info@satxritas.com",
+    telephone: "+1-512-210-0194",
+    email: "satxbounce@gmail.com",
     openingHoursSpecification: [
       {
         "@type": "OpeningHoursSpecification",
@@ -41,8 +40,10 @@ const jsonLd = {
     },
     address: {
       "@type": "PostalAddress",
+      streetAddress: "5106 Stormy Autumn",
       addressLocality: "San Antonio",
       addressRegion: "TX",
+      postalCode: "78247",
       addressCountry: "US",
     },
     potentialAction: {
@@ -73,12 +74,11 @@ export const metadata: Metadata = {
 export default function ContactPage() {
   return (
     <>
-      <Script
-        id="contact-jsonld"
+      <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <div className="min-h-screen bg-gradient-to-br from-light via-margarita/10 to-teal/20 dark:from-charcoal dark:via-margarita/5 dark:to-teal/10">
+      <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-light via-margarita/10 to-teal/20 dark:from-charcoal dark:via-margarita/5 dark:to-teal/10">
         {/* Decorative Elements */}
         <div className="absolute inset-0 pointer-events-none">
           <div className="absolute top-20 left-10 w-32 h-32 bg-orange/10 dark:bg-orange/5 rounded-full blur-2xl animate-pulse" />
@@ -181,9 +181,12 @@ export default function ContactPage() {
                       <h3 className="text-lg font-semibold text-charcoal dark:text-white">
                         Phone
                       </h3>
-                      <p className="text-charcoal/80 dark:text-white/80">
+                      <a
+                        href="tel:+15122100194"
+                        className="text-charcoal/80 dark:text-white/80 hover:text-orange transition-colors"
+                      >
                         (512) 210-0194
-                      </p>
+                      </a>
                     </div>
                   </div>
                   <div className="flex items-start">
@@ -206,9 +209,12 @@ export default function ContactPage() {
                       <h3 className="text-lg font-semibold text-charcoal dark:text-white">
                         Email
                       </h3>
-                      <p className="text-charcoal/80 dark:text-white/80">
+                      <a
+                        href="mailto:satxbounce@gmail.com"
+                        className="text-charcoal/80 dark:text-white/80 hover:text-orange transition-colors"
+                      >
                         satxbounce@gmail.com
-                      </p>
+                      </a>
                     </div>
                   </div>
                 </div>

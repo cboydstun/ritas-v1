@@ -40,8 +40,10 @@ const jsonLd = {
     priceRange: "$$",
     address: {
       "@type": "PostalAddress",
+      streetAddress: "5106 Stormy Autumn",
       addressLocality: "San Antonio",
       addressRegion: "TX",
+      postalCode: "78247",
       addressCountry: "US",
     },
   },

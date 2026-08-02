@@ -141,9 +141,9 @@ describe("isMachineAvailable", () => {
       );
 
       expect(result.available).toBe(false);
-      expect(
-        (Rental.find as jest.Mock).mock.calls[0][0].status.$in,
-      ).toEqual(expect.arrayContaining(["pending_payment"]));
+      expect((Rental.find as jest.Mock).mock.calls[0][0].status.$in).toEqual(
+        expect.arrayContaining(["pending_payment"]),
+      );
     });
 
     it("returns unavailable when inventory is 0", async () => {

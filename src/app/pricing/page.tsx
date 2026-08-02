@@ -2,7 +2,6 @@ import { machinePackages, mixerDetails } from "@/lib/rental-data";
 import { extraItems } from "@/components/order/types";
 import { calculatePrice, formatPrice } from "@/lib/pricing";
 import { Metadata } from "next";
-import Script from "next/script";
 import Link from "next/link";
 import Image from "next/image";
 import BookingCTA from "@/components/BookingCTA";
@@ -189,12 +188,11 @@ export const metadata: Metadata = {
 export default function PricingPage() {
   return (
     <>
-      <Script
-        id="pricing-jsonld"
+      <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <div className="min-h-screen bg-gradient-to-br from-light via-margarita/10 to-teal/20 dark:from-charcoal dark:via-margarita/5 dark:to-teal/10">
+      <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-light via-margarita/10 to-teal/20 dark:from-charcoal dark:via-margarita/5 dark:to-teal/10">
         {/* Decorative Elements */}
         <div className="absolute inset-0 pointer-events-none">
           <div className="absolute top-20 left-10 w-32 h-32 bg-orange/10 dark:bg-orange/5 rounded-full blur-2xl animate-pulse" />
@@ -487,45 +485,6 @@ export default function PricingPage() {
                 >
                   Add Extras to Your Order
                 </Link>
-              </div>
-            </div>
-
-            {/* Service Discount */}
-            <div className="bg-gradient-to-r from-orange/10 to-pink/10 dark:from-orange/5 dark:to-pink/5 border border-orange/20 rounded-2xl p-8 shadow-xl mb-8">
-              <div className="flex flex-col md:flex-row items-center gap-6">
-                <div className="text-5xl flex-shrink-0">🎖️</div>
-                <div>
-                  <h2 className="text-2xl font-bold text-charcoal dark:text-white mb-2">
-                    Service Discount — 10% Off
-                  </h2>
-                  <p className="text-charcoal/70 dark:text-white/70 mb-2">
-                    We&apos;re proud to offer a{" "}
-                    <span className="font-bold text-orange">
-                      10% discount on your entire order
-                    </span>{" "}
-                    for the following service professionals:
-                  </p>
-                  <ul className="flex flex-wrap gap-2 mt-3">
-                    {[
-                      "🪖 Military Members",
-                      "📚 Educators",
-                      "👮 Police Officers",
-                      "🚒 Firefighters",
-                      "🏥 Medical Professionals",
-                    ].map((group) => (
-                      <li
-                        key={group}
-                        className="px-3 py-1 bg-white/80 dark:bg-charcoal/40 rounded-full text-sm font-medium text-charcoal dark:text-white shadow-sm"
-                      >
-                        {group}
-                      </li>
-                    ))}
-                  </ul>
-                  <p className="text-xs text-charcoal/50 dark:text-white/50 mt-3">
-                    Simply check the service discount box on the Review step of
-                    your order to apply.
-                  </p>
-                </div>
               </div>
             </div>
 

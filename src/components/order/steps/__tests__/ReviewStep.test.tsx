@@ -32,7 +32,6 @@ describe("ReviewStep", () => {
   };
 
   const mockSetAgreedToTerms = jest.fn();
-  const mockSetIsServiceDiscount = jest.fn();
 
   it("renders review details", () => {
     render(
@@ -42,7 +41,6 @@ describe("ReviewStep", () => {
         error={null}
         agreedToTerms={false}
         setAgreedToTerms={mockSetAgreedToTerms}
-        setIsServiceDiscount={mockSetIsServiceDiscount}
       />,
     );
 
@@ -53,7 +51,24 @@ describe("ReviewStep", () => {
     expect(screen.getByText(/Pricing Details/i)).toBeInTheDocument();
   });
 
-  it("applies service discount when checkbox is checked", () => {
+  // The service/military discount is applied manually at invoicing time, not
+  // self-served in the wizard. This locks that in — a checkbox reappearing here
+  // would silently let customers grant themselves 10% off.
+  it("offers no self-serve service discount control", () => {
+    render(
+      <ReviewStep
+        formData={mockFormData}
+        onInputChange={jest.fn()}
+        error={null}
+        agreedToTerms={false}
+        setAgreedToTerms={mockSetAgreedToTerms}
+      />,
+    );
+
+    expect(screen.queryByLabelText(/military|service discount/i)).toBeNull();
+  });
+
+  it("still honours a service discount set outside the wizard", () => {
     const { rerender } = render(
       <ReviewStep
         formData={mockFormData}
@@ -61,24 +76,14 @@ describe("ReviewStep", () => {
         error={null}
         agreedToTerms={false}
         setAgreedToTerms={mockSetAgreedToTerms}
-        setIsServiceDiscount={mockSetIsServiceDiscount}
       />,
     );
 
-    // Get the initial total amount
-    const initialTotalText = screen.getByText(/Total Amount:/i).textContent;
     const initialTotal = parseFloat(
-      initialTotalText?.replace(/[^0-9.]/g, "") || "0",
+      screen.getByText(/Total Amount:/i).textContent?.replace(/[^0-9.]/g, "") ||
+        "0",
     );
 
-    // Find and check the service discount checkbox
-    const discountCheckbox = screen.getByLabelText(/I am a military member/i);
-    fireEvent.click(discountCheckbox);
-
-    // Verify the setIsServiceDiscount was called with true
-    expect(mockSetIsServiceDiscount).toHaveBeenCalledWith(true);
-
-    // Issue 3: discount is now driven by formData.isServiceDiscount (not a prop)
     rerender(
       <ReviewStep
         formData={{ ...mockFormData, isServiceDiscount: true }}
@@ -86,27 +91,20 @@ describe("ReviewStep", () => {
         error={null}
         agreedToTerms={false}
         setAgreedToTerms={mockSetAgreedToTerms}
-        setIsServiceDiscount={mockSetIsServiceDiscount}
       />,
     );
 
-    // Verify the discount is displayed
-    expect(screen.getByText(/Service Discount \(10%\):/i)).toBeInTheDocument();
+    const newTotal = parseFloat(
+      screen.getByText(/Total Amount:/i).textContent?.replace(/[^0-9.]/g, "") ||
+        "0",
+    );
 
-    // Get the new total amount
-    const newTotalText = screen.getByText(/Total Amount:/i).textContent;
-    const newTotal = parseFloat(newTotalText?.replace(/[^0-9.]/g, "") || "0");
-
-    // Verify the total amount is reduced
+    // Tax and fees are applied to the discounted subtotal, so the total drops by
+    // roughly the full 10%.
     expect(newTotal).toBeLessThan(initialTotal);
-
-    // Calculate expected discount: 10% of subtotal; since tax/fees are also applied to
-    // the discounted subtotal, the total difference is approximately 10% of the full total.
-    const expectedDiscount = initialTotal * 0.1;
-    const actualDiscount = initialTotal - newTotal;
-
-    // Verify the discount amount is approximately correct (within $1)
-    expect(Math.abs(actualDiscount - expectedDiscount)).toBeLessThan(1);
+    expect(Math.abs(initialTotal - newTotal - initialTotal * 0.1)).toBeLessThan(
+      1,
+    );
   });
 
   it("toggles the agreed to terms checkbox", () => {
@@ -117,7 +115,6 @@ describe("ReviewStep", () => {
         error={null}
         agreedToTerms={false}
         setAgreedToTerms={mockSetAgreedToTerms}
-        setIsServiceDiscount={mockSetIsServiceDiscount}
       />,
     );
 
