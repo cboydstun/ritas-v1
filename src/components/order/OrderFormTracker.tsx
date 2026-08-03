@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState, useRef, useCallback } from "react";
-import { OrderStep, OrderFormData } from "./types";
+import { OrderStep, OrderFormData, steps } from "./types";
+import { trackEvent } from "@/lib/analytics";
 
 interface OrderFormTrackerProps {
   currentStep: OrderStep;
@@ -74,10 +75,35 @@ export default function OrderFormTracker({
   useEffect(() => {
     // Only track if the step has changed
     if (currentStep !== lastStep) {
+      // GA4 first, and synchronously: the wizard never changes the URL, so
+      // without this GA4 sees a single /order pageview and no funnel at all.
+      // Kept out of `trackStepChange` because that awaits a lazy import and a
+      // fetch, neither of which the funnel should depend on.
+      const stepIndex = steps.findIndex((entry) => entry.id === currentStep);
+      trackEvent("order_step", {
+        step_id: currentStep,
+        step_index: stepIndex + 1,
+        step_name: steps[stepIndex]?.label ?? currentStep,
+      });
+
+      if (currentStep === "review") {
+        trackEvent("begin_checkout", {
+          value: formData.price,
+          currency: "USD",
+          machine_type: formData.machineType,
+        });
+      }
+
       trackStepChange();
       setLastStep(currentStep);
     }
-  }, [currentStep, lastStep, trackStepChange]);
+  }, [
+    currentStep,
+    lastStep,
+    trackStepChange,
+    formData.price,
+    formData.machineType,
+  ]);
 
   // Extract relevant form data for each step (without sensitive information)
   const getFormContextForStep = (step: OrderStep, formData: OrderFormData) => {

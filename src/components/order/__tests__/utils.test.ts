@@ -5,6 +5,7 @@ import {
   validateDeliveryTime,
   computeOrderTotal,
   calculateRentalDays,
+  buildSuccessUrl,
 } from "@/components/order/utils";
 import { OrderFormData } from "@/components/order/types";
 
@@ -260,5 +261,38 @@ describe("computeOrderTotal with settings overrides", () => {
       expect(result.rentalDays).toBe(2);
       expect(result.extrasTotal).toBeCloseTo(19.95, 2);
     });
+  });
+});
+
+describe("buildSuccessUrl", () => {
+  it("carries the booking id and machine type", () => {
+    const url = buildSuccessUrl("bk_test_123", "double");
+
+    expect(url).toContain("/success?");
+    expect(url).toContain("bookingId=bk_test_123");
+    expect(url).toContain("machineType=double");
+  });
+
+  it("joins selected mixers into one param", () => {
+    const url = buildSuccessUrl("bk_1", "triple", ["margarita", "pina-colada"]);
+
+    expect(url).toContain("mixers=margarita%2Cpina-colada");
+  });
+
+  it("omits the mixers param when none are selected", () => {
+    expect(buildSuccessUrl("bk_1", "single", [])).not.toContain("mixers");
+    expect(buildSuccessUrl("bk_1", "single")).not.toContain("mixers");
+  });
+
+  // GA4 records the whole query string as page_location. A customer name here
+  // ships PII to Google and makes every booking its own unique page path,
+  // which is what stopped /success from working as a conversion page.
+  it("emits nothing beyond the three params /success reads", () => {
+    const url = buildSuccessUrl("bk_1", "double", ["margarita"]);
+    const keys = Array.from(
+      new URL(url, "https://www.satxritas.com").searchParams.keys(),
+    );
+
+    expect(keys.sort()).toEqual(["bookingId", "machineType", "mixers"]);
   });
 });

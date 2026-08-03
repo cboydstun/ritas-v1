@@ -68,12 +68,11 @@ export const metadata: Metadata = {
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import ThemeWrapper from "@/components/ThemeWrapper";
-import GoogleAnalytics from "@/components/GoogleAnalytics";
-import GoogleTagManager, {
-  GoogleTagManagerNoscript,
-} from "@/components/GoogleTagManager";
+import AnalyticsGate from "@/components/AnalyticsGate";
 import SessionProvider from "@/components/SessionProvider";
 import FingerprintTracker from "@/components/FingerprintTracker";
+import ContactLinkTracker from "@/components/ContactLinkTracker";
+import CookieConsent from "@/components/CookieConsent";
 
 export default function RootLayout({
   children,
@@ -89,16 +88,18 @@ export default function RootLayout({
         className={`${poppins.className} flex flex-col min-h-screen bg-white dark:bg-charcoal dark:text-white`}
       >
         {/* Analytics belongs inside <body>; between <html> and <body> is
-            invalid markup that only worked via React 19 script hoisting. */}
-        <GoogleTagManagerNoscript />
-        <GoogleAnalytics />
-        <GoogleTagManager />
+            invalid markup that only worked via React 19 script hoisting.
+            AnalyticsGate skips the admin area, the way FingerprintTracker
+            already does. */}
+        <AnalyticsGate />
         <SessionProvider>
           <ThemeWrapper>
             <Navigation />
             <main className="flex-grow">{children}</main>
             <Footer />
             <FingerprintTracker />
+            <ContactLinkTracker />
+            <CookieConsent />
           </ThemeWrapper>
         </SessionProvider>
       </body>

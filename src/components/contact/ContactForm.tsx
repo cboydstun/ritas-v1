@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { trackEvent } from "@/lib/analytics";
 
 export default function ContactForm() {
   const [formData, setFormData] = useState({
@@ -32,6 +33,10 @@ export default function ContactForm() {
       const data = await response.json();
 
       if (response.ok) {
+        // The form succeeds inline with no navigation, so without this GA4
+        // never sees the lead. No field values are sent — they are all PII.
+        trackEvent("generate_lead", { lead_type: "contact" });
+
         setSubmitStatus({
           type: "success",
           message: "Thank you! Your message has been sent successfully.",

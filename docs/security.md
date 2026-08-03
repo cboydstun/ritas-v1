@@ -39,39 +39,73 @@ Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
 
 ### Content Security Policy (CSP)
 
-A comprehensive CSP is implemented to prevent XSS attacks and other code injection vulnerabilities:
+The policy is hand-written in `next.config.ts` and applies to every route. Treat
+that file as the source of truth; the summary below is the intent behind it.
 
-```
-Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.paypal.com https://www.google-analytics.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://*.paypal.com https://www.google-analytics.com; font-src 'self'; connect-src 'self' https://*.paypal.com https://www.google-analytics.com; frame-src 'self' https://*.paypal.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'; block-all-mixed-content; upgrade-insecure-requests;
-```
+Directives, and what each one exists for:
 
-Key directives:
+- `default-src 'self'` — everything not listed below is same-origin only.
+- `script-src` — same origin, `'unsafe-inline'`, and the Google analytics/ads
+  origins. `'unsafe-inline'` is still required by the gtag/GTM bootstrap and the
+  JSON-LD blocks; moving those to a nonce is the outstanding hardening step.
+  `'unsafe-eval'` is **not** granted.
+- `style-src` — same origin plus inline styles.
+- `img-src` — same origin, `data:` URIs, and the same Google origins (the Ads
+  remarketing pixel is an image).
+- `font-src 'self'` — fonts are self-hosted via `next/font`.
+- `connect-src` — where gtag and the Ads tags beacon.
+- `frame-src` — the GTM noscript iframe, the DoubleClick conversion linker, and
+  the Ads call-tracking frames.
+- `object-src 'none'`, `base-uri 'self'`, `form-action 'self'`,
+  `frame-ancestors 'self'`, `upgrade-insecure-requests`.
 
-- `default-src 'self'`: Only allow resources from the same origin
-- `script-src`: Restricts JavaScript sources to same origin, inline scripts, and specific domains (PayPal, Google Analytics)
-- `style-src`: Allows styles from same origin and inline styles
-- `img-src`: Allows images from same origin, data URIs, and specific domains
-- `connect-src`: Controls which URLs can be loaded using script interfaces
-- `frame-src`: Restricts iframe sources
-- `object-src 'none'`: Prevents object, embed, and applet elements
-- `block-all-mixed-content`: Blocks mixed (HTTP/HTTPS) content
-- `upgrade-insecure-requests`: Upgrades HTTP requests to HTTPS
+**Adding any third-party script, iframe, font, or fetch target means editing
+this policy**, or it fails silently in the browser with nothing visible
+server-side.
+
+Two rules learned the hard way, both encoded as assertions in
+`__tests__/security-headers.test.ts`:
+
+1. A `*.example.com` wildcard matches subdomains **only**, never the bare
+   registrable domain. `https://*.analytics.google.com` does not permit
+   `analytics.google.com`. List both forms for every analytics origin.
+2. Keep the Google origins symmetric across `script-src`, `img-src` and
+   `connect-src`. Google moves an endpoint between request types without
+   warning; a host present in three directives and absent from the fourth is
+   how collection died for two weeks in July 2026.
 
 ### Additional Security Headers
 
 ```
-X-XSS-Protection: 1; mode=block
 X-Content-Type-Options: nosniff
 Referrer-Policy: strict-origin-when-cross-origin
 X-Frame-Options: SAMEORIGIN
 Permissions-Policy: camera=(), microphone=(), geolocation=()
 ```
 
-- `X-XSS-Protection`: Enables browser's XSS filtering
 - `X-Content-Type-Options`: Prevents MIME type sniffing
 - `Referrer-Policy`: Controls referrer information
 - `X-Frame-Options`: Prevents clickjacking by restricting framing
 - `Permissions-Policy`: Restricts access to browser features
+
+`X-XSS-Protection` is deliberately **not** sent. The header is unsupported in
+every current browser and its legacy auditor introduced vulnerabilities of its
+own; the CSP replaces it.
+
+### Analytics privacy
+
+- Nothing customer-identifying may be placed in a URL. GA4 records the full
+  query string as `page_location`, so PII there is both a Google ToS violation
+  and a reporting problem (each value becomes its own page path). The
+  `/success` redirect carries `bookingId`, `machineType` and `mixers` only.
+- GA4 events are emitted exclusively through `trackEvent()` in
+  `src/lib/analytics.ts`: `purchase`, `begin_checkout`, `order_step`,
+  `generate_lead`, `contact_click`, `file_download`. Event parameters carry
+  segmentation (machine type, lead type, step) and never contact details.
+- `AnalyticsGate` keeps the tags off `/admin/*`.
+- Consent Mode v2 defaults to `granted` and `CookieConsent` offers an opt-out,
+  matching the Texas TDPSA opt-out regime. Serving EU traffic would require
+  flipping the defaults in `GoogleAnalytics.tsx` to `denied`.
 
 ## Implementation Details
 

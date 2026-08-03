@@ -3,8 +3,9 @@ import Image from "next/image";
 import { StepProps } from "../types";
 import { mixerDetails, MixerType } from "@/lib/rental-data";
 import { formatPrice } from "@/lib/pricing";
-import { computeOrderTotal } from "../utils";
+import { computeOrderTotal, buildSuccessUrl } from "../utils";
 import { buildExtrasCatalog } from "@/lib/extras-catalog";
+import { trackEvent } from "@/lib/analytics";
 
 export default function ReviewStep({
   formData,
@@ -82,24 +83,47 @@ export default function ReviewStep({
 
       const result = await response.json();
 
-      // Build URL parameters for the success page
-      const params = new URLSearchParams();
-      params.append("bookingId", result.bookingId);
-      params.append("machineType", formData.machineType);
-      params.append("customerName", formData.customer.name);
-      params.append("rentalDate", formData.rentalDate);
-      params.append("total", finalTotal.toFixed(2));
-
-      // Add mixers to URL parameters
-      if (formData.selectedMixers.length > 0) {
-        params.append("mixers", formData.selectedMixers.join(","));
-      }
+      // The only place a booking's id and total exist together on the client,
+      // so it is the only place `purchase` can be emitted. gtag sends via
+      // sendBeacon, so the hit survives the navigation below.
+      trackEvent("purchase", {
+        transaction_id: result.bookingId,
+        value: finalTotal,
+        currency: "USD",
+        tax: salesTax + processingFee,
+        shipping: deliveryFee,
+        machine_type: formData.machineType,
+        items: [
+          {
+            item_id: `machine-${formData.machineType}`,
+            item_name: `${formData.machineType} margarita machine`,
+            item_category: "machine",
+            price: perDayRate,
+            quantity: rentalDays,
+          },
+          ...formData.selectedExtras.map((extra) => {
+            const item = extrasCatalog.get(extra.id);
+            return {
+              item_id: extra.id,
+              item_name: item?.name ?? extra.id,
+              item_category: "extra",
+              price: item?.price ?? 0,
+              quantity: extra.quantity ?? 1,
+            };
+          }),
+        ],
+      });
 
       // Clear the saved draft before redirecting so a future visit starts fresh
       onSuccess?.();
 
-      // Redirect to success page immediately (no alert)
-      window.location.href = `/success?${params.toString()}`;
+      // Redirect to success page immediately (no alert). buildSuccessUrl owns
+      // which params are safe to put in a URL GA4 will record — see its docs.
+      window.location.href = buildSuccessUrl(
+        result.bookingId,
+        formData.machineType,
+        formData.selectedMixers,
+      );
     } catch (error) {
       console.error("Booking submission error:", error);
       setSubmitError(

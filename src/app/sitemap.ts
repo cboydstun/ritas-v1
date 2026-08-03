@@ -1,8 +1,8 @@
 import type { MetadataRoute } from "next";
 import { SITE_URL } from "@/lib/site";
 
-// Public, indexable routes only — /success and /test-success are post-checkout
-// landing pages, and /admin + /api are disallowed in robots.ts.
+// Public, indexable routes only — /success is a post-checkout landing page,
+// and /admin + /api are disallowed in robots.ts.
 const routes: Array<{
   path: string;
   priority: number;

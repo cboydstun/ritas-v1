@@ -257,3 +257,29 @@ export function computeOrderTotal(
     finalTotal,
   };
 }
+
+/**
+ * The post-checkout redirect target.
+ *
+ * Deliberately narrow: `/success` reads only these three params, and GA4
+ * records the whole query string as `page_location`. Adding a customer's name,
+ * email or the order total here ships PII to Google (a ToS violation they can
+ * purge data over) and makes every booking its own unique page path, which
+ * destroys `/success` as a conversion page. Keep this list in sync with what
+ * `src/app/success/page.tsx` actually reads — nothing more.
+ */
+export function buildSuccessUrl(
+  bookingId: string,
+  machineType: string,
+  selectedMixers: string[] = [],
+): string {
+  const params = new URLSearchParams();
+  params.append("bookingId", bookingId);
+  params.append("machineType", machineType);
+
+  if (selectedMixers.length > 0) {
+    params.append("mixers", selectedMixers.join(","));
+  }
+
+  return `/success?${params.toString()}`;
+}

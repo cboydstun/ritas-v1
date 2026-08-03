@@ -132,6 +132,116 @@ describe("OrderFormTracker", () => {
     expect(body.fingerprintHash).toBe("test-fingerprint-hash");
   });
 
+  // The wizard never changes the URL, so GA4 has no funnel without these.
+  describe("GA4 events", () => {
+    let gtag: jest.Mock;
+
+    beforeEach(() => {
+      gtag = jest.fn();
+      window.gtag = gtag;
+    });
+
+    afterEach(() => {
+      delete window.gtag;
+    });
+
+    const eventsNamed = (name: string) =>
+      gtag.mock.calls.filter((call) => call[0] === "event" && call[1] === name);
+
+    it("emits order_step with a 1-based index and label", async () => {
+      await act(async () => {
+        render(
+          <OrderFormTracker currentStep="details" formData={makeFormData()} />,
+        );
+      });
+
+      expect(eventsNamed("order_step")[0][2]).toEqual({
+        step_id: "details",
+        step_index: 3,
+        step_name: "Your Details",
+      });
+    });
+
+    it("emits order_step again on a step change", async () => {
+      const formData = makeFormData();
+      let rerender: ReturnType<typeof render>["rerender"];
+
+      await act(async () => {
+        ({ rerender } = render(
+          <OrderFormTracker currentStep="date" formData={formData} />,
+        ));
+      });
+
+      await act(async () => {
+        rerender(
+          <OrderFormTracker currentStep="machine" formData={formData} />,
+        );
+      });
+
+      expect(eventsNamed("order_step")).toHaveLength(2);
+      expect(eventsNamed("order_step")[1][2].step_id).toBe("machine");
+    });
+
+    it("does not re-emit when the step prop is unchanged", async () => {
+      const formData = makeFormData();
+      let rerender: ReturnType<typeof render>["rerender"];
+
+      await act(async () => {
+        ({ rerender } = render(
+          <OrderFormTracker currentStep="date" formData={formData} />,
+        ));
+      });
+
+      await act(async () => {
+        rerender(<OrderFormTracker currentStep="date" formData={formData} />);
+      });
+
+      expect(eventsNamed("order_step")).toHaveLength(1);
+    });
+
+    it("emits begin_checkout with the running total on the review step", async () => {
+      await act(async () => {
+        render(
+          <OrderFormTracker currentStep="review" formData={makeFormData()} />,
+        );
+      });
+
+      expect(eventsNamed("begin_checkout")[0][2]).toEqual({
+        value: 100,
+        currency: "USD",
+        machine_type: "double",
+      });
+    });
+
+    it.each<OrderStep>(["date", "machine", "details", "extras"])(
+      "does not emit begin_checkout on the %s step",
+      async (step) => {
+        await act(async () => {
+          render(
+            <OrderFormTracker currentStep={step} formData={makeFormData()} />,
+          );
+        });
+
+        expect(eventsNamed("begin_checkout")).toHaveLength(0);
+      },
+    );
+
+    // The fingerprint POST awaits a lazy import and can fail; the funnel must
+    // not be downstream of either.
+    it("still emits when the fingerprint POST fails", async () => {
+      global.fetch = jest.fn().mockRejectedValue(new Error("offline"));
+      jest.spyOn(console, "error").mockImplementation(() => {});
+
+      await act(async () => {
+        render(
+          <OrderFormTracker currentStep="date" formData={makeFormData()} />,
+        );
+      });
+
+      expect(eventsNamed("order_step")).toHaveLength(1);
+    });
+  });
+
   it("does not render any visible DOM output", async () => {
     let container: HTMLElement;
     await act(async () => {

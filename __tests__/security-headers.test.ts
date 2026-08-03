@@ -125,16 +125,19 @@ describe("Content-Security-Policy", () => {
 
     it("allows googleadservices", () => {
       expect(
-        permits("script-src", "https://www.googleadservices.com/pagead/conversion.js"),
+        permits(
+          "script-src",
+          "https://www.googleadservices.com/pagead/conversion.js",
+        ),
       ).toBe(true);
     });
 
     // Injected by the GTM container, never by our own code, so a repo grep
     // gives no warning that this origin is load-bearing.
     it("allows the call-tracking (WCM) loader", () => {
-      expect(permits("script-src", "https://www.gstatic.com/wcm/loader.js")).toBe(
-        true,
-      );
+      expect(
+        permits("script-src", "https://www.gstatic.com/wcm/loader.js"),
+      ).toBe(true);
     });
 
     it("allows conversion beacons to google.com", () => {
@@ -144,6 +147,38 @@ describe("Content-Security-Policy", () => {
           "https://www.google.com/pagead/1p-conversion/16908257875/",
         ),
       ).toBe(true);
+    });
+  });
+
+  // The July outage was one host present in some directives and missing from
+  // another. Rather than wait to discover which directive Google needs next,
+  // require every analytics/ads origin in all four fetch directives that can
+  // plausibly request it.
+  describe("directive symmetry", () => {
+    const origins = [
+      "https://analytics.google.com/x",
+      "https://region1.analytics.google.com/x",
+      "https://google-analytics.com/x",
+      "https://region1.google-analytics.com/x",
+      "https://www.googletagmanager.com/x",
+      "https://www.google.com/x",
+      "https://www.googleadservices.com/x",
+      "https://www.gstatic.com/x",
+      "https://googleads.g.doubleclick.net/x",
+      "https://doubleclick.net/x",
+    ];
+
+    it.each(origins)(
+      "permits %s in script-src, img-src and connect-src",
+      (url) => {
+        expect(permits("script-src", url)).toBe(true);
+        expect(permits("img-src", url)).toBe(true);
+        expect(permits("connect-src", url)).toBe(true);
+      },
+    );
+
+    it("permits gstatic in frame-src", () => {
+      expect(permits("frame-src", "https://www.gstatic.com/x")).toBe(true);
     });
   });
 

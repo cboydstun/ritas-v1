@@ -8,6 +8,7 @@ import {
   type LeaseTier,
   type LeaseTierId,
 } from "@/lib/lease-data";
+import { trackEvent } from "@/lib/analytics";
 
 interface FormState {
   businessName: string;
@@ -65,6 +66,15 @@ export default function LeaseInquiryForm({ tiers }: LeaseInquiryFormProps) {
       const data = await response.json();
 
       if (response.ok) {
+        // Emitted before the reset below, while the segmentation fields are
+        // still populated. Business type and term are not PII; the contact
+        // fields are and are deliberately left out.
+        trackEvent("generate_lead", {
+          lead_type: "lease_inquiry",
+          business_type: formData.businessType,
+          lease_term: formData.preferredTerm,
+        });
+
         setSubmitStatus({
           type: "success",
           message:

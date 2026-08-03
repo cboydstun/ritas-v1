@@ -189,6 +189,116 @@ describe("ReviewStep", () => {
     expect(screen.getByText(/Extras Total: \$19\.95/i)).toBeInTheDocument();
   });
 
+  describe("on a successful booking", () => {
+    interface PurchaseItem {
+      item_id: string;
+      item_name: string;
+      item_category: string;
+      price: number;
+      quantity: number;
+    }
+    interface PurchaseParams {
+      transaction_id: string;
+      value: number;
+      currency: string;
+      items: PurchaseItem[];
+    }
+
+    // A hand-rolled recorder rather than jest.fn(): this suite imports jest
+    // from @jest/globals, whose Mock type has no signature to infer here.
+    let gtagCalls: unknown[][];
+
+    const submit = async () => {
+      render(
+        <ReviewStep
+          formData={{
+            ...mockFormData,
+            selectedExtras: [
+              {
+                id: "table-chairs",
+                name: "Table & Chairs",
+                description: "",
+                price: 0,
+                quantity: 2,
+              },
+            ],
+          }}
+          onInputChange={jest.fn()}
+          error={null}
+          agreedToTerms={true}
+          setAgreedToTerms={mockSetAgreedToTerms}
+        />,
+      );
+
+      fireEvent.click(screen.getByRole("button", { name: /confirm booking/i }));
+      // Let the fetch promise and the handler continuation settle.
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    };
+
+    const purchaseParams = () =>
+      gtagCalls.find(
+        (call) => call[0] === "event" && call[1] === "purchase",
+      )?.[2] as PurchaseParams;
+
+    beforeEach(() => {
+      gtagCalls = [];
+      window.gtag = (...args: unknown[]) => {
+        gtagCalls.push(args);
+      };
+
+      global.fetch = (() =>
+        Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ bookingId: "bk_test_123" }),
+        })) as unknown as typeof fetch;
+
+      // jsdom's window.location cannot be stubbed and refuses the real
+      // navigation at the end of the handler, logging "Not implemented".
+      // Harmless: the redirect URL itself is covered by the buildSuccessUrl
+      // tests in ../../__tests__/utils.test.ts.
+      jest.spyOn(console, "error").mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      delete window.gtag;
+      jest.restoreAllMocks();
+    });
+
+    it("emits purchase with the booking id and server-side total", async () => {
+      await submit();
+
+      const params = purchaseParams();
+      expect(params.transaction_id).toBe("bk_test_123");
+      expect(params.currency).toBe("USD");
+      expect(params.value).toBeGreaterThan(0);
+    });
+
+    it("itemises the machine and each extra", async () => {
+      await submit();
+
+      const items = purchaseParams().items;
+      expect(items[0]).toMatchObject({
+        item_id: "machine-single",
+        item_category: "machine",
+      });
+      expect(items[1]).toMatchObject({
+        item_id: "table-chairs",
+        item_category: "extra",
+        quantity: 2,
+      });
+    });
+
+    // Extras prices are catalog-owned; anything on the item itself may have
+    // come from a tampered draft in localStorage.
+    it("prices extras from the catalog, not from the submitted item", async () => {
+      await submit();
+
+      const extra = purchaseParams().items[1];
+      expect(extra.price).toBeGreaterThan(0);
+      expect(extra.item_name).not.toBe("table-chairs");
+    });
+  });
+
   it("toggles the agreed to terms checkbox", () => {
     render(
       <ReviewStep
