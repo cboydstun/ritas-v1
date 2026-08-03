@@ -129,9 +129,27 @@ Because mixers, extras, and lease tiers are `Mixed`, Mongoose does not deep-vali
 
 ### Analytics
 
-`FingerprintTracker.tsx` uses ThumbmarkJS to generate a browser fingerprint and posts it to `/api/v1/analytics/fingerprint` (stored in `Thumbprint` model). `OrderFormTracker.tsx` does the same per order step — despite the name it touches neither `dataLayer` nor `gtag`, so the funnel is reconstructed from first-party fingerprint rows, not from GA4. `GET /api/admin/analytics` aggregates visitor and funnel data for `/admin/analytics` (Chart.js via `react-chartjs-2`).
+There are **two independent analytics pipelines**, and they do not share data.
 
-GA4 itself receives only automatic pageviews and enhanced measurement. `GoogleAnalytics.tsx` loads gtag with `NEXT_PUBLIC_GA_MEASUREMENT_ID` and is the **only** path by which GA4 gets data: the GTM container in `NEXT_PUBLIC_GTM_ID` carries just the Google Ads conversion tags, no GA4 tag, so the two do not double-count. Both components render in production builds only. No custom GA4 events are emitted anywhere in the codebase.
+**First-party (MongoDB).** `FingerprintTracker.tsx` uses ThumbmarkJS to generate a browser fingerprint and posts it to `/api/v1/analytics/fingerprint` (stored in `Thumbprint` model). `OrderFormTracker.tsx` posts the same payload per order step, plus a `formContext` and a virtual `/order/${step}` path. `GET /api/admin/analytics` aggregates visitor and funnel data for `/admin/analytics` (Chart.js via `react-chartjs-2`). This pipeline is unaffected by ad blockers and consent.
+
+**GA4 (gtag).** `GoogleAnalytics.tsx` loads gtag with `NEXT_PUBLIC_GA_MEASUREMENT_ID` and is the **only** path by which GA4 gets data: the GTM container in `NEXT_PUBLIC_GTM_ID` carries just the Google Ads conversion tags (`AW-16908257875`), no GA4 tag, so the two do not double-count. Both components render in production builds only, and `AnalyticsGate.tsx` additionally keeps them off `/admin/*`.
+
+Every GA4 event goes through `trackEvent()` in `src/lib/analytics.ts` — one typed name union, and an optional `window.gtag?.` call so a missing tag (dev, ad blocker, pre-load) is a no-op rather than a throw. Do not call `gtag` directly.
+
+| Event                            | Emitted from                                        | Notes                                                                                                                                       |
+| -------------------------------- | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `purchase`                       | `ReviewStep.tsx`, after `/api/save-booking` returns | `transaction_id` = `bookingId`, `value` = server-side `finalTotal`; items priced from `buildExtrasCatalog()`, never from the submitted item |
+| `order_step`                     | `OrderFormTracker.tsx`                              | The wizard never changes the URL, so this is the only GA4 funnel signal                                                                     |
+| `begin_checkout`                 | `OrderFormTracker.tsx`, on reaching `review`        |                                                                                                                                             |
+| `generate_lead`                  | `ContactForm.tsx`, `LeaseInquiryForm.tsx`           | Both submit inline with no navigation                                                                                                       |
+| `contact_click`, `file_download` | `ContactLinkTracker.tsx`                            | One delegated listener matching `tel:` / `mailto:` / `.pdf` hrefs                                                                           |
+
+Event params carry segmentation only (`step_id`, `step_index`, `lead_type`, `machine_type`) — **never contact details**. Those four are registered as event-scoped custom dimensions in the GA4 property; an unregistered param is dropped from reporting, and registration is not retroactive. `order_step`, `generate_lead` and `purchase` are marked as key events.
+
+**Never put customer data in a URL.** GA4 records the whole query string as `page_location`. The success redirect is built by `buildSuccessUrl()` in `src/components/order/utils.ts`, which emits only the three params `/success` reads; it previously appended `customerName`, which shipped PII to Google and made every booking its own page path.
+
+Consent Mode v2 defaults to `granted` (inlined in `GoogleAnalytics.tsx` ahead of `config`), with `CookieConsent.tsx` offering an opt-out stored under `satx-ritas-consent`. Texas TDPSA is an opt-out regime; serving EU traffic would mean flipping those defaults to `denied`.
 
 ### Reviews
 
@@ -141,7 +159,12 @@ GA4 itself receives only automatic pageviews and enhanced measurement. `GoogleAn
 
 `next.config.ts` attaches HSTS, `X-Frame-Options`, `Permissions-Policy`, and a hand-written **Content-Security-Policy** to every route. The allowlists cover Google Analytics/GTM, `doubleclick.net`/`googleadservices.com` (Google Ads conversions and GA4 Google Signals) and `google.com` frames only — **adding any new third-party script, iframe, font, or fetch target requires editing that CSP string**, or it will silently fail in the browser.
 
-Wildcard the host unless you are certain of the exact subdomain. `connect-src` once listed the bare host `www.google-analytics.com`, which does not match `region1.google-analytics.com` — the regional endpoint GA4 actually beacons to — so every hit was blocked and the property reported "data collection isn't active" with nothing failing server-side. `__tests__/security-headers.test.ts` now asserts the policy against the concrete third-party URLs to keep that class of regression loud. `script-src` still needs `'unsafe-inline'` for the GTM/GA bootstrap and JSON-LD blocks; moving those to a nonce is the outstanding hardening step. `compiler.removeConsole` strips `console.*` in production builds. Longer write-ups live in `docs/security.md` and `docs/auth-implementation.md`.
+Two rules, both learned from outages and both pinned by `__tests__/security-headers.test.ts`:
+
+1. **List the bare host alongside the wildcard.** A `*.example.com` source matches subdomains only, never the registrable domain itself. `connect-src` listed `https://*.analytics.google.com` but not `analytics.google.com`, which is where gtag actually beacons `/g/collect`, so every hit was refused and the property reported "data collection isn't active" with nothing failing server-side. gtag resolves that host from configuration Google serves at runtime, so collection died on 2026-07-14 under a frozen build, with no deploy on either side of the cliff.
+2. **Keep the Google origins symmetric across `script-src`, `img-src` and `connect-src`.** Google moves an endpoint between request types without warning — `googleads.g.doubleclick.net/pagead/viewthroughconversion` is fetched as a pixel and, with `fmt=4`, as a script. A host present in three directives and missing from the fourth is the shape of every outage so far, so the test suite requires all four.
+
+`script-src` still needs `'unsafe-inline'` for the GTM/GA bootstrap and JSON-LD blocks; moving those to a nonce is the outstanding hardening step. `compiler.removeConsole` strips `console.*` in production builds. Longer write-ups live in `docs/security.md` and `docs/auth-implementation.md`.
 
 ### Types
 
@@ -156,6 +179,8 @@ Global shared types live in `src/types/index.ts` (`MachineType`, `MixerType`, `P
 - `src/lib/extras-catalog.ts` — `buildExtrasCatalog()`, `resolveSelectedExtras()` (authoritative add-on pricing)
 - `src/lib/validation.ts` — zod request schemas, `MACHINE_CAPACITY`, `escapeHtml()`
 - `src/lib/api-guard.ts` / `src/lib/rate-limit.ts` — `guardPublicWrite()` for public write routes
+- `src/lib/analytics.ts` — `trackEvent()`, the only sanctioned path to `window.gtag`
+- `src/lib/consent.ts` — `getConsent()`, `setConsent()` (Consent Mode v2 state)
 
 ## Date Handling
 
