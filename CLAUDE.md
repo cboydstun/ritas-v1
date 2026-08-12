@@ -28,11 +28,15 @@ Tests are co-located in `__tests__/` folders next to the code they cover. Jest i
 
 `npm run typecheck` (`tsc --noEmit`) is the fast type gate. `next.config.ts` sets `typescript.ignoreBuildErrors: false`, so `npm run build` type-checks too — do not flip it back to `true` to get a build out; fix the type.
 
-`npm run lint` calls `eslint .` directly (`next lint` is removed in Next 16). `eslint.config.mjs` must keep its `ignores` entry for `.next/` — without it ESLint walks the build output and reports thousands of bogus errors in minified chunks.
+`npm run lint` calls `eslint .` directly (`next lint` is removed in Next 16). `eslint.config.mjs` must keep its `ignores` entry for `.next/` — without it ESLint walks the build output and reports thousands of bogus errors in minified chunks. It uses eslint-config-next 16's native flat configs; do not reintroduce `FlatCompat`, which throws "Converting circular structure to JSON" against v16.
+
+`react-hooks/set-state-in-effect`, `react-hooks/immutability` and `react-hooks/purity` (new in eslint-plugin-react-hooks 7) are set to **warn**. They flag 24 pre-existing sites, a mix of genuine smells and false positives for what this code does. Triaging them is an open task; the warnings are deliberate, not noise to silence.
+
+**Styling is Tailwind 4.** There is no `tailwind.config.ts` — the theme lives in an `@theme` block in `src/app/globals.css`, and `postcss.config.js` loads `@tailwindcss/postcss` (nesting and vendor prefixing are built in, so there is no `autoprefixer`). Add a colour or keyframe by adding a `--color-*` / `--animate-*` custom property there. The dark variant is `@custom-variant dark (&:where(.dark, .dark *))`, matching the class next-themes puts on `<html>`.
 
 ## Stack
 
-Next.js 15 (App Router) · React 19 · TypeScript 5 · MongoDB/Mongoose · NextAuth.js v4 · Zod · Tailwind CSS 3
+Next.js 16 (App Router) · React 19 · TypeScript 5 · MongoDB/Mongoose 9 · NextAuth.js v4 · Zod · Tailwind CSS 4
 
 ## Architecture
 
@@ -89,7 +93,9 @@ Admins manage blackout date ranges via `/admin/blackout-dates` → `GET/POST /ap
 
 ### Database
 
-MongoDB via Mongoose. Connection is cached in `src/lib/mongodb.ts` using a global variable to avoid creating new connections on every serverless invocation. Models live in `src/models/`: `rental.ts`, `thumbprint.ts`, `contact.ts`, `blackout-date.ts`, `settings.ts`, `leaseInquiry.ts`. Every model uses the `mongoose.models.X || mongoose.model(...)` guard — keep that pattern or hot reload throws `OverwriteModelError`.
+MongoDB via Mongoose 9. Connection is cached in `src/lib/mongodb.ts` using a global variable to avoid creating new connections on every serverless invocation.
+
+Mongoose 9 middleware takes no `next` callback: a `pre` hook signals completion by returning and failure by **throwing**. Do not reintroduce `function (next)` — it type-errors, and the model's validation would silently never run. `src/models/__tests__/schemas.test.ts` exercises the real schemas offline (`doc.validate()` needs no connection) and is what catches a hook that stops firing. Models live in `src/models/`: `rental.ts`, `thumbprint.ts`, `contact.ts`, `blackout-date.ts`, `settings.ts`, `leaseInquiry.ts`. Every model uses the `mongoose.models.X || mongoose.model(...)` guard — keep that pattern or hot reload throws `OverwriteModelError`.
 
 ### Authentication (Admin)
 

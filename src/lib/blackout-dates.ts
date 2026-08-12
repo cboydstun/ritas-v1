@@ -42,8 +42,15 @@ export function isDateBlackedOut(
   blackoutDates: Pick<BlackoutDateRecord, "startDate" | "endDate">[],
 ): boolean {
   return blackoutDates.some((blackout) => {
-    const startDate = new Date(blackout.startDate);
-    const endDate = blackout.endDate ? new Date(blackout.endDate) : startDate;
+    // `new Date("2026-07-04")` is UTC midnight, which is the 3rd in Central —
+    // so a record whose dates arrived as ISO strings (anything read back from
+    // the API rather than straight out of mongoose) blacked out the wrong day,
+    // one earlier, for its whole range. `createLocalDate` parses a date-only
+    // string as local midnight, matching how the value was written.
+    const startDate = toLocalDate(blackout.startDate);
+    const endDate = blackout.endDate
+      ? toLocalDate(blackout.endDate)
+      : startDate;
 
     // Set times to start of day for date comparison
     const checkDateStart = new Date(checkDate);
@@ -57,6 +64,11 @@ export function isDateBlackedOut(
 
     return checkDateStart >= blackoutStart && checkDateStart <= blackoutEnd;
   });
+}
+
+/** A stored blackout bound, however it arrived, as a local Date. */
+function toLocalDate(value: Date | string): Date {
+  return typeof value === "string" ? createLocalDate(value) : new Date(value);
 }
 
 // Helper function to format date for display (handles both UTC dates from DB and local dates)
