@@ -36,3 +36,29 @@ export const BUSINESS_PHONE_HREF = `tel:${BUSINESS_PHONE_E164}`;
  */
 export const GOOGLE_REVIEW_URL =
   process.env.NEXT_PUBLIC_GOOGLE_REVIEW_URL ?? "";
+
+/**
+ * A schema.org BreadcrumbList for a one-level-deep public page.
+ *
+ * Only the service-area pages emitted breadcrumbs, so the main funnel pages
+ * gave Google no trail to render in the SERP. Paths are absolute against
+ * SITE_URL for the same reason the sitemap and JSON-LD @ids are: a preview or
+ * local build must still describe the production URLs.
+ */
+export function breadcrumbJsonLd(
+  trail: { name: string; path: string }[],
+): Record<string, unknown> {
+  return {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Home", item: SITE_URL },
+      ...trail.map((entry, index) => ({
+        "@type": "ListItem",
+        position: index + 2,
+        name: entry.name,
+        item: `${SITE_URL}${entry.path}`,
+      })),
+    ],
+  };
+}

@@ -48,3 +48,29 @@ export async function getPublicSettings(): Promise<PublicSettings> {
     documentation: doc.documentation,
   };
 }
+
+/**
+ * `getPublicSettings` that degrades to schema defaults instead of throwing.
+ *
+ * Every page that reads settings is prerendered, and the CI build runs with a
+ * deliberately unreachable MONGODB_URI — so an uncaught read here is a red
+ * build, not a runtime error. Falling back to `{}` means the page renders the
+ * `rental-data` constants, which is what it rendered before it was wired to
+ * Settings at all. The failure is logged rather than swallowed silently.
+ *
+ * `/long-term-lease` carried its own copy of this; it is shared now that
+ * /pricing, /order and /service-area/[city] need the same behaviour.
+ */
+export async function getPublicSettingsSafe(
+  context: string,
+): Promise<PublicSettings> {
+  try {
+    return await getPublicSettings();
+  } catch (error) {
+    console.error(
+      `${context} could not read settings:`,
+      error instanceof Error ? error.name : "UnknownError",
+    );
+    return {};
+  }
+}

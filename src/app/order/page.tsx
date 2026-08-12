@@ -2,17 +2,13 @@ import OrderForm from "@/components/order/OrderForm";
 import { Suspense } from "react";
 import { Metadata } from "next";
 import { machinePackages } from "@/lib/rental-data";
-import { calculatePrice } from "@/lib/pricing";
-import { BUSINESS_ID, SITE_URL } from "@/lib/site";
-
-const round = (value: number) => Number(value.toFixed(2));
-
-// Cheapest bookable configuration (single tank, no mixer) through the most
-// expensive one (triple tank, three premium mixers).
-const lowPrice = round(calculatePrice("single").total);
-const highPrice = round(
-  calculatePrice("triple", ["pina-colada", "pina-colada", "pina-colada"]).total,
-);
+import {
+  calculatePrice,
+  offerPriceValidUntil,
+  type PricingOverrides,
+} from "@/lib/pricing";
+import { getPublicSettingsSafe } from "@/lib/public-settings";
+import { BUSINESS_ID, SITE_URL, breadcrumbJsonLd } from "@/lib/site";
 
 const PAGE_TITLE =
   "Book Now | SATX Ritas Rentals - Frozen Drink Machine Rentals";
@@ -20,52 +16,69 @@ const PAGE_DESCRIPTION =
   "Book your frozen drink machine rental in San Antonio. Easy online booking with flexible scheduling, delivery, and setup included. Perfect for parties and events of any size.";
 
 // JSON-LD structured data for service booking.
-// Prices are baked in at build time from rental-data.ts and do not reflect
-// admin Settings.machines[*].basePrice overrides; priceValidUntil bounds how
-// long a stale figure can be trusted. Likewise `availability` is declared once
-// at the aggregate level — live per-machine-type inventory (see
-// src/lib/inventory.ts) can't be expressed on a statically generated page.
-const jsonLd = {
-  "@context": "https://schema.org",
-  "@type": "Service",
-  name: "Frozen Drink Machine Rental Booking",
-  provider: {
-    "@type": "LocalBusiness",
-    "@id": BUSINESS_ID,
-    name: "SATX Ritas Rentals",
-    url: SITE_URL,
-    image: `${SITE_URL}/og-image.jpg`,
-    telephone: "+1-512-210-0194",
-    email: "satxbounce@gmail.com",
-    priceRange: "$$",
-    address: {
-      "@type": "PostalAddress",
-      streetAddress: "5106 Stormy Autumn",
-      addressLocality: "San Antonio",
-      addressRegion: "TX",
-      postalCode: "78247",
-      addressCountry: "US",
+//
+// Prices used to be baked in at build time from rental-data.ts, ignoring the
+// admin Settings.machines[*].basePrice overrides the wizard on this very page
+// prices from — so the structured data could contradict the quote a visitor
+// saw a scroll further down. They come from Settings now, per revalidate
+// window. `availability` is still declared once at the aggregate level: live
+// per-machine-type inventory (see src/lib/inventory.ts) cannot be expressed on
+// a revalidated page.
+function buildJsonLd(overrides: PricingOverrides, priceValidUntil: string) {
+  const round = (value: number) => Number(value.toFixed(2));
+  // Cheapest bookable configuration (single tank, no mixer) through the most
+  // expensive one (triple tank, three premium mixers).
+  const lowPrice = round(calculatePrice("single", [], overrides).total);
+  const highPrice = round(
+    calculatePrice(
+      "triple",
+      ["pina-colada", "pina-colada", "pina-colada"],
+      overrides,
+    ).total,
+  );
+
+  return {
+    "@context": "https://schema.org",
+    "@type": "Service",
+    name: "Frozen Drink Machine Rental Booking",
+    provider: {
+      "@type": "LocalBusiness",
+      "@id": BUSINESS_ID,
+      name: "SATX Ritas Rentals",
+      url: SITE_URL,
+      image: `${SITE_URL}/og-image.jpg`,
+      telephone: "+1-512-210-0194",
+      email: "satxbounce@gmail.com",
+      priceRange: "$$",
+      address: {
+        "@type": "PostalAddress",
+        streetAddress: "5106 Stormy Autumn",
+        addressLocality: "San Antonio",
+        addressRegion: "TX",
+        postalCode: "78247",
+        addressCountry: "US",
+      },
     },
-  },
-  description:
-    "Professional frozen drink machine rental service including delivery, setup, and pickup. Available for parties, weddings, corporate events, and more.",
-  serviceType: "Equipment Rental",
-  termsOfService:
-    "Machine and mixer rates are charged per day for the length of the rental, with a flat one-time delivery fee. Multi-day rentals and flexible delivery and pickup scheduling are available.",
-  areaServed: {
-    "@type": "City",
-    name: "San Antonio",
-  },
-  offers: {
-    "@type": "AggregateOffer",
-    priceCurrency: "USD",
-    lowPrice,
-    highPrice,
-    offerCount: machinePackages.length,
-    availability: "https://schema.org/InStock",
-    priceValidUntil: `${new Date().getFullYear()}-12-31`,
-  },
-};
+    description:
+      "Professional frozen drink machine rental service including delivery, setup, and pickup. Available for parties, weddings, corporate events, and more.",
+    serviceType: "Equipment Rental",
+    termsOfService:
+      "Machine and mixer rates are charged per day for the length of the rental, with a flat one-time delivery fee. Multi-day rentals and flexible delivery and pickup scheduling are available.",
+    areaServed: {
+      "@type": "City",
+      name: "San Antonio",
+    },
+    offers: {
+      "@type": "AggregateOffer",
+      priceCurrency: "USD",
+      lowPrice,
+      highPrice,
+      offerCount: machinePackages.length,
+      availability: "https://schema.org/InStock",
+      priceValidUntil,
+    },
+  };
+}
 
 export const metadata: Metadata = {
   title: PAGE_TITLE,
@@ -95,12 +108,36 @@ export const metadata: Metadata = {
   },
 };
 
-export default function OrderPage() {
+// Required: without it Next prerenders the page and freezes today's prices
+// into the build, which is the trap /long-term-lease fell into.
+export const revalidate = 60;
+
+export default async function OrderPage() {
+  const settings = await getPublicSettingsSafe("Order page");
+  const jsonLd = buildJsonLd(
+    {
+      ...settings.fees,
+      machines: settings.machines as PricingOverrides["machines"],
+      mixers: settings.mixers as PricingOverrides["mixers"],
+    },
+    offerPriceValidUntil(),
+  );
+
   return (
     <>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      {/* Only the service-area pages emitted breadcrumbs, so the main funnel
+          pages gave Google no trail to render in the SERP. */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(
+            breadcrumbJsonLd([{ name: "Book Now", path: "/order" }]),
+          ),
+        }}
       />
       <div className="bg-linear-to-br from-light via-margarita/10 to-teal/20 dark:from-charcoal dark:via-margarita/5 dark:to-teal/10 py-12 relative">
         {/* Decorative Elements */}

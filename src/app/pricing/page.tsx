@@ -1,184 +1,215 @@
 import { machinePackages, mixerDetails } from "@/lib/rental-data";
 import { extraItems } from "@/components/order/types";
-import { calculatePrice, formatPrice } from "@/lib/pricing";
+import {
+  calculatePrice,
+  formatPrice,
+  publicPriceTable,
+  offerPriceValidUntil,
+  type PricingOverrides,
+} from "@/lib/pricing";
+import { getPublicSettingsSafe } from "@/lib/public-settings";
+import type { MachineType } from "@/types";
+import type { MixerType } from "@/lib/rental-data";
 import { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
 import BookingCTA from "@/components/BookingCTA";
-import { SITE_URL } from "@/lib/site";
+import { SITE_URL, breadcrumbJsonLd } from "@/lib/site";
 
-// Add JSON-LD structured data for products
-// Fix: calculatePrice now accepts MixerType[] (array), not a single MixerType string
-const jsonLd = {
-  "@context": "https://schema.org",
-  "@type": "ItemList",
-  itemListElement: [
-    {
-      "@type": "Product",
-      name: machinePackages[0].name,
-      description: machinePackages[0].description,
-      image: `${SITE_URL}/og-image.jpg`,
-      offers: [
-        {
-          "@type": "Offer",
-          price: calculatePrice("single").total,
-          priceCurrency: "USD",
-          itemCondition: "https://schema.org/NewCondition",
-          availability: "https://schema.org/InStock",
-          name: "Machine Only",
-        },
-        {
-          "@type": "Offer",
-          price: calculatePrice("single", ["non-alcoholic"]).total,
-          priceCurrency: "USD",
-          itemCondition: "https://schema.org/NewCondition",
-          availability: "https://schema.org/InStock",
-          name: mixerDetails["non-alcoholic"].label,
-        },
-        {
-          "@type": "Offer",
-          price: calculatePrice("single", ["margarita"]).total,
-          priceCurrency: "USD",
-          itemCondition: "https://schema.org/NewCondition",
-          availability: "https://schema.org/InStock",
-          name: mixerDetails["margarita"].label,
-        },
-        {
-          "@type": "Offer",
-          price: calculatePrice("single", ["pina-colada"]).total,
-          priceCurrency: "USD",
-          itemCondition: "https://schema.org/NewCondition",
-          availability: "https://schema.org/InStock",
-          name: mixerDetails["pina-colada"].label,
-        },
-        {
-          "@type": "Offer",
-          price: calculatePrice("single", ["strawberry-daiquiri"]).total,
-          priceCurrency: "USD",
-          itemCondition: "https://schema.org/NewCondition",
-          availability: "https://schema.org/InStock",
-          name: mixerDetails["strawberry-daiquiri"].label,
-        },
-      ],
-    },
-    {
-      "@type": "Product",
-      name: machinePackages[1].name,
-      description: machinePackages[1].description,
-      image: `${SITE_URL}/og-image.jpg`,
-      offers: [
-        {
-          "@type": "Offer",
-          price: calculatePrice("double").total,
-          priceCurrency: "USD",
-          itemCondition: "https://schema.org/NewCondition",
-          availability: "https://schema.org/InStock",
-          name: "Machine Only",
-        },
-        {
-          "@type": "Offer",
-          price: calculatePrice("double", ["non-alcoholic", "non-alcoholic"])
-            .total,
-          priceCurrency: "USD",
-          itemCondition: "https://schema.org/NewCondition",
-          availability: "https://schema.org/InStock",
-          name: `2x ${mixerDetails["non-alcoholic"].label}`,
-        },
-        {
-          "@type": "Offer",
-          price: calculatePrice("double", ["margarita", "margarita"]).total,
-          priceCurrency: "USD",
-          itemCondition: "https://schema.org/NewCondition",
-          availability: "https://schema.org/InStock",
-          name: `2x ${mixerDetails["margarita"].label}`,
-        },
-        {
-          "@type": "Offer",
-          price: calculatePrice("double", ["pina-colada", "pina-colada"]).total,
-          priceCurrency: "USD",
-          itemCondition: "https://schema.org/NewCondition",
-          availability: "https://schema.org/InStock",
-          name: `2x ${mixerDetails["pina-colada"].label}`,
-        },
-        {
-          "@type": "Offer",
-          price: calculatePrice("double", [
-            "strawberry-daiquiri",
-            "strawberry-daiquiri",
-          ]).total,
-          priceCurrency: "USD",
-          itemCondition: "https://schema.org/NewCondition",
-          availability: "https://schema.org/InStock",
-          name: `2x ${mixerDetails["strawberry-daiquiri"].label}`,
-        },
-      ],
-    },
-    {
-      "@type": "Product",
-      name: machinePackages[2].name,
-      description: machinePackages[2].description,
-      image: `${SITE_URL}/og-image.jpg`,
-      offers: [
-        {
-          "@type": "Offer",
-          price: calculatePrice("triple").total,
-          priceCurrency: "USD",
-          itemCondition: "https://schema.org/NewCondition",
-          availability: "https://schema.org/InStock",
-          name: "Machine Only",
-        },
-        {
-          "@type": "Offer",
-          price: calculatePrice("triple", [
-            "non-alcoholic",
-            "non-alcoholic",
-            "non-alcoholic",
-          ]).total,
-          priceCurrency: "USD",
-          itemCondition: "https://schema.org/NewCondition",
-          availability: "https://schema.org/InStock",
-          name: `3x ${mixerDetails["non-alcoholic"].label}`,
-        },
-        {
-          "@type": "Offer",
-          price: calculatePrice("triple", [
-            "margarita",
-            "margarita",
-            "margarita",
-          ]).total,
-          priceCurrency: "USD",
-          itemCondition: "https://schema.org/NewCondition",
-          availability: "https://schema.org/InStock",
-          name: `3x ${mixerDetails["margarita"].label}`,
-        },
-        {
-          "@type": "Offer",
-          price: calculatePrice("triple", [
-            "pina-colada",
-            "pina-colada",
-            "pina-colada",
-          ]).total,
-          priceCurrency: "USD",
-          itemCondition: "https://schema.org/NewCondition",
-          availability: "https://schema.org/InStock",
-          name: `3x ${mixerDetails["pina-colada"].label}`,
-        },
-        {
-          "@type": "Offer",
-          price: calculatePrice("triple", [
-            "strawberry-daiquiri",
-            "strawberry-daiquiri",
-            "strawberry-daiquiri",
-          ]).total,
-          priceCurrency: "USD",
-          itemCondition: "https://schema.org/NewCondition",
-          availability: "https://schema.org/InStock",
-          name: `3x ${mixerDetails["strawberry-daiquiri"].label}`,
-        },
-      ],
-    },
-  ],
-};
+// Prices come from `Settings` at request time, not from the rental-data
+// constants. These Offer nodes and the tables below used to be built with no
+// overrides at all, so an admin price change left the page, the structured
+// data Google indexes, and the actual invoice disagreeing.
+//
+// `priceValidUntil` is required for a Product/Offer rich result to stay
+// eligible — Google treats an Offer without it as potentially stale. It
+// tracks the revalidate window rather than being a fixed date.
+function buildJsonLd(overrides: PricingOverrides, priceValidUntil: string) {
+  const price = (machineType: MachineType, mixers: MixerType[] = []) =>
+    calculatePrice(machineType, mixers, overrides).total;
+  const table = publicPriceTable(overrides);
+
+  return {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    itemListElement: [
+      {
+        "@type": "Product",
+        name: machinePackages[0].name,
+        description: machinePackages[0].description,
+        image: `${SITE_URL}/og-image.jpg`,
+        offers: [
+          {
+            "@type": "Offer",
+            price: price("single"),
+            priceValidUntil,
+            priceCurrency: "USD",
+            itemCondition: "https://schema.org/NewCondition",
+            availability: "https://schema.org/InStock",
+            name: "Machine Only",
+          },
+          {
+            "@type": "Offer",
+            price: price("single", ["non-alcoholic"]),
+            priceValidUntil,
+            priceCurrency: "USD",
+            itemCondition: "https://schema.org/NewCondition",
+            availability: "https://schema.org/InStock",
+            name: table.mixerLabel("non-alcoholic"),
+          },
+          {
+            "@type": "Offer",
+            price: price("single", ["margarita"]),
+            priceValidUntil,
+            priceCurrency: "USD",
+            itemCondition: "https://schema.org/NewCondition",
+            availability: "https://schema.org/InStock",
+            name: table.mixerLabel("margarita"),
+          },
+          {
+            "@type": "Offer",
+            price: price("single", ["pina-colada"]),
+            priceValidUntil,
+            priceCurrency: "USD",
+            itemCondition: "https://schema.org/NewCondition",
+            availability: "https://schema.org/InStock",
+            name: table.mixerLabel("pina-colada"),
+          },
+          {
+            "@type": "Offer",
+            price: price("single", ["strawberry-daiquiri"]),
+            priceValidUntil,
+            priceCurrency: "USD",
+            itemCondition: "https://schema.org/NewCondition",
+            availability: "https://schema.org/InStock",
+            name: table.mixerLabel("strawberry-daiquiri"),
+          },
+        ],
+      },
+      {
+        "@type": "Product",
+        name: machinePackages[1].name,
+        description: machinePackages[1].description,
+        image: `${SITE_URL}/og-image.jpg`,
+        offers: [
+          {
+            "@type": "Offer",
+            price: price("double"),
+            priceValidUntil,
+            priceCurrency: "USD",
+            itemCondition: "https://schema.org/NewCondition",
+            availability: "https://schema.org/InStock",
+            name: "Machine Only",
+          },
+          {
+            "@type": "Offer",
+            price: price("double", ["non-alcoholic", "non-alcoholic"]),
+            priceValidUntil,
+            priceCurrency: "USD",
+            itemCondition: "https://schema.org/NewCondition",
+            availability: "https://schema.org/InStock",
+            name: `2x ${table.mixerLabel("non-alcoholic")}`,
+          },
+          {
+            "@type": "Offer",
+            price: price("double", ["margarita", "margarita"]),
+            priceValidUntil,
+            priceCurrency: "USD",
+            itemCondition: "https://schema.org/NewCondition",
+            availability: "https://schema.org/InStock",
+            name: `2x ${table.mixerLabel("margarita")}`,
+          },
+          {
+            "@type": "Offer",
+            price: price("double", ["pina-colada", "pina-colada"]),
+            priceValidUntil,
+            priceCurrency: "USD",
+            itemCondition: "https://schema.org/NewCondition",
+            availability: "https://schema.org/InStock",
+            name: `2x ${table.mixerLabel("pina-colada")}`,
+          },
+          {
+            "@type": "Offer",
+            price: price("double", [
+              "strawberry-daiquiri",
+              "strawberry-daiquiri",
+            ]),
+            priceValidUntil,
+            priceCurrency: "USD",
+            itemCondition: "https://schema.org/NewCondition",
+            availability: "https://schema.org/InStock",
+            name: `2x ${table.mixerLabel("strawberry-daiquiri")}`,
+          },
+        ],
+      },
+      {
+        "@type": "Product",
+        name: machinePackages[2].name,
+        description: machinePackages[2].description,
+        image: `${SITE_URL}/og-image.jpg`,
+        offers: [
+          {
+            "@type": "Offer",
+            price: price("triple"),
+            priceValidUntil,
+            priceCurrency: "USD",
+            itemCondition: "https://schema.org/NewCondition",
+            availability: "https://schema.org/InStock",
+            name: "Machine Only",
+          },
+          {
+            "@type": "Offer",
+            price: price("triple", [
+              "non-alcoholic",
+              "non-alcoholic",
+              "non-alcoholic",
+            ]),
+            priceValidUntil,
+            priceCurrency: "USD",
+            itemCondition: "https://schema.org/NewCondition",
+            availability: "https://schema.org/InStock",
+            name: `3x ${table.mixerLabel("non-alcoholic")}`,
+          },
+          {
+            "@type": "Offer",
+            price: price("triple", ["margarita", "margarita", "margarita"]),
+            priceValidUntil,
+            priceCurrency: "USD",
+            itemCondition: "https://schema.org/NewCondition",
+            availability: "https://schema.org/InStock",
+            name: `3x ${table.mixerLabel("margarita")}`,
+          },
+          {
+            "@type": "Offer",
+            price: price("triple", [
+              "pina-colada",
+              "pina-colada",
+              "pina-colada",
+            ]),
+            priceValidUntil,
+            priceCurrency: "USD",
+            itemCondition: "https://schema.org/NewCondition",
+            availability: "https://schema.org/InStock",
+            name: `3x ${table.mixerLabel("pina-colada")}`,
+          },
+          {
+            "@type": "Offer",
+            price: price("triple", [
+              "strawberry-daiquiri",
+              "strawberry-daiquiri",
+              "strawberry-daiquiri",
+            ]),
+            priceValidUntil,
+            priceCurrency: "USD",
+            itemCondition: "https://schema.org/NewCondition",
+            availability: "https://schema.org/InStock",
+            name: `3x ${table.mixerLabel("strawberry-daiquiri")}`,
+          },
+        ],
+      },
+    ],
+  };
+}
 
 export const metadata: Metadata = {
   alternates: { canonical: "/pricing" },
@@ -195,12 +226,40 @@ export const metadata: Metadata = {
   },
 };
 
-export default function PricingPage() {
+// Without this the page is prerendered and today's prices are frozen into
+// the build, which is exactly how /long-term-lease hid lease-tier edits until
+// the next deploy.
+export const revalidate = 60;
+
+export default async function PricingPage() {
+  const settings = await getPublicSettingsSafe("Pricing page");
+  const overrides: PricingOverrides = {
+    ...settings.fees,
+    machines: settings.machines as PricingOverrides["machines"],
+    mixers: settings.mixers as PricingOverrides["mixers"],
+  };
+  const table = publicPriceTable(overrides);
+
+  // Far enough ahead that the value is never already past, close enough that
+  // it tracks the prices actually being served.
+  const priceValidUntil = offerPriceValidUntil();
+  const jsonLd = buildJsonLd(overrides, priceValidUntil);
+
   return (
     <>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      {/* Only the service-area pages emitted breadcrumbs, so the main funnel
+          pages gave Google no trail to render in the SERP. */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(
+            breadcrumbJsonLd([{ name: "Pricing", path: "/pricing" }]),
+          ),
+        }}
       />
       <div className="min-h-screen relative overflow-hidden bg-linear-to-br from-light via-margarita/10 to-teal/20 dark:from-charcoal dark:via-margarita/5 dark:to-teal/10">
         {/* Decorative Elements */}
@@ -329,7 +388,7 @@ export default function PricingPage() {
                         to 1 mixer flavor.
                       </p>
                       <p className="font-semibold">
-                        ${formatPrice(machinePackages[0].basePrice)}/day
+                        ${formatPrice(table.machineBasePrice("single"))}/day
                       </p>
                     </div>
                     <div>
@@ -341,7 +400,7 @@ export default function PricingPage() {
                         flavor. Up to 2 mixers.
                       </p>
                       <p className="font-semibold">
-                        ${formatPrice(machinePackages[1].basePrice)}/day
+                        ${formatPrice(table.machineBasePrice("double"))}/day
                       </p>
                     </div>
                     <div>
@@ -353,7 +412,7 @@ export default function PricingPage() {
                         3 different flavors.
                       </p>
                       <p className="font-semibold">
-                        ${formatPrice(machinePackages[2].basePrice)}/day
+                        ${formatPrice(table.machineBasePrice("triple"))}/day
                       </p>
                     </div>
                   </div>
@@ -368,18 +427,18 @@ export default function PricingPage() {
                     <div>
                       <p>
                         <span className="font-medium">
-                          {mixerDetails["non-alcoholic"].label}:
+                          {table.mixerLabel("non-alcoholic")}:
                         </span>{" "}
-                        ${formatPrice(mixerDetails["non-alcoholic"].price)}/day
+                        ${formatPrice(table.mixerPrice("non-alcoholic"))}/day
                       </p>
                       <p className="text-xs text-charcoal/50 dark:text-white/50 mb-2">
                         {mixerDetails["non-alcoholic"].description}
                       </p>
                       <p>
                         <span className="font-medium">
-                          {mixerDetails["margarita"].label}:
+                          {table.mixerLabel("margarita")}:
                         </span>{" "}
-                        ${formatPrice(mixerDetails["margarita"].price)}/day
+                        ${formatPrice(table.mixerPrice("margarita"))}/day
                       </p>
                       <p className="text-xs text-charcoal/50 dark:text-white/50">
                         {mixerDetails["margarita"].description}
@@ -388,19 +447,18 @@ export default function PricingPage() {
                     <div>
                       <p>
                         <span className="font-medium">
-                          {mixerDetails["pina-colada"].label}:
+                          {table.mixerLabel("pina-colada")}:
                         </span>{" "}
-                        ${formatPrice(mixerDetails["pina-colada"].price)}/day
+                        ${formatPrice(table.mixerPrice("pina-colada"))}/day
                       </p>
                       <p className="text-xs text-charcoal/50 dark:text-white/50 mb-2">
                         {mixerDetails["pina-colada"].description}
                       </p>
                       <p>
                         <span className="font-medium">
-                          {mixerDetails["strawberry-daiquiri"].label}:
+                          {table.mixerLabel("strawberry-daiquiri")}:
                         </span>{" "}
-                        $
-                        {formatPrice(mixerDetails["strawberry-daiquiri"].price)}
+                        ${formatPrice(table.mixerPrice("strawberry-daiquiri"))}
                         /day
                       </p>
                       <p className="text-xs text-charcoal/50 dark:text-white/50">
