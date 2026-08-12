@@ -3,7 +3,7 @@ import Image from "next/image";
 
 export default function HeroSection() {
   return (
-    <div className="relative min-h-[90vh] flex items-center overflow-hidden bg-gradient-to-br from-light via-margarita/10 to-teal/20 dark:from-charcoal dark:via-margarita/5 dark:to-teal/10">
+    <div className="relative min-h-[90vh] flex items-center overflow-hidden bg-linear-to-br from-light via-margarita/10 to-teal/20 dark:from-charcoal dark:via-margarita/5 dark:to-teal/10">
       {/* Hero Image */}
       <div className="absolute inset-0 pointer-events-none">
         {/* Decorative backdrop at 30% opacity, so it carries no alt text and
@@ -32,7 +32,7 @@ export default function HeroSection() {
 
           <h1 className="text-5xl sm:text-6xl md:text-7xl font-extrabold text-charcoal dark:text-white mb-6 tracking-tight will-change-transform">
             Frozen Drink Machines
-            <span className="block text-transparent bg-clip-text bg-gradient-to-r from-margarita via-teal to-orange mt-2 pb-4">
+            <span className="block text-transparent bg-clip-text bg-linear-to-r from-margarita via-teal to-orange mt-2 pb-4">
               in San Antonio
             </span>
             for Margaritas & More!
@@ -47,7 +47,7 @@ export default function HeroSection() {
           <div className="flex flex-col sm:flex-row gap-6 justify-center items-center">
             <Link
               href="/order"
-              className="group px-8 py-4 bg-gradient-to-r from-orange to-pink text-white text-lg font-bold rounded-xl 
+              className="group px-8 py-4 bg-linear-to-r from-orange to-pink text-white text-lg font-bold rounded-xl 
                 hover:opacity-90 transition-opacity duration-300"
             >
               <span className="relative z-10">ORDER ONLINE</span>
@@ -55,7 +55,7 @@ export default function HeroSection() {
 
             <Link
               href="/pricing"
-              className="group px-8 py-4 bg-gradient-to-r from-teal to-margarita text-white text-lg font-bold rounded-xl
+              className="group px-8 py-4 bg-linear-to-r from-teal to-margarita text-white text-lg font-bold rounded-xl
                 hover:opacity-90 transition-opacity duration-300"
             >
               <span className="relative z-10">View Pricing</span>
@@ -77,7 +77,7 @@ export default function HeroSection() {
           <svg
             width="1440"
             height="120"
-            className="relative w-full h-[100px] animate-[wave_10s_ease-in-out_infinite] will-change-transform"
+            className="relative w-full h-[100px] animate-wave will-change-transform"
             xmlns="http://www.w3.org/2000/svg"
             viewBox="0 0 1440 120"
             preserveAspectRatio="none"

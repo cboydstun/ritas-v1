@@ -130,6 +130,6 @@ export const extraItems: ExtraItem[] = [
 ];
 
 export const inputClassName =
-  "w-full px-4 py-3 bg-white dark:bg-white border-2 border-transparent rounded-xl focus:outline-none focus:border-orange/50 transition-colors text-charcoal";
+  "w-full px-4 py-3 bg-white dark:bg-white border-2 border-transparent rounded-xl focus:outline-hidden focus:border-orange/50 transition-colors text-charcoal";
 export const labelClassName =
   "block text-charcoal dark:text-white font-medium mb-2";

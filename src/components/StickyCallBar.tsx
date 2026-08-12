@@ -24,7 +24,7 @@ export default function StickyCallBar() {
   }
 
   return (
-    <div className="sm:hidden fixed bottom-0 inset-x-0 z-40 flex border-t border-gray-200 dark:border-gray-700 bg-white/95 dark:bg-charcoal/95 backdrop-blur-sm">
+    <div className="sm:hidden fixed bottom-0 inset-x-0 z-40 flex border-t border-gray-200 dark:border-gray-700 bg-white/95 dark:bg-charcoal/95 backdrop-blur-xs">
       <a
         href={BUSINESS_PHONE_HREF}
         className="flex-1 flex items-center justify-center gap-2 py-4 font-semibold text-margarita"

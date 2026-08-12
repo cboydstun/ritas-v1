@@ -39,7 +39,7 @@ function OrderDetails() {
         </div>
         <h1 className="text-5xl md:text-6xl font-extrabold text-charcoal dark:text-white mb-6 tracking-tight">
           Order
-          <span className="block text-transparent bg-clip-text bg-gradient-to-r from-green-500 via-teal to-margarita mt-2">
+          <span className="block text-transparent bg-clip-text bg-linear-to-r from-green-500 via-teal to-margarita mt-2">
             Confirmed
           </span>
         </h1>
@@ -78,7 +78,7 @@ function OrderDetails() {
             {isManualInvoicing && (
               <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-xl p-6">
                 <div className="flex items-center space-x-3">
-                  <div className="flex-shrink-0">
+                  <div className="shrink-0">
                     <svg
                       className="h-6 w-6 text-yellow-600 dark:text-yellow-400"
                       fill="none"
@@ -294,7 +294,7 @@ function OrderDetailsLoading() {
 
 export default function SuccessPageContent() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-light via-margarita/10 to-teal/20 dark:from-charcoal dark:via-margarita/5 dark:to-teal/10 py-12 relative">
+    <div className="min-h-screen bg-linear-to-br from-light via-margarita/10 to-teal/20 dark:from-charcoal dark:via-margarita/5 dark:to-teal/10 py-12 relative">
       {/* Decorative Elements */}
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute top-20 left-10 w-32 h-32 bg-orange/10 dark:bg-orange/5 rounded-full blur-2xl animate-pulse" />

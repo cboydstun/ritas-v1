@@ -237,7 +237,7 @@ export default function LeaseInquiriesTable() {
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="rounded border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+            className="rounded-sm border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
           >
             <option value="all">All Statuses</option>
             {STATUS_OPTIONS.map((status) => (
@@ -329,7 +329,7 @@ export default function LeaseInquiriesTable() {
                         e.target.value,
                       )
                     }
-                    className="text-sm rounded border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    className="text-sm rounded-sm border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   >
                     {STATUS_OPTIONS.map((status) => (
                       <option key={status} value={status}>
@@ -361,7 +361,7 @@ export default function LeaseInquiriesTable() {
               setPageSize(Number(e.target.value));
               setCurrentPage(1);
             }}
-            className="rounded border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+            className="rounded-sm border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
           >
             {[25, 50, 100, 250].map((size) => (
               <option key={size} value={size}>
@@ -383,7 +383,7 @@ export default function LeaseInquiriesTable() {
           <button
             onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
             disabled={currentPage === 1}
-            className="px-3 py-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-3 py-1 rounded-sm border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Previous
           </button>
@@ -403,7 +403,7 @@ export default function LeaseInquiriesTable() {
             disabled={
               currentPage >= Math.ceil(sortedInquiries.length / pageSize)
             }
-            className="px-3 py-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-3 py-1 rounded-sm border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Next
           </button>

@@ -92,7 +92,7 @@ export default function ContactPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-light via-margarita/10 to-teal/20 dark:from-charcoal dark:via-margarita/5 dark:to-teal/10">
+      <div className="min-h-screen relative overflow-hidden bg-linear-to-br from-light via-margarita/10 to-teal/20 dark:from-charcoal dark:via-margarita/5 dark:to-teal/10">
         {/* Decorative Elements */}
         <div className="absolute inset-0 pointer-events-none">
           <div className="absolute top-20 left-10 w-32 h-32 bg-orange/10 dark:bg-orange/5 rounded-full blur-2xl animate-pulse" />
@@ -109,7 +109,7 @@ export default function ContactPage() {
           </div>
           <h1 className="text-5xl md:text-6xl font-extrabold text-charcoal dark:text-white mb-6 tracking-tight">
             Contact
-            <span className="block text-transparent bg-clip-text bg-gradient-to-r from-margarita via-teal to-orange mt-2">
+            <span className="block text-transparent bg-clip-text bg-linear-to-r from-margarita via-teal to-orange mt-2">
               SATX Ritas
             </span>
           </h1>
@@ -123,7 +123,7 @@ export default function ContactPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-24">
           <div className="grid lg:grid-cols-2 gap-12">
             {/* Contact Form */}
-            <div className="bg-white/90 dark:bg-charcoal/50 backdrop-blur-sm rounded-2xl p-8 shadow-xl">
+            <div className="bg-white/90 dark:bg-charcoal/50 backdrop-blur-xs rounded-2xl p-8 shadow-xl">
               <h2 className="text-2xl font-bold text-charcoal dark:text-white mb-6">
                 Send Us a Message
               </h2>
@@ -133,7 +133,7 @@ export default function ContactPage() {
             {/* Contact Information */}
             <div className="space-y-8">
               {/* Business Hours */}
-              <div className="bg-white/90 dark:bg-charcoal/50 backdrop-blur-sm rounded-2xl p-8 shadow-xl">
+              <div className="bg-white/90 dark:bg-charcoal/50 backdrop-blur-xs rounded-2xl p-8 shadow-xl">
                 <h2 className="text-2xl font-bold text-charcoal dark:text-white mb-6">
                   Business Hours
                 </h2>
@@ -170,13 +170,13 @@ export default function ContactPage() {
               </div>
 
               {/* Contact Methods */}
-              <div className="bg-white/90 dark:bg-charcoal/50 backdrop-blur-sm rounded-2xl p-8 shadow-xl">
+              <div className="bg-white/90 dark:bg-charcoal/50 backdrop-blur-xs rounded-2xl p-8 shadow-xl">
                 <h2 className="text-2xl font-bold text-charcoal dark:text-white mb-6">
                   Get in Touch
                 </h2>
                 <div className="space-y-4">
                   <div className="flex items-start">
-                    <div className="flex-shrink-0 w-10 h-10 bg-margarita/20 dark:bg-margarita/10 rounded-lg flex items-center justify-center">
+                    <div className="shrink-0 w-10 h-10 bg-margarita/20 dark:bg-margarita/10 rounded-lg flex items-center justify-center">
                       <svg
                         className="w-5 h-5 text-margarita"
                         fill="none"
@@ -204,7 +204,7 @@ export default function ContactPage() {
                     </div>
                   </div>
                   <div className="flex items-start">
-                    <div className="flex-shrink-0 w-10 h-10 bg-margarita/20 dark:bg-margarita/10 rounded-lg flex items-center justify-center">
+                    <div className="shrink-0 w-10 h-10 bg-margarita/20 dark:bg-margarita/10 rounded-lg flex items-center justify-center">
                       <svg
                         className="w-5 h-5 text-margarita"
                         fill="none"
@@ -235,7 +235,7 @@ export default function ContactPage() {
               </div>
 
               {/* Service Area */}
-              <div className="bg-gradient-to-r from-margarita/20 to-teal/20 dark:from-margarita/10 dark:to-teal/10 rounded-2xl p-8 shadow-xl">
+              <div className="bg-linear-to-r from-margarita/20 to-teal/20 dark:from-margarita/10 dark:to-teal/10 rounded-2xl p-8 shadow-xl">
                 <h2 className="text-2xl font-bold text-charcoal dark:text-white mb-4">
                   Service Area
                 </h2>

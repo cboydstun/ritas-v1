@@ -78,7 +78,7 @@ export default function ContactForm() {
   };
 
   const inputClassName =
-    "w-full px-4 py-2 bg-white dark:bg-white text-charcoal rounded-lg border border-gray-300 focus:ring-2 focus:ring-margarita focus:border-transparent outline-none transition-all";
+    "w-full px-4 py-2 bg-white dark:bg-white text-charcoal rounded-lg border border-gray-300 focus:ring-2 focus:ring-margarita focus:border-transparent outline-hidden transition-all";
   const labelClassName =
     "block text-sm font-medium text-charcoal dark:text-white mb-1";
 
@@ -172,7 +172,7 @@ export default function ContactForm() {
       <button
         type="submit"
         disabled={isSubmitting}
-        className={`w-full px-6 py-3 bg-gradient-to-r from-margarita to-teal text-white rounded-lg hover:shadow-lg hover:shadow-margarita/30 transform hover:-translate-y-1 transition-all duration-300 font-semibold ${
+        className={`w-full px-6 py-3 bg-linear-to-r from-margarita to-teal text-white rounded-lg hover:shadow-lg hover:shadow-margarita/30 transform hover:-translate-y-1 transition-all duration-300 font-semibold ${
           isSubmitting ? "opacity-70 cursor-not-allowed" : ""
         }`}
       >

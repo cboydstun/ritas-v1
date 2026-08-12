@@ -144,7 +144,7 @@ function FAQSection({ section }: { section: (typeof faqSections)[number] }) {
   return (
     <section
       aria-labelledby={section.id}
-      className="bg-white/90 dark:bg-charcoal/50 backdrop-blur-sm rounded-2xl p-8 shadow-xl mb-8"
+      className="bg-white/90 dark:bg-charcoal/50 backdrop-blur-xs rounded-2xl p-8 shadow-xl mb-8"
     >
       <h2
         id={section.id}
@@ -185,7 +185,7 @@ export default function FAQ() {
 
       {/* Decorative blurs */}
       <div className="absolute inset-x-0 -top-40 -z-10 transform-gpu overflow-hidden blur-3xl sm:-top-80">
-        <div className="relative left-[calc(50%-11rem)] aspect-[1155/678] w-[36.125rem] -translate-x-1/2 rotate-[30deg] bg-gradient-to-tr from-margarita to-teal opacity-20 sm:left-[calc(50%-30rem)] sm:w-[72.1875rem]" />
+        <div className="relative left-[calc(50%-11rem)] aspect-1155/678 w-144.5 -translate-x-1/2 rotate-30 bg-linear-to-tr from-margarita to-teal opacity-20 sm:left-[calc(50%-30rem)] sm:w-288.75" />
       </div>
 
       {/* Main content */}

@@ -39,7 +39,7 @@ export function NavigationButtons({
         {/* Main next button — hidden on review step (ReviewStep has its own Confirm button) */}
         <button
           onClick={onNext}
-          className={`px-8 py-3 bg-gradient-to-r from-orange to-pink text-white rounded-xl font-bold
+          className={`px-8 py-3 bg-linear-to-r from-orange to-pink text-white rounded-xl font-bold
             hover:shadow-lg hover:shadow-orange/30 transform hover:-translate-y-1 transition-all duration-300
             ${currentStep === "review" ? "hidden" : ""}`}
         >

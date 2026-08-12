@@ -202,7 +202,7 @@ export default function PricingPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-light via-margarita/10 to-teal/20 dark:from-charcoal dark:via-margarita/5 dark:to-teal/10">
+      <div className="min-h-screen relative overflow-hidden bg-linear-to-br from-light via-margarita/10 to-teal/20 dark:from-charcoal dark:via-margarita/5 dark:to-teal/10">
         {/* Decorative Elements */}
         <div className="absolute inset-0 pointer-events-none">
           <div className="absolute top-20 left-10 w-32 h-32 bg-orange/10 dark:bg-orange/5 rounded-full blur-2xl animate-pulse" />
@@ -220,7 +220,7 @@ export default function PricingPage() {
             </div>
             <h1 className="text-5xl md:text-6xl font-extrabold text-charcoal dark:text-white mb-2 tracking-tight">
               Transparent
-              <span className="block text-transparent bg-clip-text bg-gradient-to-r from-margarita via-teal to-orange mt-2 pb-2">
+              <span className="block text-transparent bg-clip-text bg-linear-to-r from-margarita via-teal to-orange mt-2 pb-2">
                 Pricing & Service
               </span>
             </h1>
@@ -229,7 +229,7 @@ export default function PricingPage() {
           {/* Service Details */}
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
             <div className="grid md:grid-cols-3 gap-8 mb-8">
-              <div className="bg-white/80 dark:bg-charcoal/50 backdrop-blur-sm rounded-2xl p-8 shadow-xl">
+              <div className="bg-white/80 dark:bg-charcoal/50 backdrop-blur-xs rounded-2xl p-8 shadow-xl">
                 <div className="text-4xl mb-4">🚚</div>
                 <h3 className="text-xl font-bold text-charcoal dark:text-white mb-2">
                   Professional Delivery
@@ -240,7 +240,7 @@ export default function PricingPage() {
                   ready for setup.
                 </p>
               </div>
-              <div className="bg-white/80 dark:bg-charcoal/50 backdrop-blur-sm rounded-2xl p-8 shadow-xl">
+              <div className="bg-white/80 dark:bg-charcoal/50 backdrop-blur-xs rounded-2xl p-8 shadow-xl">
                 <div className="text-4xl mb-4">⚙️</div>
                 <h3 className="text-xl font-bold text-charcoal dark:text-white mb-2">
                   Expert Setup
@@ -251,7 +251,7 @@ export default function PricingPage() {
                   is working perfectly.
                 </p>
               </div>
-              <div className="bg-white/80 dark:bg-charcoal/50 backdrop-blur-sm rounded-2xl p-8 shadow-xl">
+              <div className="bg-white/80 dark:bg-charcoal/50 backdrop-blur-xs rounded-2xl p-8 shadow-xl">
                 <div className="text-4xl mb-4">✨</div>
                 <h3 className="text-xl font-bold text-charcoal dark:text-white mb-2">
                   Hassle-free Pickup
@@ -265,7 +265,7 @@ export default function PricingPage() {
             </div>
 
             {/* Pricing Breakdown */}
-            <div className="bg-white/90 dark:bg-charcoal/50 backdrop-blur-sm rounded-2xl p-8 shadow-xl mb-8">
+            <div className="bg-white/90 dark:bg-charcoal/50 backdrop-blur-xs rounded-2xl p-8 shadow-xl mb-8">
               <h2 className="text-3xl font-bold text-charcoal dark:text-white mb-8 text-center">
                 Understanding Our Pricing
               </h2>
@@ -443,7 +443,7 @@ export default function PricingPage() {
             </div>
 
             {/* Party Extras */}
-            <div className="bg-white/90 dark:bg-charcoal/50 backdrop-blur-sm rounded-2xl p-8 shadow-xl mb-8">
+            <div className="bg-white/90 dark:bg-charcoal/50 backdrop-blur-xs rounded-2xl p-8 shadow-xl mb-8">
               <h2 className="text-3xl font-bold text-charcoal dark:text-white mb-2 text-center">
                 Party Extras
               </h2>
@@ -500,7 +500,7 @@ export default function PricingPage() {
             </div>
 
             {/* Value Proposition */}
-            <div className="bg-gradient-to-r from-margarita/20 to-teal/20 dark:from-margarita/10 dark:to-teal/10 rounded-2xl p-8 shadow-xl">
+            <div className="bg-linear-to-r from-margarita/20 to-teal/20 dark:from-margarita/10 dark:to-teal/10 rounded-2xl p-8 shadow-xl">
               <h2 className="text-3xl font-bold text-charcoal dark:text-white mb-6 text-center">
                 Why Our Service Stands Out
               </h2>
@@ -508,7 +508,7 @@ export default function PricingPage() {
                 <div className="space-y-4">
                   <div className="flex items-start">
                     <svg
-                      className="w-6 h-6 text-margarita mr-3 flex-shrink-0 mt-1"
+                      className="w-6 h-6 text-margarita mr-3 shrink-0 mt-1"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -532,7 +532,7 @@ export default function PricingPage() {
                   </div>
                   <div className="flex items-start">
                     <svg
-                      className="w-6 h-6 text-margarita mr-3 flex-shrink-0 mt-1"
+                      className="w-6 h-6 text-margarita mr-3 shrink-0 mt-1"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -555,7 +555,7 @@ export default function PricingPage() {
                   </div>
                   <div className="flex items-start">
                     <svg
-                      className="w-6 h-6 text-margarita mr-3 flex-shrink-0 mt-1"
+                      className="w-6 h-6 text-margarita mr-3 shrink-0 mt-1"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -581,7 +581,7 @@ export default function PricingPage() {
                 <div className="space-y-4">
                   <div className="flex items-start">
                     <svg
-                      className="w-6 h-6 text-margarita mr-3 flex-shrink-0 mt-1"
+                      className="w-6 h-6 text-margarita mr-3 shrink-0 mt-1"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -604,7 +604,7 @@ export default function PricingPage() {
                   </div>
                   <div className="flex items-start">
                     <svg
-                      className="w-6 h-6 text-margarita mr-3 flex-shrink-0 mt-1"
+                      className="w-6 h-6 text-margarita mr-3 shrink-0 mt-1"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -628,7 +628,7 @@ export default function PricingPage() {
                   </div>
                   <div className="flex items-start">
                     <svg
-                      className="w-6 h-6 text-margarita mr-3 flex-shrink-0 mt-1"
+                      className="w-6 h-6 text-margarita mr-3 shrink-0 mt-1"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"

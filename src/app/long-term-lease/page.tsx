@@ -136,7 +136,7 @@ export default async function LongTermLeasePage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <div className="min-h-screen bg-gradient-to-br from-light via-margarita/10 to-teal/20 dark:from-charcoal dark:via-margarita/5 dark:to-teal/10">
+      <div className="min-h-screen bg-linear-to-br from-light via-margarita/10 to-teal/20 dark:from-charcoal dark:via-margarita/5 dark:to-teal/10">
         <div className="absolute inset-0 pointer-events-none">
           <div className="absolute top-20 left-10 w-32 h-32 bg-orange/10 dark:bg-orange/5 rounded-full blur-2xl animate-pulse" />
           <div className="absolute bottom-20 right-10 w-40 h-40 bg-pink/10 dark:bg-pink/5 rounded-full blur-3xl animate-pulse" />
@@ -154,7 +154,7 @@ export default async function LongTermLeasePage() {
               </div>
               <h1 className="text-5xl md:text-6xl font-extrabold text-charcoal dark:text-white mb-6 tracking-tight">
                 Long-Term
-                <span className="block text-transparent bg-clip-text bg-gradient-to-r from-margarita via-teal to-orange mt-2">
+                <span className="block text-transparent bg-clip-text bg-linear-to-r from-margarita via-teal to-orange mt-2">
                   Machine Leases
                 </span>
               </h1>
@@ -172,13 +172,13 @@ export default async function LongTermLeasePage() {
             </div>
 
             {/* Phone CTA strip */}
-            <div className="bg-white/90 dark:bg-charcoal/50 backdrop-blur-sm rounded-2xl p-6 shadow-xl mb-12 flex flex-col sm:flex-row items-center justify-center gap-4 text-center">
+            <div className="bg-white/90 dark:bg-charcoal/50 backdrop-blur-xs rounded-2xl p-6 shadow-xl mb-12 flex flex-col sm:flex-row items-center justify-center gap-4 text-center">
               <p className="text-charcoal dark:text-white text-lg font-semibold">
                 Ready to lease? Talk to our team.
               </p>
               <a
                 href="tel:+15122100194"
-                className="inline-block px-8 py-3 bg-gradient-to-r from-margarita to-teal text-white rounded-lg hover:shadow-lg hover:shadow-margarita/30 transform hover:-translate-y-1 transition-all duration-300 font-semibold"
+                className="inline-block px-8 py-3 bg-linear-to-r from-margarita to-teal text-white rounded-lg hover:shadow-lg hover:shadow-margarita/30 transform hover:-translate-y-1 transition-all duration-300 font-semibold"
               >
                 📞 Call (512) 210-0194
               </a>
@@ -187,7 +187,7 @@ export default async function LongTermLeasePage() {
                   href={docPdf.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-block px-8 py-3 bg-gradient-to-r from-orange to-pink text-white rounded-lg hover:shadow-lg hover:shadow-orange/30 transform hover:-translate-y-1 transition-all duration-300 font-semibold"
+                  className="inline-block px-8 py-3 bg-linear-to-r from-orange to-pink text-white rounded-lg hover:shadow-lg hover:shadow-orange/30 transform hover:-translate-y-1 transition-all duration-300 font-semibold"
                 >
                   📄 {docPdf.label}
                 </a>
@@ -215,7 +215,7 @@ export default async function LongTermLeasePage() {
               {whyLease.map((item) => (
                 <div
                   key={item.title}
-                  className="bg-white/80 dark:bg-charcoal/50 backdrop-blur-sm rounded-2xl p-8 shadow-xl"
+                  className="bg-white/80 dark:bg-charcoal/50 backdrop-blur-xs rounded-2xl p-8 shadow-xl"
                 >
                   <div className="text-4xl mb-4">{item.icon}</div>
                   <h3 className="text-xl font-bold text-charcoal dark:text-white mb-3">
@@ -229,7 +229,7 @@ export default async function LongTermLeasePage() {
             </div>
 
             {/* What's included */}
-            <div className="bg-white/90 dark:bg-charcoal/50 backdrop-blur-sm rounded-2xl p-8 shadow-xl mb-16">
+            <div className="bg-white/90 dark:bg-charcoal/50 backdrop-blur-xs rounded-2xl p-8 shadow-xl mb-16">
               <h2 className="text-3xl font-bold text-charcoal dark:text-white mb-6 text-center">
                 What&apos;s Included With Every Lease
               </h2>
@@ -254,7 +254,7 @@ export default async function LongTermLeasePage() {
             {/* Inquiry form */}
             <div
               id="inquiry-form"
-              className="bg-white/90 dark:bg-charcoal/50 backdrop-blur-sm rounded-2xl p-8 shadow-xl mb-16 scroll-mt-24"
+              className="bg-white/90 dark:bg-charcoal/50 backdrop-blur-xs rounded-2xl p-8 shadow-xl mb-16 scroll-mt-24"
             >
               <div className="max-w-3xl mx-auto">
                 <h2 className="text-3xl font-bold text-charcoal dark:text-white mb-2 text-center">

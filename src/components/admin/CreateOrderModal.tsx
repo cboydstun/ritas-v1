@@ -327,7 +327,7 @@ export default function CreateOrderModal({ onClose }: CreateOrderModalProps) {
                   <select
                     value={formData.machineType}
                     onChange={handleMachineTypeChange}
-                    className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm"
+                    className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-xs"
                   >
                     {machinePackages.map((pkg) => (
                       <option
@@ -346,7 +346,7 @@ export default function CreateOrderModal({ onClose }: CreateOrderModalProps) {
                   <select
                     value={formData.capacity}
                     onChange={handleCapacityChange}
-                    className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm"
+                    className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-xs"
                   >
                     {machinePackages
                       .filter((pkg) => pkg.type === formData.machineType)
@@ -374,7 +374,7 @@ export default function CreateOrderModal({ onClose }: CreateOrderModalProps) {
                       onChange={(e) =>
                         handleMixerChange(index, e.target.value as MixerType)
                       }
-                      className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm"
+                      className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-xs"
                     >
                       <option value="">Select a mixer</option>
                       {Object.entries(mixerDetails).map(([key, mixer]) => (
@@ -397,7 +397,7 @@ export default function CreateOrderModal({ onClose }: CreateOrderModalProps) {
                 {catalogExtraItems.map((item) => (
                   <div
                     key={item.id}
-                    className="flex items-start space-x-3 p-3 border rounded-md"
+                    className="flex items-start space-x-3 p-3 border border-gray-200 dark:border-gray-700 rounded-md"
                   >
                     <input
                       type="checkbox"
@@ -443,7 +443,7 @@ export default function CreateOrderModal({ onClose }: CreateOrderModalProps) {
                                   parseInt(e.target.value),
                                 )
                               }
-                              className="w-16 text-sm rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm"
+                              className="w-16 text-sm rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-xs"
                             />
                           </div>
                         )}
@@ -473,7 +473,7 @@ export default function CreateOrderModal({ onClose }: CreateOrderModalProps) {
                       })
                     }
                     required
-                    className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm"
+                    className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-xs"
                   />
                 </div>
                 <div>
@@ -490,7 +490,7 @@ export default function CreateOrderModal({ onClose }: CreateOrderModalProps) {
                       })
                     }
                     required
-                    className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm"
+                    className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-xs"
                   />
                 </div>
                 <div>
@@ -507,7 +507,7 @@ export default function CreateOrderModal({ onClose }: CreateOrderModalProps) {
                       })
                     }
                     required
-                    className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm"
+                    className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-xs"
                   />
                 </div>
                 <div>
@@ -524,7 +524,7 @@ export default function CreateOrderModal({ onClose }: CreateOrderModalProps) {
                       })
                     }
                     required
-                    className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm"
+                    className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-xs"
                   />
                 </div>
               </div>
@@ -553,7 +553,7 @@ export default function CreateOrderModal({ onClose }: CreateOrderModalProps) {
                       })
                     }
                     required
-                    className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm"
+                    className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-xs"
                   />
                 </div>
                 <div>
@@ -573,7 +573,7 @@ export default function CreateOrderModal({ onClose }: CreateOrderModalProps) {
                       })
                     }
                     required
-                    className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm"
+                    className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-xs"
                   />
                 </div>
                 <div>
@@ -593,7 +593,7 @@ export default function CreateOrderModal({ onClose }: CreateOrderModalProps) {
                       })
                     }
                     required
-                    className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm"
+                    className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-xs"
                   />
                 </div>
               </div>
@@ -625,7 +625,7 @@ export default function CreateOrderModal({ onClose }: CreateOrderModalProps) {
                       })
                     }
                     required
-                    className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm"
+                    className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-xs"
                   />
                 </div>
                 <div>
@@ -648,7 +648,7 @@ export default function CreateOrderModal({ onClose }: CreateOrderModalProps) {
                       })
                     }
                     required
-                    className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm"
+                    className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-xs"
                   />
                 </div>
                 <div>
@@ -671,7 +671,7 @@ export default function CreateOrderModal({ onClose }: CreateOrderModalProps) {
                       })
                     }
                     required
-                    className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm"
+                    className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-xs"
                   />
                 </div>
                 <div>
@@ -694,7 +694,7 @@ export default function CreateOrderModal({ onClose }: CreateOrderModalProps) {
                       })
                     }
                     required
-                    className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm"
+                    className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-xs"
                   />
                 </div>
               </div>
@@ -714,7 +714,7 @@ export default function CreateOrderModal({ onClose }: CreateOrderModalProps) {
                   })
                 }
                 rows={3}
-                className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm"
+                className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-xs"
               />
             </div>
 

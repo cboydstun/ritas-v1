@@ -55,7 +55,7 @@ export default function AboutPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-light via-margarita/10 to-teal/20 dark:from-charcoal dark:via-margarita/5 dark:to-teal/10">
+      <div className="min-h-screen relative overflow-hidden bg-linear-to-br from-light via-margarita/10 to-teal/20 dark:from-charcoal dark:via-margarita/5 dark:to-teal/10">
         {/* Decorative Elements */}
         <div className="absolute inset-0 pointer-events-none">
           <div className="absolute top-20 left-10 w-32 h-32 bg-orange/10 dark:bg-orange/5 rounded-full blur-2xl animate-pulse" />
@@ -74,7 +74,7 @@ export default function AboutPage() {
               </div>
               <h1 className="text-5xl md:text-6xl font-extrabold text-charcoal dark:text-white mb-6 tracking-tight">
                 Our
-                <span className="block text-transparent bg-clip-text bg-gradient-to-r from-margarita via-teal to-orange mt-2">
+                <span className="block text-transparent bg-clip-text bg-linear-to-r from-margarita via-teal to-orange mt-2">
                   Story
                 </span>
               </h1>
@@ -100,7 +100,7 @@ export default function AboutPage() {
             </div>
 
             {/* What We Offer */}
-            <div className="bg-white/90 dark:bg-charcoal/50 backdrop-blur-sm rounded-2xl p-8 shadow-xl mb-8">
+            <div className="bg-white/90 dark:bg-charcoal/50 backdrop-blur-xs rounded-2xl p-8 shadow-xl mb-8">
               <h2 className="text-3xl font-bold text-charcoal dark:text-white mb-6 text-center">
                 Everything We Offer
               </h2>
@@ -184,7 +184,7 @@ export default function AboutPage() {
 
             {/* Why Choose Us Grid */}
             <div className="grid md:grid-cols-3 gap-8 mb-8">
-              <div className="bg-white/80 dark:bg-charcoal/50 backdrop-blur-sm rounded-2xl p-8 shadow-xl">
+              <div className="bg-white/80 dark:bg-charcoal/50 backdrop-blur-xs rounded-2xl p-8 shadow-xl">
                 <div className="text-4xl mb-4">🛡️</div>
                 <h3 className="text-xl font-bold text-charcoal dark:text-white mb-3">
                   Quality First
@@ -195,7 +195,7 @@ export default function AboutPage() {
                   time.
                 </p>
               </div>
-              <div className="bg-white/80 dark:bg-charcoal/50 backdrop-blur-sm rounded-2xl p-8 shadow-xl">
+              <div className="bg-white/80 dark:bg-charcoal/50 backdrop-blur-xs rounded-2xl p-8 shadow-xl">
                 <div className="text-4xl mb-4">⏰</div>
                 <h3 className="text-xl font-bold text-charcoal dark:text-white mb-3">
                   Dependable Service
@@ -205,7 +205,7 @@ export default function AboutPage() {
                   to ensure your event runs smoothly from start to finish.
                 </p>
               </div>
-              <div className="bg-white/80 dark:bg-charcoal/50 backdrop-blur-sm rounded-2xl p-8 shadow-xl">
+              <div className="bg-white/80 dark:bg-charcoal/50 backdrop-blur-xs rounded-2xl p-8 shadow-xl">
                 <div className="text-4xl mb-4">🌟</div>
                 <h3 className="text-xl font-bold text-charcoal dark:text-white mb-3">
                   Premium Support
@@ -218,7 +218,7 @@ export default function AboutPage() {
             </div>
 
             {/* Our Values */}
-            <div className="bg-white/90 dark:bg-charcoal/50 backdrop-blur-sm rounded-2xl p-12 shadow-xl mb-8">
+            <div className="bg-white/90 dark:bg-charcoal/50 backdrop-blur-xs rounded-2xl p-12 shadow-xl mb-8">
               <h2 className="text-4xl font-bold text-charcoal dark:text-white mb-12 text-center">
                 Our Values
               </h2>
@@ -271,7 +271,7 @@ export default function AboutPage() {
             </div>
 
             {/* Service Area */}
-            <div className="bg-gradient-to-r from-margarita/20 to-teal/20 dark:from-margarita/10 dark:to-teal/10 rounded-2xl p-12 shadow-xl mb-8">
+            <div className="bg-linear-to-r from-margarita/20 to-teal/20 dark:from-margarita/10 dark:to-teal/10 rounded-2xl p-12 shadow-xl mb-8">
               <h2 className="text-4xl font-bold text-charcoal dark:text-white mb-8 text-center">
                 Serving San Antonio
               </h2>
