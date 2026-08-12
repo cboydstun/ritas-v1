@@ -213,12 +213,20 @@ export async function POST(request: Request) {
     // The check above and this write are not atomic, so two concurrent
     // requests could both claim the last unit. Re-count now that our own hold
     // is persisted (excluding it), and roll back if we oversold.
+    //
+    // `ignoreCreatedFrom` makes that recheck asymmetric: only holds that
+    // already existed when ours landed can displace us. A symmetric recheck
+    // had both racers roll themselves back, rejecting two real customers and
+    // leaving the unit unsold.
     const recheck = await isMachineAvailable(
       rentalData.machineType,
       capacity,
       rentalData.rentalDate,
       rentalData.returnDate,
-      { excludeRentalId: savedRental._id.toString() },
+      {
+        excludeRentalId: savedRental._id.toString(),
+        ignoreCreatedFrom: savedRental.createdAt ?? new Date(),
+      },
     );
     if (!recheck.available) {
       await Rental.deleteOne({ _id: savedRental._id });
@@ -239,8 +247,11 @@ export async function POST(request: Request) {
     const toPhone = process.env.USER_PHONE_NUMBER;
 
     if (accountSid && authToken && fromPhone && toPhone) {
-      const twilioClient = twilio(accountSid, authToken);
       try {
+        // Inside the try: twilio() throws synchronously on a malformed SID,
+        // and the rental is already persisted at this point — an escape here
+        // returns a 500 for a booking that actually succeeded.
+        const twilioClient = twilio(accountSid, authToken);
         // Parse the rental date and time
         const [year, month, day] = rental.rentalDate.split("-");
         const rentalDateTime = new Date(
@@ -407,10 +418,12 @@ export async function POST(request: Request) {
       </div>`;
     // ─────────────────────────────────────────────────────────────────────
 
-    // Configure Resend
-    const resend = new Resend(process.env.RESEND_API_KEY);
-
     try {
+      // Inside the try: the Resend constructor throws when RESEND_API_KEY is
+      // unset, and the rental is already persisted — an escape here tells the
+      // customer their booking failed when it did not.
+      const resend = new Resend(process.env.RESEND_API_KEY);
+
       // Send confirmation email to customer
       await resend.emails.send({
         from: "SATX Ritas Rentals <bookings@satxritas.com>",

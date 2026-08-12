@@ -2,6 +2,7 @@ import {
   MACHINE_CAPACITY,
   escapeHtml,
   fingerprintHashSchema,
+  MAX_RANGE_DAYS,
   rentalDataSchema,
   todayLocalIso,
 } from "@/lib/validation";
@@ -174,6 +175,61 @@ describe("fingerprintHashSchema", () => {
     expect(fingerprintHashSchema.safeParse("../../etc/passwd").success).toBe(
       false,
     );
+  });
+});
+
+
+describe("todayLocalIso", () => {
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  // Vercel functions run UTC. Reading the server clock's local date meant that
+  // after 19:00 Central the server was already on tomorrow, so it rejected the
+  // same-day bookings the client's date picker had just offered.
+  it("returns the Central date, not the UTC date, late in the evening", () => {
+    jest.useFakeTimers().setSystemTime(new Date("2026-08-11T23:30:00Z"));
+    expect(todayLocalIso()).toBe("2026-08-11");
+  });
+
+  it("accepts a same-day booking made at 23:30 UTC", () => {
+    jest.useFakeTimers().setSystemTime(new Date("2026-08-11T23:30:00Z"));
+    const result = rentalDataSchema.safeParse({
+      ...validRental(),
+      rentalDate: "2026-08-11",
+      returnDate: "2026-08-11",
+    });
+    expect(result.success).toBe(true);
+  });
+});
+
+describe("rentalDataSchema range cap", () => {
+  it(`rejects a span longer than ${MAX_RANGE_DAYS} days`, () => {
+    const start = todayLocalIso();
+    const tooFar = new Date(`${start}T00:00:00Z`);
+    tooFar.setUTCDate(tooFar.getUTCDate() + MAX_RANGE_DAYS + 1);
+
+    const result = rentalDataSchema.safeParse({
+      ...validRental(),
+      rentalDate: start,
+      returnDate: tooFar.toISOString().slice(0, 10),
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it(`accepts a span of exactly ${MAX_RANGE_DAYS} days`, () => {
+    const start = todayLocalIso();
+    const edge = new Date(`${start}T00:00:00Z`);
+    edge.setUTCDate(edge.getUTCDate() + MAX_RANGE_DAYS);
+
+    const result = rentalDataSchema.safeParse({
+      ...validRental(),
+      rentalDate: start,
+      returnDate: edge.toISOString().slice(0, 10),
+    });
+
+    expect(result.success).toBe(true);
   });
 });
 

@@ -70,10 +70,11 @@ export async function POST(request: Request) {
       );
     }
 
-    // Configure Resend
-    const resend = new Resend(process.env.RESEND_API_KEY);
-
     try {
+      // Inside the try: the Resend constructor throws when RESEND_API_KEY is
+      // unset, and the document is already persisted at this point.
+      const resend = new Resend(process.env.RESEND_API_KEY);
+
       // Send notification email
       await resend.emails.send({
         from: "SATX Ritas Rentals <contact@satxritas.com>",

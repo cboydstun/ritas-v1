@@ -25,16 +25,18 @@ const DEFAULT_INVENTORY: Record<MachineType, number> = {
 };
 
 /**
- * How long an unpaid hold keeps a unit off the board.
+ * How long an abandoned `pending` hold keeps a unit off the board.
  *
- * `pending` / `pending_payment` rentals count against availability, and
- * nothing ever expired them — so every abandoned checkout consumed a unit
- * permanently.
+ * Only `pending` expires. `pending_payment` is the status `/api/save-booking`
+ * writes for a *submitted* booking — the customer has a confirmation email and
+ * is invoiced out of band — so it blocks its unit until an admin cancels it.
+ * Reaping it cancelled real bookings two hours after they were placed and put
+ * the machine back on sale.
  *
- * `isMachineAvailable` enforces this at query time, so a hold stops blocking
- * a unit the moment it ages out. `releaseStaleHolds` then flips the stored
- * status to "cancelled" as housekeeping — it keeps the admin views honest but
- * is not what makes availability correct.
+ * `isMachineAvailable` enforces the cutoff at query time, so an abandoned hold
+ * stops blocking a unit the moment it ages out. `releaseStaleHolds` then flips
+ * the stored status to "cancelled" as housekeeping — it keeps the admin views
+ * honest but is not what makes availability correct.
  */
 export const STALE_HOLD_MINUTES = 120;
 
@@ -74,8 +76,9 @@ export async function getMachineInventory(
 }
 
 /**
- * Cancel unpaid holds older than `olderThanMinutes` so their units return to
- * the pool. Safe to call repeatedly; returns how many were released.
+ * Cancel abandoned `pending` holds older than `olderThanMinutes` so their units
+ * return to the pool. `pending_payment` is deliberately excluded — see the note
+ * on STALE_HOLD_MINUTES. Safe to call repeatedly; returns how many were released.
  */
 export async function releaseStaleHolds(
   olderThanMinutes: number = STALE_HOLD_MINUTES,
@@ -86,7 +89,7 @@ export async function releaseStaleHolds(
 
   const result = await Rental.updateMany(
     {
-      status: { $in: ["pending", "pending_payment"] },
+      status: "pending",
       createdAt: { $lt: cutoff },
     },
     { $set: { status: "cancelled", updatedAt: new Date() } },
@@ -101,6 +104,16 @@ export interface AvailabilityOptions {
    * persisting a hold, so a booking is never blocked by its own reservation.
    */
   excludeRentalId?: string;
+  /**
+   * Ignore rentals created at or after this instant.
+   *
+   * Makes the post-write oversell recheck asymmetric. Without it, two requests
+   * racing for the last unit each saw the other's hold and each rolled itself
+   * back, so both customers were rejected and the unit went unsold. Passing
+   * our own `createdAt` means only holds that were already there can displace
+   * us, so exactly one of the two survives.
+   */
+  ignoreCreatedFrom?: Date;
 }
 
 export async function isMachineAvailable(
@@ -145,10 +158,12 @@ export async function isMachineAvailable(
     };
   }
 
-  // An unpaid hold stops counting once it is older than STALE_HOLD_MINUTES,
-  // whether or not `releaseStaleHolds` has cancelled it yet. Expiry is treated
-  // as a property of the query rather than of the stored document, so
-  // availability is correct even if the cleanup job is delayed or never runs.
+  // An abandoned `pending` hold stops counting once it is older than
+  // STALE_HOLD_MINUTES, whether or not `releaseStaleHolds` has cancelled it
+  // yet. Expiry is treated as a property of the query rather than of the
+  // stored document, so availability is correct even if the cleanup job is
+  // delayed or never runs. `pending_payment` is a submitted booking and never
+  // expires — see the note on STALE_HOLD_MINUTES.
   const holdCutoff = new Date(Date.now() - STALE_HOLD_MINUTES * 60 * 1000);
 
   const overlapQuery: Record<string, unknown> = {
@@ -157,15 +172,18 @@ export async function isMachineAvailable(
     rentalDate: { $lte: endDate },
     returnDate: { $gte: rentalDate },
     $or: [
-      { status: { $in: ["confirmed", "in-progress"] } },
+      { status: { $in: ["confirmed", "in-progress", "pending_payment"] } },
       {
-        status: { $in: ["pending", "pending_payment"] },
+        status: "pending",
         createdAt: { $gte: holdCutoff },
       },
     ],
   };
   if (options?.excludeRentalId) {
     overlapQuery._id = { $ne: options.excludeRentalId };
+  }
+  if (options?.ignoreCreatedFrom) {
+    overlapQuery.createdAt = { $lt: options.ignoreCreatedFrom };
   }
 
   const overlapping = await Rental.find(overlapQuery)

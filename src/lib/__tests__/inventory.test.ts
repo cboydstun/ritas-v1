@@ -141,18 +141,17 @@ describe("isMachineAvailable", () => {
       );
 
       expect(result.available).toBe(false);
-      // Unpaid holds live in the $or branch that also carries the age cutoff.
-      const statuses = (Rental.find as jest.Mock).mock.calls[0][0].$or.flatMap(
-        (clause: { status: { $in: string[] } }) => clause.status.$in,
+      // `pending_payment` is a submitted booking, so it sits in the branch
+      // with no age cutoff. Only abandoned `pending` holds expire.
+      const query = (Rental.find as jest.Mock).mock.calls[0][0];
+      const settled = query.$or.find(
+        (clause: { status: string | { $in: string[] } }) =>
+          typeof clause.status !== "string",
       );
-      expect(statuses).toEqual(
-        expect.arrayContaining([
-          "pending",
-          "pending_payment",
-          "confirmed",
-          "in-progress",
-        ]),
+      expect(settled.status.$in).toEqual(
+        expect.arrayContaining(["confirmed", "in-progress", "pending_payment"]),
       );
+      expect(settled.createdAt).toBeUndefined();
     });
 
     it("returns unavailable when inventory is 0", async () => {
@@ -336,19 +335,25 @@ describe("isMachineAvailable", () => {
       const query = (Rental.find as jest.Mock).mock.calls[0][0];
       expect(query.$or).toHaveLength(2);
 
-      const settled = query.$or.find((clause: { status: { $in: string[] } }) =>
-        clause.status.$in.includes("confirmed"),
+      const settled = query.$or.find(
+        (clause: { status: string | { $in: string[] } }) =>
+          typeof clause.status !== "string",
       );
-      const holds = query.$or.find((clause: { status: { $in: string[] } }) =>
-        clause.status.$in.includes("pending"),
+      const holds = query.$or.find(
+        (clause: { status: string | { $in: string[] } }) =>
+          clause.status === "pending",
       );
 
-      // Paid/active bookings always count, with no age condition.
+      // Submitted and active bookings always count, with no age condition.
       expect(settled.createdAt).toBeUndefined();
-      expect(settled.status.$in).toEqual(["confirmed", "in-progress"]);
+      expect(settled.status.$in).toEqual([
+        "confirmed",
+        "in-progress",
+        "pending_payment",
+      ]);
 
-      // Unpaid holds count only while recent.
-      expect(holds.status.$in).toEqual(["pending", "pending_payment"]);
+      // Only abandoned holds expire, and only while recent do they count.
+      expect(holds.status).toBe("pending");
       expect(holds.createdAt.$gte).toBeInstanceOf(Date);
 
       const ageMinutes =

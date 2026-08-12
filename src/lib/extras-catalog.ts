@@ -14,12 +14,21 @@ import { mixerDetails, type MixerType } from "@/lib/rental-data";
 
 export const MAX_EXTRA_QUANTITY = 20;
 
-/** Admin `Settings.extras` / `Settings.mixers` shape — both are Mixed maps. */
+/** Admin `Settings.extras` shape — a Mixed map of id → price. */
 export type PriceOverrides = Record<string, { price?: number } | undefined>;
+
+/**
+ * Admin `Settings.mixers` shape. An admin can add flavours here that have no
+ * entry in the static `mixerDetails`, so this carries the display metadata too.
+ */
+export type MixerOverrides = Record<
+  string,
+  { label?: string; description?: string; price?: number } | undefined
+>;
 
 export interface CatalogOverrides {
   extras?: PriceOverrides;
-  mixers?: PriceOverrides;
+  mixers?: MixerOverrides;
 }
 
 /** The id an extra-mixer add-on carries in `selectedExtras`. */
@@ -29,8 +38,12 @@ export function mixerExtraId(mixer: string): string {
 
 /**
  * Every add-on that may legitimately appear in `selectedExtras`, keyed by id:
- * the four static items plus one "extra mixer" entry per mixer flavour.
- * Admin price overrides are folded in here so callers get final prices.
+ * the static items plus one "extra mixer" entry per mixer flavour.
+ *
+ * Mixers are enumerated from the admin `Settings.mixers` map when one is
+ * supplied, falling back to the static `mixerDetails`. Enumerating only the
+ * static four meant an admin-added flavour rendered a card in the extras step
+ * that priced at $0 and then failed checkout with "not available".
  */
 export function buildExtrasCatalog(
   overrides?: CatalogOverrides,
@@ -46,20 +59,32 @@ export function buildExtrasCatalog(
     });
   }
 
-  for (const [mixer, details] of Object.entries(mixerDetails) as [
-    MixerType,
-    (typeof mixerDetails)[MixerType],
-  ][]) {
+  const staticMixers = mixerDetails as Record<
+    string,
+    (typeof mixerDetails)[MixerType] | undefined
+  >;
+  const mixerIds = new Set<string>([
+    ...Object.keys(staticMixers),
+    ...Object.keys(overrides?.mixers ?? {}),
+  ]);
+
+  for (const mixer of mixerIds) {
+    const details = staticMixers[mixer];
+    const settingsMixer = overrides?.mixers?.[mixer];
     const id = mixerExtraId(mixer);
+
+    const label = settingsMixer?.label ?? details?.label ?? mixer;
+    const description = settingsMixer?.description ?? details?.description ?? "";
     // An admin can price the add-on either as an extra or via the mixer itself;
     // an explicit `extras` entry is the more specific of the two, so it wins.
-    const override =
-      overrides?.extras?.[id]?.price ?? overrides?.mixers?.[mixer]?.price;
+    const price = overrides?.extras?.[id]?.price ?? settingsMixer?.price ?? details?.price;
+    if (typeof price !== "number") continue;
+
     catalog.set(id, {
       id,
-      name: `${details.label} — Extra Mixer`,
-      description: details.description,
-      price: typeof override === "number" ? override : details.price,
+      name: `${label} — Extra Mixer`,
+      description,
+      price,
       allowQuantity: true,
       quantity: 1,
       pricingType: "flat",

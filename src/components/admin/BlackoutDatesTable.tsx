@@ -42,7 +42,9 @@ export default function BlackoutDatesTable({
     if (type === "full_day") {
       return "Full Day";
     } else if (type === "time_range" && startTime && endTime) {
-      return `${formatTime(startTime)} - ${formatTime(endTime)}`;
+      // Availability ignores the times and blocks the whole day, so say so
+      // rather than implying the machine is bookable outside the window.
+      return `${formatTime(startTime)} - ${formatTime(endTime)} (blocks whole day)`;
     }
     return type;
   };

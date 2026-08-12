@@ -55,8 +55,13 @@ export const isBexarCountyZipCode = (zipCode: string): boolean => {
 
   // Main San Antonio/Bexar County ZIP codes
   const bexarZips = [
-    // Main San Antonio ZIP ranges (78201-78299)
-    ...Array.from({ length: 99 }, (_, i) => `782${String(i).padStart(2, "0")}`),
+    // Main San Antonio ZIP ranges (78201-78299). The generator used to start
+    // at i=0 for 99 entries, which produced 78200-78298: it turned away the
+    // real ZIP 78299 and accepted the unassigned 78200.
+    ...Array.from(
+      { length: 99 },
+      (_, i) => `782${String(i + 1).padStart(2, "0")}`,
+    ),
 
     // Additional Bexar County ZIPs
     "78002",

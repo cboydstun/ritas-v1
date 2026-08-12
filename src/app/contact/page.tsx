@@ -1,7 +1,7 @@
 import { Metadata } from "next";
 import ContactForm from "@/components/contact/ContactForm";
 import BookingCTA from "@/components/BookingCTA";
-import { SITE_URL } from "@/lib/site";
+import { BUSINESS_ID, SITE_URL } from "@/lib/site";
 
 // Add JSON-LD structured data for contact page
 const jsonLd = {
@@ -12,6 +12,10 @@ const jsonLd = {
     "Contact page for SATX Ritas Rentals - San Antonio's premium frozen drink machine rental service",
   mainEntity: {
     "@type": "LocalBusiness",
+    // Same @id as the homepage and /order, so this page's opening hours, geo
+    // and ReserveAction attach to the one business entity rather than
+    // declaring a third.
+    "@id": BUSINESS_ID,
     name: "SATX Ritas Rentals",
     image: `${SITE_URL}/og-image.jpg`,
     telephone: "+1-512-210-0194",
@@ -67,6 +71,7 @@ const jsonLd = {
 };
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/contact" },
   title: "Contact Us | SATX Ritas Rentals - Frozen Drink Machine Rentals",
   description:
     "Get in touch with SATX Ritas Rentals for premium frozen drink machine rentals in San Antonio. Contact us for bookings, questions, or support. Professional service with flexible scheduling.",

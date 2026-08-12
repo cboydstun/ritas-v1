@@ -4,8 +4,13 @@ import { useState, useEffect, useCallback } from "react";
 import { MargaritaRental, MachineType, MixerType } from "@/types/index";
 import { machinePackages, mixerDetails } from "@/lib/rental-data";
 import { extraItems } from "@/components/order/types";
+import { buildExtrasCatalog } from "@/lib/extras-catalog";
 import { formatPrice } from "@/lib/pricing";
-import type { SettingsOverrides } from "@/components/order/utils";
+import {
+  computeOrderTotal,
+  type SettingsOverrides,
+} from "@/components/order/utils";
+import type { OrderFormData } from "@/components/order/types";
 
 interface CreateOrderModalProps {
   onClose: () => void;
@@ -38,7 +43,7 @@ export default function CreateOrderModal({ onClose }: CreateOrderModalProps) {
       },
     },
     notes: "",
-    status: "pending",
+    status: "pending_payment",
   });
 
   // Fetch settings on mount
@@ -65,105 +70,41 @@ export default function CreateOrderModal({ onClose }: CreateOrderModalProps) {
     total: number;
   }
 
-  // Calculate the total price based on selected machine, mixers, extras, and fees
+  // Calculate the total price based on selected machine, mixers, extras, and fees.
+  //
+  // Delegates to `computeOrderTotal` — the same function the customer form,
+  // PricingSummary and /api/save-booking use. The local implementation this
+  // replaced diffed local-midnight Dates to count rental days (so a DST
+  // fall-back night billed as two) and charged every extra per day regardless
+  // of its catalog `pricingType`.
   const calculateTotalPrice = useCallback((): PriceDetails => {
-    const DELIVERY_FEE = settings?.fees?.deliveryFee ?? 20;
-    const SALES_TAX_RATE = settings?.fees?.salesTaxRate ?? 0.0825;
-    const PROCESSING_FEE_RATE = settings?.fees?.processingFeeRate ?? 0.03;
-    // Calculate rental days between rental and return dates
-    const calculateRentalDaysInternal = () => {
-      if (!formData.rentalDate || !formData.returnDate) return 1;
-
-      const rentalDate = new Date(formData.rentalDate + "T00:00:00");
-      const returnDate = new Date(formData.returnDate + "T00:00:00");
-
-      if (isNaN(rentalDate.getTime()) || isNaN(returnDate.getTime())) return 1;
-
-      const diffTime = returnDate.getTime() - rentalDate.getTime();
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-      return Math.max(1, diffDays); // Ensure at least 1 day
-    };
-
-    // Find the selected machine package
-    const selectedMachine = machinePackages.find(
-      (pkg) =>
-        pkg.type === formData.machineType && pkg.capacity === formData.capacity,
+    const totals = computeOrderTotal(
+      {
+        machineType: formData.machineType ?? "single",
+        selectedMixers: formData.selectedMixers ?? [],
+        selectedExtras: formData.selectedExtras ?? [],
+        rentalDate: formData.rentalDate ?? "",
+        returnDate: formData.returnDate ?? "",
+        isServiceDiscount: false,
+      } as OrderFormData,
+      settings ?? undefined,
     );
 
-    // Default values if no machine is selected
-    if (!selectedMachine) {
-      const fallbackProcessing = DELIVERY_FEE * PROCESSING_FEE_RATE;
-      const fallbackTax = (DELIVERY_FEE + fallbackProcessing) * SALES_TAX_RATE;
-      return {
-        basePrice: 0,
-        mixerPrice: 0,
-        perDayRate: 0,
-        rentalDays: 1,
-        extrasTotal: 0,
-        deliveryFee: DELIVERY_FEE,
-        subtotal: DELIVERY_FEE,
-        salesTax: fallbackTax,
-        processingFee: fallbackProcessing,
-        cashPrice: DELIVERY_FEE + DELIVERY_FEE * SALES_TAX_RATE,
-        total: DELIVERY_FEE + fallbackProcessing + fallbackTax,
-      };
-    }
-
-    // Calculate rental days
-    const rentalDays = calculateRentalDaysInternal();
-
-    // Start with the base price
-    const basePrice = selectedMachine.basePrice;
-
-    // Add mixer prices
-    let mixerPrice = 0;
-    if (formData.selectedMixers && formData.selectedMixers.length > 0) {
-      formData.selectedMixers.forEach((mixer) => {
-        const mixerDetail = mixerDetails[mixer as MixerType];
-        if (mixerDetail) {
-          mixerPrice += mixerDetail.price;
-        }
-      });
-    }
-
-    // Calculate per day rate
-    const perDayRate = basePrice + mixerPrice;
-
-    // Add extras prices (per day × number of days)
-    let extrasTotal = 0;
-    if (formData.selectedExtras && formData.selectedExtras.length > 0) {
-      formData.selectedExtras.forEach((extra) => {
-        extrasTotal += extra.price * (extra.quantity || 1) * rentalDays;
-      });
-    }
-
-    // Calculate subtotal including delivery fee
-    const subtotal = perDayRate * rentalDays + DELIVERY_FEE + extrasTotal;
-
-    // Match the QuickBooks invoice: processing fee is a taxable line, so tax
-    // is applied to (subtotal + processingFee).
-    const processingFee = subtotal * PROCESSING_FEE_RATE;
-    const salesTax = (subtotal + processingFee) * SALES_TAX_RATE;
-    const cashPrice = subtotal + subtotal * SALES_TAX_RATE;
-    const total = subtotal + processingFee + salesTax;
-
     return {
-      basePrice,
-      mixerPrice,
-      perDayRate,
-      rentalDays,
-      extrasTotal,
-      deliveryFee: DELIVERY_FEE,
-      subtotal,
-      salesTax,
-      processingFee,
-      cashPrice,
-      total,
+      basePrice: totals.basePrice,
+      mixerPrice: totals.mixerPrice,
+      perDayRate: totals.perDayRate,
+      rentalDays: totals.rentalDays,
+      extrasTotal: totals.extrasTotal,
+      deliveryFee: totals.deliveryFee,
+      subtotal: totals.subtotal,
+      salesTax: totals.salesTax,
+      processingFee: totals.processingFee,
+      cashPrice: totals.cashPrice,
+      total: totals.finalTotal,
     };
   }, [
     formData.machineType,
-    formData.capacity,
     formData.selectedMixers,
     formData.selectedExtras,
     formData.rentalDate,
@@ -226,9 +167,19 @@ export default function CreateOrderModal({ onClose }: CreateOrderModalProps) {
     }));
   };
 
+  // Cards are priced from the catalog so an admin override shows the same
+  // number here as in the computed total below.
+  const extrasCatalog = buildExtrasCatalog({
+    extras: settings?.extras,
+    mixers: settings?.mixers,
+  });
+  const catalogExtraItems = extraItems.map(
+    (item) => extrasCatalog.get(item.id) ?? item,
+  );
+
   // Handle extra item selection
   const handleExtraItemToggle = (itemId: string) => {
-    const item = extraItems.find((item) => item.id === itemId);
+    const item = catalogExtraItems.find((item) => item.id === itemId);
     if (!item) return;
 
     const currentExtras = formData.selectedExtras || [];
@@ -300,10 +251,12 @@ export default function CreateOrderModal({ onClose }: CreateOrderModalProps) {
         throw new Error("Please fill in all address fields");
       }
 
-      // Use the current price from state
+      // `pending_payment`, not `pending`: `releaseStaleHolds` cancels abandoned
+      // `pending` holds after two hours, and an order an admin typed in by hand
+      // is a real booking awaiting an invoice. Price is recomputed server-side.
       const finalFormData = {
         ...formData,
-        status: "pending" as const,
+        status: "pending_payment" as const,
       };
 
       // Submit the form data
@@ -441,7 +394,7 @@ export default function CreateOrderModal({ onClose }: CreateOrderModalProps) {
                 Extra Items
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {extraItems.map((item) => (
+                {catalogExtraItems.map((item) => (
                   <div
                     key={item.id}
                     className="flex items-start space-x-3 p-3 border rounded-md"

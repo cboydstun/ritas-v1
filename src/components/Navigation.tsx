@@ -78,9 +78,12 @@ export default function Navigation() {
               type="button"
               className="inline-flex items-center justify-center p-2 rounded-md text-charcoal dark:text-white hover:text-margarita focus:outline-none"
               onClick={toggleMobileMenu}
-              aria-expanded="false"
+              aria-expanded={isMobileMenuOpen}
+              aria-controls="mobile-menu"
             >
-              <span className="sr-only">Open main menu</span>
+              <span className="sr-only">
+                {isMobileMenuOpen ? "Close main menu" : "Open main menu"}
+              </span>
               {/* Hamburger Icon */}
               <svg
                 className={`h-6 w-6 transition-transform duration-200 ease-in-out ${
@@ -113,6 +116,11 @@ export default function Navigation() {
 
       {/* Mobile Menu */}
       <div
+        id="mobile-menu"
+        // Hidden from the accessibility tree and from tab order when closed.
+        // opacity-0 alone left every link focusable and announced.
+        aria-hidden={!isMobileMenuOpen}
+        inert={!isMobileMenuOpen}
         className={`sm:hidden fixed inset-0 bg-white/95 dark:bg-charcoal/95 backdrop-blur-sm transition-opacity duration-300 ease-in-out ${
           isMobileMenuOpen
             ? "opacity-100 pointer-events-auto"

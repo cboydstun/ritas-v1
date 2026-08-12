@@ -1,7 +1,7 @@
 import { ChangeEvent, useState, useEffect } from "react";
 import { StepProps } from "../types";
 import { mixerDetails, machinePackages, MixerType } from "@/lib/rental-data";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import MachineCard from "./MachineCard";
 import MixerCard from "./MixerCard";
 import { useAvailabilityCheck } from "@/hooks/useAvailabilityCheck";
@@ -48,6 +48,7 @@ export default function MachineStep({
   error,
   onAvailabilityError,
   mixers: mixersProp,
+  settings,
 }: StepProps) {
   // Use DB-driven mixer list when available, fall back to rental-data defaults
   const resolvedMixers =
@@ -232,7 +233,10 @@ export default function MachineStep({
 
   const formatDate = (dateString: string) => {
     if (!dateString) return "";
-    return format(new Date(dateString), "EEEE, MMMM d, yyyy");
+    // parseISO, not new Date(): `new Date("2026-08-15")` parses as UTC
+    // midnight, which in Central is the 14th — the header showed the day
+    // before the one the customer picked. Same fix as DateSelectionStep.
+    return format(parseISO(dateString), "EEEE, MMMM d, yyyy");
   };
 
   const getMixerTankSection = (tankIndex: number, tankLabel: string) => (
@@ -352,7 +356,9 @@ export default function MachineStep({
                 machineType={pkg.type}
                 name={pkg.name}
                 capacity={pkg.capacity}
-                basePrice={pkg.basePrice}
+                basePrice={
+                  settings?.machines?.[pkg.type]?.basePrice ?? pkg.basePrice
+                }
                 isSelected={formData.machineType === pkg.type}
                 isAvailable={availabilityByType[pkg.type] !== "unavailable"}
                 isPopular={machinePopular[pkg.type]}
@@ -467,7 +473,10 @@ export default function MachineStep({
 
         {/* Hard block error — machine genuinely unavailable */}
         {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative">
+          <div
+            role="alert"
+            className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative"
+          >
             {error}
           </div>
         )}

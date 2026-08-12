@@ -254,7 +254,18 @@ export default function BlackoutDateForm({
             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-teal focus:border-teal dark:bg-gray-700 dark:text-white"
           >
             <option value="full_day">Full Day</option>
-            <option value="time_range">Time Range</option>
+            {/*
+              "Time Range" is intentionally not offered. `isDateBlackedOut`
+              ignores startTime/endTime, so availability blocks the whole day
+              either way — the option promised a partial block and delivered a
+              full one, costing bookings on days that were only partly busy.
+              The model and the API still accept the type so existing records
+              keep rendering; re-add this once availability takes a delivery
+              time into account.
+            */}
+            {formData.type === "time_range" && (
+              <option value="time_range">Time Range (blocks whole day)</option>
+            )}
           </select>
         </div>
 

@@ -3,15 +3,35 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import dbConnect from "@/lib/mongodb";
 import { Rental } from "@/models/rental";
+import { MACHINE_CAPACITY } from "@/lib/validation";
+import { isMachineType } from "@/types/machine";
+import { Settings } from "@/models/settings";
+import { isMachineAvailable } from "@/lib/inventory";
+import { resolveSelectedExtras } from "@/lib/extras-catalog";
+import {
+  computeOrderTotal,
+  type SettingsOverrides,
+} from "@/components/order/utils";
+import type { OrderFormData } from "@/components/order/types";
 import mongoose from "mongoose";
 
-/** Fields an admin may change on an existing order. */
+/**
+ * Fields an admin may change on an existing order.
+ *
+ * `capacity` is deliberately absent: it is derived from `machineType` below,
+ * matching the invariant `/api/save-booking` enforces. Accepting it also broke
+ * every edit — the schema validator reads `this.machineType`, which is
+ * undefined under update validators, so any payload carrying `capacity` failed
+ * validation and surfaced as a 500.
+ *
+ * `price` is absent for the same reason: it is recomputed from the merged
+ * order below, so an edit to the machine type or the dates can no longer leave
+ * a stale total behind.
+ */
 const EDITABLE_ORDER_FIELDS = [
   "machineType",
-  "capacity",
   "selectedMixers",
   "selectedExtras",
-  "price",
   "rentalDate",
   "rentalTime",
   "returnDate",
@@ -37,6 +57,11 @@ export async function GET(request: Request, context: RouteParams) {
   }
 
   const { id } = await context.params;
+
+  // An invalid id produced a Mongoose CastError and a 500 instead of a 404.
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return NextResponse.json({ message: "Order not found" }, { status: 404 });
+  }
 
   try {
     await dbConnect();
@@ -82,6 +107,103 @@ export async function PUT(request: Request, context: RouteParams) {
       if (data[field] !== undefined) update[field] = data[field];
     }
 
+    // Capacity follows the machine type, never the request body.
+    if (typeof update.machineType === "string") {
+      if (!isMachineType(update.machineType)) {
+        return NextResponse.json(
+          { message: "Invalid machine type" },
+          { status: 400 },
+        );
+      }
+      update.capacity = MACHINE_CAPACITY[update.machineType];
+    }
+
+    const existing = await Rental.findById(id).lean();
+    if (!existing) {
+      return NextResponse.json({ message: "Order not found" }, { status: 404 });
+    }
+
+    // The edit is applied to a copy first, so availability and price are
+    // judged against what the order will actually become.
+    const merged = { ...existing, ...update } as unknown as {
+      machineType: "single" | "double" | "triple";
+      capacity: 15 | 30 | 45;
+      selectedMixers: string[];
+      selectedExtras: unknown;
+      rentalDate: string;
+      returnDate: string;
+      status?: string;
+    };
+
+    const changesBooking =
+      update.machineType !== undefined ||
+      update.rentalDate !== undefined ||
+      update.returnDate !== undefined;
+
+    // An admin edit used to bypass the availability check entirely, so moving
+    // an order onto a full date silently oversold it.
+    if (changesBooking && merged.status !== "cancelled") {
+      const availability = await isMachineAvailable(
+        merged.machineType,
+        merged.capacity,
+        merged.rentalDate,
+        merged.returnDate,
+        { excludeRentalId: id },
+      );
+      if (!availability.available) {
+        return NextResponse.json(
+          { message: availability.reason ?? "Machine is not available" },
+          { status: 409 },
+        );
+      }
+    }
+
+    // Recompute the total from the merged order, using the same function the
+    // customer-facing form and /api/save-booking use.
+    const settingsDoc = (await Settings.findOne({ key: "global" }).lean()) as {
+      fees?: SettingsOverrides["fees"];
+      machines?: SettingsOverrides["machines"];
+      mixers?: SettingsOverrides["mixers"];
+      extras?: SettingsOverrides["extras"];
+    } | null;
+
+    const overrides: SettingsOverrides = {
+      fees: settingsDoc?.fees,
+      machines: settingsDoc?.machines,
+      mixers: settingsDoc?.mixers,
+      extras: settingsDoc?.extras,
+    };
+
+    const { extras: resolvedExtras, unknownIds } = resolveSelectedExtras(
+      merged.selectedExtras,
+      { extras: settingsDoc?.extras, mixers: settingsDoc?.mixers },
+    );
+    if (unknownIds.length > 0) {
+      return NextResponse.json(
+        { message: `Unknown extras: ${unknownIds.join(", ")}` },
+        { status: 400 },
+      );
+    }
+
+    const totals = computeOrderTotal(
+      {
+        machineType: merged.machineType,
+        selectedMixers: merged.selectedMixers,
+        selectedExtras: resolvedExtras,
+        rentalDate: merged.rentalDate,
+        returnDate: merged.returnDate,
+        isServiceDiscount: false,
+      } as OrderFormData,
+      overrides,
+    );
+
+    update.selectedExtras = resolvedExtras;
+    update.price = Number(totals.finalTotal.toFixed(2));
+    // Only follow the total when the caller isn't setting payment itself.
+    if (update.payment === undefined) {
+      update["payment.amount"] = update.price;
+    }
+
     const rental = await Rental.findByIdAndUpdate(id, update, {
       new: true, // Return updated document
       runValidators: true, // Run schema validators
@@ -93,6 +215,12 @@ export async function PUT(request: Request, context: RouteParams) {
 
     return NextResponse.json(rental);
   } catch (error) {
+    if (error instanceof mongoose.Error.ValidationError) {
+      return NextResponse.json(
+        { message: Object.values(error.errors)[0]?.message ?? error.message },
+        { status: 400 },
+      );
+    }
     console.error("Error updating order:", error);
     return NextResponse.json(
       { message: "Failed to update order" },
@@ -110,6 +238,11 @@ export async function DELETE(request: Request, context: RouteParams) {
   }
 
   const { id } = await context.params;
+
+  // An invalid id produced a Mongoose CastError and a 500 instead of a 404.
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return NextResponse.json({ message: "Order not found" }, { status: 404 });
+  }
 
   try {
     await dbConnect();

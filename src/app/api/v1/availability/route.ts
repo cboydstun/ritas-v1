@@ -1,17 +1,7 @@
 import { NextResponse } from "next/server";
 import { isMachineAvailable } from "@/lib/inventory";
+import { MAX_RANGE_DAYS, spanInDays } from "@/lib/validation";
 import { MachineType } from "@/types";
-
-/** Longest rental window the availability check will expand. */
-const MAX_RANGE_DAYS = 90;
-
-function spanInDays(start: string, end: string): number {
-  const toUtc = (value: string) => {
-    const [year, month, day] = value.split("-").map(Number);
-    return Date.UTC(year, month - 1, day);
-  };
-  return Math.round((toUtc(end) - toUtc(start)) / (1000 * 60 * 60 * 24));
-}
 
 export async function GET(request: Request) {
   try {

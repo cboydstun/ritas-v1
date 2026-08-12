@@ -6,6 +6,7 @@ import {
   computeOrderTotal,
   calculateRentalDays,
   buildSuccessUrl,
+  isBexarCountyZipCode,
 } from "@/components/order/utils";
 import { OrderFormData } from "@/components/order/types";
 
@@ -294,5 +295,22 @@ describe("buildSuccessUrl", () => {
     );
 
     expect(keys.sort()).toEqual(["bookingId", "machineType", "mixers"]);
+  });
+});
+
+describe("isBexarCountyZipCode", () => {
+  it("accepts both ends of the 782xx San Antonio range", () => {
+    expect(isBexarCountyZipCode("78201")).toBe(true);
+    // The generator started at 78200 and stopped at 78298, so this real ZIP
+    // was turned away at the address step.
+    expect(isBexarCountyZipCode("78299")).toBe(true);
+  });
+
+  it("rejects the unassigned 78200", () => {
+    expect(isBexarCountyZipCode("78200")).toBe(false);
+  });
+
+  it("rejects a ZIP outside Bexar County", () => {
+    expect(isBexarCountyZipCode("75201")).toBe(false);
   });
 });

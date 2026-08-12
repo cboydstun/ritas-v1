@@ -2,34 +2,38 @@ import Image from "next/image";
 import { StepProps, extraItems, ExtraItem } from "../types";
 import { useState } from "react";
 import { PlusIcon, MinusIcon } from "@heroicons/react/24/solid";
-import { mixerDetails } from "@/lib/rental-data";
+import {
+  buildExtrasCatalog,
+  mixerExtraId,
+  MAX_EXTRA_QUANTITY,
+} from "@/lib/extras-catalog";
 
 export default function ExtrasStep({
   formData,
   onInputChange,
   error,
-  mixers,
+  settings,
 }: StepProps) {
-  const mixerExtraItems: ExtraItem[] = (
-    mixers ?? Object.entries(mixerDetails).map(([id, m]) => ({ id, ...m }))
-  ).map((m) => ({
-    id: `mixer-${m.id}`,
-    name: `${m.label} — Extra Mixer`,
-    description: m.description,
-    price: m.price,
-    allowQuantity: true,
-    quantity: 1,
-    pricingType: "flat" as const,
-  }));
+  // Cards are priced from the same catalog `computeOrderTotal` and the server
+  // use. Pricing them from the static `extraItems` / `mixerDetails` meant an
+  // admin price override showed the old price on the card and the new one on
+  // the invoice.
+  const extrasCatalog = buildExtrasCatalog({
+    extras: settings?.extras,
+    mixers: settings?.mixers,
+  });
+
+  const staticExtraItems: ExtraItem[] = extraItems.map(
+    (item) => extrasCatalog.get(item.id) ?? item,
+  );
+  const mixerExtraItems: ExtraItem[] = [...extrasCatalog.values()].filter(
+    (item) => item.id.startsWith(mixerExtraId("")),
+  );
+
   // Local state to track selected extras
   const [selectedExtras, setSelectedExtras] = useState<ExtraItem[]>(
     formData.selectedExtras || [],
   );
-
-  // Calculate the total price for an item based on quantity
-  const calculateItemTotal = (item: ExtraItem): number => {
-    return item.price * (item.quantity || 1);
-  };
 
   // Handle checkbox change
   const handleExtraChange = (extra: ExtraItem, isChecked: boolean) => {
@@ -49,7 +53,10 @@ export default function ExtrasStep({
 
   // Handle quantity change
   const handleQuantityChange = (extraId: string, newQuantity: number) => {
-    if (newQuantity < 1) return; // Don't allow quantities less than 1
+    // Mirror the server-side clamp in `resolveSelectedExtras`. Without the
+    // ceiling a customer could select 25, see a total for 25, and be invoiced
+    // for the 20 the server allows.
+    if (newQuantity < 1 || newQuantity > MAX_EXTRA_QUANTITY) return;
 
     const newSelectedExtras = selectedExtras.map((item) =>
       item.id === extraId ? { ...item, quantity: newQuantity } : item,
@@ -59,7 +66,13 @@ export default function ExtrasStep({
     updateFormData(newSelectedExtras);
   };
 
-  // Update form data with new extras and recalculate price
+  // Update form data with the new extras.
+  //
+  // Deliberately does NOT touch `price`: it used to dispatch
+  // `formData.price + extrasTotal`, adding an extras subtotal on top of an
+  // already-final total (tax and fees included). OrderForm's price-sync effect
+  // corrected it a tick later, but the draft-persist effect runs first, so the
+  // wrong number was written to localStorage. OrderForm owns `price`.
   const updateFormData = (newSelectedExtras: ExtraItem[]) => {
     // Create a synthetic event to maintain compatibility with the existing onInputChange
     const syntheticEvent = {
@@ -70,23 +83,6 @@ export default function ExtrasStep({
     } as unknown as React.ChangeEvent<HTMLInputElement>;
 
     onInputChange(syntheticEvent);
-
-    // Update the total price
-    const extrasTotal = newSelectedExtras.reduce(
-      (sum, item) => sum + calculateItemTotal(item),
-      0,
-    );
-    const newPrice = formData.price + extrasTotal;
-
-    // Create a synthetic event for price update
-    const priceEvent = {
-      target: {
-        name: "price",
-        value: newPrice,
-      },
-    } as unknown as React.ChangeEvent<HTMLInputElement>;
-
-    onInputChange(priceEvent);
   };
 
   // Check if an extra is selected
@@ -188,6 +184,7 @@ export default function ExtrasStep({
                     )
                   }
                   className="px-3 py-2 text-gray-500 hover:text-margarita focus:outline-none"
+                  disabled={getExtraQuantity(extra.id) >= MAX_EXTRA_QUANTITY}
                   aria-label="Increase quantity"
                 >
                   <PlusIcon className="h-4 w-4" />
@@ -220,7 +217,7 @@ export default function ExtrasStep({
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {extraItems.map(renderExtraCard)}
+        {staticExtraItems.map(renderExtraCard)}
       </div>
 
       <div className="space-y-4">
@@ -236,7 +233,10 @@ export default function ExtrasStep({
       </div>
 
       {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative">
+        <div
+          role="alert"
+          className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative"
+        >
           {error}
         </div>
       )}

@@ -40,7 +40,17 @@ export async function POST(request: Request) {
     const data = await request.json();
     await dbConnect();
 
-    const contact = await Contact.create(data);
+    // Explicit field list, mirroring `/api/v1/contacts`. `Contact.create(data)`
+    // took the raw body, so a caller could set `_id`, `createdAt` and `status`
+    // directly.
+    const contact = await Contact.create({
+      name: data.name,
+      email: data.email,
+      phone: data.phone,
+      eventDate: data.eventDate,
+      message: data.message,
+      ...(data.status !== undefined ? { status: data.status } : {}),
+    });
 
     return NextResponse.json(contact, { status: 201 });
   } catch (error) {

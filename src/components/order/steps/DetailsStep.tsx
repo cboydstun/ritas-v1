@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { StepProps, inputClassName, labelClassName } from "../types";
 import { validateZipCode, isBexarCountyZipCode } from "../utils";
 
@@ -9,6 +9,20 @@ export default function DetailsStep({
 }: StepProps) {
   const [zipCodeError, setZipCodeError] = useState<string | null>(null);
   const [showZipCodeWarning, setShowZipCodeWarning] = useState(false);
+  const zipWarningCloseRef = useRef<HTMLButtonElement>(null);
+
+  // Move focus into the dialog when it opens and close it on Escape. Without
+  // this, keyboard focus stayed on the ZIP field behind the overlay.
+  useEffect(() => {
+    if (!showZipCodeWarning) return;
+    zipWarningCloseRef.current?.focus();
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setShowZipCodeWarning(false);
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [showZipCodeWarning]);
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let value = e.target.value.replace(/\D/g, ""); // Remove all non-digits
@@ -151,9 +165,12 @@ export default function DetailsStep({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="md:col-span-2">
           <div>
-            <label className={labelClassName}>Full Name</label>
+            <label htmlFor="customer-name" className={labelClassName}>
+              Full Name
+            </label>
             <input
               type="text"
+              id="customer-name"
               name="customer.name"
               value={formData.customer.name}
               onChange={onInputChange}
@@ -165,9 +182,12 @@ export default function DetailsStep({
         </div>
 
         <div>
-          <label className={labelClassName}>Email</label>
+          <label htmlFor="customer-email" className={labelClassName}>
+            Email
+          </label>
           <input
             type="email"
+            id="customer-email"
             name="customer.email"
             value={formData.customer.email}
             onChange={onInputChange}
@@ -178,9 +198,12 @@ export default function DetailsStep({
         </div>
 
         <div>
-          <label className={labelClassName}>Phone</label>
+          <label htmlFor="customer-phone" className={labelClassName}>
+            Phone
+          </label>
           <input
             type="tel"
+            id="customer-phone"
             name="customer.phone"
             value={formData.customer.phone}
             onChange={handlePhoneChange}
@@ -193,9 +216,12 @@ export default function DetailsStep({
         </div>
 
         <div className="md:col-span-2">
-          <label className={labelClassName}>Street Address</label>
+          <label htmlFor="customer-address-street" className={labelClassName}>
+            Street Address
+          </label>
           <input
             type="text"
+            id="customer-address-street"
             name="customer.address.street"
             value={formData.customer.address.street}
             onChange={onInputChange}
@@ -206,9 +232,12 @@ export default function DetailsStep({
         </div>
 
         <div>
-          <label className={labelClassName}>City</label>
+          <label htmlFor="customer-address-city" className={labelClassName}>
+            City
+          </label>
           <input
             type="text"
+            id="customer-address-city"
             name="customer.address.city"
             value={formData.customer.address.city}
             onChange={handleCityChange}
@@ -219,9 +248,12 @@ export default function DetailsStep({
         </div>
 
         <div>
-          <label className={labelClassName}>State</label>
+          <label htmlFor="customer-address-state" className={labelClassName}>
+            State
+          </label>
           <input
             type="text"
+            id="customer-address-state"
             name="customer.address.state"
             value={formData.customer.address.state}
             readOnly
@@ -234,10 +266,13 @@ export default function DetailsStep({
         </div>
 
         <div>
-          <label className={labelClassName}>ZIP Code</label>
+          <label htmlFor="customer-address-zipCode" className={labelClassName}>
+            ZIP Code
+          </label>
           <div className="relative">
             <input
               type="text"
+              id="customer-address-zipCode"
               name="customer.address.zipCode"
               value={formData.customer.address.zipCode}
               onChange={handleZipCodeChange}
@@ -310,8 +345,11 @@ export default function DetailsStep({
         </div>
 
         <div className="md:col-span-2">
-          <label className={labelClassName}>Special Notes</label>
+          <label htmlFor="notes" className={labelClassName}>
+            Special Notes
+          </label>
           <textarea
+            id="notes"
             name="notes"
             value={formData.notes}
             onChange={onInputChange}
@@ -370,8 +408,17 @@ export default function DetailsStep({
 
       {/* ZIP Code Warning Dialog */}
       {showZipCodeWarning && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-charcoal p-6 rounded-lg max-w-md mx-4">
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+          onClick={() => setShowZipCodeWarning(false)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="zip-warning-title"
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white dark:bg-charcoal p-6 rounded-lg max-w-md mx-4"
+          >
             <div className="flex items-center text-red-600 mb-4">
               <svg
                 className="h-8 w-8 mr-3"
@@ -386,7 +433,9 @@ export default function DetailsStep({
                   d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
                 />
               </svg>
-              <h3 className="text-xl font-bold">Delivery Not Available</h3>
+              <h3 id="zip-warning-title" className="text-xl font-bold">
+                Delivery Not Available
+              </h3>
             </div>
             <p className="mb-4">
               Sorry but we can only deliver to addresses within Bexar County,
@@ -398,6 +447,7 @@ export default function DetailsStep({
               continue.
             </p>
             <button
+              ref={zipWarningCloseRef}
               onClick={() => setShowZipCodeWarning(false)}
               className="w-full py-2 px-4 bg-orange hover:bg-orange/90 text-white rounded-lg"
             >
@@ -408,7 +458,10 @@ export default function DetailsStep({
       )}
 
       {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative">
+        <div
+          role="alert"
+          className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative"
+        >
           {error}
         </div>
       )}

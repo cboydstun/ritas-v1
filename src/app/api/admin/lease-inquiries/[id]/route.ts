@@ -19,6 +19,11 @@ export async function GET(request: Request, context: RouteParams) {
 
   const { id } = await context.params;
 
+  // An invalid id produced a Mongoose CastError and a 500 instead of a 404.
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return NextResponse.json({ message: "Lease inquiry not found" }, { status: 404 });
+  }
+
   try {
     await dbConnect();
     const inquiry = await LeaseInquiry.findById(id).select("-__v");
@@ -105,6 +110,11 @@ export async function DELETE(request: Request, context: RouteParams) {
   }
 
   const { id } = await context.params;
+
+  // An invalid id produced a Mongoose CastError and a 500 instead of a 404.
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return NextResponse.json({ message: "Lease inquiry not found" }, { status: 404 });
+  }
 
   try {
     await dbConnect();

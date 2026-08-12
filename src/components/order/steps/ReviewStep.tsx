@@ -7,6 +7,25 @@ import { computeOrderTotal, buildSuccessUrl } from "../utils";
 import { buildExtrasCatalog } from "@/lib/extras-catalog";
 import { trackEvent } from "@/lib/analytics";
 
+/**
+ * The `message` from an error response, or a fallback.
+ *
+ * A 502/504 answers with an HTML error page, and `response.json()` then threw
+ * a SyntaxError that was rendered to the customer verbatim as
+ * `Unexpected token '<' ... is not valid JSON`.
+ */
+async function errorMessageFrom(
+  response: Response,
+  fallback: string,
+): Promise<string> {
+  try {
+    const body = await response.json();
+    return typeof body?.message === "string" ? body.message : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 export default function ReviewStep({
   formData,
   agreedToTerms = false,
@@ -77,8 +96,12 @@ export default function ReviewStep({
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to save booking");
+        throw new Error(
+          await errorMessageFrom(
+            response,
+            "We could not save your booking. Please try again, or call us and we will take it over the phone.",
+          ),
+        );
       }
 
       const result = await response.json();
@@ -447,15 +470,12 @@ export default function ReviewStep({
             {formatPrice(perDayRate * rentalDays)}
           </p>
           {formData.selectedExtras.length > 0 && (
+            // Just the catalog-derived total. This line used to re-derive a
+            // "/day × N" figure from the raw selectedExtras `price` fields,
+            // which ignored admin overrides, charged flat items per day, and
+            // therefore disagreed with the Selected Extras block above.
             <p className="text-charcoal/70 dark:text-white/70">
-              Extras: ${formatPrice(extrasTotal)} ($
-              {formatPrice(
-                formData.selectedExtras.reduce(
-                  (sum, item) => sum + item.price * (item.quantity || 1),
-                  0,
-                ),
-              )}
-              /day × {rentalDays} day{rentalDays > 1 ? "s" : ""})
+              Extras: ${formatPrice(extrasTotal)}
             </p>
           )}
           <p className="text-charcoal/70 dark:text-white/70">
@@ -529,7 +549,10 @@ export default function ReviewStep({
 
           {/* Submit Error */}
           {submitError && (
-            <div className="mt-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-lg">
+            <div
+              role="alert"
+              className="mt-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-lg"
+            >
               <p className="text-sm text-red-700 dark:text-red-300">
                 {submitError}
               </p>

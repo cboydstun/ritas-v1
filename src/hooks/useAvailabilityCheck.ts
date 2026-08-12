@@ -12,6 +12,25 @@ interface AvailabilityResult extends AvailabilityResponse {
   error?: string;
 }
 
+/**
+ * The `message` from an error response, or a fallback.
+ *
+ * A 502/504 answers with an HTML error page, and `response.json()` then threw
+ * a SyntaxError that was rendered to the customer verbatim as
+ * `Unexpected token '<' ... is not valid JSON`.
+ */
+async function errorMessageFrom(
+  response: Response,
+  fallback: string,
+): Promise<string> {
+  try {
+    const body = await response.json();
+    return typeof body?.message === "string" ? body.message : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 export function useAvailabilityCheck() {
   const [isChecking, setIsChecking] = useState(false);
   const [availability, setAvailability] = useState<AvailabilityResponse | null>(
@@ -35,8 +54,9 @@ export function useAvailabilityCheck() {
       );
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to check availability");
+        throw new Error(
+          await errorMessageFrom(response, "Failed to check availability"),
+        );
       }
 
       const data = await response.json();

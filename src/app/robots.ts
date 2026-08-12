@@ -6,7 +6,11 @@ export default function robots(): MetadataRoute.Robots {
     rules: {
       userAgent: "*",
       allow: "/",
-      disallow: ["/admin/", "/api/"],
+      // /success is a post-checkout landing page whose URL carries a
+      // bookingId. Its metadata.ts sets robots.index=false, but page.tsx is a
+      // client component so Next never emits it — this is the block that
+      // actually keeps confirmation URLs out of the index.
+      disallow: ["/admin/", "/api/", "/success"],
     },
     sitemap: `${SITE_URL}/sitemap.xml`,
   };

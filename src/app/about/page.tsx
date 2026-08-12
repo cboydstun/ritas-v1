@@ -34,6 +34,7 @@ const jsonLd = {
 };
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/about" },
   title: "About SATX Ritas Rentals | Our Story & Values",
   description:
     "Learn about SATX Ritas Rentals, San Antonio's trusted source for premium frozen drink machine rentals. Discover our story, values, and commitment to creating unforgettable events with quality service.",

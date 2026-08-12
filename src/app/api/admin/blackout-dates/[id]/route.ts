@@ -2,7 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import dbConnect from "@/lib/mongodb";
-import { BlackoutDate, createLocalDate } from "@/models/blackout-date";
+import {
+  BlackoutDate,
+  createLocalDate,
+  MODEL_RULE_MESSAGES,
+} from "@/models/blackout-date";
 import mongoose from "mongoose";
 
 interface RouteParams {
@@ -133,18 +137,43 @@ export async function PUT(request: NextRequest, context: RouteParams) {
       );
     }
 
-    // Update blackout date using createLocalDate to avoid timezone shifts
+    // Update blackout date using createLocalDate to avoid timezone shifts.
+    //
+    // Fields that should be cleared go through $unset: Mongoose *skips*
+    // undefined values in an update rather than removing them, so narrowing a
+    // multi-day blackout left the old `endDate` in place and switching
+    // time_range → full_day left stale times. Either way the blackout kept
+    // blocking its original, wider range.
+    const $set: Record<string, unknown> = {
+      startDate: createLocalDate(startDate),
+      type,
+      updatedAt: new Date(),
+    };
+    const $unset: Record<string, ""> = {};
+
+    if (endDate) {
+      $set.endDate = createLocalDate(endDate);
+    } else {
+      $unset.endDate = "";
+    }
+
+    if (reason) {
+      $set.reason = reason;
+    } else {
+      $unset.reason = "";
+    }
+
+    if (type === "time_range") {
+      $set.startTime = startTime;
+      $set.endTime = endTime;
+    } else {
+      $unset.startTime = "";
+      $unset.endTime = "";
+    }
+
     const updatedBlackoutDate = await BlackoutDate.findByIdAndUpdate(
       id,
-      {
-        startDate: createLocalDate(startDate),
-        endDate: endDate ? createLocalDate(endDate) : undefined,
-        reason: reason || undefined,
-        type,
-        startTime: type === "time_range" ? startTime : undefined,
-        endTime: type === "time_range" ? endTime : undefined,
-        updatedAt: new Date(),
-      },
+      Object.keys($unset).length > 0 ? { $set, $unset } : { $set },
       { new: true, runValidators: true },
     );
 
@@ -152,8 +181,19 @@ export async function PUT(request: NextRequest, context: RouteParams) {
   } catch (error) {
     console.error("Error updating blackout date:", error);
 
-    // Handle validation errors
-    if (error instanceof Error && error.message.includes("validation failed")) {
+    // Handle validation errors.
+    //
+    // The `pre("save")` hooks in the model throw plain Errors ("End date must
+    // be after start date"), whose messages contain no "validation failed"
+    // substring — so the old check never matched and every legitimate 400 was
+    // reported to the admin as a 500.
+    if (error instanceof mongoose.Error.ValidationError) {
+      return NextResponse.json(
+        { message: Object.values(error.errors)[0]?.message ?? error.message },
+        { status: 400 },
+      );
+    }
+    if (error instanceof Error && MODEL_RULE_MESSAGES.has(error.message)) {
       return NextResponse.json({ message: error.message }, { status: 400 });
     }
 

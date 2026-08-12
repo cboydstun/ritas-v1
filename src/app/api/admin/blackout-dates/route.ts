@@ -2,14 +2,27 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import dbConnect from "@/lib/mongodb";
-import { BlackoutDate, createLocalDate } from "@/models/blackout-date";
+import {
+  BlackoutDate,
+  createLocalDate,
+  MODEL_RULE_MESSAGES,
+} from "@/models/blackout-date";
+import mongoose from "mongoose";
 
 // Type for MongoDB query structure
 interface BlackoutDateQuery {
+  startDate?: { $gte?: Date; $lte?: Date };
   $or?: Array<{
     startDate?: { $gte?: Date; $lte?: Date };
-    endDate?: { $gte?: Date; $lte?: Date };
+    endDate?: { $gte?: Date; $lte?: Date; $exists?: boolean };
   }>;
+}
+
+/** Bounded page size, so `?limit=abc` cannot put NaN into `.limit()`. */
+function clampInt(raw: string | null, fallback: number, min: number, max: number) {
+  const n = Number.parseInt(raw ?? "", 10);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.min(Math.max(n, min), max);
 }
 
 // GET /api/admin/blackout-dates - List all blackout dates
@@ -25,25 +38,32 @@ export async function GET(request: NextRequest) {
     const url = new URL(request.url);
     const startDate = url.searchParams.get("startDate");
     const endDate = url.searchParams.get("endDate");
-    const limit = parseInt(url.searchParams.get("limit") || "50");
-    const offset = parseInt(url.searchParams.get("offset") || "0");
+    const limit = clampInt(url.searchParams.get("limit"), 50, 1, 200);
+    const offset = clampInt(url.searchParams.get("offset"), 0, 0, 100_000);
 
     await dbConnect();
 
     // Build query
     const query: BlackoutDateQuery = {};
 
+    // Range overlap, not a union of loose bounds. The previous four-clause
+    // $or matched every document for any start <= end, so the filter silently
+    // did nothing: a doc with startDate < start still satisfied startDate <= end.
     if (startDate || endDate) {
-      query.$or = [];
+      const from = startDate ? new Date(startDate) : undefined;
+      const to = endDate ? new Date(endDate) : undefined;
 
-      if (startDate) {
-        query.$or.push({ startDate: { $gte: new Date(startDate) } });
-        query.$or.push({ endDate: { $gte: new Date(startDate) } });
+      if (to) {
+        query.startDate = { $lte: to };
       }
 
-      if (endDate) {
-        query.$or.push({ startDate: { $lte: new Date(endDate) } });
-        query.$or.push({ endDate: { $lte: new Date(endDate) } });
+      if (from) {
+        // A single-day blackout has no endDate, so it overlaps only when its
+        // startDate itself falls in range.
+        query.$or = [
+          { endDate: { $gte: from } },
+          { endDate: { $exists: false }, startDate: { $gte: from } },
+        ];
       }
     }
 
@@ -156,8 +176,19 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("Error creating blackout date:", error);
 
-    // Handle validation errors
-    if (error instanceof Error && error.message.includes("validation failed")) {
+    // Handle validation errors.
+    //
+    // The `pre("save")` hooks in the model throw plain Errors ("End date must
+    // be after start date"), whose messages contain no "validation failed"
+    // substring — so the old check never matched and every legitimate 400 was
+    // reported to the admin as a 500.
+    if (error instanceof mongoose.Error.ValidationError) {
+      return NextResponse.json(
+        { message: Object.values(error.errors)[0]?.message ?? error.message },
+        { status: 400 },
+      );
+    }
+    if (error instanceof Error && MODEL_RULE_MESSAGES.has(error.message)) {
       return NextResponse.json({ message: error.message }, { status: 400 });
     }
 

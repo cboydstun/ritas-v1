@@ -88,7 +88,14 @@ export default function OrderForm() {
 
   useEffect(() => {
     fetch("/api/v1/settings")
-      .then((res) => res.json())
+      .then((res) => {
+        // The route answers `{ message }` with a 500 when the DB is down.
+        // Storing that object as `settings` made every field read undefined,
+        // so the wizard quoted hardcoded defaults while the server invoiced
+        // from the real overrides.
+        if (!res.ok) throw new Error("settings unavailable");
+        return res.json();
+      })
       .then((data: SettingsOverrides) => setSettings(data))
       .catch(() => {
         // keep defaults on network error
@@ -175,8 +182,25 @@ export default function OrderForm() {
         };
         // Only restore if the draft has meaningful progress (a name entered)
         if (parsed.formData?.customer?.name) {
+          const defaults = buildDefaultFormData();
+          // `customer` and `customer.address` are merged field by field. A
+          // plain spread replaced them wholesale, so a draft written by an
+          // older schema (one without `customer.address`) made DetailsStep
+          // throw on `customer.address.street` and bricked the order page
+          // until the visitor cleared localStorage.
           return {
-            formData: { ...buildDefaultFormData(), ...parsed.formData },
+            formData: {
+              ...defaults,
+              ...parsed.formData,
+              customer: {
+                ...defaults.customer,
+                ...parsed.formData.customer,
+                address: {
+                  ...defaults.customer.address,
+                  ...parsed.formData.customer?.address,
+                },
+              },
+            },
             step: parsed.step ?? "date",
             hasDraft: true,
           };
@@ -316,12 +340,18 @@ export default function OrderForm() {
     });
   };
 
+  // Bring a validation error into view. Every step renders its banner at the
+  // bottom, so a failed "Next" was otherwise silent to anyone who had scrolled.
+  useEffect(() => {
+    if (!error) return;
+    document
+      .querySelector('[role="alert"]')
+      ?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [error]);
+
   const handleNextStep = () => {
     // Clear any previous errors
     setError(null);
-
-    // Scroll to top so the new step header is visible (especially on mobile)
-    window.scrollTo({ top: 0, behavior: "smooth" });
 
     // Validate date step
     if (step === "date") {
@@ -440,6 +470,10 @@ export default function OrderForm() {
 
     const currentIndex = steps.findIndex((s) => s.id === step);
     if (currentIndex < steps.length - 1) {
+      // Only scroll to the top once validation has passed. Doing it first sent
+      // the user to the header of a long step while the reason "Next" failed
+      // was still rendered off-screen at the bottom.
+      window.scrollTo({ top: 0, behavior: "smooth" });
       setStep(steps[currentIndex + 1].id);
     }
   };
@@ -512,6 +546,7 @@ export default function OrderForm() {
                   error={dateAvailabilityError || error}
                   onAvailabilityError={setDateAvailabilityError}
                   mixers={settingsMixers}
+                  settings={settings}
                 />
               )}
 
@@ -528,7 +563,7 @@ export default function OrderForm() {
                   formData={formData}
                   onInputChange={handleInputChange}
                   error={error}
-                  mixers={settingsMixers}
+                  settings={settings}
                 />
               )}
 

@@ -2,7 +2,10 @@ import mongoose from "mongoose";
 
 const settingsSchema = new mongoose.Schema(
   {
-    key: { type: String, default: "global" },
+    // Unique: the write path is a `findOneAndUpdate({key:"global"}, …, {upsert:true})`,
+    // so two concurrent first-writes could otherwise create two "global"
+    // documents and make pricing depend on which one `findOne` returned.
+    key: { type: String, default: "global", unique: true, index: true },
     fees: {
       deliveryFee: {
         type: Number,

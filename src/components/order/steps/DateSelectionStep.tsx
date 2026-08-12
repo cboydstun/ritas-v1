@@ -1,4 +1,4 @@
-import { ChangeEvent, useState } from "react";
+import { ChangeEvent, useEffect, useState } from "react";
 import { DayPicker, DateRange } from "react-day-picker";
 import { format, addDays, startOfDay, parseISO } from "date-fns";
 import { StepProps, labelClassName, inputClassName } from "../types";
@@ -46,6 +46,16 @@ export default function DateSelectionStep({
     } as unknown as ChangeEvent<HTMLInputElement>;
   };
 
+  // Follow formData when the parent changes it — "Start fresh" clears the
+  // draft while this step stays mounted, and the calendar used to keep showing
+  // the old range while "Next" errored "Please select a delivery date".
+  useEffect(() => {
+    setRange({
+      from: formData.rentalDate ? parseISO(formData.rentalDate) : undefined,
+      to: formData.returnDate ? parseISO(formData.returnDate) : undefined,
+    });
+  }, [formData.rentalDate, formData.returnDate]);
+
   // Disable past dates
   const disabledDays = {
     before: startOfDay(new Date()),
@@ -53,6 +63,15 @@ export default function DateSelectionStep({
 
   const handleRangeSelect = (newRange: DateRange | undefined) => {
     setRange(newRange);
+
+    // DayPicker passes undefined when the user clicks to clear the range.
+    // Leaving formData alone meant the calendar showed nothing selected while
+    // the wizard happily advanced on the previous dates.
+    if (!newRange?.from) {
+      onInputChange(createSyntheticEvent("rentalDate", ""));
+      onInputChange(createSyntheticEvent("returnDate", ""));
+      return;
+    }
 
     if (newRange?.from) {
       const fromString = format(newRange.from, "yyyy-MM-dd");
@@ -109,8 +128,11 @@ export default function DateSelectionStep({
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className={labelClassName}>Delivery Time</label>
+                <label htmlFor="rentalTime" className={labelClassName}>
+                  Delivery Time
+                </label>
                 <select
+                  id="rentalTime"
                   name="rentalTime"
                   value={formData.rentalTime}
                   onChange={onInputChange}
@@ -126,8 +148,11 @@ export default function DateSelectionStep({
               </div>
 
               <div>
-                <label className={labelClassName}>Pick Up Time</label>
+                <label htmlFor="returnTime" className={labelClassName}>
+                  Pick Up Time
+                </label>
                 <select
+                  id="returnTime"
                   name="returnTime"
                   value={formData.returnTime}
                   onChange={onInputChange}
@@ -182,15 +207,20 @@ export default function DateSelectionStep({
                 <p className="text-sm text-charcoal/70 dark:text-white/70 text-center">
                   ✨ 24-hour rental period included
                 </p>
+                {/* Not "free": computeOrderTotal adds a flat delivery fee to
+                    every order, and PricingSummary shows it two screens later. */}
                 <p className="text-sm text-charcoal/70 dark:text-white/70 text-center">
-                  🚚 Free delivery in Bexar County
+                  🚚 Flat-rate delivery &amp; setup throughout Bexar County
                 </p>
               </div>
             </div>
           )}
 
         {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative">
+          <div
+            role="alert"
+            className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative"
+          >
             {error}
           </div>
         )}

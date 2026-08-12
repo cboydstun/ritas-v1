@@ -8,7 +8,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 npm run dev          # Start dev server with Turbopack
 npm run build        # Production build
 npm run lint         # ESLint
+npm run typecheck    # tsc --noEmit
 npm run format       # Prettier (writes in place)
+npm run format:check # Prettier (verify only, for CI)
 npm test             # Jest (all tests)
 npm run test:watch   # Jest watch mode
 npm run test:machine # Run only machine-step tests
@@ -20,7 +22,7 @@ Run a single test file: `npx jest src/components/order/steps/__tests__/SomeTest.
 
 Tests are co-located in `__tests__/` folders next to the code they cover. Jest is configured via `next/jest` with `jest-environment-jsdom`. The path alias `@/*` resolves to `src/*` (set in both `tsconfig.json` and `jest.config.js`). Test scripts pass `--passWithNoTests`, so a filter that matches nothing exits 0 — check the reported test count, don't trust a green exit alone.
 
-`next.config.ts` sets `typescript.ignoreBuildErrors: true`, so **`npm run build` does not fail on type errors**. Run `npx tsc --noEmit` to actually typecheck.
+`npm run typecheck` (`tsc --noEmit`) is the fast type gate. `next.config.ts` sets `typescript.ignoreBuildErrors: false`, so `npm run build` type-checks too — do not flip it back to `true` to get a build out; fix the type.
 
 `npm run lint` calls `eslint .` directly (`next lint` is removed in Next 16). `eslint.config.mjs` must keep its `ignores` entry for `.next/` — without it ESLint walks the build output and reports thousands of bogus errors in minified chunks.
 
@@ -54,7 +56,7 @@ The single source of truth for all order totals is `computeOrderTotal()` in `src
 - `salesTax = (discountedSubtotal + processingFee) × salesTaxRate` — the processing fee is a taxable line item, matching the QuickBooks invoice
 - `finalTotal = discountedSubtotal + processingFee + salesTax`
 
-Extras prices always come from `buildExtrasCatalog()` in `src/lib/extras-catalog.ts` (the static items in `types.ts` plus one `mixer-*` entry per flavour, with admin overrides folded in). `computeOrderTotal` looks each `selectedExtras[].id` up there and **ignores any `price`/`pricingType` on the item itself** — those may have arrived in a request body. Any UI that renders extras line items must use the same catalog, or the lines will not sum to the total.
+Extras prices always come from `buildExtrasCatalog()` in `src/lib/extras-catalog.ts` (the static items in `types.ts` plus one `mixer-*` entry per flavour). Mixer entries are enumerated from `Settings.mixers` when overrides are passed, so a flavour an admin adds in `/admin/settings` is a real, purchasable add-on; enumerating only the static four made those cards price at $0 and then fail checkout with a 400. `computeOrderTotal` looks each `selectedExtras[].id` up there and **ignores any `price`/`pricingType` on the item itself** — those may have arrived in a request body. Any UI that renders extras line items must use the same catalog, or the lines will not sum to the total.
 
 Default constants: delivery $20, sales tax 8.25%, processing 3%. Base machine prices come from `src/lib/rental-data.ts`. The `PricingOverrides` type in `src/lib/pricing.ts` and `SettingsOverrides` in `utils.ts` allow the admin `Settings` document to override any of these at runtime.
 
@@ -65,13 +67,13 @@ Default constants: delivery $20, sales tax 8.25%, processing 3%. Base machine pr
 1. Expand `[rentalDate, returnDate]` into every `YYYY-MM-DD` day in range.
 2. Reject if any day falls in a `BlackoutDate` range (`isDateBlackedOut`).
 3. Look up the per-type unit count via `getMachineInventory()` — reads `Settings.machines[type].inventory`; reject outright if `0`.
-4. Count overlapping `Rental` docs **per day** (statuses `pending`, `pending_payment`, `confirmed`, `in-progress`); reject if any single day has `booked >= inventory`.
+4. Count overlapping `Rental` docs **per day** — `confirmed`, `in-progress` and `pending_payment` always count; `pending` counts only while newer than `STALE_HOLD_MINUTES`. Reject if any single day has `booked >= inventory`.
 
 So a machine type is bookable while units remain, not simply because one rental exists. `DEFAULT_INVENTORY` in `inventory.ts` matches the `Settings` schema defaults (`single: 3, double: 3, triple: 2`) and applies only when no Settings document or configured value exists — keep the two in sync.
 
-`isMachineAvailable` accepts an `excludeRentalId` option so a booking is not blocked by its own hold. `/api/save-booking` uses it to re-check after the write and roll back on oversell, which closes the check-then-write race on the last unit.
+`isMachineAvailable` accepts an `excludeRentalId` option so a booking is not blocked by its own hold, and an `ignoreCreatedFrom` option that makes the post-write recheck asymmetric. `/api/save-booking` passes both to re-check after the write and roll back on oversell, which closes the check-then-write race on the last unit. The recheck must stay asymmetric: when it was symmetric, two racers for the last unit each saw the other and each rolled itself back, rejecting both customers and selling nothing.
 
-Because `pending` and `pending_payment` count against inventory, unpaid holds must expire. `releaseStaleHolds()` cancels them after `STALE_HOLD_MINUTES` (120); it runs from the `/api/cron/release-holds` Vercel cron (see `vercel.json`, guarded by `CRON_SECRET`) and again at the top of `/api/save-booking` as a safety net.
+**Only `pending` expires.** `releaseStaleHolds()` cancels `pending` holds older than `STALE_HOLD_MINUTES` (120); it runs from the `/api/cron/release-holds` Vercel cron (see `vercel.json`, guarded by `CRON_SECRET`) and again at the top of `/api/save-booking` as a safety net. `pending_payment` is the status a _submitted_ booking carries — the customer has a confirmation email and is invoiced out of band — and nothing promotes it to `confirmed` except a manual admin edit. Reaping it cancelled every real booking two hours after it was placed and put the machine back on sale. Do not add it back to either the reaper or the query-time cutoff.
 
 `MachineStep.tsx` checks all three machine types **in parallel** on mount so every card shows live availability, greys out unavailable ones, and auto-switches the selection to another available type (priority `triple > double > single`) when the current pick is unavailable. `useAvailabilityCheck` (`src/hooks/useAvailabilityCheck.ts`) wraps the single-type fetch.
 
@@ -102,6 +104,12 @@ The PayPal integration was removed — the component had no importers and its ro
 - `selectedExtras` is re-resolved through `resolveSelectedExtras()` (`src/lib/extras-catalog.ts`); only `id` and `quantity` are honoured, prices come from the catalog, and unknown ids are a 400.
 - `price` and `payment.amount` are both set from the server-side `computeOrderTotal`.
 - `isServiceDiscount` is hard-coded `false`.
+
+The admin order routes (`POST /api/admin/orders`, `PUT /api/admin/orders/[id]`) enforce the same invariants: an explicit field whitelist, `capacity` derived from `machineType`, extras re-resolved through the catalog, and `price` recomputed by `computeOrderTotal`. `PUT` also re-checks `isMachineAvailable` (with `excludeRentalId`) whenever an edit moves the machine type or the dates, so an admin edit cannot oversell a date. Neither route accepts `capacity` or `price` from the body.
+
+Model validators that need `machineType` must read it via `machineTypeInContext(this)` (`src/models/rental.ts`). Under `findByIdAndUpdate(..., { runValidators: true })` Mongoose binds `this` to the Query, not the document, so reading `this.machineType` directly is always `undefined` — that is what made every admin order edit fail validation and return a 500.
+
+Server-side "is this date in the past" checks go through `todayLocalIso()` in `src/lib/validation.ts`, which resolves the date in `America/Chicago`. Vercel functions run UTC; reading the server clock's local date rejected same-day bookings every evening after 19:00 Central.
 
 ### Public API Hardening
 

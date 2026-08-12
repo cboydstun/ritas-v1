@@ -84,6 +84,10 @@ const ThumbprintSchema = new Schema<IThumbprint>({
   fingerprintHash: {
     type: String,
     required: true,
+    // Unique: the route reads then upserts, so two concurrent first-hits for
+    // the same hash both took the insert branch and split one visitor's
+    // history across two documents.
+    unique: true,
     index: true,
   },
   components: {

@@ -1,7 +1,20 @@
 "use client";
 
 import { MargaritaRental, MachineType, MixerType } from "@/types/index";
+import { machinePackages, mixerDetails } from "@/lib/rental-data";
+import { isMixerType } from "@/types/machine";
 import { useState } from "react";
+
+/** Tanks each machine type has, and therefore how many mixers it accepts. */
+const TANKS: Record<MachineType, number> = { single: 1, double: 2, triple: 3 };
+
+/** The sentinel a tank select uses for "no mixer in this tank". */
+const NO_MIXER = "";
+
+const MIXER_OPTIONS = Object.entries(mixerDetails).map(([id, m]) => ({
+  id: id as MixerType,
+  label: m.label,
+}));
 
 interface EditOrderModalProps {
   order: MargaritaRental;
@@ -17,8 +30,12 @@ export default function EditOrderModal({
   const [formData, setFormData] = useState({
     notes: order.notes || "",
     machineType: order.machineType,
-    capacity: order.capacity,
-    selectedMixers: order.selectedMixers,
+    // Legacy orders can carry values the old modal wrote ("machine-only",
+    // "premium") which are not MixerTypes. Drop them rather than rendering a
+    // select whose value matches no option.
+    selectedMixers: (order.selectedMixers ?? []).filter((m): m is MixerType =>
+      isMixerType(m),
+    ),
     rentalDate: order.rentalDate,
     rentalTime: order.rentalTime,
     returnDate: order.returnDate,
@@ -43,7 +60,8 @@ export default function EditOrderModal({
     const updatedData: Partial<MargaritaRental> = {
       notes: formData.notes,
       machineType: formData.machineType,
-      capacity: formData.capacity,
+      // `capacity` is deliberately not sent — the server derives it from
+      // machineType. `price` is likewise recomputed server-side.
       selectedMixers: formData.selectedMixers,
       rentalDate: formData.rentalDate,
       rentalTime: formData.rentalTime,
@@ -71,110 +89,96 @@ export default function EditOrderModal({
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  <label
+                    htmlFor="edit-machine-type"
+                    className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+                  >
                     Machine Type
                   </label>
                   <select
+                    id="edit-machine-type"
                     value={formData.machineType}
-                    onChange={(e) =>
+                    onChange={(e) => {
+                      const machineType = e.target.value as MachineType;
                       setFormData({
                         ...formData,
-                        machineType: e.target.value as MachineType,
-                      })
-                    }
+                        machineType,
+                        // Dropping to a smaller machine cannot keep more
+                        // mixers than it has tanks.
+                        selectedMixers: formData.selectedMixers.slice(
+                          0,
+                          TANKS[machineType],
+                        ),
+                      });
+                    }}
                     className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm"
                   >
-                    <option value="single">Single</option>
-                    <option value="double">Double</option>
+                    {machinePackages.map((pkg) => (
+                      <option key={pkg.type} value={pkg.type}>
+                        {pkg.name}
+                      </option>
+                    ))}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  <label
+                    htmlFor="edit-capacity"
+                    className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+                  >
                     Capacity (L)
                   </label>
-                  <select
-                    value={formData.capacity}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        capacity: parseInt(e.target.value) as 15 | 30,
-                      })
-                    }
-                    className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm"
-                  >
-                    <option value="15">15L</option>
-                    <option value="30">30L</option>
-                  </select>
+                  {/* Derived from the machine type, both here and server-side. */}
+                  <input
+                    id="edit-capacity"
+                    type="text"
+                    readOnly
+                    value={`${
+                      machinePackages.find(
+                        (pkg) => pkg.type === formData.machineType,
+                      )?.capacity ?? order.capacity
+                    }L`}
+                    className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-white shadow-sm"
+                  />
                 </div>
-                {formData.machineType === "single" ? (
-                  // Single Tank Mixer Selection
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                      Mixer Type
-                    </label>
-                    <select
-                      value={formData.selectedMixers[0] || "machine-only"}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          selectedMixers: [e.target.value as MixerType],
-                        })
-                      }
-                      className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm"
-                    >
-                      <option value="machine-only">Machine Only</option>
-                      <option value="non-alcoholic">Non-Alcoholic</option>
-                      <option value="premium">Premium</option>
-                    </select>
-                  </div>
-                ) : (
-                  // Double Tank Mixer Selection
-                  <>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                        Tank 1 Mixer
+                {Array.from(
+                  { length: TANKS[formData.machineType] },
+                  (_, tank) => (
+                    <div key={tank}>
+                      <label
+                        htmlFor={`edit-mixer-${tank}`}
+                        className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+                      >
+                        {TANKS[formData.machineType] === 1
+                          ? "Mixer Type"
+                          : `Tank ${tank + 1} Mixer`}
                       </label>
                       <select
-                        value={formData.selectedMixers[0] || "machine-only"}
-                        onChange={(e) =>
+                        id={`edit-mixer-${tank}`}
+                        value={formData.selectedMixers[tank] ?? NO_MIXER}
+                        onChange={(e) => {
+                          const next: string[] = Array.from(
+                            { length: TANKS[formData.machineType] },
+                            (_, i) => formData.selectedMixers[i] ?? NO_MIXER,
+                          );
+                          next[tank] = e.target.value;
                           setFormData({
                             ...formData,
-                            selectedMixers: [
-                              e.target.value as MixerType,
-                              formData.selectedMixers[1] || "machine-only",
-                            ],
-                          })
-                        }
+                            selectedMixers: next.filter((m): m is MixerType =>
+                              isMixerType(m),
+                            ),
+                          });
+                        }}
                         className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm"
                       >
-                        <option value="machine-only">Machine Only</option>
-                        <option value="non-alcoholic">Non-Alcoholic</option>
-                        <option value="premium">Premium</option>
+                        <option value={NO_MIXER}>Machine Only</option>
+                        {MIXER_OPTIONS.map((m) => (
+                          <option key={m.id} value={m.id}>
+                            {m.label}
+                          </option>
+                        ))}
                       </select>
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                        Tank 2 Mixer
-                      </label>
-                      <select
-                        value={formData.selectedMixers[1] || "machine-only"}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            selectedMixers: [
-                              formData.selectedMixers[0] || "machine-only",
-                              e.target.value as MixerType,
-                            ],
-                          })
-                        }
-                        className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm"
-                      >
-                        <option value="machine-only">Machine Only</option>
-                        <option value="non-alcoholic">Non-Alcoholic</option>
-                        <option value="premium">Premium</option>
-                      </select>
-                    </div>
-                  </>
+                  ),
                 )}
               </div>
             </div>

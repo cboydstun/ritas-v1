@@ -46,13 +46,23 @@ export const timeStringSchema = z
   .string()
   .regex(/^(ANY|([01]\d|2[0-3]):[0-5]\d)$/, "Invalid time");
 
-/** Today in local time as YYYY-MM-DD. */
+/**
+ * Today in the business's timezone as YYYY-MM-DD.
+ *
+ * Deliberately not the server clock: Vercel functions run UTC, so after 19:00
+ * Central the server was already on tomorrow's date and rejected same-day
+ * bookings that the client's date picker had just offered. `en-CA` formats as
+ * YYYY-MM-DD, which is the format used throughout this codebase.
+ */
+export const BUSINESS_TIME_ZONE = "America/Chicago";
+
 export function todayLocalIso(): string {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  const day = String(now.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: BUSINESS_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
 }
 
 const addressSchema = z.object({
@@ -87,6 +97,18 @@ const selectedExtraSchema = z
   })
   .strip();
 
+/** Longest rental window the availability check will expand. */
+export const MAX_RANGE_DAYS = 90;
+
+/** Whole days between two YYYY-MM-DD strings, diffed as UTC calendar dates. */
+export function spanInDays(start: string, end: string): number {
+  const toUtc = (value: string) => {
+    const [year, month, day] = value.split("-").map(Number);
+    return Date.UTC(year, month - 1, day);
+  };
+  return Math.round((toUtc(end) - toUtc(start)) / 86_400_000);
+}
+
 export const rentalDataSchema = z
   .object({
     machineType: machineTypeSchema,
@@ -111,6 +133,12 @@ export const rentalDataSchema = z
   .refine((data) => data.rentalDate >= todayLocalIso(), {
     message: "Rental date cannot be in the past",
     path: ["rentalDate"],
+  })
+  // The range is expanded day by day downstream, so an unbounded span
+  // (returnDate: "9999-12-31") burns seconds of CPU per request.
+  .refine((data) => spanInDays(data.rentalDate, data.returnDate) <= MAX_RANGE_DAYS, {
+    message: `Rental cannot exceed ${MAX_RANGE_DAYS} days`,
+    path: ["returnDate"],
   })
   .refine(
     (data) => data.selectedMixers.length <= maxMixersFor(data.machineType),

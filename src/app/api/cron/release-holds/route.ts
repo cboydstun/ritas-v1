@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { releaseStaleHolds, STALE_HOLD_MINUTES } from "@/lib/inventory";
 
 /**
- * Flips expired unpaid holds from pending/pending_payment to cancelled.
+ * Flips expired abandoned `pending` holds to cancelled. Submitted bookings
+ * (`pending_payment`) are never reaped.
  *
  * Scheduled daily from `vercel.json` — the Hobby plan does not allow anything
  * more frequent. That cadence is fine because it is *not* what makes

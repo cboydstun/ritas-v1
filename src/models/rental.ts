@@ -46,6 +46,27 @@ const extraItemSchema = new mongoose.Schema({
   quantity: { type: Number, default: 1 },
 });
 
+/**
+ * The machineType a validator should check against.
+ *
+ * Document validators get `this` bound to the document; *update* validators
+ * (`findByIdAndUpdate(..., { runValidators: true })`) get it bound to the
+ * Query, where `this.machineType` is undefined. Reading it directly meant every
+ * admin edit that carried `capacity` failed validation and returned a 500.
+ */
+function machineTypeInContext(context: unknown): MachineType | undefined {
+  const ctx = context as {
+    machineType?: MachineType;
+    getUpdate?: () => Record<string, unknown> | null;
+  };
+  if (ctx?.machineType) return ctx.machineType;
+
+  const update = ctx?.getUpdate?.() ?? null;
+  if (!update) return undefined;
+  const set = (update.$set ?? update) as { machineType?: MachineType };
+  return set?.machineType;
+}
+
 const rentalSchema = new mongoose.Schema(
   {
     machineType: {
@@ -61,11 +82,12 @@ const rentalSchema = new mongoose.Schema(
         // Availability is counted per (machineType, capacity) pair, so a
         // mismatched pair matched no existing rentals and slipped past every
         // availability check. The mapping is fixed — enforce it.
-        validator: function (
-          this: mongoose.Document & { machineType: MachineType },
-          capacity: number,
-        ) {
-          return MACHINE_CAPACITY[this.machineType] === capacity;
+        validator: function (capacity: number) {
+          const machineType = machineTypeInContext(this);
+          // Nothing to check against on a partial update that leaves
+          // machineType alone — the pair was already validated when written.
+          if (!machineType) return true;
+          return MACHINE_CAPACITY[machineType] === capacity;
         },
         message: "Capacity does not match the selected machine type",
       },
@@ -74,16 +96,14 @@ const rentalSchema = new mongoose.Schema(
       type: [String],
       validate: [
         {
-          validator: function (
-            this: mongoose.Document & { machineType: MachineType },
-            mixers: string[],
-          ) {
+          validator: function (mixers: string[]) {
+            const machineType = machineTypeInContext(this);
             // Single tank can have 0 or 1 mixer
-            if (this.machineType === "single") {
+            if (machineType === "single") {
               return mixers.length <= 1;
             }
             // Double tank can have 0 to 2 mixers
-            if (this.machineType === "double") {
+            if (machineType === "double") {
               return mixers.length <= 2;
             }
             // Triple tank can have 0 to 3 mixers

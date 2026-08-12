@@ -122,3 +122,46 @@ describe("extras catalog", () => {
     });
   });
 });
+
+describe("admin-added mixers", () => {
+  // An admin can add arbitrary flavours in /admin/settings, and ExtrasStep
+  // renders a card for each. Enumerating only the static mixerDetails meant
+  // the id was unknown to the catalog: it priced at $0 in the summary and
+  // then hard-failed checkout with "one or more extras are not available".
+  const overrides = {
+    mixers: {
+      "blue-hawaiian": {
+        label: "Blue Hawaiian Mixer",
+        description: "House special.",
+        price: 22.5,
+      },
+    },
+  };
+
+  it("includes a settings-only mixer in the catalog", () => {
+    const item = buildExtrasCatalog(overrides).get("mixer-blue-hawaiian");
+
+    expect(item).toBeDefined();
+    expect(item!.price).toBe(22.5);
+    expect(item!.pricingType).toBe("flat");
+    expect(item!.name).toBe("Blue Hawaiian Mixer — Extra Mixer");
+  });
+
+  it("still includes the static flavours alongside it", () => {
+    const catalog = buildExtrasCatalog(overrides);
+    expect(catalog.has("mixer-margarita")).toBe(true);
+    expect(catalog.has("mixer-blue-hawaiian")).toBe(true);
+  });
+
+  it("resolves a settings-only mixer instead of rejecting it", () => {
+    const { extras, unknownIds } = resolveSelectedExtras(
+      [{ id: "mixer-blue-hawaiian", quantity: 2 }],
+      overrides,
+    );
+
+    expect(unknownIds).toEqual([]);
+    expect(extras).toHaveLength(1);
+    expect(extras[0].price).toBe(22.5);
+    expect(extras[0].quantity).toBe(2);
+  });
+});

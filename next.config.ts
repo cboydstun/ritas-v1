@@ -90,7 +90,9 @@ const nextConfig: NextConfig = {
     removeConsole: process.env.NODE_ENV === "production",
   },
   typescript: {
-    ignoreBuildErrors: true,
+    // The build type-checks again. `npm run typecheck` (tsc --noEmit) is the
+    // fast local gate; this is the one that stops a type error reaching prod.
+    ignoreBuildErrors: false,
   },
   images: {
     formats: ["image/avif", "image/webp"],

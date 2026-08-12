@@ -30,6 +30,9 @@ export default function BlackoutDatesPage() {
 
       const data = await response.json();
       setBlackoutDates(data.blackoutDates || []);
+      // Clear any error from a previous action; nothing else ever did, so a
+      // failed delete left the banner up until a full page reload.
+      setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
     } finally {

@@ -74,11 +74,13 @@ export default function SocialProofSection() {
         {/* Trust Indicators */}
         <div className="mb-8 sm:mb-12 grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-8 items-center">
           <div className="text-center p-2">
+            {/* The real review count. This used to be `reviews.length * 8`,
+                a made-up multiplier presented to visitors as a fact. */}
             <div className="text-2xl sm:text-4xl font-bold text-margarita mb-1 sm:mb-2">
-              {reviews.length * 8}
+              {reviews.length}
             </div>
             <div className="text-sm sm:text-base text-charcoal/80 dark:text-white/80">
-              Happy Customers
+              Customer Reviews
             </div>
           </div>
           <div className="text-center p-2">
@@ -90,8 +92,9 @@ export default function SocialProofSection() {
             </div>
           </div>
           <div className="text-center p-2">
+            {/* Counts 5s only. The tile said "5-Star" while filtering >= 4. */}
             <div className="text-2xl sm:text-4xl font-bold text-margarita mb-1 sm:mb-2">
-              {reviews.filter((r) => r.rating >= 4).length}
+              {reviews.filter((r) => r.rating === 5).length}
             </div>
             <div className="text-sm sm:text-base text-charcoal/80 dark:text-white/80">
               5-Star Reviews

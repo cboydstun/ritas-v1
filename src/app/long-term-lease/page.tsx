@@ -34,6 +34,7 @@ const jsonLd = {
 };
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/long-term-lease" },
   title: "Long-Term Frozen Drink Machine Leases | SATX Ritas",
   description:
     "Long-term margarita and frozen drink machine leases for restaurants, golf courses, hotels, and bars in San Antonio. Placement, install, and maintenance included.",

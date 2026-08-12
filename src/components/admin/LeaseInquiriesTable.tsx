@@ -159,6 +159,7 @@ export default function LeaseInquiriesTable() {
       if (!response.ok) throw new Error("Failed to fetch lease inquiries");
       const data = await response.json();
       setInquiries(data);
+      setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
     } finally {
@@ -205,10 +206,29 @@ export default function LeaseInquiriesTable() {
         Loading lease inquiries...
       </div>
     );
-  if (error) return <div className="text-red-500">Error: {error}</div>;
+  // A transient failure (a failed status change, say) used to replace the
+  // whole table with a bare error string that nothing ever cleared, so the
+  // only way back was a full page reload. It is a dismissible banner now, and
+  // a successful refetch clears it.
+  const errorBanner = error ? (
+    <div
+      role="alert"
+      className="flex items-start justify-between gap-4 rounded-md border border-red-300 bg-red-50 dark:bg-red-900/20 px-4 py-3 text-red-700 dark:text-red-300"
+    >
+      <span>{error}</span>
+      <button
+        type="button"
+        onClick={() => setError(null)}
+        className="font-medium underline"
+      >
+        Dismiss
+      </button>
+    </div>
+  ) : null;
 
   return (
     <div className="space-y-4">
+      {errorBanner}
       <div className="flex items-center space-x-4">
         <div className="flex items-center space-x-2">
           <label className="text-sm text-gray-700 dark:text-gray-300">

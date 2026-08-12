@@ -78,9 +78,10 @@ export default function MixerCard({
             >
               {name}
             </span>
+            {/* Tank mixers fold into perDayRate, so they bill per day. */}
             {!isNoMixer && price > 0 && (
               <span className="text-sm text-margarita font-bold flex-shrink-0">
-                +${price.toFixed(2)}
+                +${price.toFixed(2)}/day
               </span>
             )}
           </div>

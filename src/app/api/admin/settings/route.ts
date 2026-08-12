@@ -45,7 +45,10 @@ export async function PUT(request: Request) {
         ...body,
         key: "global",
         updatedAt: new Date(),
-        updatedBy: session.user.email,
+        // `authorize` returns only { id, name, role } — no email ever reaches
+        // the JWT, so `session.user.email` was always undefined and the audit
+        // field recorded nothing.
+        updatedBy: session.user?.name ?? "admin",
       },
       { upsert: true, new: true, runValidators: true },
     );

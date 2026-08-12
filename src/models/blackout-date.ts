@@ -41,6 +41,20 @@ blackoutDateSchema.pre("save", function (next) {
   next();
 });
 
+/**
+ * Messages the `pre("save")` hooks below throw.
+ *
+ * They are plain Errors, not mongoose ValidationErrors, so route handlers have
+ * no type to test against. Exporting the set lets them answer 400 instead of
+ * reporting an admin's bad input as a server fault.
+ */
+export const MODEL_RULE_MESSAGES = new Set([
+  "End date must be after start date",
+  "Start time and end time are required for time_range type",
+  "Times must be in HH:MM format",
+  "End time must be after start time",
+]);
+
 // Validation for time ranges
 blackoutDateSchema.pre("save", function (next) {
   if (this.type === "time_range") {
@@ -81,6 +95,15 @@ export type BlackoutDateDocument = mongoose.Document & {
 };
 
 // Helper function to check if a date falls within a blackout period
+/**
+ * Whether a calendar day is blacked out.
+ *
+ * Deliberately ignores `type`/`startTime`/`endTime`: availability is decided
+ * per day, with no delivery time in scope, so a `time_range` blackout blocks
+ * the whole day. The admin form no longer offers that type for exactly this
+ * reason — honouring the window means threading a delivery time through
+ * `isMachineAvailable` first.
+ */
 export function isDateBlackedOut(
   checkDate: Date,
   blackoutDates: BlackoutDateDocument[],

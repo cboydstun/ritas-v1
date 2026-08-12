@@ -87,6 +87,19 @@ export async function POST(req: NextRequest) {
       deviceType = "desktop";
     }
 
+    // Whitelist the client-supplied device fields.
+    //
+    // `...(data.device || {})` splatted an unvalidated object straight into
+    // $set, and findOneAndUpdate runs without validators, so a client could
+    // write arbitrary strings into `device.type` — the field /admin/analytics
+    // groups by. `type` is always derived from the user agent here.
+    const clientDevice = (data.device ?? {}) as Record<string, unknown>;
+    const devicePatch = {
+      type: deviceType,
+      brand: asString(clientDevice.brand).slice(0, 100) || undefined,
+      model: asString(clientDevice.model).slice(0, 100) || undefined,
+    };
+
     // Prepare the new visit data
     const page = asString(data.page, "/").slice(0, 500);
     const newVisit = {
@@ -123,8 +136,7 @@ export async function POST(req: NextRequest) {
             userAgent: userAgent,
             device: {
               ...existingThumbprint.device,
-              type: deviceType,
-              ...(data.device || {}),
+              ...devicePatch,
             },
             ...(stepName && {
               "funnelData.exitStep": stepName,
@@ -181,10 +193,7 @@ export async function POST(req: NextRequest) {
           $set: {
             lastSeen: new Date(),
             userAgent: userAgent,
-            device: {
-              type: deviceType,
-              ...(data.device || {}),
-            },
+            device: devicePatch,
             ...(stepName && {
               "funnelData.entryStep": stepName,
               "funnelData.exitStep": stepName,
