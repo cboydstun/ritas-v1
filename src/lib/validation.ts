@@ -203,6 +203,86 @@ export function escapeHtml(value: unknown): string {
     .replace(/'/g, "&#39;");
 }
 
+/**
+ * Admin settings body validation.
+ *
+ * `PUT /api/admin/settings` writes through `findOneAndUpdate`, and
+ * `runValidators` runs *path* validators only — the `pre("validate")` document
+ * hook in `src/models/settings.ts` that enforces `deliveryWindowEndHour >
+ * deliveryWindowStartHour` never fires on a query update. `mixers`, `extras`
+ * and `leaseTiers` are `Schema.Types.Mixed`, which Mongoose does not
+ * deep-validate at all, so a string where a number belongs reached
+ * `calculatePrice` and produced a `NaN` order total.
+ *
+ * This schema is where both classes of write are actually checked.
+ */
+const rateSchema = z.number().min(0).max(1);
+const moneySchema = z.number().min(0).max(100_000);
+
+/** A Mixed map entry only has to carry a usable `price` — labels are free text. */
+const pricedEntrySchema = z
+  .object({ price: moneySchema })
+  .catchall(z.unknown());
+
+const machineSettingsSchema = z
+  .object({
+    basePrice: moneySchema,
+    inventory: z.number().int().min(0).max(1000),
+  })
+  .partial();
+
+export const settingsUpdateSchema = z
+  .object({
+    fees: z
+      .object({
+        deliveryFee: moneySchema,
+        salesTaxRate: rateSchema,
+        processingFeeRate: rateSchema,
+        serviceDiscountRate: rateSchema,
+      })
+      .partial(),
+    machines: z
+      .object({
+        single: machineSettingsSchema,
+        double: machineSettingsSchema,
+        triple: machineSettingsSchema,
+      })
+      .partial(),
+    mixers: z.record(z.string(), pricedEntrySchema),
+    extras: z.record(z.string(), pricedEntrySchema),
+    leaseTiers: z.record(z.string(), z.object({}).catchall(z.unknown())),
+    operations: z
+      .object({
+        deliveryWindowStartHour: z.number().int().min(0).max(23),
+        deliveryWindowEndHour: z.number().int().min(0).max(23),
+      })
+      .partial(),
+    documentation: z
+      .object({
+        pdfUrl: z.string().max(2000),
+        pdfLabel: z.string().max(200),
+      })
+      .partial(),
+  })
+  .partial()
+  .superRefine((value, ctx) => {
+    const ops = value.operations;
+    // Only checkable when the caller sends both halves; a partial write that
+    // touches one hour is re-checked against the stored document in the route.
+    if (
+      ops?.deliveryWindowStartHour !== undefined &&
+      ops?.deliveryWindowEndHour !== undefined &&
+      ops.deliveryWindowStartHour >= ops.deliveryWindowEndHour
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["operations", "deliveryWindowEndHour"],
+        message:
+          "deliveryWindowEndHour must be greater than deliveryWindowStartHour",
+      });
+    }
+  });
+
 /** Collapse a ZodError into a single short, non-leaky message. */
 export function firstIssueMessage(error: z.ZodError): string {
   const issue = error.issues[0];

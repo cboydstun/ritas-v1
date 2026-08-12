@@ -2,7 +2,7 @@
 
 import { useState, Suspense, useEffect } from "react";
 import OrderFormTracker from "./OrderFormTracker";
-import { MixerType } from "@/lib/rental-data";
+import { MixerType, machinePackages } from "@/lib/rental-data";
 import { useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import {
@@ -30,6 +30,21 @@ import { PricingSummary } from "./PricingSummary";
 
 // localStorage key for draft persistence
 const DRAFT_KEY = "satx-ritas-order-draft";
+
+/** Bumped whenever the draft shape changes; a mismatch discards the draft. */
+const DRAFT_VERSION = 1;
+
+/**
+ * The one place a machine type coming from outside the app is checked.
+ *
+ * Both untrusted sources — the `?machine=` query param and a restored
+ * localStorage draft — feed `calculatePrice`, which throws rather than
+ * defaulting on an unknown type.
+ */
+const isMachineTypeValue = (
+  value: unknown,
+): value is "single" | "double" | "triple" =>
+  typeof value === "string" && machinePackages.some((p) => p.type === value);
 
 // Dynamically import step components with proper typing
 const DateSelectionStep = dynamic<StepProps>(
@@ -126,8 +141,14 @@ export default function OrderForm() {
   // Get initial machine type and mixer from URL once.
   // If URL params are present (e.g. clicking "Book Now" from the pricing page)
   // we start fresh rather than restoring a previous draft.
-  const initialMachineType =
-    (searchParams.get("machine") as "single" | "double" | "triple") || "double";
+  // `calculatePrice` throws on an unknown machine type, and it is called from
+  // the `useState` initialiser below — so an unvalidated cast here meant
+  // /order?machine=quad (or ?machine=Double — wrong case is enough) threw
+  // during render and dropped the whole conversion page into the error
+  // boundary. No internal link emits this param; ads and bots do.
+  const initialMachineType = isMachineTypeValue(searchParams.get("machine"))
+    ? (searchParams.get("machine") as "single" | "double" | "triple")
+    : "double";
   const initialMixer = searchParams.get("mixer");
   const initialSelectedMixers = initialMixer ? [initialMixer as MixerType] : [];
   const hasUrlParams = searchParams.get("machine") !== null;
@@ -189,9 +210,20 @@ export default function OrderForm() {
       const saved = localStorage.getItem(DRAFT_KEY);
       if (saved) {
         const parsed = JSON.parse(saved) as {
+          version?: number;
           formData?: OrderFormData;
           step?: OrderStep;
         };
+        // A draft written by an older shape is discarded rather than merged.
+        // Drafts predating the version field have no `version` at all.
+        if (parsed.version !== DRAFT_VERSION) {
+          localStorage.removeItem(DRAFT_KEY);
+          return {
+            formData: buildDefaultFormData(),
+            step: "date",
+            hasDraft: false,
+          };
+        }
         // Only restore if the draft has meaningful progress (a name entered)
         if (parsed.formData?.customer?.name) {
           const defaults = buildDefaultFormData();
@@ -212,6 +244,21 @@ export default function OrderForm() {
               },
             },
           };
+
+          // `machineType`, `capacity` and the two arrays were restored by the
+          // spread above with no checking at all. A draft carrying an unknown
+          // machine type threw out of `calculatePrice` in both the price-sync
+          // effect and PricingSummary's render, and "Try again" re-read the
+          // same draft — so the order page was bricked until the visitor
+          // cleared localStorage themselves. A non-array selection threw the
+          // same way at `.filter` in the prune effect.
+          if (!isMachineTypeValue(merged.machineType)) {
+            merged.machineType = defaults.machineType;
+            merged.selectedMixers = [];
+          }
+          merged.capacity = capacityMap[merged.machineType] ?? 15;
+          if (!Array.isArray(merged.selectedMixers)) merged.selectedMixers = [];
+          if (!Array.isArray(merged.selectedExtras)) merged.selectedExtras = [];
 
           // A draft outlives the day it was written on. Restoring a past
           // rental date left it selected (the picker only disables past days
@@ -254,7 +301,10 @@ export default function OrderForm() {
   // Persist draft to localStorage whenever formData or step changes
   useEffect(() => {
     try {
-      localStorage.setItem(DRAFT_KEY, JSON.stringify({ formData, step }));
+      localStorage.setItem(
+        DRAFT_KEY,
+        JSON.stringify({ version: DRAFT_VERSION, formData, step }),
+      );
     } catch {
       // ignore (private browsing, quota exceeded, etc.)
     }

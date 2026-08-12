@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import dbConnect from "@/lib/mongodb";
 import { Settings } from "@/models/settings";
+import { settingsUpdateSchema, firstIssueMessage } from "@/lib/validation";
 
 /** The only settings an admin may write through this route. */
 const EDITABLE_SETTINGS_FIELDS = [
@@ -48,6 +49,21 @@ export async function PUT(request: Request) {
 
   try {
     const body = await request.json();
+
+    // `findOneAndUpdate` + `runValidators` runs path validators only, so the
+    // model's `pre("validate")` delivery-window rule never fired here and the
+    // three Mixed maps were never checked at all. An inverted window made
+    // `validateDeliveryTime` reject every time on the order form; a
+    // non-numeric mixer price produced a `NaN` order total.
+    const parsed = settingsUpdateSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { message: firstIssueMessage(parsed.error) },
+        { status: 400 },
+      );
+    }
+    const data = parsed.data;
+
     await dbConnect();
 
     // Explicit whitelist rather than `{ ...body }`. Spreading the body was
@@ -66,7 +82,42 @@ export async function PUT(request: Request) {
     for (const field of EDITABLE_SETTINGS_FIELDS) {
       // The Mixed maps are reassigned wholesale on purpose — Mongoose does not
       // dirty-track inside them, so a partial merge would not persist.
-      if (body?.[field] !== undefined) update[field] = body[field];
+      if (data[field] !== undefined) update[field] = data[field];
+    }
+
+    // A body that moves only one end of the delivery window is still able to
+    // invert it against the value already stored, which the schema cannot see.
+    const ops = data.operations;
+    if (
+      ops &&
+      (ops.deliveryWindowStartHour === undefined) !==
+        (ops.deliveryWindowEndHour === undefined)
+    ) {
+      const current = (await Settings.findOne({ key: "global" })
+        .select("operations")
+        .lean()) as {
+        operations?: {
+          deliveryWindowStartHour?: number;
+          deliveryWindowEndHour?: number;
+        };
+      } | null;
+      const start =
+        ops.deliveryWindowStartHour ??
+        current?.operations?.deliveryWindowStartHour ??
+        8;
+      const end =
+        ops.deliveryWindowEndHour ??
+        current?.operations?.deliveryWindowEndHour ??
+        18;
+      if (start >= end) {
+        return NextResponse.json(
+          {
+            message:
+              "operations.deliveryWindowEndHour: deliveryWindowEndHour must be greater than deliveryWindowStartHour",
+          },
+          { status: 400 },
+        );
+      }
     }
 
     const updated = await Settings.findOneAndUpdate({ key: "global" }, update, {

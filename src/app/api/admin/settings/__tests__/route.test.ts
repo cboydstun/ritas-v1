@@ -234,7 +234,97 @@ describe("Admin Settings API", () => {
 
       expect(response.status).toBe(400);
       const data = await response.json();
-      expect(data.message).toBe("Invalid settings data");
+      // The body is now rejected by the zod schema before it reaches Mongoose,
+      // so the admin gets the offending field rather than a generic string.
+      expect(data.message).toBe(
+        "fees.deliveryFee: Too small: expected number to be >=0",
+      );
+    });
+
+    // `findOneAndUpdate` + `runValidators` runs path validators only, so the
+    // model's `pre("validate")` hook never fired on this route. The hook is
+    // exercised by src/models/__tests__/settings.test.ts via `doc.validate()`,
+    // which passes — the rule was green in CI and absent in production.
+    it("rejects a delivery window whose end is not after its start", async () => {
+      const request = new Request("http://localhost:3000/api/admin/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          operations: {
+            deliveryWindowStartHour: 18,
+            deliveryWindowEndHour: 8,
+          },
+        }),
+      });
+
+      const response = await PUT(request);
+
+      expect(response.status).toBe(400);
+      expect(Settings.findOneAndUpdate).not.toHaveBeenCalled();
+    });
+
+    it("rejects equal start and end hours", async () => {
+      const request = new Request("http://localhost:3000/api/admin/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          operations: {
+            deliveryWindowStartHour: 12,
+            deliveryWindowEndHour: 12,
+          },
+        }),
+      });
+
+      const response = await PUT(request);
+
+      expect(response.status).toBe(400);
+      expect(Settings.findOneAndUpdate).not.toHaveBeenCalled();
+    });
+
+    it("rejects a one-sided edit that inverts the stored window", async () => {
+      // The schema cannot see this on its own — the body carries only one
+      // hour, and the other comes from the stored document.
+      (Settings.findOne as jest.Mock).mockReturnValue({
+        select: () => ({
+          lean: async () => ({
+            operations: {
+              deliveryWindowStartHour: 8,
+              deliveryWindowEndHour: 18,
+            },
+          }),
+        }),
+      });
+
+      const request = new Request("http://localhost:3000/api/admin/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          operations: { deliveryWindowStartHour: 20 },
+        }),
+      });
+
+      const response = await PUT(request);
+
+      expect(response.status).toBe(400);
+      expect(Settings.findOneAndUpdate).not.toHaveBeenCalled();
+    });
+
+    it("rejects a Mixed-map entry whose price is not a number", async () => {
+      // `mixers`/`extras`/`leaseTiers` are Schema.Types.Mixed, which Mongoose
+      // does not deep-validate. A string here reached `calculatePrice` and
+      // produced a NaN order total.
+      const request = new Request("http://localhost:3000/api/admin/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mixers: { margarita: { label: "Margarita", price: "free" } },
+        }),
+      });
+
+      const response = await PUT(request);
+
+      expect(response.status).toBe(400);
+      expect(Settings.findOneAndUpdate).not.toHaveBeenCalled();
     });
   });
 });

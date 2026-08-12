@@ -116,6 +116,14 @@ async function fetchSettings() {
   }
 }
 
+/**
+ * The page reads runtime pricing out of the admin `Settings` document, so it
+ * must not be frozen into the build. Without this it prerendered as fully
+ * static (`○` in the route table) and every lease-tier edit in /admin/settings
+ * stayed invisible on the public page until the next deploy.
+ */
+export const revalidate = 60;
+
 export default async function LongTermLeasePage() {
   const settings = await fetchSettings();
   const tiers = mergeLeaseTiers(settings?.leaseTiers);

@@ -32,18 +32,18 @@ const customJestConfig = {
     // Everything outside src/lib — a path-keyed threshold below removes those
     // files from this bucket.
     global: {
-      statements: 32,
-      branches: 30,
+      statements: 33,
+      branches: 32,
       functions: 21,
-      lines: 33,
+      lines: 34,
     },
     // The money and availability logic is held to a much higher bar than the
     // page components that dominate the global figure.
     "./src/lib/": {
-      statements: 74,
-      branches: 67,
-      functions: 79,
-      lines: 76,
+      statements: 84,
+      branches: 79,
+      functions: 88,
+      lines: 85,
     },
   },
   collectCoverageFrom: [

@@ -7,8 +7,12 @@ import "@testing-library/jest-dom";
 import OrderForm from "../OrderForm";
 import { todayLocalIso } from "@/lib/dates";
 
+// Mutable so a test can drive the `?machine=` param. Declared with `var` and
+// prefixed so SWC's jest.mock hoisting can reach it from inside the factory.
+var mockSearchParams = new URLSearchParams();
+
 jest.mock("next/navigation", () => ({
-  useSearchParams: () => new URLSearchParams(),
+  useSearchParams: () => mockSearchParams,
 }));
 
 // Keeps ThumbmarkJS (canvas/audio fingerprinting) out of jsdom — it is not
@@ -27,6 +31,8 @@ jest.mock("next/image", () => ({
 }));
 
 const DRAFT_KEY = "satx-ritas-order-draft";
+/** Must track `DRAFT_VERSION` in OrderForm.tsx — a mismatch discards the draft. */
+const DRAFT_VERSION = 1;
 
 /** A draft far enough in the future that it is never stale. */
 const futureDate = (days: number): string => {
@@ -42,6 +48,7 @@ const writeDraft = (
   localStorage.setItem(
     DRAFT_KEY,
     JSON.stringify({
+      version: DRAFT_VERSION,
       formData: {
         machineType: "double",
         capacity: 30,
@@ -87,6 +94,7 @@ const readDraft = () =>
 
 describe("OrderForm draft restore", () => {
   beforeEach(() => {
+    mockSearchParams = new URLSearchParams();
     localStorage.clear();
     global.fetch = jest.fn(async () => ({
       ok: true,
@@ -102,6 +110,60 @@ describe("OrderForm draft restore", () => {
     // The crash this guards against was `steps[-1].label` throwing during
     // ProgressBar's render, taking the whole order page down.
     expect(await stepCounter(1)).toBeInTheDocument();
+  });
+
+  it("discards a draft written before the version field existed", async () => {
+    // The pre-version shape restored `machineType` and the two selection
+    // arrays with no checking, which is what made an unknown value fatal.
+    localStorage.setItem(
+      DRAFT_KEY,
+      JSON.stringify({
+        formData: { customer: { name: "Sam Rivera" }, machineType: "quad" },
+        step: "review",
+      }),
+    );
+
+    render(<OrderForm />);
+
+    expect(await stepCounter(1)).toBeInTheDocument();
+  });
+
+  it("survives a draft naming a machine type that no longer exists", async () => {
+    // `calculatePrice` throws rather than defaulting on an unknown type, and
+    // it runs in the useState initialiser and in PricingSummary's render — so
+    // this used to hit the error boundary, and "Try again" re-read the same
+    // draft. Unrecoverable without clearing localStorage by hand.
+    writeDraft({ machineType: "quad", capacity: 99 });
+
+    render(<OrderForm />);
+
+    // Renders at all — the point of the test. The draft is otherwise valid,
+    // so it restores onto the step it was left on.
+    expect(await stepCounter(5)).toBeInTheDocument();
+    await waitFor(() => {
+      const draft = JSON.parse(localStorage.getItem(DRAFT_KEY) ?? "{}") as {
+        formData?: { machineType?: string; capacity?: number };
+      };
+      expect(draft.formData?.machineType).toBe("double");
+      expect(draft.formData?.capacity).toBe(30);
+    });
+  });
+
+  it("survives a draft whose selections are not arrays", async () => {
+    // A non-array threw at `.filter` in the catalog prune effect.
+    writeDraft({
+      selectedMixers: "margarita",
+      selectedExtras: { id: "cups" },
+    });
+
+    render(<OrderForm />);
+
+    expect(await stepCounter(5)).toBeInTheDocument();
+    await waitFor(() => {
+      const draft = readDraft();
+      expect(draft.formData?.selectedMixers).toEqual([]);
+      expect(draft.formData?.selectedExtras).toEqual([]);
+    });
   });
 
   it("clears a rental date that has fallen into the past and returns to the date step", async () => {
@@ -180,6 +242,45 @@ describe("OrderForm draft restore", () => {
       expect(draft.formData?.selectedExtras).toEqual([
         { id: "mixer-mango-habanero", quantity: 1 },
       ]);
+    });
+  });
+});
+
+describe("OrderForm ?machine= param", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    global.fetch = jest.fn(async () => ({
+      ok: true,
+      json: async () => ({}),
+    })) as unknown as typeof fetch;
+  });
+
+  it.each(["quad", "Double", ""])(
+    "renders rather than throwing for ?machine=%s",
+    async (value) => {
+      // `calculatePrice` throws on an unknown machine type and runs inside the
+      // useState initialiser, so an unvalidated param took the whole order
+      // page into the error boundary. Wrong case was enough.
+      mockSearchParams = new URLSearchParams({ machine: value });
+
+      render(<OrderForm />);
+
+      expect(await stepCounter(1)).toBeInTheDocument();
+    },
+  );
+
+  it("still honours a valid machine param", async () => {
+    mockSearchParams = new URLSearchParams({ machine: "triple" });
+
+    render(<OrderForm />);
+
+    expect(await stepCounter(1)).toBeInTheDocument();
+    await waitFor(() => {
+      const draft = JSON.parse(localStorage.getItem(DRAFT_KEY) ?? "{}") as {
+        formData?: { machineType?: string; capacity?: number };
+      };
+      expect(draft.formData?.machineType).toBe("triple");
+      expect(draft.formData?.capacity).toBe(45);
     });
   });
 });

@@ -15,7 +15,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
 
       - run: npm ci
@@ -37,3 +37,20 @@ jobs:
       - name: Test
         if: ${{ !cancelled() }}
         run: npm run test:ci
+
+      # The build is the only gate that exercises static generation. 51 pages
+      # are prerendered here — including the 16 service-area routes, the
+      # sitemap and the OG image — and a page that throws during prerender is
+      # a red deploy that typecheck, lint and jest all report as green.
+      #
+      # `src/lib/mongodb.ts` throws at import when MONGODB_URI/MONGODB_DB are
+      # absent, so the build needs them present but not reachable: the one page
+      # that reads the database at build time (`/long-term-lease`) catches the
+      # connection failure and renders its default tiers.
+      - name: Build
+        if: ${{ !cancelled() }}
+        env:
+          MONGODB_URI: mongodb://127.0.0.1:27017
+          MONGODB_DB: ci
+          NEXTAUTH_SECRET: ci-build-only-not-a-real-secret
+        run: npm run build
