@@ -1,4 +1,4 @@
-import ThemeWrapper from "@/components/ThemeWrapper";
+import SessionProvider from "@/components/SessionProvider";
 import AdminLayoutClient from "@/components/admin/AdminLayoutClient";
 import { Metadata } from "next";
 
@@ -12,9 +12,15 @@ export default function AdminRootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  // SessionProvider is scoped here rather than to the root layout: every
+  // useSession/signIn/signOut caller in the app is an admin component, and
+  // wrapping the whole tree shipped next-auth/react to every public page.
+  //
+  // ThemeWrapper is deliberately absent — the root layout already renders one
+  // and next-themes providers do not nest usefully.
   return (
-    <ThemeWrapper>
+    <SessionProvider>
       <AdminLayoutClient>{children}</AdminLayoutClient>
-    </ThemeWrapper>
+    </SessionProvider>
   );
 }

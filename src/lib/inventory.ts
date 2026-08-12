@@ -137,18 +137,24 @@ export async function isMachineAvailable(
   const endDate = returnDate ?? rentalDate;
   const days = eachDayInRange(rentalDate, endDate);
 
-  const blackoutDates = (await BlackoutDate.find({
-    $or: [
-      {
-        startDate: { $lte: new Date(endDate + "T00:00:00") },
-        endDate: { $gte: new Date(rentalDate + "T00:00:00") },
-      },
-      {
-        startDate: { $lte: new Date(endDate + "T00:00:00") },
-        endDate: { $exists: false },
-      },
-    ],
-  })) as BlackoutDateDocument[];
+  // These two reads are independent, and this is the hottest path in the app —
+  // MachineStep checks all three machine types in parallel on every date
+  // change, so a serial round-trip here costs three of them.
+  const [blackoutDates, inventory] = await Promise.all([
+    BlackoutDate.find({
+      $or: [
+        {
+          startDate: { $lte: new Date(endDate + "T00:00:00") },
+          endDate: { $gte: new Date(rentalDate + "T00:00:00") },
+        },
+        {
+          startDate: { $lte: new Date(endDate + "T00:00:00") },
+          endDate: { $exists: false },
+        },
+      ],
+    }) as unknown as Promise<BlackoutDateDocument[]>,
+    getMachineInventory(machineType),
+  ]);
 
   for (const day of days) {
     if (isDateBlackedOut(new Date(day + "T00:00:00"), blackoutDates)) {
@@ -159,7 +165,6 @@ export async function isMachineAvailable(
     }
   }
 
-  const inventory = await getMachineInventory(machineType);
   if (inventory <= 0) {
     return {
       available: false,

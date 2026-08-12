@@ -203,6 +203,13 @@ const ThumbprintSchema = new Schema<IThumbprint>({
   },
 });
 
+// Every /api/admin/analytics aggregation narrows on `visits.timestamp` before
+// its $unwind — that is the whole point of the ordering there — but the field
+// carried no index, so each of those $match stages was a collection scan. The
+// schema indexes firstSeen, lastSeen, visitCount, segments, device.type and
+// conversion.hasConverted; this was the one the dashboard actually filters on.
+ThumbprintSchema.index({ "visits.timestamp": -1 });
+
 // Only create the model if it hasn't been created already
 export const Thumbprint =
   mongoose.models.Thumbprint ||

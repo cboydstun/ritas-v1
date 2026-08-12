@@ -326,6 +326,10 @@ export async function POST(request: Request) {
       );
     }
 
+    // Holds the in-flight Twilio send so it can overlap the Resend call
+    // below rather than serialising with it.
+    let smsInFlight: Promise<unknown> | null = null;
+
     // Send SMS notification if Twilio credentials are configured
     const accountSid = process.env.TWILIO_ACCOUNT_SID;
     const authToken = process.env.TWILIO_AUTH_TOKEN;
@@ -366,7 +370,12 @@ export async function POST(request: Request) {
                 .join(", ")}\n`
             : "";
 
-        await withTimeout(
+        // Started, not awaited. Both notifications are fire-and-log — the
+        // booking is already committed and stands either way — but awaiting
+        // them one after the other made the customer wait up to two full
+        // NOTIFICATION_TIMEOUT_MS windows after their booking had succeeded.
+        // The result is collected alongside the email below.
+        smsInFlight = withTimeout(
           twilioClient.messages.create({
             body:
               `🎉 NEW BOOKING - PAYMENT PENDING\n` +
@@ -388,7 +397,7 @@ export async function POST(request: Request) {
           "Twilio",
         );
       } catch (smsError) {
-        console.error("Error sending SMS:", smsError);
+        console.error("Error sending SMS:", safeErrorSummary(smsError));
         // Continue with order processing even if SMS fails
       }
     } else {
@@ -604,8 +613,22 @@ export async function POST(request: Request) {
         "Resend",
       );
     } catch (emailError) {
-      console.error("Error sending confirmation email:", emailError);
+      console.error(
+        "Error sending confirmation email:",
+        safeErrorSummary(emailError),
+      );
       // Continue with the booking process even if email fails
+    }
+
+    // Collect the Twilio send that was started before the email. It ran
+    // concurrently with it, so this usually resolves immediately; a failure
+    // is logged and never changes the response, exactly as before.
+    if (smsInFlight) {
+      try {
+        await smsInFlight;
+      } catch (smsError) {
+        console.error("Error sending SMS:", safeErrorSummary(smsError));
+      }
     }
 
     return NextResponse.json({

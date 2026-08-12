@@ -74,14 +74,17 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Get blackout dates with pagination
-    const blackoutDates = await BlackoutDate.find(query)
-      .sort({ startDate: 1 })
-      .limit(limit)
-      .skip(offset);
-
-    // Get total count for pagination
-    const total = await BlackoutDate.countDocuments(query);
+    // The sibling list routes (orders, contacts, lease-inquiries) already
+    // run these two in parallel and read lean; this one awaited them in
+    // sequence and hydrated full Mongoose documents only to serialise them.
+    const [blackoutDates, total] = await Promise.all([
+      BlackoutDate.find(query)
+        .sort({ startDate: 1 })
+        .limit(limit)
+        .skip(offset)
+        .lean(),
+      BlackoutDate.countDocuments(query),
+    ]);
 
     return NextResponse.json({
       blackoutDates,

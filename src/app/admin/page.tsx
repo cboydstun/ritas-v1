@@ -3,7 +3,6 @@
 import AdminLayout from "@/components/admin/AdminLayout";
 import Link from "next/link";
 import { useState, useEffect } from "react";
-import { MargaritaRental } from "@/types/index";
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState({
@@ -15,29 +14,13 @@ export default function AdminDashboard() {
 
   const fetchStats = async () => {
     try {
-      const response = await fetch("/api/admin/orders");
-      if (!response.ok) throw new Error("Failed to fetch orders");
-      const orders: MargaritaRental[] = await response.json();
-
-      const stats = orders.reduce(
-        (acc, order) => {
-          acc.totalOrders++;
-          if (order.status === "pending") acc.pendingOrders++;
-          if (order.status === "completed") acc.completedOrders++;
-          if (order.payment?.status === "completed") {
-            acc.totalRevenue += order.payment.amount;
-          }
-          return acc;
-        },
-        {
-          totalOrders: 0,
-          pendingOrders: 0,
-          completedOrders: 0,
-          totalRevenue: 0,
-        },
-      );
-
-      setStats(stats);
+      // Reads a Mongo $group rather than downloading orders and reducing them
+      // here. /api/admin/orders is capped at ADMIN_LIST_MAX and reports the
+      // truncation in a header this page ignored, so past 500 orders the
+      // totals below were quietly wrong.
+      const response = await fetch("/api/admin/stats");
+      if (!response.ok) throw new Error("Failed to fetch stats");
+      setStats(await response.json());
     } catch (error) {
       console.error("Error fetching stats:", error);
     }
