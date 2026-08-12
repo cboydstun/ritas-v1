@@ -28,17 +28,21 @@ Tests are co-located in `__tests__/` folders next to the code they cover. Jest i
 
 `npm run typecheck` (`tsc --noEmit`) is the fast type gate. `next.config.ts` sets `typescript.ignoreBuildErrors: false`, so `npm run build` type-checks too — do not flip it back to `true` to get a build out; fix the type.
 
-`npm run lint` calls `eslint .` directly (`next lint` is removed in Next 16). `eslint.config.mjs` must keep its `ignores` entry for `.next/` — without it ESLint walks the build output and reports thousands of bogus errors in minified chunks.
+`npm run lint` calls `eslint .` directly (`next lint` is removed in Next 16). `eslint.config.mjs` must keep its `ignores` entry for `.next/` — without it ESLint walks the build output and reports thousands of bogus errors in minified chunks. It uses eslint-config-next 16's native flat configs; do not reintroduce `FlatCompat`, which throws "Converting circular structure to JSON" against v16.
+
+`react-hooks/set-state-in-effect`, `react-hooks/immutability` and `react-hooks/purity` (new in eslint-plugin-react-hooks 7) are set to **warn**. They flag 24 pre-existing sites, a mix of genuine smells and false positives for what this code does. Triaging them is an open task; the warnings are deliberate, not noise to silence.
+
+**Styling is Tailwind 4.** There is no `tailwind.config.ts` — the theme lives in an `@theme` block in `src/app/globals.css`, and `postcss.config.js` loads `@tailwindcss/postcss` (nesting and vendor prefixing are built in, so there is no `autoprefixer`). Add a colour or keyframe by adding a `--color-*` / `--animate-*` custom property there. The dark variant is `@custom-variant dark (&:where(.dark, .dark *))`, matching the class next-themes puts on `<html>`.
 
 ## Stack
 
-Next.js 15 (App Router) · React 19 · TypeScript 5 · MongoDB/Mongoose · NextAuth.js v4 · Zod · Tailwind CSS 3
+Next.js 16 (App Router) · React 19 · TypeScript 5 · MongoDB/Mongoose 9 · NextAuth.js v4 · Zod · Tailwind CSS 4
 
 ## Architecture
 
 ### Routing & Pages
 
-`src/app/` uses the Next.js App Router. Public pages live at the root (`/order`, `/pricing`, `/long-term-lease`, etc.), plus statically generated `/service-area/[city]` pages driven by `SERVICE_AREAS` in `src/lib/service-areas.ts` — the same list `MapSection` and `sitemap.ts` render from, so adding an area there gives it a page, a homepage link and a sitemap entry. Admin pages are under `src/app/admin/` and are protected by middleware. API routes are split between `src/app/api/v1/` (public) and `src/app/api/admin/` (auth-required). `/api/save-booking` (the public checkout) and `/api/cron/release-holds` sit outside both namespaces at `src/app/api/`.
+`src/app/` uses the Next.js App Router. Public pages live at the root (`/order`, `/pricing`, `/long-term-lease`, etc.), plus statically generated `/service-area/[city]` pages driven by `SERVICE_AREAS` in `src/lib/service-areas.ts` — the same list `MapSection` and `sitemap.ts` render from, so adding an area there gives it a page, a homepage link and a sitemap entry. Admin pages are under `src/app/admin/` and are protected by the proxy (`src/proxy.ts` — Next 16's rename of the middleware file convention). API routes are split between `src/app/api/v1/` (public) and `src/app/api/admin/` (auth-required). `/api/save-booking` (the public checkout) and `/api/cron/release-holds` sit outside both namespaces at `src/app/api/`.
 
 Two customer-facing verticals share this codebase: **event rentals** (the `/order` wizard, `Rental` model) and **long-term commercial leases** (`/long-term-lease`, an inquiry form only — no payment, `LeaseInquiry` model).
 
@@ -89,11 +93,16 @@ Admins manage blackout date ranges via `/admin/blackout-dates` → `GET/POST /ap
 
 ### Database
 
-MongoDB via Mongoose. Connection is cached in `src/lib/mongodb.ts` using a global variable to avoid creating new connections on every serverless invocation. Models live in `src/models/`: `rental.ts`, `thumbprint.ts`, `contact.ts`, `blackout-date.ts`, `settings.ts`, `leaseInquiry.ts`. Every model uses the `mongoose.models.X || mongoose.model(...)` guard — keep that pattern or hot reload throws `OverwriteModelError`.
+MongoDB via Mongoose 9. Connection is cached in `src/lib/mongodb.ts` using a global variable to avoid creating new connections on every serverless invocation.
+
+Mongoose 9 middleware takes no `next` callback: a `pre` hook signals completion by returning and failure by **throwing**. Do not reintroduce `function (next)` — it type-errors, and the model's validation would silently never run. `src/models/__tests__/schemas.test.ts` exercises the real schemas offline (`doc.validate()` needs no connection) and is what catches a hook that stops firing. Models live in `src/models/`: `rental.ts`, `thumbprint.ts`, `contact.ts`, `blackout-date.ts`, `settings.ts`, `leaseInquiry.ts`. Every model uses the `mongoose.models.X || mongoose.model(...)` guard — keep that pattern or hot reload throws `OverwriteModelError`.
 
 ### Authentication (Admin)
 
-NextAuth.js credentials provider with JWT session strategy (no database sessions). Config is in `src/lib/auth.ts`. The username comes from `ADMIN_USERNAME`; the password is checked against the bcrypt hash in `ADMIN_PASSWORD_HASH`, falling back (with a warning) to plaintext `ADMIN_PASSWORD` if the hash is unset. Both comparisons are constant-time and the credentials callback is IP rate-limited. Auth is enforced in two layers: `src/middleware.ts` uses `getToken()` to reject unauthenticated requests early — it requires both a token and `token.role === "admin"` (page requests redirect to `/admin/login`, API requests return 401) — and individual admin route handlers redundantly call `getServerSession(authOptions)` as defense-in-depth. The middleware also force-redirects HTTP→HTTPS in production via `x-forwarded-proto`, using the host from `SITE_URL` rather than the `Host` header (trusting the header made it an open redirect). Its matcher is scoped to `/admin/*` and `/api/admin/*` — widen it if `PERMANENT_REDIRECTS` ever gains a public-page entry.
+NextAuth.js credentials provider with JWT session strategy (no database sessions). Config is in `src/lib/auth.ts`.
+
+`package.json` carries an `overrides` entry pinning `nodemailer` to `^9.0.5`. next-auth v4 depends on a vulnerable range (six advisories, one high) purely for its email provider, which this app does not use — only `CredentialsProvider` is configured. **If an email provider is ever added, drop the override and check next-auth against nodemailer 9 first.** next-auth v5 is still beta and is not a fix for this.
+The username comes from `ADMIN_USERNAME`; the password is checked against the bcrypt hash in `ADMIN_PASSWORD_HASH`, falling back (with a warning) to plaintext `ADMIN_PASSWORD` if the hash is unset. Both comparisons are constant-time and the credentials callback is IP rate-limited. Auth is enforced in two layers: `src/proxy.ts` uses `getToken()` to reject unauthenticated requests early — it requires both a token and `token.role === "admin"` (page requests redirect to `/admin/login`, API requests return 401) — and individual admin route handlers redundantly call `getServerSession(authOptions)` as defense-in-depth. The proxy also force-redirects HTTP→HTTPS in production via `x-forwarded-proto`, using the host from `SITE_URL` rather than the `Host` header (trusting the header made it an open redirect). Its matcher is scoped to `/admin/*` and `/api/admin/*` — widen it if `PERMANENT_REDIRECTS` ever gains a public-page entry.
 
 ### Checkout Flow
 

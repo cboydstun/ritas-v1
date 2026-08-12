@@ -49,9 +49,8 @@ const leaseInquirySchema = new mongoose.Schema(
   },
 );
 
-leaseInquirySchema.pre("save", function (next) {
+leaseInquirySchema.pre("save", function () {
   this.updatedAt = new Date();
-  next();
 });
 
 export const LeaseInquiry =

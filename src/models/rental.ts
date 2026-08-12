@@ -187,9 +187,8 @@ const rentalSchema = new mongoose.Schema(
 );
 
 // Update timestamps before saving
-rentalSchema.pre("save", function (next) {
+rentalSchema.pre("save", function () {
   this.updatedAt = new Date();
-  next();
 });
 
 // Availability is the hottest query in the app — MachineStep checks all three

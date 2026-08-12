@@ -4,16 +4,14 @@ import { useState, useEffect } from "react";
 import AdminLayout from "@/components/admin/AdminLayout";
 import BlackoutDatesTable from "@/components/admin/BlackoutDatesTable";
 import BlackoutDateForm from "@/components/admin/BlackoutDateForm";
-import { BlackoutDateDocument } from "@/models/blackout-date";
+import { type BlackoutDateRecord } from "@/lib/blackout-dates";
 
 export default function BlackoutDatesPage() {
-  const [blackoutDates, setBlackoutDates] = useState<BlackoutDateDocument[]>(
-    [],
-  );
+  const [blackoutDates, setBlackoutDates] = useState<BlackoutDateRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
-  const [editingDate, setEditingDate] = useState<BlackoutDateDocument | null>(
+  const [editingDate, setEditingDate] = useState<BlackoutDateRecord | null>(
     null,
   );
   const [refreshTrigger, setRefreshTrigger] = useState(0);
@@ -50,7 +48,7 @@ export default function BlackoutDatesPage() {
     setShowForm(true);
   };
 
-  const handleEdit = (blackoutDate: BlackoutDateDocument) => {
+  const handleEdit = (blackoutDate: BlackoutDateRecord) => {
     setEditingDate(blackoutDate);
     setShowForm(true);
   };
@@ -110,7 +108,7 @@ export default function BlackoutDatesPage() {
         </div>
 
         {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-sm mb-4">
             {error}
           </div>
         )}
@@ -125,7 +123,7 @@ export default function BlackoutDatesPage() {
           </div>
         )}
 
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm">
           <BlackoutDatesTable
             blackoutDates={blackoutDates}
             loading={loading}

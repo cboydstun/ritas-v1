@@ -102,7 +102,7 @@ export default function OrderPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <div className="bg-gradient-to-br from-light via-margarita/10 to-teal/20 dark:from-charcoal dark:via-margarita/5 dark:to-teal/10 py-12 relative">
+      <div className="bg-linear-to-br from-light via-margarita/10 to-teal/20 dark:from-charcoal dark:via-margarita/5 dark:to-teal/10 py-12 relative">
         {/* Decorative Elements */}
         <div
           className="absolute inset-0 pointer-events-none"
@@ -122,7 +122,7 @@ export default function OrderPage() {
             </div>
             <h1 className="text-5xl md:text-6xl font-extrabold text-charcoal dark:text-white mb-6 tracking-tight">
               Book Your
-              <span className="block text-transparent bg-clip-text bg-gradient-to-r from-margarita via-teal to-orange mt-2">
+              <span className="block text-transparent bg-clip-text bg-linear-to-r from-margarita via-teal to-orange mt-2">
                 Margarita Service
               </span>
             </h1>
@@ -146,15 +146,15 @@ export default function OrderPage() {
 function OrderFormSkeleton() {
   return (
     <div
-      className="min-h-[600px] rounded-2xl bg-white/80 dark:bg-charcoal/50 backdrop-blur-sm shadow-xl p-8 animate-pulse motion-reduce:animate-none"
+      className="min-h-[600px] rounded-2xl bg-white/80 dark:bg-charcoal/50 backdrop-blur-xs shadow-xl p-8 animate-pulse motion-reduce:animate-none"
       role="status"
       aria-label="Loading booking form"
     >
-      <div className="h-4 w-1/3 rounded bg-charcoal/10 dark:bg-white/10 mb-8" />
-      <div className="h-12 rounded bg-charcoal/10 dark:bg-white/10 mb-6" />
-      <div className="h-12 rounded bg-charcoal/10 dark:bg-white/10 mb-6" />
-      <div className="h-12 w-2/3 rounded bg-charcoal/10 dark:bg-white/10 mb-10" />
-      <div className="h-12 w-40 rounded bg-charcoal/10 dark:bg-white/10" />
+      <div className="h-4 w-1/3 rounded-sm bg-charcoal/10 dark:bg-white/10 mb-8" />
+      <div className="h-12 rounded-sm bg-charcoal/10 dark:bg-white/10 mb-6" />
+      <div className="h-12 rounded-sm bg-charcoal/10 dark:bg-white/10 mb-6" />
+      <div className="h-12 w-2/3 rounded-sm bg-charcoal/10 dark:bg-white/10 mb-10" />
+      <div className="h-12 w-40 rounded-sm bg-charcoal/10 dark:bg-white/10" />
       <span className="sr-only">Loading form...</span>
     </div>
   );

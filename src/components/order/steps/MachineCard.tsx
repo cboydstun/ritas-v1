@@ -34,7 +34,7 @@ export default function MachineCard({
       disabled={!isAvailable}
       aria-label={`Select ${name}`}
       aria-pressed={isSelected}
-      className={`relative w-full p-3 rounded-xl border-2 text-left transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-margarita/50 ${
+      className={`relative w-full p-3 rounded-xl border-2 text-left transition-all duration-200 focus:outline-hidden focus:ring-2 focus:ring-margarita/50 ${
         isSelected
           ? "border-margarita bg-margarita/10 shadow-lg shadow-margarita/20"
           : "border-gray-200 dark:border-gray-600 hover:border-margarita/50"

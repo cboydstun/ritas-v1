@@ -21,9 +21,8 @@ const contactSchema = new mongoose.Schema(
 );
 
 // Update timestamps before saving
-contactSchema.pre("save", function (next) {
+contactSchema.pre("save", function () {
   this.updatedAt = new Date();
-  next();
 });
 
 // Only create the model if it hasn't been created already

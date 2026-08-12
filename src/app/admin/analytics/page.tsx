@@ -7,7 +7,7 @@ import dynamic from "next/dynamic";
 // chart.js is ~70 kB and only this page uses it. Loaded on demand, with
 // `ssr: false` because the charts read layout at mount.
 const ChartLoading = () => (
-  <div className="h-64 animate-pulse rounded bg-gray-100 dark:bg-gray-800" />
+  <div className="h-64 animate-pulse rounded-sm bg-gray-100 dark:bg-gray-800" />
 );
 const Line = dynamic(
   () => import("@/components/admin/AnalyticsCharts").then((m) => m.Line),
@@ -386,7 +386,7 @@ export default function AnalyticsPage() {
           <>
             {/* Stats Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-              <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
+              <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm">
                 <h3 className="text-gray-500 dark:text-gray-400 text-sm font-medium">
                   Total Visitors
                 </h3>
@@ -394,7 +394,7 @@ export default function AnalyticsPage() {
                   {analyticsData.totalVisitors}
                 </p>
               </div>
-              <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
+              <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm">
                 <h3 className="text-gray-500 dark:text-gray-400 text-sm font-medium">
                   New Visitors (Last 30 Days)
                 </h3>
@@ -402,7 +402,7 @@ export default function AnalyticsPage() {
                   {analyticsData.newVisitorsLast30Days}
                 </p>
               </div>
-              <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
+              <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm">
                 <h3 className="text-gray-500 dark:text-gray-400 text-sm font-medium">
                   Conversion Rate
                 </h3>
@@ -419,7 +419,7 @@ export default function AnalyticsPage() {
             {/* Charts */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
               {/* Daily Visitors Chart */}
-              <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
+              <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm">
                 <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
                   Daily Visitors (Last 30 Days)
                 </h2>
@@ -449,7 +449,7 @@ export default function AnalyticsPage() {
               </div>
 
               {/* Device Breakdown Chart */}
-              <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
+              <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm">
                 <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
                   Device Breakdown
                 </h2>
@@ -472,7 +472,7 @@ export default function AnalyticsPage() {
             </div>
 
             {/* Top Pages Chart */}
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow mb-8">
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm mb-8">
               <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
                 Top Pages
               </h2>
@@ -502,7 +502,7 @@ export default function AnalyticsPage() {
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
                 {/* Order Form Steps Chart */}
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm">
                   <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
                     Order Form Funnel
                   </h2>
@@ -532,7 +532,7 @@ export default function AnalyticsPage() {
                 </div>
 
                 {/* Time Spent Chart */}
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm">
                   <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
                     Time Spent on Each Step
                   </h2>
@@ -564,7 +564,7 @@ export default function AnalyticsPage() {
               </div>
 
               {/* Step Abandonment Chart */}
-              <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow mb-8">
+              <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm mb-8">
                 <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
                   Form Abandonment by Step
                 </h2>
@@ -602,7 +602,7 @@ export default function AnalyticsPage() {
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
                 {/* Day of Week Chart */}
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm">
                   <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
                     Visits by Day of Week
                   </h2>
@@ -632,7 +632,7 @@ export default function AnalyticsPage() {
                 </div>
 
                 {/* Hour of Day Chart */}
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm">
                   <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
                     Visits by Time of Day
                   </h2>

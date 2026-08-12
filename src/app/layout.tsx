@@ -112,7 +112,7 @@ export default function RootLayout({
             <Navigation />
             {/* pb-16 on mobile clears the fixed StickyCallBar, which would
                 otherwise cover the last row of the footer. */}
-            <main className="flex-grow pb-16 sm:pb-0">{children}</main>
+            <main className="grow pb-16 sm:pb-0">{children}</main>
             <Footer />
             <StickyCallBar />
             <FingerprintTracker />

@@ -38,7 +38,7 @@ export default function CookieConsent(): React.ReactNode {
       className="fixed bottom-0 inset-x-0 z-50 p-4"
     >
       <div className="mx-auto max-w-3xl rounded-2xl bg-white/95 dark:bg-charcoal/95 backdrop-blur-lg shadow-xl border border-charcoal/10 dark:border-white/10 p-5 flex flex-col sm:flex-row sm:items-center gap-4">
-        <p className="text-sm text-charcoal/80 dark:text-white/80 flex-grow">
+        <p className="text-sm text-charcoal/80 dark:text-white/80 grow">
           We use cookies to measure site traffic and ad performance. You can opt
           out at any time — see our{" "}
           <Link

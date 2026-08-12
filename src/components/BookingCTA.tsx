@@ -13,7 +13,7 @@ export default function BookingCTA({
 }: BookingCTAProps) {
   return (
     <section
-      className={`bg-gradient-to-r from-orange to-pink rounded-2xl shadow-xl overflow-hidden ${className}`}
+      className={`bg-linear-to-r from-orange to-pink rounded-2xl shadow-xl overflow-hidden ${className}`}
     >
       <div className="relative px-8 py-12 text-center">
         {/* Decorative blobs */}

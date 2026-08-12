@@ -108,7 +108,7 @@ export default function Navigation() {
             </a>
             <button
               type="button"
-              className="inline-flex items-center justify-center p-2 rounded-md text-charcoal dark:text-white hover:text-margarita focus:outline-none"
+              className="inline-flex items-center justify-center p-2 rounded-md text-charcoal dark:text-white hover:text-margarita focus:outline-hidden"
               onClick={toggleMobileMenu}
               aria-expanded={isMobileMenuOpen}
               aria-controls="mobile-menu"
@@ -153,7 +153,7 @@ export default function Navigation() {
         // opacity-0 alone left every link focusable and announced.
         aria-hidden={!isMobileMenuOpen}
         inert={!isMobileMenuOpen}
-        className={`sm:hidden fixed inset-0 bg-white/95 dark:bg-charcoal/95 backdrop-blur-sm transition-opacity duration-300 ease-in-out ${
+        className={`sm:hidden fixed inset-0 bg-white/95 dark:bg-charcoal/95 backdrop-blur-xs transition-opacity duration-300 ease-in-out ${
           isMobileMenuOpen
             ? "opacity-100 pointer-events-auto"
             : "opacity-0 pointer-events-none"

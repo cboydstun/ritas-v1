@@ -192,7 +192,7 @@ const settingsSchema = new mongoose.Schema(
 );
 
 // Validate that delivery window end hour is after start hour
-settingsSchema.pre("validate", function (next) {
+settingsSchema.pre("validate", function () {
   const ops = this.operations as
     | { deliveryWindowStartHour: number; deliveryWindowEndHour: number }
     | undefined;
@@ -202,7 +202,6 @@ settingsSchema.pre("validate", function (next) {
       "deliveryWindowEndHour must be greater than deliveryWindowStartHour",
     );
   }
-  next();
 });
 
 export type SettingsDocument = mongoose.Document & {

@@ -27,7 +27,7 @@ export function ProgressBar({ currentStep }: ProgressBarProps) {
       {/* Progress bar */}
       <div className="w-full h-2 bg-light dark:bg-charcoal/30 rounded-full overflow-hidden">
         <div
-          className="h-full bg-gradient-to-r from-orange to-pink transition-all duration-300"
+          className="h-full bg-linear-to-r from-orange to-pink transition-all duration-300"
           style={{ width: `${progress}%` }}
         />
       </div>

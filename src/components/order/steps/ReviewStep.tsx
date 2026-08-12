@@ -183,7 +183,7 @@ export default function ReviewStep({
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <div className="bg-white/80 dark:bg-charcoal/30 rounded-lg p-4 border border-green-200 dark:border-green-700">
           <div className="flex items-center space-x-3">
-            <div className="flex-shrink-0">
+            <div className="shrink-0">
               <svg
                 className="w-8 h-8 text-green-500"
                 fill="currentColor"
@@ -212,7 +212,7 @@ export default function ReviewStep({
 
         <div className="bg-white/80 dark:bg-charcoal/30 rounded-lg p-4 border border-blue-200 dark:border-blue-700">
           <div className="flex items-center space-x-3">
-            <div className="flex-shrink-0">
+            <div className="shrink-0">
               <svg
                 className="w-8 h-8 text-blue-500"
                 fill="currentColor"
@@ -238,7 +238,7 @@ export default function ReviewStep({
 
         <div className="bg-white/80 dark:bg-charcoal/30 rounded-lg p-4 border border-orange-200 dark:border-orange-700">
           <div className="flex items-center space-x-3">
-            <div className="flex-shrink-0">
+            <div className="shrink-0">
               <svg
                 className="w-8 h-8 text-orange-500"
                 fill="currentColor"
@@ -518,7 +518,7 @@ export default function ReviewStep({
 
           <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg p-4 mt-4">
             <div className="flex items-center space-x-3">
-              <div className="flex-shrink-0">
+              <div className="shrink-0">
                 <svg
                   className="h-5 w-5 text-blue-600 dark:text-blue-400"
                   fill="none"
@@ -553,7 +553,7 @@ export default function ReviewStep({
               id="agreeTerms"
               checked={agreedToTerms}
               onChange={(e) => setAgreedToTerms(e.target.checked)}
-              className="w-4 h-4 text-orange rounded focus:ring-orange"
+              className="w-4 h-4 text-orange rounded-sm focus:ring-orange"
             />
             <label
               htmlFor="agreeTerms"
@@ -581,7 +581,7 @@ export default function ReviewStep({
             <button
               onClick={handleConfirmBooking}
               disabled={!agreedToTerms || isSubmitting}
-              className="w-full bg-gradient-to-r from-orange to-pink hover:from-orange/90 hover:to-pink/90 disabled:from-gray-400 disabled:to-gray-500 text-white font-bold py-4 px-8 rounded-xl transition-all duration-200 transform hover:scale-[1.02] hover:shadow-lg disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none"
+              className="w-full bg-linear-to-r from-orange to-pink hover:from-orange/90 hover:to-pink/90 disabled:from-gray-400 disabled:to-gray-500 text-white font-bold py-4 px-8 rounded-xl transition-all duration-200 transform hover:scale-[1.02] hover:shadow-lg disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none"
             >
               {isSubmitting ? (
                 <div className="flex items-center justify-center space-x-2">

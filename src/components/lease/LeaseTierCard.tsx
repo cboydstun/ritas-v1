@@ -13,8 +13,8 @@ export default function LeaseTierCard({ tier }: LeaseTierCardProps) {
       : `${tier.minimumTermMonths}-month minimum`;
 
   return (
-    <div className="bg-white/90 dark:bg-charcoal/50 backdrop-blur-sm rounded-2xl shadow-xl flex flex-col overflow-hidden">
-      <div className="relative w-full aspect-[4/3] bg-light dark:bg-charcoal/40">
+    <div className="bg-white/90 dark:bg-charcoal/50 backdrop-blur-xs rounded-2xl shadow-xl flex flex-col overflow-hidden">
+      <div className="relative w-full aspect-4/3 bg-light dark:bg-charcoal/40">
         <Image
           src={tier.image}
           alt={tier.name}
@@ -23,12 +23,12 @@ export default function LeaseTierCard({ tier }: LeaseTierCardProps) {
           className="object-cover"
         />
       </div>
-      <div className="p-6 flex flex-col flex-grow">
+      <div className="p-6 flex flex-col grow">
         <h3 className="text-xl font-bold text-charcoal dark:text-white mb-2">
           {tier.name}
         </h3>
         <div className="flex items-baseline gap-2 mb-1">
-          <span className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-margarita to-teal">
+          <span className="text-4xl font-extrabold text-transparent bg-clip-text bg-linear-to-r from-margarita to-teal">
             ${formatPrice(tier.monthlyRate)}
           </span>
           <span className="text-charcoal/70 dark:text-white/70 text-sm font-medium">
@@ -46,7 +46,7 @@ export default function LeaseTierCard({ tier }: LeaseTierCardProps) {
           </p>
         </div>
 
-        <ul className="space-y-2 mb-5 flex-grow">
+        <ul className="space-y-2 mb-5 grow">
           {tier.features.map((feature) => (
             <li
               key={feature}
@@ -70,7 +70,7 @@ export default function LeaseTierCard({ tier }: LeaseTierCardProps) {
 
         <a
           href="#inquiry-form"
-          className="block w-full text-center px-6 py-3 bg-gradient-to-r from-margarita to-teal text-white rounded-lg hover:shadow-lg hover:shadow-margarita/30 transform hover:-translate-y-1 transition-all duration-300 font-semibold"
+          className="block w-full text-center px-6 py-3 bg-linear-to-r from-margarita to-teal text-white rounded-lg hover:shadow-lg hover:shadow-margarita/30 transform hover:-translate-y-1 transition-all duration-300 font-semibold"
         >
           Inquire about this machine
         </a>

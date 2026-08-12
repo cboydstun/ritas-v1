@@ -9,7 +9,7 @@ HTTPS is enforced for all traffic in production environments through two mechani
 1. **Middleware Redirect**: The application uses Next.js middleware to automatically redirect all HTTP requests to HTTPS.
 
    ```typescript
-   // src/middleware.ts
+   // src/proxy.ts
    if (
      process.env.NODE_ENV === "production" &&
      request.headers.get("x-forwarded-proto") !== "https"
@@ -111,7 +111,7 @@ own; the CSP replaces it.
 
 These security measures are implemented in:
 
-1. **Middleware** (`src/middleware.ts`): Handles HTTP to HTTPS redirects
+1. **Proxy** (`src/proxy.ts`): Handles HTTP to HTTPS redirects
 2. **Next.js Config** (`next.config.ts`): Configures security headers
 
 ## Testing Security Headers

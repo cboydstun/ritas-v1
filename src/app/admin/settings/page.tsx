@@ -192,7 +192,7 @@ function SectionCard({
   fullWidth?: boolean;
 }) {
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 mb-6">
       <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
         {title}
       </h2>
@@ -421,14 +421,14 @@ export default function SettingsPage() {
             {[1, 2, 3, 4].map((i) => (
               <div
                 key={i}
-                className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 animate-pulse"
+                className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 animate-pulse"
               >
-                <div className="h-5 bg-gray-200 dark:bg-gray-700 rounded w-1/4 mb-4" />
+                <div className="h-5 bg-gray-200 dark:bg-gray-700 rounded-sm w-1/4 mb-4" />
                 <div className="grid grid-cols-2 gap-4">
                   {[1, 2].map((j) => (
                     <div
                       key={j}
-                      className="h-10 bg-gray-200 dark:bg-gray-700 rounded"
+                      className="h-10 bg-gray-200 dark:bg-gray-700 rounded-sm"
                     />
                   ))}
                 </div>
@@ -453,7 +453,7 @@ export default function SettingsPage() {
         </div>
 
         {error && (
-          <div className="mb-6 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+          <div className="mb-6 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-sm">
             {error}
           </div>
         )}

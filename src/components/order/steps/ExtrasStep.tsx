@@ -123,7 +123,7 @@ export default function ExtrasStep({
       <div className="flex flex-col sm:flex-row sm:items-start sm:space-x-4">
         {extra.image && (
           <div
-            className="flex-shrink-0 w-full sm:w-24 h-20 sm:h-24 relative rounded-lg overflow-hidden mb-3 sm:mb-0 mx-auto sm:mx-0"
+            className="shrink-0 w-full sm:w-24 h-20 sm:h-24 relative rounded-lg overflow-hidden mb-3 sm:mb-0 mx-auto sm:mx-0"
             style={{ maxWidth: "120px" }}
           >
             <Image
@@ -136,7 +136,7 @@ export default function ExtrasStep({
           </div>
         )}
 
-        <div className="flex-grow">
+        <div className="grow">
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-2 sm:mb-0">
             <h3 className="font-semibold text-lg text-charcoal dark:text-white text-center sm:text-left mb-1 sm:mb-0">
               {extra.name}
@@ -157,7 +157,7 @@ export default function ExtrasStep({
               id={`extra-${extra.id}`}
               checked={isExtraSelected(extra.id)}
               onChange={(e) => handleExtraChange(extra, e.target.checked)}
-              className="h-5 w-5 text-margarita border-gray-300 rounded focus:ring-margarita"
+              className="h-5 w-5 text-margarita border-gray-300 rounded-sm focus:ring-margarita"
             />
             <label
               htmlFor={`extra-${extra.id}`}
@@ -172,7 +172,7 @@ export default function ExtrasStep({
               <span className="text-sm text-charcoal/70 dark:text-white/70 w-full sm:w-auto text-center sm:text-left">
                 Quantity:
               </span>
-              <div className="flex items-center border border-gray-300 rounded">
+              <div className="flex items-center border border-gray-300 rounded-sm">
                 <button
                   type="button"
                   onClick={() =>
@@ -181,7 +181,7 @@ export default function ExtrasStep({
                       getExtraQuantity(extra.id) - 1,
                     )
                   }
-                  className="px-3 py-2 text-gray-500 hover:text-margarita focus:outline-none"
+                  className="px-3 py-2 text-gray-500 hover:text-margarita focus:outline-hidden"
                   disabled={getExtraQuantity(extra.id) <= 1}
                   aria-label="Decrease quantity"
                 >
@@ -198,7 +198,7 @@ export default function ExtrasStep({
                       getExtraQuantity(extra.id) + 1,
                     )
                   }
-                  className="px-3 py-2 text-gray-500 hover:text-margarita focus:outline-none"
+                  className="px-3 py-2 text-gray-500 hover:text-margarita focus:outline-hidden"
                   disabled={getExtraQuantity(extra.id) >= MAX_EXTRA_QUANTITY}
                   aria-label="Increase quantity"
                 >
@@ -253,7 +253,7 @@ export default function ExtrasStep({
       {error && (
         <div
           role="alert"
-          className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative"
+          className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-sm relative"
         >
           {error}
         </div>

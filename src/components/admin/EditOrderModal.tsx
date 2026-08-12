@@ -111,7 +111,7 @@ export default function EditOrderModal({
                         ),
                       });
                     }}
-                    className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm"
+                    className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-xs"
                   >
                     {machinePackages.map((pkg) => (
                       <option key={pkg.type} value={pkg.type}>
@@ -137,7 +137,7 @@ export default function EditOrderModal({
                         (pkg) => pkg.type === formData.machineType,
                       )?.capacity ?? order.capacity
                     }L`}
-                    className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-white shadow-sm"
+                    className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-white shadow-xs"
                   />
                 </div>
                 {Array.from(
@@ -168,7 +168,7 @@ export default function EditOrderModal({
                             ),
                           });
                         }}
-                        className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm"
+                        className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-xs"
                       >
                         <option value={NO_MIXER}>Machine Only</option>
                         {MIXER_OPTIONS.map((m) => (
@@ -202,7 +202,7 @@ export default function EditOrderModal({
                         rentalDate: e.target.value,
                       })
                     }
-                    className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm"
+                    className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-xs"
                   />
                 </div>
                 <div>
@@ -218,7 +218,7 @@ export default function EditOrderModal({
                         rentalTime: e.target.value,
                       })
                     }
-                    className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm"
+                    className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-xs"
                   />
                 </div>
                 <div>
@@ -234,7 +234,7 @@ export default function EditOrderModal({
                         returnDate: e.target.value,
                       })
                     }
-                    className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm"
+                    className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-xs"
                   />
                 </div>
                 <div>
@@ -250,7 +250,7 @@ export default function EditOrderModal({
                         returnTime: e.target.value,
                       })
                     }
-                    className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm"
+                    className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-xs"
                   />
                 </div>
               </div>
@@ -278,7 +278,7 @@ export default function EditOrderModal({
                         },
                       })
                     }
-                    className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm"
+                    className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-xs"
                   />
                 </div>
                 <div>
@@ -297,7 +297,7 @@ export default function EditOrderModal({
                         },
                       })
                     }
-                    className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm"
+                    className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-xs"
                   />
                 </div>
                 <div>
@@ -316,7 +316,7 @@ export default function EditOrderModal({
                         },
                       })
                     }
-                    className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm"
+                    className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-xs"
                   />
                 </div>
               </div>
@@ -347,7 +347,7 @@ export default function EditOrderModal({
                         },
                       })
                     }
-                    className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm"
+                    className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-xs"
                   />
                 </div>
                 <div>
@@ -369,7 +369,7 @@ export default function EditOrderModal({
                         },
                       })
                     }
-                    className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm"
+                    className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-xs"
                   />
                 </div>
                 <div>
@@ -391,7 +391,7 @@ export default function EditOrderModal({
                         },
                       })
                     }
-                    className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm"
+                    className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-xs"
                   />
                 </div>
                 <div>
@@ -413,7 +413,7 @@ export default function EditOrderModal({
                         },
                       })
                     }
-                    className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm"
+                    className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-xs"
                   />
                 </div>
               </div>
@@ -433,7 +433,7 @@ export default function EditOrderModal({
                   })
                 }
                 rows={3}
-                className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm"
+                className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-xs"
               />
             </div>
           </div>

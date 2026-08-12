@@ -1,10 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { BlackoutDateDocument, BlackoutDateType } from "@/models/blackout-date";
+import {
+  type BlackoutDateRecord,
+  type BlackoutDateType,
+} from "@/lib/blackout-dates";
 
 interface BlackoutDateFormProps {
-  blackoutDate?: BlackoutDateDocument | null;
+  blackoutDate?: BlackoutDateRecord | null;
   onSuccess: () => void;
   onCancel: () => void;
 }
@@ -178,7 +181,7 @@ export default function BlackoutDateForm({
   };
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
           {blackoutDate ? "Edit Blackout Date" : "Add Blackout Date"}
@@ -204,7 +207,7 @@ export default function BlackoutDateForm({
       </div>
 
       {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-sm mb-4">
           {error}
         </div>
       )}
@@ -221,7 +224,7 @@ export default function BlackoutDateForm({
               value={formData.startDate}
               onChange={handleInputChange}
               required
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-teal focus:border-teal dark:bg-gray-700 dark:text-white"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-xs focus:outline-hidden focus:ring-teal focus:border-teal dark:bg-gray-700 dark:text-white"
             />
           </div>
 
@@ -234,7 +237,7 @@ export default function BlackoutDateForm({
               name="endDate"
               value={formData.endDate}
               onChange={handleInputChange}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-teal focus:border-teal dark:bg-gray-700 dark:text-white"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-xs focus:outline-hidden focus:ring-teal focus:border-teal dark:bg-gray-700 dark:text-white"
             />
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
               Leave empty for single day blackout
@@ -251,7 +254,7 @@ export default function BlackoutDateForm({
             value={formData.type}
             onChange={handleInputChange}
             required
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-teal focus:border-teal dark:bg-gray-700 dark:text-white"
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-xs focus:outline-hidden focus:ring-teal focus:border-teal dark:bg-gray-700 dark:text-white"
           >
             <option value="full_day">Full Day</option>
             {/*
@@ -281,7 +284,7 @@ export default function BlackoutDateForm({
                 value={formData.startTime}
                 onChange={handleInputChange}
                 required
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-teal focus:border-teal dark:bg-gray-700 dark:text-white"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-xs focus:outline-hidden focus:ring-teal focus:border-teal dark:bg-gray-700 dark:text-white"
               />
             </div>
 
@@ -295,7 +298,7 @@ export default function BlackoutDateForm({
                 value={formData.endTime}
                 onChange={handleInputChange}
                 required
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-teal focus:border-teal dark:bg-gray-700 dark:text-white"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-xs focus:outline-hidden focus:ring-teal focus:border-teal dark:bg-gray-700 dark:text-white"
               />
             </div>
           </div>
@@ -312,7 +315,7 @@ export default function BlackoutDateForm({
             rows={3}
             maxLength={500}
             placeholder="e.g., Holiday - No Deliveries, Maintenance Day, Staff Training"
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-teal focus:border-teal dark:bg-gray-700 dark:text-white"
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-xs focus:outline-hidden focus:ring-teal focus:border-teal dark:bg-gray-700 dark:text-white"
           />
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
             {formData.reason.length}/500 characters
@@ -323,14 +326,14 @@ export default function BlackoutDateForm({
           <button
             type="button"
             onClick={onCancel}
-            className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal"
+            className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-xs hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-teal"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={loading}
-            className="px-4 py-2 text-sm font-medium text-white bg-teal hover:bg-teal/90 border border-transparent rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-4 py-2 text-sm font-medium text-white bg-teal hover:bg-teal/90 border border-transparent rounded-md shadow-xs focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-teal disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? "Saving..." : blackoutDate ? "Update" : "Create"}
           </button>

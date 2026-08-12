@@ -28,7 +28,7 @@ export default function AboutSection() {
             {/* Value Propositions */}
             <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-6">
               <div className="flex items-start space-x-4">
-                <div className="flex-shrink-0">
+                <div className="shrink-0">
                   <div className="p-2 bg-teal/10 dark:bg-teal/20 rounded-lg">
                     <svg
                       className="w-6 h-6 text-teal"
@@ -56,7 +56,7 @@ export default function AboutSection() {
               </div>
 
               <div className="flex items-start space-x-4">
-                <div className="flex-shrink-0">
+                <div className="shrink-0">
                   <div className="p-2 bg-teal/10 dark:bg-teal/20 rounded-lg">
                     <svg
                       className="w-6 h-6 text-teal"
@@ -84,7 +84,7 @@ export default function AboutSection() {
               </div>
 
               <div className="flex items-start space-x-4">
-                <div className="flex-shrink-0">
+                <div className="shrink-0">
                   <div className="p-2 bg-teal/10 dark:bg-teal/20 rounded-lg">
                     <svg
                       className="w-6 h-6 text-teal"
@@ -112,7 +112,7 @@ export default function AboutSection() {
               </div>
 
               <div className="flex items-start space-x-4">
-                <div className="flex-shrink-0">
+                <div className="shrink-0">
                   <div className="p-2 bg-teal/10 dark:bg-teal/20 rounded-lg">
                     <svg
                       className="w-6 h-6 text-teal"

@@ -37,13 +37,13 @@ export default function MixerCard({
         htmlFor={checkboxId}
         className={`flex items-start gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all duration-200 peer-focus-visible:ring-2 peer-focus-visible:ring-margarita/50 ${
           isSelected
-            ? "border-margarita bg-margarita/10 shadow-sm"
+            ? "border-margarita bg-margarita/10 shadow-xs"
             : "border-gray-200 dark:border-gray-600 hover:border-margarita/40"
         }`}
       >
         {/* Visual checkbox indicator */}
         <div
-          className={`flex-shrink-0 w-5 h-5 mt-0.5 rounded border-2 flex items-center justify-center transition-all ${
+          className={`shrink-0 w-5 h-5 mt-0.5 rounded border-2 flex items-center justify-center transition-all ${
             isSelected
               ? "border-margarita bg-margarita"
               : "border-gray-400 dark:border-gray-500"
@@ -80,7 +80,7 @@ export default function MixerCard({
             </span>
             {/* Tank mixers fold into perDayRate, so they bill per day. */}
             {!isNoMixer && price > 0 && (
-              <span className="text-sm text-margarita font-bold flex-shrink-0">
+              <span className="text-sm text-margarita font-bold shrink-0">
                 +${price.toFixed(2)}/day
               </span>
             )}
