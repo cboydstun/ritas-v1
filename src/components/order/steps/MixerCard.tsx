@@ -28,7 +28,8 @@ export default function MixerCard({
       <input
         type="checkbox"
         id={checkboxId}
-        aria-label={name}
+        // No aria-label: it overrode the associated <label>, so the price and
+        // description in the card were never announced.
         checked={isSelected}
         onChange={() => onChange(mixerType, tankIndex)}
         className="sr-only peer"

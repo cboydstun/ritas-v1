@@ -327,7 +327,7 @@ describe("MachineStep", () => {
           error={null}
         />,
       );
-      expect(screen.getByLabelText("No Mixer")).toBeInTheDocument();
+      expect(screen.getByLabelText(/^No Mixer/)).toBeInTheDocument();
     });
 
     it("shows 5 mixer checkboxes for single tank (4 types + No Mixer)", () => {
@@ -368,7 +368,7 @@ describe("MachineStep", () => {
           error={null}
         />,
       );
-      expect(screen.getByLabelText("No Mixer")).toBeChecked();
+      expect(screen.getByLabelText(/^No Mixer/)).toBeChecked();
     });
 
     it("shows 'No Mixer' as unchecked when a mixer is selected", () => {
@@ -382,7 +382,7 @@ describe("MachineStep", () => {
           error={null}
         />,
       );
-      expect(screen.getByLabelText("No Mixer")).not.toBeChecked();
+      expect(screen.getByLabelText(/^No Mixer/)).not.toBeChecked();
     });
 
     it("calls onInputChange when a mixer is clicked", () => {
@@ -430,7 +430,7 @@ describe("MachineStep", () => {
           error={null}
         />,
       );
-      fireEvent.click(screen.getByLabelText("No Mixer"));
+      fireEvent.click(screen.getByLabelText(/^No Mixer/));
       const call = mockOnInputChange.mock.calls.find(
         (c) =>
           (c[0] as { target: { name: string } }).target.name ===
@@ -500,7 +500,7 @@ describe("MachineStep", () => {
           error={null}
         />,
       );
-      expect(screen.getAllByLabelText("No Mixer")).toHaveLength(2);
+      expect(screen.getAllByLabelText(/^No Mixer/)).toHaveLength(2);
     });
 
     it("shows tank 1 mixer as checked when selectedMixers[0] is set", () => {
@@ -576,7 +576,7 @@ describe("MachineStep", () => {
           error={null}
         />,
       );
-      expect(screen.getAllByLabelText("No Mixer")).toHaveLength(3);
+      expect(screen.getAllByLabelText(/^No Mixer/)).toHaveLength(3);
     });
 
     it("shows tank 3 mixer as checked when selectedMixers[2] is set", () => {
@@ -774,7 +774,7 @@ describe("MachineStep", () => {
       expect(
         screen.getByLabelText(/Strawberry Daiquiri Mixer/i),
       ).toBeInTheDocument();
-      expect(screen.getByLabelText("No Mixer")).toBeInTheDocument();
+      expect(screen.getByLabelText(/^No Mixer/)).toBeInTheDocument();
     });
 
     it("mixer checkboxes are of type checkbox", () => {

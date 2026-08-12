@@ -108,7 +108,7 @@ export default function Navigation() {
             </a>
             <button
               type="button"
-              className="inline-flex items-center justify-center p-2 rounded-md text-charcoal dark:text-white hover:text-margarita focus:outline-hidden"
+              className="inline-flex items-center justify-center p-2 rounded-md text-charcoal dark:text-white hover:text-margarita focus:outline-hidden focus:ring-2 focus:ring-margarita focus:ring-offset-1"
               onClick={toggleMobileMenu}
               aria-expanded={isMobileMenuOpen}
               aria-controls="mobile-menu"

@@ -35,7 +35,10 @@ export default function CookieConsent(): React.ReactNode {
     <div
       role="region"
       aria-label="Cookie notice"
-      className="fixed bottom-0 inset-x-0 z-50 p-4"
+      // On mobile, StickyCallBar is also pinned to the bottom (z-40) — without
+      // the offset this notice sat on top of it and hid the primary call CTA
+      // until it was dismissed. `bottom-16` clears the call bar's py-4 row.
+      className="fixed bottom-16 sm:bottom-0 inset-x-0 z-50 p-4"
     >
       <div className="mx-auto max-w-3xl rounded-2xl bg-white/95 dark:bg-charcoal/95 backdrop-blur-lg shadow-xl border border-charcoal/10 dark:border-white/10 p-5 flex flex-col sm:flex-row sm:items-center gap-4">
         <p className="text-sm text-charcoal/80 dark:text-white/80 grow">

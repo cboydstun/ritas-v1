@@ -14,9 +14,13 @@ export function ProgressBar({ currentStep }: ProgressBarProps) {
 
   return (
     <div className="w-full max-w-4xl mx-auto mb-8 px-4">
-      {/* Step counter */}
+      {/* Step counter. aria-live so a screen reader is told the step changed —
+          the wizard never navigates, so nothing else announces it. */}
       <div className="flex justify-between items-center mb-2">
-        <span className="text-sm font-medium text-charcoal/70 dark:text-white/70">
+        <span
+          aria-live="polite"
+          className="text-sm font-medium text-charcoal/70 dark:text-white/70"
+        >
           Step {currentIndex + 1} of {steps.length}
         </span>
         <span className="text-sm font-semibold text-orange">
@@ -25,7 +29,16 @@ export function ProgressBar({ currentStep }: ProgressBarProps) {
       </div>
 
       {/* Progress bar */}
-      <div className="w-full h-2 bg-light dark:bg-charcoal/30 rounded-full overflow-hidden">
+      <div
+        role="progressbar"
+        aria-valuenow={currentIndex + 1}
+        aria-valuemin={1}
+        aria-valuemax={steps.length}
+        aria-valuetext={`Step ${currentIndex + 1} of ${steps.length}: ${
+          steps[currentIndex]?.label ?? currentStep
+        }`}
+        className="w-full h-2 bg-light dark:bg-charcoal/30 rounded-full overflow-hidden"
+      >
         <div
           className="h-full bg-linear-to-r from-orange to-pink transition-all duration-300"
           style={{ width: `${progress}%` }}

@@ -10,18 +10,46 @@ export default function DetailsStep({
   const [zipCodeError, setZipCodeError] = useState<string | null>(null);
   const [showZipCodeWarning, setShowZipCodeWarning] = useState(false);
   const zipWarningCloseRef = useRef<HTMLButtonElement>(null);
+  const zipWarningRef = useRef<HTMLDivElement>(null);
+  const zipReturnFocusRef = useRef<HTMLElement | null>(null);
 
-  // Move focus into the dialog when it opens and close it on Escape. Without
-  // this, keyboard focus stayed on the ZIP field behind the overlay.
+  // Move focus into the dialog, trap Tab inside it, close on Escape, and put
+  // focus back where it came from. Focus used to move in but not be trapped —
+  // Tab walked straight onto the page behind the overlay — and on close it was
+  // dropped on the body rather than returned to the ZIP field.
   useEffect(() => {
     if (!showZipCodeWarning) return;
+
+    zipReturnFocusRef.current = document.activeElement as HTMLElement | null;
     zipWarningCloseRef.current?.focus();
 
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setShowZipCodeWarning(false);
+      if (e.key === "Escape") {
+        setShowZipCodeWarning(false);
+        return;
+      }
+      if (e.key !== "Tab") return;
+
+      const focusable = zipWarningRef.current?.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), input, select, textarea, [tabindex]:not([tabindex="-1"])',
+      );
+      if (!focusable?.length) return;
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
     };
     document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      zipReturnFocusRef.current?.focus();
+    };
   }, [showZipCodeWarning]);
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -277,6 +305,10 @@ export default function DetailsStep({
               value={formData.customer.address.zipCode}
               onChange={handleZipCodeChange}
               autoComplete="postal-code"
+              // Sighted users got a red border and a message; a screen reader
+              // was told nothing at all.
+              aria-invalid={zipCodeError ? true : undefined}
+              aria-describedby={zipCodeError ? "zip-code-error" : undefined}
               className={`${inputClassName} ${
                 zipCodeError
                   ? "border-red-500 pr-10"
@@ -323,7 +355,11 @@ export default function DetailsStep({
           </div>
 
           {zipCodeError && (
-            <div className="mt-2 p-2 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 rounded-md text-sm">
+            <div
+              id="zip-code-error"
+              role="alert"
+              className="mt-2 p-2 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 rounded-md text-sm"
+            >
               <div className="flex">
                 <svg
                   className="h-5 w-5 text-red-400 mr-2"
@@ -413,6 +449,7 @@ export default function DetailsStep({
           onClick={() => setShowZipCodeWarning(false)}
         >
           <div
+            ref={zipWarningRef}
             role="dialog"
             aria-modal="true"
             aria-labelledby="zip-warning-title"

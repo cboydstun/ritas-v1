@@ -81,8 +81,16 @@ export default function EditOrderModal({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-2xl">
-        <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="edit-order-title"
+        className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-2xl"
+      >
+        <h2
+          id="edit-order-title"
+          className="text-xl font-bold text-gray-900 dark:text-white mb-4"
+        >
           Edit Order
         </h2>
         <form onSubmit={handleSubmit}>

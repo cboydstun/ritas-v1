@@ -224,7 +224,7 @@ export default function BlackoutDateForm({
               value={formData.startDate}
               onChange={handleInputChange}
               required
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-xs focus:outline-hidden focus:ring-teal focus:border-teal dark:bg-gray-700 dark:text-white"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-xs focus:outline-hidden focus:ring-2 focus:ring-teal focus:border-teal dark:bg-gray-700 dark:text-white"
             />
           </div>
 
@@ -237,7 +237,7 @@ export default function BlackoutDateForm({
               name="endDate"
               value={formData.endDate}
               onChange={handleInputChange}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-xs focus:outline-hidden focus:ring-teal focus:border-teal dark:bg-gray-700 dark:text-white"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-xs focus:outline-hidden focus:ring-2 focus:ring-teal focus:border-teal dark:bg-gray-700 dark:text-white"
             />
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
               Leave empty for single day blackout
@@ -254,7 +254,7 @@ export default function BlackoutDateForm({
             value={formData.type}
             onChange={handleInputChange}
             required
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-xs focus:outline-hidden focus:ring-teal focus:border-teal dark:bg-gray-700 dark:text-white"
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-xs focus:outline-hidden focus:ring-2 focus:ring-teal focus:border-teal dark:bg-gray-700 dark:text-white"
           >
             <option value="full_day">Full Day</option>
             {/*
@@ -284,7 +284,7 @@ export default function BlackoutDateForm({
                 value={formData.startTime}
                 onChange={handleInputChange}
                 required
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-xs focus:outline-hidden focus:ring-teal focus:border-teal dark:bg-gray-700 dark:text-white"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-xs focus:outline-hidden focus:ring-2 focus:ring-teal focus:border-teal dark:bg-gray-700 dark:text-white"
               />
             </div>
 
@@ -298,7 +298,7 @@ export default function BlackoutDateForm({
                 value={formData.endTime}
                 onChange={handleInputChange}
                 required
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-xs focus:outline-hidden focus:ring-teal focus:border-teal dark:bg-gray-700 dark:text-white"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-xs focus:outline-hidden focus:ring-2 focus:ring-teal focus:border-teal dark:bg-gray-700 dark:text-white"
               />
             </div>
           </div>
@@ -315,7 +315,7 @@ export default function BlackoutDateForm({
             rows={3}
             maxLength={500}
             placeholder="e.g., Holiday - No Deliveries, Maintenance Day, Staff Training"
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-xs focus:outline-hidden focus:ring-teal focus:border-teal dark:bg-gray-700 dark:text-white"
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-xs focus:outline-hidden focus:ring-2 focus:ring-teal focus:border-teal dark:bg-gray-700 dark:text-white"
           />
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
             {formData.reason.length}/500 characters

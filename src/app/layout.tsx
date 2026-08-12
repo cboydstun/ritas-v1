@@ -106,13 +106,24 @@ export default function RootLayout({
             invalid markup that only worked via React 19 script hoisting.
             AnalyticsGate skips the admin area, the way FingerprintTracker
             already does. */}
+        {/* First focusable element on every page: the nav has a dozen links
+            before <main>, so without this a keyboard user tabs the whole
+            header on every navigation. */}
+        <a
+          href="#main"
+          className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-[100] focus:rounded-md focus:bg-white focus:px-4 focus:py-2 focus:text-charcoal focus:shadow-lg focus:ring-2 focus:ring-margarita dark:focus:bg-charcoal dark:focus:text-white"
+        >
+          Skip to main content
+        </a>
         <AnalyticsGate />
         <SessionProvider>
           <ThemeWrapper>
             <Navigation />
             {/* pb-16 on mobile clears the fixed StickyCallBar, which would
                 otherwise cover the last row of the footer. */}
-            <main className="grow pb-16 sm:pb-0">{children}</main>
+            <main id="main" tabIndex={-1} className="grow pb-16 sm:pb-0">
+              {children}
+            </main>
             <Footer />
             <StickyCallBar />
             <FingerprintTracker />

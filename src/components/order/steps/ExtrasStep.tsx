@@ -182,7 +182,7 @@ export default function ExtrasStep({
                       getExtraQuantity(extra.id) - 1,
                     )
                   }
-                  className="px-3 py-2 text-gray-500 hover:text-margarita focus:outline-hidden"
+                  className="px-3 py-2 text-gray-500 hover:text-margarita focus:outline-hidden focus:ring-2 focus:ring-margarita focus:ring-offset-1"
                   disabled={getExtraQuantity(extra.id) <= 1}
                   aria-label="Decrease quantity"
                 >
@@ -199,7 +199,7 @@ export default function ExtrasStep({
                       getExtraQuantity(extra.id) + 1,
                     )
                   }
-                  className="px-3 py-2 text-gray-500 hover:text-margarita focus:outline-hidden"
+                  className="px-3 py-2 text-gray-500 hover:text-margarita focus:outline-hidden focus:ring-2 focus:ring-margarita focus:ring-offset-1"
                   disabled={getExtraQuantity(extra.id) >= MAX_EXTRA_QUANTITY}
                   aria-label="Increase quantity"
                 >

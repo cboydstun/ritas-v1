@@ -305,8 +305,16 @@ export default function CreateOrderModal({ onClose }: CreateOrderModalProps) {
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 overflow-y-auto">
-      <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="create-order-title"
+        className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto"
+      >
+        <h2
+          id="create-order-title"
+          className="text-xl font-bold text-gray-900 dark:text-white mb-4"
+        >
           Create New Order
         </h2>
 

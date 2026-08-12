@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, Suspense, useEffect } from "react";
+import { useState, Suspense, useEffect, useRef } from "react";
 import OrderFormTracker from "./OrderFormTracker";
 import { MixerType, machinePackages } from "@/lib/rental-data";
 import { useSearchParams } from "next/navigation";
@@ -298,6 +298,8 @@ export default function OrderForm() {
   const [error, setError] = useState<string | null>(null);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   // Issue 4: changed from useRef to useState so availability errors trigger re-renders
+  // Skips the first run, so landing on /order does not yank focus.
+  const hasMovedStep = useRef(false);
   const [dateAvailabilityError, setDateAvailabilityError] = useState<
     string | null
   >(null);
@@ -608,6 +610,19 @@ export default function OrderForm() {
     }
   };
 
+  // Focus moves to the step container on every transition. Advancing only
+  // scrolled, so a keyboard or screen-reader user got no signal that the
+  // content had changed — the wizard never navigates, and ProgressBar updated
+  // silently.
+  const stepHeadingRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!hasMovedStep.current) {
+      hasMovedStep.current = true;
+      return;
+    }
+    stepHeadingRef.current?.focus();
+  }, [step]);
+
   const handlePreviousStep = () => {
     const currentIndex = steps.findIndex((s) => s.id === step);
     if (currentIndex > 0) {
@@ -672,62 +687,64 @@ export default function OrderForm() {
             <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-orange/10 dark:bg-orange/5 rounded-full blur-2xl" />
 
             {/* Form Steps with Suspense boundary */}
-            <Suspense fallback={<StepSkeleton />}>
-              {step === "date" && (
-                <DateSelectionStep
-                  formData={formData}
-                  onInputChange={handleInputChange}
-                  error={error}
-                  deliveryWindowStartHour={deliveryWindowStartHour}
-                  deliveryWindowEndHour={deliveryWindowEndHour}
-                />
-              )}
+            <div ref={stepHeadingRef} tabIndex={-1} className="outline-hidden">
+              <Suspense fallback={<StepSkeleton />}>
+                {step === "date" && (
+                  <DateSelectionStep
+                    formData={formData}
+                    onInputChange={handleInputChange}
+                    error={error}
+                    deliveryWindowStartHour={deliveryWindowStartHour}
+                    deliveryWindowEndHour={deliveryWindowEndHour}
+                  />
+                )}
 
-              {step === "machine" && (
-                <MachineStep
-                  formData={formData}
-                  onInputChange={handleInputChange}
-                  // Issue 4: pass availability error so MachineStep shows it immediately
-                  error={dateAvailabilityError || error}
-                  onAvailabilityError={setDateAvailabilityError}
-                  onAvailabilityChecking={setCheckingAvailability}
-                  mixers={settingsMixers}
-                  settings={settings}
-                />
-              )}
+                {step === "machine" && (
+                  <MachineStep
+                    formData={formData}
+                    onInputChange={handleInputChange}
+                    // Issue 4: pass availability error so MachineStep shows it immediately
+                    error={dateAvailabilityError || error}
+                    onAvailabilityError={setDateAvailabilityError}
+                    onAvailabilityChecking={setCheckingAvailability}
+                    mixers={settingsMixers}
+                    settings={settings}
+                  />
+                )}
 
-              {step === "details" && (
-                <DetailsStep
-                  formData={formData}
-                  onInputChange={handleInputChange}
-                  error={error}
-                />
-              )}
+                {step === "details" && (
+                  <DetailsStep
+                    formData={formData}
+                    onInputChange={handleInputChange}
+                    error={error}
+                  />
+                )}
 
-              {step === "extras" && (
-                <ExtrasStep
-                  formData={formData}
-                  onInputChange={handleInputChange}
-                  error={error}
-                  settings={settings}
-                />
-              )}
+                {step === "extras" && (
+                  <ExtrasStep
+                    formData={formData}
+                    onInputChange={handleInputChange}
+                    error={error}
+                    settings={settings}
+                  />
+                )}
 
-              {step === "review" && (
-                <ReviewStep
-                  formData={formData}
-                  onInputChange={handleInputChange}
-                  error={error}
-                  agreedToTerms={agreedToTerms}
-                  setAgreedToTerms={setAgreedToTerms}
-                  // Without this the review total ignores admin pricing
-                  // overrides and disagrees with the sidebar and the invoice.
-                  settings={settings}
-                  // Clear draft before redirecting to success
-                  onSuccess={clearDraft}
-                />
-              )}
-            </Suspense>
+                {step === "review" && (
+                  <ReviewStep
+                    formData={formData}
+                    onInputChange={handleInputChange}
+                    error={error}
+                    agreedToTerms={agreedToTerms}
+                    setAgreedToTerms={setAgreedToTerms}
+                    // Without this the review total ignores admin pricing
+                    // overrides and disagrees with the sidebar and the invoice.
+                    settings={settings}
+                    // Clear draft before redirecting to success
+                    onSuccess={clearDraft}
+                  />
+                )}
+              </Suspense>
+            </div>
 
             {/* Navigation Buttons */}
             <NavigationButtons
