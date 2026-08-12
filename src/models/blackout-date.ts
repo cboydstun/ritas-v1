@@ -28,17 +28,15 @@ const blackoutDateSchema = new mongoose.Schema(
 blackoutDateSchema.index({ startDate: 1, endDate: 1 });
 
 // Update timestamps before saving
-blackoutDateSchema.pre("save", function (next) {
+blackoutDateSchema.pre("save", function () {
   this.updatedAt = new Date();
-  next();
 });
 
 // Validation for date ranges
-blackoutDateSchema.pre("save", function (next) {
+blackoutDateSchema.pre("save", function () {
   if (this.endDate && this.startDate > this.endDate) {
-    return next(new Error("End date must be after start date"));
+    throw new Error("End date must be after start date");
   }
-  next();
 });
 
 /**
@@ -56,25 +54,24 @@ export const MODEL_RULE_MESSAGES = new Set([
 ]);
 
 // Validation for time ranges
-blackoutDateSchema.pre("save", function (next) {
+blackoutDateSchema.pre("save", function () {
   if (this.type === "time_range") {
     if (!this.startTime || !this.endTime) {
-      return next(
-        new Error("Start time and end time are required for time_range type"),
+      throw new Error(
+        "Start time and end time are required for time_range type",
       );
     }
 
     // Validate time format
     const timeRegex = /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/;
     if (!timeRegex.test(this.startTime) || !timeRegex.test(this.endTime)) {
-      return next(new Error("Times must be in HH:MM format"));
+      throw new Error("Times must be in HH:MM format");
     }
 
     if (this.startTime >= this.endTime) {
-      return next(new Error("End time must be after start time"));
+      throw new Error("End time must be after start time");
     }
   }
-  next();
 });
 
 // Only create the model if it hasn't been created already

@@ -22,7 +22,7 @@
     "bcrypt": "^6.0.0",
     "chart.js": "^4.4.8",
     "date-fns": "^4.4.0",
-    "mongoose": "^8.24.3",
+    "mongoose": "^9.9.2",
     "nanoid": "^5.1.16",
     "next": "^15.5.23",
     "next-auth": "^4.24.15",
