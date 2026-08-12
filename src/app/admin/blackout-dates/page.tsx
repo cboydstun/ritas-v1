@@ -4,16 +4,14 @@ import { useState, useEffect } from "react";
 import AdminLayout from "@/components/admin/AdminLayout";
 import BlackoutDatesTable from "@/components/admin/BlackoutDatesTable";
 import BlackoutDateForm from "@/components/admin/BlackoutDateForm";
-import { BlackoutDateDocument } from "@/models/blackout-date";
+import { type BlackoutDateRecord } from "@/lib/blackout-dates";
 
 export default function BlackoutDatesPage() {
-  const [blackoutDates, setBlackoutDates] = useState<BlackoutDateDocument[]>(
-    [],
-  );
+  const [blackoutDates, setBlackoutDates] = useState<BlackoutDateRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
-  const [editingDate, setEditingDate] = useState<BlackoutDateDocument | null>(
+  const [editingDate, setEditingDate] = useState<BlackoutDateRecord | null>(
     null,
   );
   const [refreshTrigger, setRefreshTrigger] = useState(0);
@@ -50,7 +48,7 @@ export default function BlackoutDatesPage() {
     setShowForm(true);
   };
 
-  const handleEdit = (blackoutDate: BlackoutDateDocument) => {
+  const handleEdit = (blackoutDate: BlackoutDateRecord) => {
     setEditingDate(blackoutDate);
     setShowForm(true);
   };

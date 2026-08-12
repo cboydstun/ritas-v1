@@ -19,7 +19,7 @@ const PERMANENT_REDIRECTS: Record<string, string> = {
   // "/legacy": "/modern",
 };
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   // Redirect HTTP to HTTPS in production
   if (
     process.env.NODE_ENV === "production" &&
@@ -73,7 +73,7 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  // Scoped to the routes this middleware actually protects. It previously ran
+  // Scoped to the routes this proxy actually protects. It previously ran
   // on every public request — including every static page — purely to consult
   // an empty PERMANENT_REDIRECTS map. Vercel already forces HTTPS at the edge,
   // and HSTS is set in next.config.ts.

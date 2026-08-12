@@ -1,10 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { BlackoutDateDocument, BlackoutDateType } from "@/models/blackout-date";
+import {
+  type BlackoutDateRecord,
+  type BlackoutDateType,
+} from "@/lib/blackout-dates";
 
 interface BlackoutDateFormProps {
-  blackoutDate?: BlackoutDateDocument | null;
+  blackoutDate?: BlackoutDateRecord | null;
   onSuccess: () => void;
   onCancel: () => void;
 }

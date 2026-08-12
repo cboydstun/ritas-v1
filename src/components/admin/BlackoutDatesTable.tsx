@@ -1,14 +1,14 @@
 "use client";
 
 import {
-  BlackoutDateDocument,
+  type BlackoutDateRecord,
   formatDateForCentralTime,
-} from "@/models/blackout-date";
+} from "@/lib/blackout-dates";
 
 interface BlackoutDatesTableProps {
-  blackoutDates: BlackoutDateDocument[];
+  blackoutDates: BlackoutDateRecord[];
   loading: boolean;
-  onEdit: (blackoutDate: BlackoutDateDocument) => void;
+  onEdit: (blackoutDate: BlackoutDateRecord) => void;
   onDelete: (id: string) => void;
 }
 
@@ -18,7 +18,7 @@ export default function BlackoutDatesTable({
   onEdit,
   onDelete,
 }: BlackoutDatesTableProps) {
-  const formatDate = (date: Date) => {
+  const formatDate = (date: Date | string) => {
     return formatDateForCentralTime(date);
   };
 
@@ -49,7 +49,10 @@ export default function BlackoutDatesTable({
     return type;
   };
 
-  const getDateRangeDisplay = (startDate: Date, endDate?: Date) => {
+  const getDateRangeDisplay = (
+    startDate: Date | string,
+    endDate?: Date | string,
+  ) => {
     const start = formatDate(startDate);
     if (!endDate) {
       return start;

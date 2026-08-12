@@ -1,6 +1,8 @@
 import { ImageResponse } from "next/og";
 
-export const runtime = "edge";
+// No `runtime = "edge"`. Next 16 deprecates the edge runtime, and it was
+// disabling static generation for this route. The Node.js runtime (Fluid
+// Compute on Vercel) renders the same image with fewer restrictions.
 export const alt = "SATX Ritas Rental Order Confirmation";
 export const size = {
   width: 1200,

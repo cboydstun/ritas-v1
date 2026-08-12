@@ -222,7 +222,7 @@ export default function RootLayout({
 Replace the Basic Auth check in middleware with NextAuth.js session check:
 
 ```typescript
-// src/middleware.ts
+// src/proxy.ts
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
