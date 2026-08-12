@@ -137,12 +137,18 @@ export async function readJsonBody(
   maxBytes: number = MAX_BODY_BYTES,
 ): Promise<{ ok: true; data: unknown } | { ok: false; tooLarge: boolean }> {
   const declared = request.headers.get("content-length");
-  if (declared && Number(declared) > maxBytes) {
-    return { ok: false, tooLarge: true };
+  if (declared !== null) {
+    const length = Number(declared);
+    // A header that isn't a number is malformed, not a licence to skip the cap.
+    if (!Number.isFinite(length) || length < 0 || length > maxBytes) {
+      return { ok: false, tooLarge: true };
+    }
   }
 
   const text = await request.text();
-  if (text.length > maxBytes) {
+  // `text.length` counts UTF-16 units, so a multi-byte payload could be about
+  // three times the nominal cap before this check fired.
+  if (Buffer.byteLength(text, "utf8") > maxBytes) {
     return { ok: false, tooLarge: true };
   }
 

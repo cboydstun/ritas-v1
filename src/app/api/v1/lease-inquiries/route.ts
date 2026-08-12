@@ -10,6 +10,7 @@ import {
   firstIssueMessage,
   leaseInquirySchema,
 } from "@/lib/validation";
+import { BUSINESS_TIME_ZONE } from "@/lib/dates";
 
 const tierNameById = (id: string) =>
   leaseTiers.find((t) => t.id === (id as LeaseTierId))?.name ?? id;
@@ -18,6 +19,16 @@ const tierNameById = (id: string) =>
  * API route for submitting a long-term lease inquiry
  * POST /api/v1/lease-inquiries
  */
+/**
+ * Now, rendered in the business's timezone.
+ *
+ * Vercel functions run UTC, so a bare `toLocaleString()` stamped every evening
+ * submission with tomorrow's date in the operator's SMS and email.
+ */
+function submittedAt(): string {
+  return new Date().toLocaleString("en-US", { timeZone: BUSINESS_TIME_ZONE });
+}
+
 export async function POST(request: Request) {
   try {
     const guard = await guardPublicWrite(request, {
@@ -72,7 +83,7 @@ export async function POST(request: Request) {
             `Phone: ${inquiry.phone}\n` +
             `Term: ${inquiry.preferredTerm}\n` +
             `Machines: ${machinesList}\n` +
-            `Submitted: ${new Date().toLocaleString()}`,
+            `Submitted: ${submittedAt()}`,
           from: fromPhone,
           to: toPhone,
         });
@@ -109,7 +120,7 @@ export async function POST(request: Request) {
                 <li style="margin-bottom: 8px;"><strong>Preferred Term:</strong> ${escapeHtml(inquiry.preferredTerm)}</li>
                 <li style="margin-bottom: 8px;"><strong>Machines of Interest:</strong> ${escapeHtml(machinesList) || "(none specified)"}</li>
                 <li style="margin-bottom: 8px;"><strong>Message:</strong> ${escapeHtml(inquiry.message) || "(none)"}</li>
-                <li style="margin-bottom: 8px;"><strong>Submitted:</strong> ${new Date().toLocaleString()}</li>
+                <li style="margin-bottom: 8px;"><strong>Submitted:</strong> ${submittedAt()}</li>
               </ul>
             </div>
             <p style="font-size: 14px; color: #666;">This is an automated notification from your website lease inquiry form.</p>

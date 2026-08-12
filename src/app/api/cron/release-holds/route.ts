@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { releaseStaleHolds, STALE_HOLD_MINUTES } from "@/lib/inventory";
+import { timingSafeEquals } from "@/lib/timing-safe";
 
 /**
  * Flips expired abandoned `pending` holds to cancelled. Submitted bookings
@@ -23,7 +24,8 @@ export async function GET(request: Request) {
     return NextResponse.json({ message: "Not configured" }, { status: 503 });
   }
 
-  if (request.headers.get("authorization") !== `Bearer ${secret}`) {
+  const presented = request.headers.get("authorization") ?? "";
+  if (!timingSafeEquals(presented, `Bearer ${secret}`)) {
     return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
   }
 

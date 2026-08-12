@@ -246,6 +246,10 @@ export default function OrderForm() {
   const [dateAvailabilityError, setDateAvailabilityError] = useState<
     string | null
   >(null);
+  // True while MachineStep still has availability requests in flight. Without
+  // it, every card read as selectable and the customer could walk to review on
+  // a machine the server was about to refuse with a 409.
+  const [checkingAvailability, setCheckingAvailability] = useState(false);
 
   // Persist draft to localStorage whenever formData or step changes
   useEffect(() => {
@@ -466,6 +470,10 @@ export default function OrderForm() {
 
     // Validate machine step
     if (step === "machine") {
+      if (checkingAvailability) {
+        setError("Still checking availability for your dates — one moment.");
+        return;
+      }
       // Issue 4: dateAvailabilityError is now state, so this also blocks navigation
       if (dateAvailabilityError) {
         setError(dateAvailabilityError);
@@ -600,6 +608,7 @@ export default function OrderForm() {
                   // Issue 4: pass availability error so MachineStep shows it immediately
                   error={dateAvailabilityError || error}
                   onAvailabilityError={setDateAvailabilityError}
+                  onAvailabilityChecking={setCheckingAvailability}
                   mixers={settingsMixers}
                   settings={settings}
                 />

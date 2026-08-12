@@ -1,22 +1,8 @@
 import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
-import { timingSafeEqual } from "crypto";
 import bcrypt from "bcrypt";
 import { rateLimit } from "@/lib/rate-limit";
-
-/** Length-independent constant-time string comparison. */
-function timingSafeEquals(a: string, b: string): boolean {
-  const bufA = Buffer.from(a, "utf8");
-  const bufB = Buffer.from(b, "utf8");
-  // timingSafeEqual throws on length mismatch, so compare fixed-size digests
-  // of the inputs instead of the raw bytes.
-  if (bufA.length !== bufB.length) {
-    // Still burn a comparison so the failure path costs the same.
-    timingSafeEqual(bufA, bufA);
-    return false;
-  }
-  return timingSafeEqual(bufA, bufB);
-}
+import { timingSafeEquals } from "@/lib/timing-safe";
 
 /**
  * Prefers a bcrypt hash in ADMIN_PASSWORD_HASH. Falls back to the legacy

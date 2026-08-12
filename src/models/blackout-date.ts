@@ -205,6 +205,13 @@ export function formatDateForCentralTime(date: Date | string): string {
 
 // Helper function to create a Date object in local time (avoiding timezone shifts)
 export function createLocalDate(dateString: string): Date {
+  // Callers pass values straight out of a request body. A non-string used to
+  // throw a TypeError on `.includes`, which surfaced as a 500 rather than the
+  // 400 the input deserves.
+  if (typeof dateString !== "string") {
+    return new Date(NaN);
+  }
+
   // Parse the date string and create a date in local time
   if (dateString.includes("T")) {
     // Already has time component

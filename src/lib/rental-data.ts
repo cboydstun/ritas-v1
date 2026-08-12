@@ -1,8 +1,5 @@
 export type MixerType =
-  | "non-alcoholic"
-  | "margarita"
-  | "pina-colada"
-  | "strawberry-daiquiri";
+  "non-alcoholic" | "margarita" | "pina-colada" | "strawberry-daiquiri";
 
 export interface MixerDetails {
   label: string;

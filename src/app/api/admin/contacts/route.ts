@@ -58,10 +58,11 @@ export async function POST(request: Request) {
 
     // Check for validation errors
     if (error instanceof Error && error.name === "ValidationError") {
+      // `error.message` carries model names, field paths and index names; it
+      // is logged above rather than handed back to the caller.
       return NextResponse.json(
         {
           message: "Invalid contact data",
-          details: error.message,
         },
         { status: 400 },
       );

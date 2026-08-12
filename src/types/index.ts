@@ -1,9 +1,6 @@
 export type MachineType = "single" | "double" | "triple";
 export type MixerType =
-  | "non-alcoholic"
-  | "margarita"
-  | "pina-colada"
-  | "strawberry-daiquiri";
+  "non-alcoholic" | "margarita" | "pina-colada" | "strawberry-daiquiri";
 export type PaymentStatus = "pending" | "completed" | "failed" | "refunded";
 export type RentalStatus =
   | "pending"
