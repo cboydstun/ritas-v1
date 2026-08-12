@@ -8,6 +8,7 @@ import {
   MAX_EXTRA_QUANTITY,
 } from "@/lib/extras-catalog";
 import { calculateRentalDays } from "../utils";
+import { trackEvent } from "@/lib/analytics";
 
 export default function ExtrasStep({
   formData,
@@ -64,6 +65,23 @@ export default function ExtrasStep({
       // Remove the extra if it's unchecked
       newSelectedExtras = selectedExtras.filter((item) => item.id !== extra.id);
     }
+
+    // `extra` is already the catalog entry — the cards are built from
+    // `extrasCatalog` above — so the price here is the authoritative one and
+    // agrees with what `purchase` will report.
+    trackEvent(isChecked ? "add_to_cart" : "remove_from_cart", {
+      currency: "USD",
+      value: lineTotal(extra, extra.quantity ?? 1),
+      items: [
+        {
+          item_id: extra.id,
+          item_name: extra.name,
+          item_category: "extra",
+          price: extra.price,
+          quantity: extra.quantity ?? 1,
+        },
+      ],
+    });
 
     updateFormData(newSelectedExtras);
   };

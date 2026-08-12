@@ -206,10 +206,23 @@ describe("OrderFormTracker", () => {
         );
       });
 
+      // The value comes from `computeOrderTotal`, not from `formData.price`
+      // — the same source `purchase` uses, so the two events cannot report
+      // different carts. `makeFormData` sets `price: 100`, which is why this
+      // is not that number.
       expect(eventsNamed("begin_checkout")[0][2]).toEqual({
-        value: 100,
+        value: 189.49,
         currency: "USD",
         machine_type: "double",
+        items: [
+          {
+            item_id: "machine-double",
+            item_name: "double margarita machine",
+            item_category: "machine",
+            price: 149.95,
+            quantity: 1,
+          },
+        ],
       });
     });
 

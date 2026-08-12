@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { trackEvent } from "@/lib/analytics";
+import { trackEvent, pushDataLayer } from "@/lib/analytics";
 
 export default function ContactForm() {
   const [formData, setFormData] = useState({
@@ -36,6 +36,14 @@ export default function ContactForm() {
         // The form succeeds inline with no navigation, so without this GA4
         // never sees the lead. No field values are sent — they are all PII.
         trackEvent("generate_lead", { lead_type: "contact" });
+
+        // The Google Ads lead conversion fires off this push. It used to fire
+        // off GTM's built-in Form Submission trigger, which listens for the
+        // browser's submit event and is not suppressed by `preventDefault` —
+        // so a submission whose POST then failed still counted as a lead.
+        // Firing here puts the Ads conversion behind the same success check
+        // GA4 already had.
+        pushDataLayer("lead_submitted", { lead_type: "contact" });
 
         setSubmitStatus({
           type: "success",

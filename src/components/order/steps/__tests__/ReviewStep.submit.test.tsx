@@ -12,7 +12,15 @@ jest.mock("next/image", () => ({
   ),
 }));
 
-jest.mock("@/lib/analytics", () => ({ trackEvent: jest.fn() }));
+// Both must be stubbed. `pushDataLayer` left out of this mock resolved to
+// `undefined`, and calling it threw inside the submit handler's try block —
+// which the catch turned into a generic "Failed to confirm booking" and the
+// draft was never cleared. A partial mock of this module is a booking outage
+// in the shape of a passing analytics test.
+jest.mock("@/lib/analytics", () => ({
+  trackEvent: jest.fn(),
+  pushDataLayer: jest.fn(),
+}));
 
 const formData: OrderFormData = {
   machineType: "single",

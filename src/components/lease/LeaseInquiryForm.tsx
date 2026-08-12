@@ -8,7 +8,7 @@ import {
   type LeaseTier,
   type LeaseTierId,
 } from "@/lib/lease-data";
-import { trackEvent } from "@/lib/analytics";
+import { trackEvent, pushDataLayer } from "@/lib/analytics";
 
 interface FormState {
   businessName: string;
@@ -74,6 +74,14 @@ export default function LeaseInquiryForm({ tiers }: LeaseInquiryFormProps) {
           business_type: formData.businessType,
           lease_term: formData.preferredTerm,
         });
+
+        // The Google Ads lead conversion fires off this push. It used to fire
+        // off GTM's built-in Form Submission trigger, which listens for the
+        // browser's submit event and is not suppressed by `preventDefault` —
+        // so a submission whose POST then failed still counted as a lead.
+        // Firing here puts the Ads conversion behind the same success check
+        // GA4 already had.
+        pushDataLayer("lead_submitted", { lead_type: "lease_inquiry" });
 
         setSubmitStatus({
           type: "success",

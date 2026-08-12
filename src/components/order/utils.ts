@@ -127,7 +127,7 @@ export const validateDeliveryTime = (
 // ---------------------------------------------------------------------------
 
 import { calculatePrice } from "@/lib/pricing";
-import { OrderFormData } from "./types";
+import { OrderFormData, type ExtraItem } from "./types";
 
 export interface SettingsOverrides {
   fees?: {
@@ -278,6 +278,54 @@ export function computeOrderTotal(
  * destroys `/success` as a conversion page. Keep this list in sync with what
  * `src/app/success/page.tsx` actually reads — nothing more.
  */
+/** One entry in a GA4 ecommerce `items` array. */
+export interface AnalyticsItem {
+  item_id: string;
+  item_name: string;
+  item_category: "machine" | "extra";
+  price: number;
+  quantity: number;
+}
+
+/**
+ * The GA4 `items` array for an order, priced from the extras catalog.
+ *
+ * `purchase` and `begin_checkout` both send this, and they used to build it
+ * separately — which is how the two came to disagree about what was in the
+ * cart. Prices come from `buildExtrasCatalog()` and never from the item on
+ * `formData`, for the same reason `computeOrderTotal` ignores them: an extra
+ * carries whatever price the client last saw, which is not authoritative.
+ *
+ * The machine is modelled as one item priced per day with `quantity` set to
+ * the number of rental days, so `Σ(price × quantity)` reconciles against
+ * `subtotal` minus delivery.
+ */
+export function buildAnalyticsItems(
+  formData: OrderFormData,
+  totals: Pick<OrderTotals, "perDayRate" | "rentalDays">,
+  extrasCatalog: Map<string, ExtraItem>,
+): AnalyticsItem[] {
+  return [
+    {
+      item_id: `machine-${formData.machineType}`,
+      item_name: `${formData.machineType} margarita machine`,
+      item_category: "machine",
+      price: totals.perDayRate,
+      quantity: totals.rentalDays,
+    },
+    ...formData.selectedExtras.map((extra): AnalyticsItem => {
+      const item = extrasCatalog.get(extra.id);
+      return {
+        item_id: extra.id,
+        item_name: item?.name ?? extra.id,
+        item_category: "extra",
+        price: item?.price ?? 0,
+        quantity: extra.quantity ?? 1,
+      };
+    }),
+  ];
+}
+
 export function buildSuccessUrl(
   bookingId: string,
   machineType: string,

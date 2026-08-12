@@ -12,6 +12,12 @@ import { trackEvent } from "@/lib/analytics";
  * `onClick` onto the five existing anchors (Footer, /contact, /long-term-lease)
  * and have the next one added silently go untracked, this attaches a single
  * delegated listener at the document and matches on href.
+ *
+ * A download is recognised by `data-track-download="pdf"` **or** a `.pdf`
+ * extension. The attribute is the reliable half: `Settings.documentation`
+ * only validates that the URL is `http(s)`, so a Drive or Dropbox share link
+ * — or any signed URL with the extension buried in a query string — renders a
+ * perfectly good download button that extension-sniffing silently misses.
  */
 export default function ContactLinkTracker(): null {
   useEffect(() => {
@@ -29,7 +35,10 @@ export default function ContactLinkTracker(): null {
         trackEvent("contact_click", { method: "phone", link_url: href });
       } else if (href.startsWith("mailto:")) {
         trackEvent("contact_click", { method: "email", link_url: href });
-      } else if (href.toLowerCase().split("?")[0].endsWith(".pdf")) {
+      } else if (
+        anchor.dataset.trackDownload === "pdf" ||
+        href.toLowerCase().split(/[?#]/)[0].endsWith(".pdf")
+      ) {
         trackEvent("file_download", {
           file_extension: "pdf",
           file_name: anchor.textContent?.trim() || href,
@@ -39,9 +48,15 @@ export default function ContactLinkTracker(): null {
     };
 
     // Capture phase, so a click still registers if a handler further down
-    // calls stopPropagation.
+    // calls stopPropagation. `auxclick` covers middle-click and the
+    // open-in-new-tab gesture, which fire no `click` at all — on a phone-first
+    // site that matters least for `tel:` and most for the PDF.
     document.addEventListener("click", handleClick, true);
-    return () => document.removeEventListener("click", handleClick, true);
+    document.addEventListener("auxclick", handleClick, true);
+    return () => {
+      document.removeEventListener("click", handleClick, true);
+      document.removeEventListener("auxclick", handleClick, true);
+    };
   }, []);
 
   return null;
