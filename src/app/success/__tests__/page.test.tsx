@@ -37,7 +37,9 @@ describe("Success Page", () => {
   it("displays the order ID", () => {
     renderWithSearchParams(<SuccessPage />);
 
-    expect(screen.getByText(/test-order-123/i)).toBeInTheDocument();
+    // Rendered twice on purpose: once in Order Information, and again in the
+    // "quote your booking id when you call" line of SuccessNextActions.
+    expect(screen.getAllByText(/test-order-123/i).length).toBeGreaterThan(0);
   });
 
   it("shows order details from URL parameters", () => {

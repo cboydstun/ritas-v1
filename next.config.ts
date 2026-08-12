@@ -105,41 +105,18 @@ const nextConfig: NextConfig = {
   images: {
     formats: ["image/avif", "image/webp"],
     deviceSizes: [640, 750, 828, 1080, 1200, 1920],
-    minimumCacheTTL: 60,
+    // These images change when the machines do, which is roughly never. At 60
+    // seconds every variant was re-optimised about once a minute per region,
+    // which is pure image-optimisation billing for no freshness benefit.
+    minimumCacheTTL: 60 * 60 * 24 * 30,
   },
   experimental: {
     optimizePackageImports: ["@heroicons/react"],
   },
-  webpack: (config, { dev, isServer }) => {
-    // Production optimizations
-    if (!dev && !isServer) {
-      config.optimization = {
-        ...config.optimization,
-        mergeDuplicateChunks: true,
-        minimize: true,
-        splitChunks: {
-          chunks: "all",
-          minSize: 20000,
-          minChunks: 1,
-          maxAsyncRequests: 30,
-          maxInitialRequests: 30,
-          cacheGroups: {
-            defaultVendors: {
-              test: /[\\/]node_modules[\\/]/,
-              priority: -10,
-              reuseExistingChunk: true,
-            },
-            default: {
-              minChunks: 2,
-              priority: -20,
-              reuseExistingChunk: true,
-            },
-          },
-        },
-      };
-    }
-    return config;
-  },
+  // No `webpack` key on purpose. A hand-rolled `splitChunks` used to replace
+  // Next's App Router cache groups (framework/lib/commons/shared) with a
+  // generic defaultVendors pair — strictly worse chunking — and it was inert
+  // under `next dev --turbopack`, so dev and prod split differently.
 };
 
 export default nextConfig;

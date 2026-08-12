@@ -4,6 +4,7 @@ import LeaseTierCard from "@/components/lease/LeaseTierCard";
 import LeaseInquiryForm from "@/components/lease/LeaseInquiryForm";
 import { mergeLeaseTiers } from "@/lib/lease-data";
 import { SITE_URL } from "@/lib/site";
+import { getPublicSettings } from "@/lib/public-settings";
 
 const jsonLd = {
   "@context": "https://schema.org",
@@ -38,6 +39,14 @@ export const metadata: Metadata = {
   title: "Long-Term Frozen Drink Machine Leases | SATX Ritas",
   description:
     "Long-term margarita and frozen drink machine leases for restaurants, golf courses, hotels, and bars in San Antonio. Placement, install, and maintenance included.",
+  openGraph: {
+    title: "Long-Term Frozen Drink Machine Leases | SATX Ritas",
+    description:
+      "Long-term margarita and frozen drink machine leases for restaurants, golf courses, hotels, and bars in San Antonio. Placement, install, and maintenance included.",
+    url: `${SITE_URL}/long-term-lease`,
+    images: [`${SITE_URL}/og-image.jpg`],
+    type: "website",
+  },
 };
 
 const includedItems = [
@@ -91,15 +100,18 @@ const whyLease = [
   },
 ];
 
+/**
+ * Reads the settings singleton directly rather than HTTP-fetching this app's
+ * own `/api/v1/settings`. The round trip needed NEXTAUTH_URL to be correct at
+ * request time, used `cache: "no-store"` (making the page fully dynamic), and
+ * swallowed any failure into the default tiers with the documentation PDF
+ * hidden and nothing logged.
+ */
 async function fetchSettings() {
-  const baseUrl = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
   try {
-    const response = await fetch(`${baseUrl}/api/v1/settings`, {
-      cache: "no-store",
-    });
-    if (!response.ok) return null;
-    return await response.json();
-  } catch {
+    return await getPublicSettings();
+  } catch (error) {
+    console.error("Lease page could not read settings:", error);
     return null;
   }
 }

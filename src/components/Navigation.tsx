@@ -2,6 +2,21 @@
 import Link from "next/link";
 import { useState } from "react";
 import ThemeToggle from "./ThemeToggle";
+import { BUSINESS_PHONE_DISPLAY, BUSINESS_PHONE_HREF } from "@/lib/site";
+
+/** Inline so the header does not pull in an icon package for one glyph. */
+function PhoneIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      aria-hidden="true"
+      className={className}
+      fill="currentColor"
+      viewBox="0 0 20 20"
+    >
+      <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" />
+    </svg>
+  );
+}
 
 export default function Navigation() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -63,6 +78,16 @@ export default function Navigation() {
             >
               Contact
             </Link>
+            {/* The number was in the footer and on two inner pages only. For
+                a local rental business, a header click-to-call is the
+                shortest path from "interested" to "booked". */}
+            <a
+              href={BUSINESS_PHONE_HREF}
+              className="ml-2 px-3 py-2 flex items-center gap-1.5 font-semibold text-margarita hover:text-teal transition-colors"
+            >
+              <PhoneIcon className="h-4 w-4" />
+              {BUSINESS_PHONE_DISPLAY}
+            </a>
             <Link
               href="/order"
               className="ml-4 px-4 py-2 bg-margarita text-white rounded-lg hover:bg-teal transition-colors animate-wiggle hover:animate-none"
@@ -74,6 +99,13 @@ export default function Navigation() {
 
           {/* Mobile Menu Button */}
           <div className="sm:hidden flex items-center">
+            <a
+              href={BUSINESS_PHONE_HREF}
+              className="p-2 text-margarita hover:text-teal transition-colors"
+            >
+              <span className="sr-only">Call {BUSINESS_PHONE_DISPLAY}</span>
+              <PhoneIcon className="h-6 w-6" />
+            </a>
             <button
               type="button"
               className="inline-flex items-center justify-center p-2 rounded-md text-charcoal dark:text-white hover:text-margarita focus:outline-none"

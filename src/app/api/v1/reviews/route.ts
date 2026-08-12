@@ -1,33 +1,18 @@
 import { NextResponse } from "next/server";
+import { getReviewSummary } from "@/lib/reviews";
 
 /**
- * API route for proxying reviews from external service
+ * Public proxy for the shared review feed.
+ *
+ * It exists so the browser never calls the external host directly — the CSP
+ * `connect-src` would block it — and so responses are cached for an hour. The
+ * site's own pages read `getReviewSummary` on the server instead, so the
+ * reviews land in the HTML rather than after hydration.
+ *
  * GET /api/v1/reviews
  */
 export async function GET() {
-  try {
-    // Make server-side request to the external API
-    const response = await fetch("https://satxbounce.com/api/v1/reviews", {
-      headers: {
-        "Content-Type": "application/json",
-      },
-      next: { revalidate: 3600 }, // Cache for 1 hour
-    });
+  const summary = await getReviewSummary();
 
-    if (!response.ok) {
-      throw new Error(`Failed to fetch reviews: ${response.status}`);
-    }
-
-    // Get the data from the response
-    const data = await response.json();
-
-    // Return the data to the client
-    return NextResponse.json(data);
-  } catch (error) {
-    console.error("Error fetching reviews:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch reviews" },
-      { status: 500 },
-    );
-  }
+  return NextResponse.json(summary.reviews);
 }

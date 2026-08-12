@@ -75,6 +75,14 @@ export const metadata: Metadata = {
   title: "Contact Us | SATX Ritas Rentals - Frozen Drink Machine Rentals",
   description:
     "Get in touch with SATX Ritas Rentals for premium frozen drink machine rentals in San Antonio. Contact us for bookings, questions, or support. Professional service with flexible scheduling.",
+  openGraph: {
+    title: "Contact Us | SATX Ritas Rentals - Frozen Drink Machine Rentals",
+    description:
+      "Get in touch with SATX Ritas Rentals for premium frozen drink machine rentals in San Antonio. Contact us for bookings, questions, or support. Professional service with flexible scheduling.",
+    url: `${SITE_URL}/contact`,
+    images: [`${SITE_URL}/og-image.jpg`],
+    type: "website",
+  },
 };
 
 export default function ContactPage() {

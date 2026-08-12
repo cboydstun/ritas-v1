@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { SITE_URL } from "@/lib/site";
+import { SERVICE_AREAS } from "@/lib/service-areas";
 
 // Public, indexable routes only — /success is a post-checkout landing page,
 // and /admin + /api are disallowed in robots.ts.
@@ -20,10 +21,20 @@ const routes: Array<{
 export default function sitemap(): MetadataRoute.Sitemap {
   const lastModified = new Date();
 
-  return routes.map(({ path, priority, changeFrequency }) => ({
-    url: `${SITE_URL}${path}`,
-    lastModified,
-    changeFrequency,
-    priority,
+  // Generated from the same list the pages and the homepage map render from,
+  // so a new area cannot be added and then quietly left out of the sitemap.
+  const serviceAreaRoutes = SERVICE_AREAS.map((area) => ({
+    path: `/service-area/${area.slug}`,
+    priority: 0.7,
+    changeFrequency: "monthly" as const,
   }));
+
+  return [...routes, ...serviceAreaRoutes].map(
+    ({ path, priority, changeFrequency }) => ({
+      url: `${SITE_URL}${path}`,
+      lastModified,
+      changeFrequency,
+      priority,
+    }),
+  );
 }

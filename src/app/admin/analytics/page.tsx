@@ -2,19 +2,25 @@
 
 import AdminLayout from "@/components/admin/AdminLayout";
 import { useState, useEffect } from "react";
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  BarElement,
-  ArcElement,
-  Title,
-  Tooltip,
-  Legend,
-} from "chart.js";
-import { Line, Bar, Pie } from "react-chartjs-2";
+import dynamic from "next/dynamic";
+
+// chart.js is ~70 kB and only this page uses it. Loaded on demand, with
+// `ssr: false` because the charts read layout at mount.
+const ChartLoading = () => (
+  <div className="h-64 animate-pulse rounded bg-gray-100 dark:bg-gray-800" />
+);
+const Line = dynamic(
+  () => import("@/components/admin/AnalyticsCharts").then((m) => m.Line),
+  { ssr: false, loading: ChartLoading },
+);
+const Bar = dynamic(
+  () => import("@/components/admin/AnalyticsCharts").then((m) => m.Bar),
+  { ssr: false, loading: ChartLoading },
+);
+const Pie = dynamic(
+  () => import("@/components/admin/AnalyticsCharts").then((m) => m.Pie),
+  { ssr: false, loading: ChartLoading },
+);
 
 // Define types for analytics data
 interface AnalyticsItem {
@@ -58,18 +64,6 @@ interface AnalyticsData {
 }
 
 // Register Chart.js components
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  BarElement,
-  ArcElement,
-  Title,
-  Tooltip,
-  Legend,
-);
-
 export default function AnalyticsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
