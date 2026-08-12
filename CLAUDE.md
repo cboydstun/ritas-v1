@@ -197,21 +197,30 @@ Every GA4 event goes through `trackEvent()` in `src/lib/analytics.ts` — one ty
 
 Event params carry segmentation only (`step_id`, `step_index`, `lead_type`, `machine_type`) — **never contact details**. Those four are registered as event-scoped custom dimensions in the GA4 property; an unregistered param is dropped from reporting, and registration is not retroactive.
 
-**`order_step` must not be a key event.** It fires up to five times per visitor and once more on every backwards step. While it was marked as one, 31 of the property's 35 key events over 90 days were wizard steps — the `conversions` metric measured nothing, and importing it into Ads would have taught Smart Bidding to optimise for step two of a form. `purchase`, `generate_lead` and `contact_click` are the key events.
+**`order_step` must not be a key event.** It fires up to five times per visitor and once more on every backwards step. While it is marked as one, 31 of the property's 35 key events over 90 days are wizard steps — the `conversions` metric measures nothing, and importing it into Ads teaches Smart Bidding to optimise for step two of a form. `purchase`, `generate_lead` and `contact_click` are the intended key events.
+
+**Which events are key is GA4 property configuration, not code — nothing in this repo enforces it.** As of 2026-08-12 the live property had it exactly inverted: `order_step` was still marked (31 of 31 events in the trailing fortnight counted as key events) and `contact_click` was not marked at all (3 events, 0 key events). Do not read this section as a description of the property. Verify it, and never from the GA4 UI's own event list — query the `keyEvents` metric by `eventName` through the Analytics MCP:
+
+```
+run_report(480725072, date_ranges=[{start_date:"28daysAgo", end_date:"today"}],
+           dimensions=["eventName"], metrics=["eventCount","keyEvents"])
+```
+
+Marking and unmarking are not retroactive, so historical rows keep whatever flag they were collected under.
 
 ### GTM dataLayer events
 
-`pushDataLayer()` in `analytics.ts` is the only sanctioned path to `window.dataLayer`, and there are exactly two events. Both exist because the Google Ads conversion tags in `GTM-NRQ9HDL9` need to fire on a **confirmed outcome carrying real values**, which is not what they used to fire on:
+`pushDataLayer()` in `analytics.ts` is the only sanctioned path to `window.dataLayer`, and there are exactly three events. Both exist because the Google Ads conversion tags in `GTM-NRQ9HDL9` need to fire on a **confirmed outcome carrying real values**, which is not what they used to fire on:
 
 - **`purchase_complete`** (`ReviewStep.tsx`) — carries `transaction_id`, `value`, `currency`. The Ads conversion previously fired on a `/success` pageview, which cannot see the order total, so every booking reported as a valueless conversion; `buildSuccessUrl` deliberately keeps money and PII out of the URL, so the value has to arrive out of band. `transaction_id` is the Ads `orderId` and is what dedupes a resubmission.
 - **`lead_submitted`** (`ContactForm.tsx`, `LeaseInquiryForm.tsx`) — carries `lead_type`. Replaces GTM's built-in Form Submission trigger, which listens for the browser's submit event and is **not** suppressed by `preventDefault()`, so a submission whose API POST then failed still counted as an Ads lead.
-- **`contact_click`** (`ContactLinkTracker.tsx`) — carries `method` (`phone` or `email`). The Google Ads call tag does dynamic number insertion, which only ever converts visitors who arrived from an ad; roughly 73% of sessions are organic, so a `tel:` tap from them reached Ads not at all. GTM filters this push to `method === "phone"`. Downloads deliberately do **not** push — the GTM filter must not be the only thing between a PDF click and a counted phone lead. The name is intentionally both an `AnalyticsEvent` and a `DataLayerEvent`: one visitor action, two transports.
+- **`contact_click`** (`ContactLinkTracker.tsx`) — carries `method` (`phone` or `email`). The Google Ads call tag does dynamic number insertion, which only ever converts visitors who arrived from an ad; roughly 77% of sessions are organic (272 of 351 over the 90 days to 2026-08-11), so a `tel:` tap from them reached Ads not at all. The GTM consumer is the **`Contact Click - phone`** trigger (id `19`, workspace `9`), whose `{{DLV - method}} equals phone` condition lives in the *trigger*, not in the tag. Note that the push shipped in `e0aa248` on 2026-08-12 with no GTM counterpart at all, so for a time it fed nothing — a dataLayer push is only half of a conversion. Downloads deliberately do **not** push — the GTM filter must not be the only thing between a PDF click and a counted phone lead. The name is intentionally both an `AnalyticsEvent` and a `DataLayerEvent`: one visitor action, two transports.
 
 A partial `jest.mock("@/lib/analytics", ...)` that stubs `trackEvent` but not `pushDataLayer` makes the missing export `undefined`, and calling it throws inside the booking submit handler's `try` — which the `catch` turns into "Failed to confirm booking" for the customer. Mock both.
 
 **Never put customer data in a URL.** GA4 records the whole query string as `page_location`. The success redirect is built by `buildSuccessUrl()` in `src/components/order/utils.ts`, which emits only the three params `/success` reads; it previously appended `customerName`, which shipped PII to Google and made every booking its own page path.
 
-Consent Mode v2 defaults to `granted` (inlined in `GoogleAnalytics.tsx` ahead of `config`), with `CookieConsent.tsx` offering an opt-out stored under `satx-ritas-consent`. Texas TDPSA is an opt-out regime; serving EU traffic would mean flipping those defaults to `denied`.
+Consent Mode v2 defaults to `granted` (inlined in `GoogleAnalytics.tsx` ahead of `config`), with `CookieConsent.tsx` offering an opt-out stored under `satx-ritas-consent`. The GTM tags carried `consentStatus: notSet` until 2026-08-12, meaning the Ads tags fired straight through an opt-out the banner had promised to honour; they now require `ad_storage`, `ad_user_data` and `ad_personalization`. Keep any new Ads tag consent-gated the same way — `notSet` is the GTM default, so this is a thing you have to remember to do, not a thing that happens. Texas TDPSA is an opt-out regime; serving EU traffic would mean flipping those defaults to `denied`.
 
 ### Reviews
 
