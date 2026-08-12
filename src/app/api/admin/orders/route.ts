@@ -6,6 +6,7 @@ import { Rental } from "@/models/rental";
 import { Settings } from "@/models/settings";
 import { MACHINE_CAPACITY, dateStringSchema } from "@/lib/validation";
 import { isMachineAvailable } from "@/lib/inventory";
+import { safeErrorSummary } from "@/lib/safe-error";
 import { isMachineType } from "@/types/machine";
 import {
   resolveSelectedExtras,
@@ -13,11 +14,13 @@ import {
 } from "@/lib/extras-catalog";
 import {
   computeOrderTotal,
+  roundCurrency,
   type SettingsOverrides,
 } from "@/components/order/utils";
 import type { OrderFormData } from "@/components/order/types";
 import { nanoid } from "nanoid";
 import { adminListLimit, adminListHeaders } from "@/lib/admin-list";
+import { guardAdminWrite } from "@/lib/api-guard";
 
 /** Fields an admin may set when creating an order by hand. */
 const CREATABLE_ORDER_FIELDS = [
@@ -74,7 +77,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
   }
   try {
-    const data = await request.json();
+    // Admin handlers read the body directly, so MAX_BODY_BYTES never
+    // applied to them. Post-auth this bounds a compromised session.
+    const guard = await guardAdminWrite(request);
+    if (!guard.ok) return guard.response;
+    const data = guard.data as Record<string, unknown>;
     await dbConnect();
 
     // Whitelist, mirroring the PUT handler and /api/save-booking. Passing the
@@ -210,7 +217,7 @@ export async function POST(request: Request) {
     );
 
     doc.selectedExtras = resolvedExtras;
-    doc.price = Number(totals.finalTotal.toFixed(2));
+    doc.price = roundCurrency(totals.finalTotal);
     doc.isServiceDiscount = false;
     doc.bookingId = nanoid(10).toUpperCase();
     doc.payment = {
@@ -225,16 +232,12 @@ export async function POST(request: Request) {
 
     return NextResponse.json(savedRental, { status: 201 });
   } catch (error) {
-    console.error("Error creating order:", error);
+    // Only the error's shape is logged — Mongoose validation and duplicate-key
+    // messages embed the offending customer values, and production builds
+    // keep console.error.
+    console.error("Error creating order:", safeErrorSummary(error));
 
-    // Enhanced error logging for schema validation issues
     if (error instanceof Error) {
-      console.error("Error details:", {
-        name: error.name,
-        message: error.message,
-        stack: error.stack,
-      });
-
       // Check for validation errors (e.g., missing required fields or invalid mixer selections)
       // `error.message` carries model names, field paths and index names, so
       // it is logged above rather than returned.

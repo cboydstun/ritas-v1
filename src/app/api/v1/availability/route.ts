@@ -1,10 +1,26 @@
 import { NextResponse } from "next/server";
+import { clientIdentifier, rateLimit } from "@/lib/rate-limit";
 import { isMachineAvailable } from "@/lib/inventory";
 import { MACHINE_CAPACITY, MAX_RANGE_DAYS, spanInDays } from "@/lib/validation";
 import { MachineType } from "@/types";
 
 export async function GET(request: Request) {
   try {
+    // Unauthenticated, unthrottled, and three Mongo round-trips per call
+    // (blackouts, settings, overlapping rentals). A read limiter keeps an
+    // anonymous caller from turning it into cheap DB amplification; the cap is
+    // set well above what MachineStep's three-type parallel check needs.
+    const { allowed, retryAfter } = await rateLimit(
+      `availability:${clientIdentifier(request)}`,
+      { limit: 120, windowSeconds: 60 },
+    );
+    if (!allowed) {
+      return NextResponse.json(
+        { message: "Too many requests. Please try again shortly." },
+        { status: 429, headers: { "Retry-After": String(retryAfter) } },
+      );
+    }
+
     const url = new URL(request.url);
     const machineType = url.searchParams.get("machineType") as MachineType;
     const date = url.searchParams.get("date");

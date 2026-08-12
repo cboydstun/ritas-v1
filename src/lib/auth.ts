@@ -1,46 +1,47 @@
 import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcrypt";
-import { rateLimit } from "@/lib/rate-limit";
+import { rateLimit, identifierFromHeaders } from "@/lib/rate-limit";
 import { timingSafeEquals } from "@/lib/timing-safe";
 
 /**
- * Prefers a bcrypt hash in ADMIN_PASSWORD_HASH. Falls back to the legacy
- * plaintext ADMIN_PASSWORD so an existing deployment keeps working, but warns
- * loudly — generate a hash with:
+ * Checks the candidate against the bcrypt hash in ADMIN_PASSWORD_HASH.
+ *
+ * There is deliberately no plaintext fallback. ADMIN_PASSWORD used to be
+ * accepted when the hash was unset, which meant a typo'd or dropped hash
+ * silently downgraded admin auth to a plaintext comparison, and kept a
+ * second copy of the credential sitting in the environment for any env-var
+ * leak to pick up. Generate a hash with:
  *   node -e "console.log(require('bcrypt').hashSync(process.argv[1], 12))" 'pw'
  */
 async function verifyPassword(candidate: string): Promise<boolean> {
   const hash = process.env.ADMIN_PASSWORD_HASH;
-  if (hash) {
-    try {
-      return await bcrypt.compare(candidate, hash);
-    } catch (error) {
-      console.error("ADMIN_PASSWORD_HASH is not a valid bcrypt hash:", error);
-      return false;
-    }
+  if (!hash) {
+    console.error(
+      "ADMIN_PASSWORD_HASH is not set — admin login is disabled until it is.",
+    );
+    return false;
   }
 
-  const plaintext = process.env.ADMIN_PASSWORD;
-  if (!plaintext) return false;
-
-  console.warn(
-    "ADMIN_PASSWORD_HASH is not set — falling back to the plaintext " +
-      "ADMIN_PASSWORD. Set ADMIN_PASSWORD_HASH and remove the plaintext value.",
-  );
-  return timingSafeEquals(candidate, plaintext);
+  try {
+    return await bcrypt.compare(candidate, hash);
+  } catch (error) {
+    console.error("ADMIN_PASSWORD_HASH is not a valid bcrypt hash:", error);
+    return false;
+  }
 }
 
-/** Best-effort client IP for login throttling. */
+/**
+ * Client IP for login throttling.
+ *
+ * Shares `identifierFromHeaders` with the public-write limiter so both agree
+ * on which headers are trustworthy — this used to be a second, divergent copy
+ * that keyed the brute-force throttle on a client-writable header.
+ */
 function loginIdentifier(req: unknown): string {
   const headers = (req as { headers?: Record<string, string | undefined> })
     ?.headers;
-  const forwarded = headers?.["x-forwarded-for"];
-  if (forwarded) {
-    const first = forwarded.split(",")[0]?.trim();
-    if (first) return first;
-  }
-  return headers?.["x-real-ip"] ?? "unknown";
+  return identifierFromHeaders((name) => headers?.[name]);
 }
 
 // Extend the built-in types

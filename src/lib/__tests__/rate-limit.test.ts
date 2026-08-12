@@ -60,6 +60,30 @@ describe("clientIdentifier", () => {
 
     expect(clientIdentifier(new Request("http://localhost/x"))).toBe("unknown");
   });
+
+  // A proxy *appends* to x-forwarded-for, so its leftmost entry is whatever
+  // the client wrote. Keying on it let a caller rotate the header per request
+  // and dissolve every bucket in the app — the public-write caps and, worse,
+  // the admin login throttle. x-vercel-forwarded-for is platform-set.
+  it("prefers the platform header over a client-supplied x-forwarded-for", () => {
+    const request = new Request("http://localhost/x", {
+      headers: {
+        "x-forwarded-for": "1.2.3.4",
+        "x-vercel-forwarded-for": "203.0.113.7",
+        "x-real-ip": "5.6.7.8",
+      },
+    });
+
+    expect(clientIdentifier(request)).toBe("203.0.113.7");
+  });
+
+  it("ignores a spoofed prefix on the platform header", () => {
+    const request = new Request("http://localhost/x", {
+      headers: { "x-vercel-forwarded-for": "203.0.113.7, 10.0.0.1" },
+    });
+
+    expect(clientIdentifier(request)).toBe("203.0.113.7");
+  });
 });
 
 describe("readJsonBody", () => {

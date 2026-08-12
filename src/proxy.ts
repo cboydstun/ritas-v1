@@ -38,7 +38,13 @@ export async function proxy(request: NextRequest) {
 
   // Check for permanent redirects
   const pathname = request.nextUrl.pathname;
-  const redirectTo = PERMANENT_REDIRECTS[pathname];
+  // `Object.hasOwn` rather than a bare index: `PERMANENT_REDIRECTS` is a plain
+  // object literal, so a request for "/constructor" would otherwise return a
+  // truthy function and flow into `new URL(...)`. The matcher below confines
+  // pathname to /admin today, but this file's own note invites widening it.
+  const redirectTo = Object.hasOwn(PERMANENT_REDIRECTS, pathname)
+    ? PERMANENT_REDIRECTS[pathname]
+    : undefined;
   if (redirectTo) {
     const url = new URL(redirectTo, request.url);
     return NextResponse.redirect(url, { status: 301 });

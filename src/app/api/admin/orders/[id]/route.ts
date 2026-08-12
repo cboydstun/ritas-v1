@@ -23,6 +23,7 @@ import {
 import type { OrderFormData } from "@/components/order/types";
 import { spanInDays } from "@/lib/dates";
 import mongoose from "mongoose";
+import { guardAdminWrite } from "@/lib/api-guard";
 
 /**
  * Fields an admin may change on an existing order.
@@ -106,7 +107,11 @@ export async function PUT(request: Request, context: RouteParams) {
   }
 
   try {
-    const data = await request.json();
+    // Admin handlers read the body directly, so MAX_BODY_BYTES never
+    // applied to them. Post-auth this bounds a compromised session.
+    const guard = await guardAdminWrite(request);
+    if (!guard.ok) return guard.response;
+    const data = guard.data as Record<string, unknown>;
     await dbConnect();
 
     // Whitelist the fields an admin may edit. Spreading the body allowed

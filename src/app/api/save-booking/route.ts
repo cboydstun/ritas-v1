@@ -3,6 +3,7 @@ import dbConnect from "@/lib/mongodb";
 import { Rental } from "@/models/rental";
 import { Settings } from "@/models/settings";
 import { isMachineAvailable, releaseStaleHolds } from "@/lib/inventory";
+import { safeErrorSummary } from "@/lib/safe-error";
 import twilio from "twilio";
 import { Resend } from "resend";
 import { nanoid } from "nanoid";
@@ -546,7 +547,12 @@ export async function POST(request: Request) {
                   ? `<li style="margin-bottom: 8px;">🎉 Party Extras: ${rental.selectedExtras
                       .map(
                         (extra: { name: string; quantity?: number }) =>
-                          `${extra.name}${extra.quantity && extra.quantity > 1 ? ` (${extra.quantity}x)` : ""}`,
+                          // Names come from buildExtrasCatalog, which composes
+                          // mixer entries from admin-controlled
+                          // Settings.mixers[*].label — so this is not a
+                          // server-derived constant and reaches the customer's
+                          // inbox as raw HTML if left unescaped.
+                          `${escapeHtml(extra.name)}${extra.quantity && extra.quantity > 1 ? ` (${extra.quantity}x)` : ""}`,
                       )
                       .join(", ")}</li>`
                   : ""
@@ -609,16 +615,11 @@ export async function POST(request: Request) {
       message: "Booking confirmed successfully",
     });
   } catch (error) {
-    console.error("Error saving booking:", error);
-
-    // Log detailed error information
-    if (error instanceof Error) {
-      console.error("Error details:", {
-        name: error.name,
-        message: error.message,
-        stack: error.stack,
-      });
-    }
+    // Only the error's shape is logged. Mongoose validation and duplicate-key
+    // messages embed the offending values — name, email, phone, address — and
+    // production builds keep console.error, so logging them wholesale shipped
+    // customer PII into the runtime logs.
+    console.error("Error saving booking:", safeErrorSummary(error));
 
     // Detail stays in the logs — Mongoose validation and MongoServerError
     // messages expose collection names, field paths and index names.

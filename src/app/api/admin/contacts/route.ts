@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import dbConnect from "@/lib/mongodb";
 import { Contact } from "@/models/contact";
 import { adminListLimit, adminListHeaders } from "@/lib/admin-list";
+import { guardAdminWrite } from "@/lib/api-guard";
 
 // Get all contacts
 export async function GET(request: Request) {
@@ -48,7 +49,11 @@ export async function POST(request: Request) {
   }
 
   try {
-    const data = await request.json();
+    // Admin handlers read the body directly, so MAX_BODY_BYTES never
+    // applied to them. Post-auth this bounds a compromised session.
+    const guard = await guardAdminWrite(request);
+    if (!guard.ok) return guard.response;
+    const data = guard.data as Record<string, unknown>;
     await dbConnect();
 
     // Explicit field list, mirroring `/api/v1/contacts`. `Contact.create(data)`
