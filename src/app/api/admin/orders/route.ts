@@ -86,6 +86,30 @@ export async function POST(request: Request) {
       if (data[field] !== undefined) doc[field] = data[field];
     }
 
+    // `status` was copied straight from the body with no validation and no
+    // default, so an omitted status fell through to the schema default
+    // `pending` — which `releaseStaleHolds` cancels after STALE_HOLD_MINUTES,
+    // with no provenance check. An order created through the API rather than
+    // CreateOrderModal flipped itself to `cancelled` two hours later and put
+    // its unit back on sale. `pending_payment` is what a submitted booking
+    // carries and is the right default for a hand-created order.
+    const ADMIN_CREATABLE_STATUSES: readonly string[] = [
+      "pending",
+      "pending_payment",
+      "confirmed",
+      "in-progress",
+      "completed",
+      "cancelled",
+    ];
+    if (doc.status === undefined) {
+      doc.status = "pending_payment";
+    } else if (
+      typeof doc.status !== "string" ||
+      !ADMIN_CREATABLE_STATUSES.includes(doc.status)
+    ) {
+      return NextResponse.json({ message: "Invalid status" }, { status: 400 });
+    }
+
     if (
       typeof doc.machineType !== "string" ||
       !isMachineType(doc.machineType)

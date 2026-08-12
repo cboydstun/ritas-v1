@@ -4,7 +4,21 @@ import {
   ZIP_PATTERN,
   EMAIL_PATTERN,
 } from "@/lib/dates";
-import { buildExtrasCatalog } from "@/lib/extras-catalog";
+import { buildExtrasCatalog, MAX_EXTRA_QUANTITY } from "@/lib/extras-catalog";
+
+/**
+ * Round a currency amount to cents, decimal half-up.
+ *
+ * `Number(x.toFixed(2))` rounds the *binary* double, so a value that is an
+ * exact half-cent in decimal can round down: 489.50 * 0.03 is 14.685 in
+ * decimal but 14.684999999999999 as a double, and toFixed(2) yields 14.68
+ * rather than 14.69. That underbilled the processing fee by a cent and
+ * cascaded into salesTax and finalTotal, leaving the stored price, the
+ * confirmation email and the QuickBooks invoice (which rounds decimal
+ * half-up) disagreeing. Adding one ULP before scaling restores half-up.
+ */
+export const roundCurrency = (amount: number): number =>
+  Math.round(Number((amount * 100).toPrecision(12))) / 100;
 
 export const getNextDay = (dateStr: string): string => {
   // Append T00:00:00 so the date is parsed as local midnight, not UTC midnight
@@ -49,8 +63,11 @@ export const validateZipCode = (zipCode: string): boolean =>
   ZIP_PATTERN.test(zipCode);
 
 export const isBexarCountyZipCode = (zipCode: string): boolean => {
-  // Remove any non-digit characters (like dashes)
-  const cleanZip = zipCode.replace(/\D/g, "");
+  // Strip non-digits (the dash in a ZIP+4) and keep only the 5-digit prefix.
+  // `ZIP_PATTERN` admits `\d{5}-\d{4}`, so stripping alone left a 9-digit
+  // string that never matched an entry below: every valid ZIP+4 in Bexar
+  // County was turned away as "outside our service area".
+  const cleanZip = zipCode.replace(/\D/g, "").slice(0, 5);
 
   // Main San Antonio/Bexar County ZIP codes
   const bexarZips = [
@@ -184,58 +201,54 @@ export function computeOrderTotal(
     mixers: settings?.mixers,
   });
 
-  const extrasTotal = Number(
-    formData.selectedExtras
-      .reduce((sum, item) => {
-        const catalogItem = extrasCatalog.get(item.id);
-        if (!catalogItem) return sum;
+  const extrasTotal = roundCurrency(
+    formData.selectedExtras.reduce((sum, item) => {
+      const catalogItem = extrasCatalog.get(item.id);
+      if (!catalogItem) return sum;
 
-        const quantity = catalogItem.allowQuantity
-          ? Math.max(1, Math.floor(Number(item.quantity) || 1))
-          : 1;
-        const multiplier = catalogItem.pricingType === "flat" ? 1 : rentalDays;
-        return sum + catalogItem.price * quantity * multiplier;
-      }, 0)
-      .toFixed(2),
+      // Clamped to the same ceiling `resolveSelectedExtras` applies server
+      // side. Without it a restored draft carrying `quantity: 50` rendered a
+      // sidebar and review total the server would never charge.
+      const quantity = catalogItem.allowQuantity
+        ? Math.min(
+            MAX_EXTRA_QUANTITY,
+            Math.max(1, Math.floor(Number(item.quantity) || 1)),
+          )
+        : 1;
+      const multiplier = catalogItem.pricingType === "flat" ? 1 : rentalDays;
+      return sum + catalogItem.price * quantity * multiplier;
+    }, 0),
   );
 
   // Subtotal = machine rate × days + delivery + extras
-  const subtotal = Number(
-    (
-      perDayRate * rentalDays +
-      priceBreakdown.deliveryFee +
-      extrasTotal
-    ).toFixed(2),
+  const subtotal = roundCurrency(
+    perDayRate * rentalDays + priceBreakdown.deliveryFee + extrasTotal,
   );
 
   const discountRate = settings?.fees?.serviceDiscountRate ?? 0.1;
-  const serviceDiscountAmount = Number(
-    (formData.isServiceDiscount ? subtotal * discountRate : 0).toFixed(2),
+  const serviceDiscountAmount = roundCurrency(
+    formData.isServiceDiscount ? subtotal * discountRate : 0,
   );
 
-  const discountedSubtotal = Number(
-    (subtotal - serviceDiscountAmount).toFixed(2),
-  );
+  const discountedSubtotal = roundCurrency(subtotal - serviceDiscountAmount);
 
   // Matches the QuickBooks invoice: processing fee is a taxable line item, so
   // sales tax is applied to (discountedSubtotal + processingFee).
   const taxRate = settings?.fees?.salesTaxRate ?? 0.0825;
   const processingRate = settings?.fees?.processingFeeRate ?? 0.03;
-  const processingFee = Number(
-    (discountedSubtotal * processingRate).toFixed(2),
-  );
-  const salesTax = Number(
-    ((discountedSubtotal + processingFee) * taxRate).toFixed(2),
+  const processingFee = roundCurrency(discountedSubtotal * processingRate);
+  const salesTax = roundCurrency(
+    (discountedSubtotal + processingFee) * taxRate,
   );
 
   // Cash Price = what a customer pays when settling in cash on delivery (no
   // card-processing fee, tax on subtotal only). Mirrors QB's "Cash Price" line.
-  const cashPrice = Number(
-    (discountedSubtotal + discountedSubtotal * taxRate).toFixed(2),
+  const cashPrice = roundCurrency(
+    discountedSubtotal + discountedSubtotal * taxRate,
   );
 
-  const finalTotal = Number(
-    (discountedSubtotal + processingFee + salesTax).toFixed(2),
+  const finalTotal = roundCurrency(
+    discountedSubtotal + processingFee + salesTax,
   );
 
   return {

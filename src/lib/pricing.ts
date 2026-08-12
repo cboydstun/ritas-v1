@@ -42,9 +42,14 @@ export function calculatePrice(
     overrides?.machines?.[machineType]?.basePrice ?? machine.basePrice;
 
   const mixerPrice = mixers.reduce((sum, mixer) => {
+    // `Settings.mixers` is a Mixed map, so Mongoose does not type-check it and
+    // documents written before `settingsUpdateSchema` existed can hold a
+    // string or null here. `null !== undefined` made a mixer free, and a
+    // string concatenated into the running sum and poisoned the subtotal.
+    // `buildExtrasCatalog` already guards the same way.
     const overridePrice = overrides?.mixers?.[mixer]?.price;
     const unitPrice =
-      overridePrice !== undefined
+      typeof overridePrice === "number" && Number.isFinite(overridePrice)
         ? overridePrice
         : (mixerDetails[mixer as MixerType]?.price ?? 0);
     return sum + unitPrice;

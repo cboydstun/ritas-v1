@@ -313,4 +313,96 @@ describe("isBexarCountyZipCode", () => {
   it("rejects a ZIP outside Bexar County", () => {
     expect(isBexarCountyZipCode("75201")).toBe(false);
   });
+
+  // ZIP_PATTERN admits \d{5}-\d{4}, so validateZipCode passed a ZIP+4 and the
+  // address step then rejected it as out-of-area: stripping the dash without
+  // truncating left the 9-digit "782011234", which matches no entry.
+  it("accepts a ZIP+4 by its five-digit prefix", () => {
+    expect(isBexarCountyZipCode("78201-1234")).toBe(true);
+    expect(isBexarCountyZipCode("78299-0001")).toBe(true);
+  });
+
+  it("still rejects an out-of-area ZIP+4", () => {
+    expect(isBexarCountyZipCode("75201-1234")).toBe(false);
+  });
+});
+
+describe("computeOrderTotal cent rounding", () => {
+  const formData: OrderFormData = {
+    machineType: "single",
+    capacity: 15,
+    selectedMixers: [],
+    selectedExtras: [
+      { id: "table-chairs", quantity: 3 },
+      { id: "popcorn-machine", quantity: 1 },
+    ],
+    price: 0,
+    rentalDate: "2026-06-15",
+    rentalTime: "10:00",
+    returnDate: "2026-06-17",
+    returnTime: "10:00",
+    customer: {
+      name: "Test",
+      email: "test@example.com",
+      phone: "2105551234",
+      address: {
+        street: "123 Main",
+        city: "SA",
+        state: "TX",
+        zipCode: "78201",
+      },
+    },
+    notes: "",
+    isServiceDiscount: false,
+  } as unknown as OrderFormData;
+
+  // 489.50 * 0.03 is exactly 14.685 in decimal but 14.684999999999999 as a
+  // double, so Number(x.toFixed(2)) rounded it *down* to 14.68 and the error
+  // cascaded into salesTax and finalTotal. QuickBooks rounds decimal half-up,
+  // so the stored price disagreed with the invoice by a cent.
+  it("rounds a decimal half-cent up, matching the QuickBooks invoice", () => {
+    const result = computeOrderTotal(formData);
+
+    expect(result.subtotal).toBe(489.5);
+    expect(result.processingFee).toBe(14.69);
+    expect(result.salesTax).toBe(41.6);
+    expect(result.finalTotal).toBe(545.79);
+  });
+});
+
+describe("computeOrderTotal extra-quantity ceiling", () => {
+  const withQuantity = (quantity: number): OrderFormData =>
+    ({
+      machineType: "single",
+      capacity: 15,
+      selectedMixers: [],
+      selectedExtras: [{ id: "table-chairs", quantity }],
+      price: 0,
+      rentalDate: "2026-06-15",
+      rentalTime: "10:00",
+      returnDate: "2026-06-15",
+      returnTime: "10:00",
+      customer: {
+        name: "Test",
+        email: "test@example.com",
+        phone: "2105551234",
+        address: {
+          street: "123 Main",
+          city: "SA",
+          state: "TX",
+          zipCode: "78201",
+        },
+      },
+      notes: "",
+      isServiceDiscount: false,
+    }) as unknown as OrderFormData;
+
+  // resolveSelectedExtras clamps to MAX_EXTRA_QUANTITY server side. Without
+  // the same ceiling here, a restored localStorage draft rendered a total the
+  // server would never charge.
+  it("clamps to MAX_EXTRA_QUANTITY, matching the server", () => {
+    expect(computeOrderTotal(withQuantity(50)).subtotal).toBe(
+      computeOrderTotal(withQuantity(20)).subtotal,
+    );
+  });
 });

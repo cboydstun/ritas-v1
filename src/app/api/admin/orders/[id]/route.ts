@@ -3,7 +3,11 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import dbConnect from "@/lib/mongodb";
 import { Rental } from "@/models/rental";
-import { MACHINE_CAPACITY } from "@/lib/validation";
+import {
+  MACHINE_CAPACITY,
+  MAX_RANGE_DAYS,
+  dateStringSchema,
+} from "@/lib/validation";
 import { isMachineType } from "@/types/machine";
 import { Settings } from "@/models/settings";
 import { isMachineAvailable } from "@/lib/inventory";
@@ -13,9 +17,11 @@ import {
 } from "@/lib/extras-catalog";
 import {
   computeOrderTotal,
+  roundCurrency,
   type SettingsOverrides,
 } from "@/components/order/utils";
 import type { OrderFormData } from "@/components/order/types";
+import { spanInDays } from "@/lib/dates";
 import mongoose from "mongoose";
 
 /**
@@ -138,6 +144,37 @@ export async function PUT(request: Request, context: RouteParams) {
       status?: string;
     };
 
+    // The POST handler validates both dates and their ordering; this one did
+    // neither, and the schema type is a bare String. `PUT { returnDate }`
+    // earlier than the rental date made `eachDayInRange` return [], which made
+    // `isMachineAvailable` skip both of its loops and report available
+    // regardless of blackouts or a full date; `spanInDays` then went negative
+    // and `Math.max(1, ...)` repriced a multi-day rental as one day. The
+    // stored document could no longer satisfy the overlap query either, so its
+    // unit silently left inventory accounting.
+    const rentalDate = dateStringSchema.safeParse(merged.rentalDate);
+    const returnDate = dateStringSchema.safeParse(merged.returnDate);
+    if (!rentalDate.success || !returnDate.success) {
+      return NextResponse.json(
+        { message: "rentalDate and returnDate must be valid YYYY-MM-DD dates" },
+        { status: 400 },
+      );
+    }
+    if (returnDate.data < rentalDate.data) {
+      return NextResponse.json(
+        { message: "Return date must be on or after the rental date" },
+        { status: 400 },
+      );
+    }
+    // Unbounded ranges expand day-by-day in `eachDayInRange` and multiply the
+    // per-day rate, so the public route's ceiling applies here too.
+    if (spanInDays(rentalDate.data, returnDate.data) > MAX_RANGE_DAYS) {
+      return NextResponse.json(
+        { message: `Rental cannot exceed ${MAX_RANGE_DAYS} days` },
+        { status: 400 },
+      );
+    }
+
     // Reviving a cancelled order puts a unit back on a date that may have
     // filled up while it was cancelled. Only the machine/date fields used to
     // count as a booking change, so `PUT { status: "confirmed" }` restored the
@@ -188,11 +225,34 @@ export async function PUT(request: Request, context: RouteParams) {
       extras: settingsDoc?.extras,
     };
 
+    // Whether this edit touches anything the total is derived from. It used
+    // to be unconditional, so a `PUT { status }` from OrdersTable's status
+    // control — or `PUT { payment }` from its payment-status control —
+    // repriced a months-old order at *today's* Settings. Marking a payment
+    // collected was the precise action that rewrote the collected amount, and
+    // the stored total then disagreed with the confirmation email and the
+    // QuickBooks invoice. Historical orders keep the price they were sold at.
+    const PRICING_FIELDS = [
+      "machineType",
+      "selectedMixers",
+      "selectedExtras",
+      "rentalDate",
+      "returnDate",
+    ] as const;
+    const changesPricing = PRICING_FIELDS.some(
+      (field) => update[field] !== undefined,
+    );
+
     const { extras: resolvedExtras, unknownIds } = resolveSelectedExtras(
       merged.selectedExtras,
       { extras: settingsDoc?.extras, mixers: settingsDoc?.mixers },
     );
-    if (unknownIds.length > 0) {
+    // Only ids the caller actually sent are rejected. `merged` falls back to
+    // the stored order, so resolving against the *current* catalog used to
+    // 400 on an id an admin had since deleted from Settings — locking the
+    // order out of every edit, including `{ status: "cancelled" }`, while it
+    // went on holding its unit.
+    if (update.selectedExtras !== undefined && unknownIds.length > 0) {
       return NextResponse.json(
         { message: `Unknown extras: ${unknownIds.join(", ")}` },
         { status: 400 },
@@ -206,7 +266,7 @@ export async function PUT(request: Request, context: RouteParams) {
         extras: settingsDoc?.extras,
         mixers: settingsDoc?.mixers,
       });
-    if (unknownMixerIds.length > 0) {
+    if (update.selectedMixers !== undefined && unknownMixerIds.length > 0) {
       return NextResponse.json(
         { message: `Unknown mixers: ${unknownMixerIds.join(", ")}` },
         { status: 400 },
@@ -216,31 +276,55 @@ export async function PUT(request: Request, context: RouteParams) {
       update.selectedMixers = resolvedMixers;
     }
 
-    const totals = computeOrderTotal(
-      {
-        machineType: merged.machineType,
-        selectedMixers: resolvedMixers,
-        selectedExtras: resolvedExtras,
-        rentalDate: merged.rentalDate,
-        returnDate: merged.returnDate,
-        isServiceDiscount: false,
-      } as OrderFormData,
-      overrides,
-    );
+    if (changesPricing) {
+      const totals = computeOrderTotal(
+        {
+          machineType: merged.machineType,
+          selectedMixers: resolvedMixers,
+          selectedExtras: resolvedExtras,
+          rentalDate: rentalDate.data,
+          returnDate: returnDate.data,
+          isServiceDiscount: false,
+        } as OrderFormData,
+        overrides,
+      );
 
-    update.selectedExtras = resolvedExtras;
-    update.price = Number(totals.finalTotal.toFixed(2));
+      if (update.selectedExtras !== undefined) {
+        update.selectedExtras = resolvedExtras;
+      }
+      update.price = roundCurrency(totals.finalTotal);
 
-    // `payment.amount` follows the recomputed total unconditionally. It used
-    // to be left alone whenever the caller sent a `payment` object, and
-    // OrdersTable's payment-status control sends the whole object with the
-    // client's cached amount — so an order edited after a pricing change kept
-    // a stale amount against a fresh price.
-    if (update.payment !== undefined) {
+      // `payment.amount` follows the recomputed total. It used to be left
+      // alone whenever the caller sent a `payment` object, and OrdersTable's
+      // payment-status control sends the whole object with the client's
+      // cached amount — so an order edited after a pricing change kept a
+      // stale amount against a fresh price.
+      if (update.payment !== undefined) {
+        const payment = update.payment as Record<string, unknown>;
+        update.payment = { ...payment, amount: update.price };
+      } else if ((existing as { payment?: unknown }).payment) {
+        update["payment.amount"] = update.price;
+      } else {
+        // The dotted `$set` on an order with no payment subdocument created
+        // `payment: { amount }` with neither `status` nor `date`. Update
+        // validators only run on paths present in the update, so the schema's
+        // `required` on both never fired and a structurally invalid payment
+        // was persisted. Write a whole, valid subdocument instead.
+        update.payment = {
+          amount: update.price,
+          status: "pending",
+          date: new Date(),
+        };
+      }
+    } else if (update.payment !== undefined) {
+      // Not a pricing edit, so the stored price stands and the payment object
+      // must not carry the client's cached amount in over the top of it.
       const payment = update.payment as Record<string, unknown>;
-      update.payment = { ...payment, amount: update.price };
-    } else {
-      update["payment.amount"] = update.price;
+      const storedPrice = (existing as { price?: number }).price;
+      update.payment =
+        storedPrice === undefined
+          ? payment
+          : { ...payment, amount: storedPrice };
     }
 
     const rental = await Rental.findByIdAndUpdate(id, update, {

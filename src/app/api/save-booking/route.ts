@@ -297,7 +297,24 @@ export async function POST(request: Request) {
       },
     );
     if (!recheck.available) {
-      await Rental.deleteOne({ _id: savedRental._id });
+      // The compensating delete is the only thing standing between a losing
+      // racer and an oversold unit. If it throws, the outer catch returns a
+      // generic 500 and the rental stays in the collection holding inventory,
+      // indistinguishable in the logs from any other failure — so it gets its
+      // own marker an operator can alert on.
+      try {
+        await Rental.deleteOne({ _id: savedRental._id });
+      } catch (rollbackError) {
+        console.error("OVERSELL_ROLLBACK_FAILED", {
+          rentalId: savedRental._id.toString(),
+          bookingId: savedRental.bookingId,
+          reason:
+            rollbackError instanceof Error
+              ? rollbackError.name
+              : "UnknownError",
+        });
+        throw rollbackError;
+      }
       return NextResponse.json(
         {
           message:
