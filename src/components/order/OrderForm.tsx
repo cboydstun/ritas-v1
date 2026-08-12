@@ -11,6 +11,8 @@ import {
   type StepProps,
   steps,
 } from "./types";
+import { buildExtrasCatalog, buildMixerCatalog } from "@/lib/extras-catalog";
+import { todayLocalIso } from "@/lib/dates";
 import {
   getNextDay,
   validateDeliveryTime,
@@ -85,6 +87,7 @@ export default function OrderForm() {
   const searchParams = useSearchParams();
 
   const [settings, setSettings] = useState<SettingsOverrides>({});
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
 
   useEffect(() => {
     fetch("/api/v1/settings")
@@ -99,7 +102,10 @@ export default function OrderForm() {
       .then((data: SettingsOverrides) => setSettings(data))
       .catch(() => {
         // keep defaults on network error
-      });
+      })
+      // Draft pruning below has to wait for the real catalog. Pruning against
+      // the empty default would drop every admin-added extra from a draft.
+      .finally(() => setSettingsLoaded(true));
   }, []);
 
   // Build ordered mixer list from settings for MachineStep
@@ -159,6 +165,12 @@ export default function OrderForm() {
     isServiceDiscount: false,
   });
 
+  // A step name written by an older deploy is not a step name now. Restoring
+  // it unchecked left ProgressBar indexing `steps[-1]`, which threw on render
+  // and bricked the order page until localStorage was cleared by hand.
+  const isOrderStep = (value: unknown): value is OrderStep =>
+    typeof value === "string" && steps.some((s) => s.id === value);
+
   // Attempt to restore a saved draft on first render (client-side only).
   // Draft is ignored when URL params are present (user arrived via a "Book X" link).
   const restoreDraft = (): {
@@ -188,22 +200,32 @@ export default function OrderForm() {
           // older schema (one without `customer.address`) made DetailsStep
           // throw on `customer.address.street` and bricked the order page
           // until the visitor cleared localStorage.
-          return {
-            formData: {
-              ...defaults,
-              ...parsed.formData,
-              customer: {
-                ...defaults.customer,
-                ...parsed.formData.customer,
-                address: {
-                  ...defaults.customer.address,
-                  ...parsed.formData.customer?.address,
-                },
+          const merged: OrderFormData = {
+            ...defaults,
+            ...parsed.formData,
+            customer: {
+              ...defaults.customer,
+              ...parsed.formData.customer,
+              address: {
+                ...defaults.customer.address,
+                ...parsed.formData.customer?.address,
               },
             },
-            step: parsed.step ?? "date",
-            hasDraft: true,
           };
+
+          // A draft outlives the day it was written on. Restoring a past
+          // rental date left it selected (the picker only disables past days
+          // for *new* clicks) and the visitor walked all the way to review
+          // before /api/save-booking answered "Rental date cannot be in the
+          // past" — after firing availability checks for dates in the past.
+          let step = isOrderStep(parsed.step) ? parsed.step : "date";
+          if (merged.rentalDate && merged.rentalDate < todayLocalIso()) {
+            merged.rentalDate = "";
+            merged.returnDate = "";
+            step = "date";
+          }
+
+          return { formData: merged, step, hasDraft: true };
         }
       }
     } catch {
@@ -259,6 +281,39 @@ export default function OrderForm() {
     JSON.stringify(formData.selectedExtras),
     settings,
   ]);
+
+  // A draft can also outlive the catalog it was written against: when an admin
+  // removes a mixer flavour, its `mixer-<id>` add-on is orphaned. Every
+  // renderer skips an unknown id and computeOrderTotal ignores it, but
+  // ReviewStep still posts it and /api/save-booking rejects the whole booking
+  // — leaving the customer a 400 with no visible line item to uncheck. Drop
+  // orphans as soon as the real catalog is known.
+  useEffect(() => {
+    if (!settingsLoaded) return;
+
+    const extrasCatalog = buildExtrasCatalog({
+      extras: settings.extras,
+      mixers: settings.mixers,
+    });
+    const mixerCatalog = buildMixerCatalog({ mixers: settings.mixers });
+
+    setFormData((prev) => {
+      const selectedExtras = prev.selectedExtras.filter((item) =>
+        extrasCatalog.has(item.id),
+      );
+      const selectedMixers = prev.selectedMixers.filter((mixer) =>
+        mixerCatalog.has(mixer),
+      );
+
+      if (
+        selectedExtras.length === prev.selectedExtras.length &&
+        selectedMixers.length === prev.selectedMixers.length
+      ) {
+        return prev;
+      }
+      return { ...prev, selectedExtras, selectedMixers };
+    });
+  }, [settingsLoaded, settings]);
 
   /** Clear draft — called by ReviewStep just before redirecting to success */
   const clearDraft = () => {

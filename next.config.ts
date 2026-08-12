@@ -87,7 +87,15 @@ const nextConfig: NextConfig = {
     ];
   },
   compiler: {
-    removeConsole: process.env.NODE_ENV === "production",
+    // `console.error`/`console.warn` are kept: stripping every console call
+    // deleted the only signal for real production failures — the DB connect
+    // handler in `src/lib/mongodb.ts`, the booking save, and the
+    // release-holds cron all report through `console.error`, so Vercel's
+    // runtime logs were blind for exactly the failures worth paging on.
+    removeConsole:
+      process.env.NODE_ENV === "production"
+        ? { exclude: ["error", "warn"] }
+        : false,
   },
   typescript: {
     // The build type-checks again. `npm run typecheck` (tsc --noEmit) is the

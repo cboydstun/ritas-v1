@@ -13,7 +13,10 @@ import {
   type SettingsOverrides,
 } from "@/components/order/utils";
 import type { OrderFormData } from "@/components/order/types";
-import { resolveSelectedExtras } from "@/lib/extras-catalog";
+import {
+  resolveSelectedExtras,
+  resolveSelectedMixers,
+} from "@/lib/extras-catalog";
 import { guardPublicWrite } from "@/lib/api-guard";
 import {
   MACHINE_CAPACITY,
@@ -111,7 +114,10 @@ export async function POST(request: Request) {
         double?: { basePrice: number };
         triple?: { basePrice: number };
       };
-      mixers?: Record<string, { price: number }>;
+      mixers?: Record<
+        string,
+        { price: number; label?: string; description?: string }
+      >;
       extras?: Record<string, { price: number }>;
     } | null;
 
@@ -140,10 +146,31 @@ export async function POST(request: Request) {
       );
     }
 
+    // Tank mixers are re-resolved the same way. The set of valid flavours is
+    // whatever `Settings.mixers` holds, so a flavour an admin adds is a real,
+    // bookable choice rather than a card that 400s at checkout.
+    const { mixers: resolvedMixers, unknownIds: unknownMixerIds } =
+      resolveSelectedMixers(rentalData.selectedMixers, {
+        extras: settingsDoc?.extras,
+        mixers: settingsDoc?.mixers,
+      });
+    if (unknownMixerIds.length > 0) {
+      return NextResponse.json(
+        { message: "One or more selected mixers are not available" },
+        { status: 400 },
+      );
+    }
+
+    /** Display label for a mixer id, including admin-added flavours. */
+    const mixerLabel = (id: string): string =>
+      settingsDoc?.mixers?.[id]?.label ??
+      mixerDetails[id as keyof typeof mixerDetails]?.label ??
+      id;
+
     const totals = computeOrderTotal(
       {
         machineType: rentalData.machineType,
-        selectedMixers: rentalData.selectedMixers,
+        selectedMixers: resolvedMixers,
         selectedExtras,
         rentalDate: rentalData.rentalDate,
         returnDate: rentalData.returnDate,
@@ -178,7 +205,7 @@ export async function POST(request: Request) {
     const rental = new Rental({
       machineType: rentalData.machineType,
       capacity,
-      selectedMixers: rentalData.selectedMixers,
+      selectedMixers: resolvedMixers,
       selectedExtras,
       price: emailTotal,
       rentalDate: rentalData.rentalDate,
@@ -288,7 +315,7 @@ export async function POST(request: Request) {
             `Time: ${formattedTime}\n` +
             `Address: ${rental.customer.address.street}, ${rental.customer.address.city}, ${rental.customer.address.state} ${rental.customer.address.zipCode}\n` +
             `Machine: ${rental.machineType}\n` +
-            `Mixers: ${rental.selectedMixers.join(", ") || "None"}\n` +
+            `Mixers: ${resolvedMixers.map(mixerLabel).join(", ") || "None"}\n` +
             `${extrasText}` +
             `Customer: ${rental.customer.name}\n` +
             `Phone: ${rental.customer.phone}\n` +
@@ -314,16 +341,15 @@ export async function POST(request: Request) {
         : rental.machineType === "double"
           ? 2
           : 3;
-    const selectedMixers: string[] = rental.selectedMixers || [];
+    const selectedMixers: string[] = resolvedMixers;
 
     const tankRows = Array.from({ length: tankCount }, (_, i) => {
       const mixerKey = selectedMixers[i] as
-        | keyof typeof mixerDetails
-        | undefined;
+        keyof typeof mixerDetails | undefined;
       const tankLabel = tankCount === 1 ? "Your Tank" : `Tank ${i + 1}`;
 
       if (mixerKey) {
-        const name = mixerDetails[mixerKey]?.label ?? mixerKey;
+        const name = escapeHtml(mixerLabel(mixerKey));
         return `
           <li style="margin-bottom: 12px; padding: 10px; background: #f0fdf4; border-left: 3px solid #22c55e; border-radius: 4px;">
             <strong>${tankLabel} — ${name}</strong><br/>
@@ -373,7 +399,7 @@ export async function POST(request: Request) {
           ${
             mixerPrice > 0
               ? `<tr>
-            <td style="padding: 5px 0; color: #555;">${(rentalData.selectedMixers ?? []).length} Mixer${(rentalData.selectedMixers ?? []).length > 1 ? "s" : ""}:</td>
+            <td style="padding: 5px 0; color: #555;">${resolvedMixers.length} Mixer${resolvedMixers.length > 1 ? "s" : ""}:</td>
             <td style="padding: 5px 0; text-align: right;">$${formatPrice(mixerPrice)}/day</td>
           </tr>`
               : ""
@@ -448,11 +474,7 @@ export async function POST(request: Request) {
               <li style="margin-bottom: 8px;">🍹 Selected Mixers: ${
                 selectedMixers.length > 0
                   ? selectedMixers
-                      .map(
-                        (m) =>
-                          mixerDetails[m as keyof typeof mixerDetails]?.label ??
-                          m,
-                      )
+                      .map((m) => escapeHtml(mixerLabel(m)))
                       .join(", ")
                   : "None — Bring your own mixer"
               }</li>

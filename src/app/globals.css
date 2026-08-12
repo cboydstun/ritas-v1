@@ -41,76 +41,123 @@ body {
   }
 }
 
-/* React Day Picker Custom Styling */
+/* ── React Day Picker (v9) ────────────────────────────────────────────────
+   Class names and custom properties were renamed wholesale in v9
+   (`rdp-day_selected` -> `rdp-selected`, `rdp-head_cell` -> `rdp-weekday`,
+   `rdp-caption` -> `rdp-month_caption`, `--rdp-cell-size` -> `--rdp-day-width`
+   / `--rdp-day-height`). The v8 selectors this file used to carry matched
+   nothing, so step 1 of the order funnel rendered with no selected-day
+   highlight, no dimmed past dates and no brand colour.
+
+   Colours are the literal values from `tailwind.config.ts`; keep the two in
+   sync. Dark mode keys off the `.dark` class that next-themes sets
+   (`ThemeWrapper.tsx`, `attribute="class"`), not `prefers-color-scheme` —
+   keying it to the OS meant a user on a dark OS who chose Light got a dark
+   calendar. */
 .rdp-custom {
-  --rdp-cell-size: 42px;
-  --rdp-accent-color: #10b981;
-  --rdp-background-color: #f0fdf4;
+  --rdp-accent-color: #4b7a0a; /* colors.margarita */
+  --rdp-accent-background-color: #eef6e2;
+  --rdp-day-width: 2.75rem;
+  --rdp-day-height: 2.75rem;
+  --rdp-day_button-width: 2.75rem;
+  --rdp-day_button-height: 2.75rem;
+  --rdp-day_button-border-radius: 0.5rem;
+  --rdp-disabled-opacity: 0.3;
+  --rdp-outside-opacity: 0.4;
+  --rdp-today-color: #026b62; /* colors.teal */
+  --rdp-range_middle-background-color: #eef6e2;
+  --rdp-range_middle-color: #2f4a06;
   font-family: inherit;
 }
 
-.rdp-custom .rdp-day_selected {
-  background-color: var(--rdp-accent-color);
-  color: white;
-  font-weight: 600;
+.rdp-custom .rdp-month_caption {
+  color: #333333; /* colors.charcoal */
+  font-weight: 700;
+  font-size: 1.125rem;
+  margin-bottom: 0.5rem;
 }
 
-.rdp-custom .rdp-day_selected:hover {
-  background-color: #059669;
-}
-
-.rdp-custom .rdp-day {
-  border-radius: 0.5rem;
-  transition: all 0.2s;
-}
-
-.rdp-custom .rdp-day:hover:not(.rdp-day_disabled):not(.rdp-day_selected) {
-  background-color: #d1fae5;
-  color: #065f46;
-}
-
-.rdp-custom .rdp-day_disabled {
-  opacity: 0.3;
-  cursor: not-allowed;
-}
-
-.rdp-custom .rdp-button:hover:not([disabled]):not(.rdp-day_selected) {
-  background-color: #d1fae5;
-}
-
-.rdp-custom .rdp-head_cell {
+.rdp-custom .rdp-weekday {
   color: #6b7280;
   font-weight: 600;
   font-size: 0.875rem;
+  opacity: 1;
+  text-transform: none;
 }
 
-.rdp-custom .rdp-caption {
-  color: var(--charcoal);
+.rdp-custom .rdp-day_button {
+  transition:
+    background-color 0.2s,
+    color 0.2s;
+}
+
+.rdp-custom
+  .rdp-day:not(.rdp-disabled):not(.rdp-selected)
+  .rdp-day_button:hover {
+  background-color: #eef6e2;
+  color: #2f4a06;
+}
+
+.rdp-custom .rdp-selected .rdp-day_button {
+  background-color: var(--rdp-accent-color);
+  border-color: var(--rdp-accent-color);
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.rdp-custom .rdp-selected .rdp-day_button:hover {
+  background-color: #3c6108;
+}
+
+/* Days between the two ends of the range keep the band background rather than
+   the solid accent the endpoints get. Must follow the `.rdp-selected` rule —
+   range-middle days carry `rdp-selected` too. */
+.rdp-custom .rdp-range_middle .rdp-day_button {
+  background-color: transparent;
+  border-color: transparent;
+  color: var(--rdp-range_middle-color);
+  font-weight: 500;
+}
+
+.rdp-custom .rdp-disabled {
+  cursor: not-allowed;
+}
+
+.rdp-custom .rdp-today:not(.rdp-selected) .rdp-day_button {
   font-weight: 700;
-  font-size: 1.125rem;
-  margin-bottom: 1rem;
 }
 
-/* Dark mode support */
-@media (prefers-color-scheme: dark) {
-  .rdp-custom {
-    --rdp-background-color: rgba(30, 41, 59, 0.3);
-  }
+.rdp-custom .rdp-chevron {
+  fill: #4b7a0a;
+}
 
-  .rdp-custom .rdp-day:hover:not(.rdp-day_disabled):not(.rdp-day_selected) {
-    background-color: rgba(16, 185, 129, 0.2);
-    color: #6ee7b7;
-  }
+.dark .rdp-custom {
+  --rdp-accent-background-color: rgba(75, 122, 10, 0.25);
+  --rdp-today-color: #6ee7b7;
+  --rdp-range_middle-background-color: rgba(75, 122, 10, 0.25);
+  --rdp-range_middle-color: #d9f99d;
+}
 
-  .rdp-custom .rdp-button:hover:not([disabled]):not(.rdp-day_selected) {
-    background-color: rgba(16, 185, 129, 0.2);
-  }
+.dark .rdp-custom .rdp-month_caption {
+  color: #ffffff;
+}
 
-  .rdp-custom .rdp-head_cell {
-    color: #9ca3af;
-  }
+.dark .rdp-custom .rdp-weekday {
+  color: #9ca3af;
+}
 
-  .rdp-custom .rdp-caption {
-    color: white;
-  }
+.dark .rdp-custom .rdp-day_button {
+  color: #ffffff;
+}
+
+.dark
+  .rdp-custom
+  .rdp-day:not(.rdp-disabled):not(.rdp-selected)
+  .rdp-day_button:hover {
+  background-color: rgba(75, 122, 10, 0.3);
+  color: #d9f99d;
+}
+
+.dark .rdp-custom .rdp-chevron {
+  fill: #a3e635;
 }
