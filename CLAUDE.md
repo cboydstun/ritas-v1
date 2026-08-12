@@ -20,7 +20,7 @@ npm run test:ci      # Jest in CI mode with coverage
 
 Run a single test file: `npx jest src/components/order/steps/__tests__/SomeTest.test.tsx`
 
-`.github/workflows/ci.yml` runs `typecheck`, `lint`, `format:check` and `test:ci` on every push and PR to `main`. `test:ci` deliberately does **not** pass `--passWithNoTests`, and `jest.config.js` carries `coverageThreshold`s seeded at the coverage when they were added — raise them, do not lower them to get a build out.
+`.github/workflows/ci.yml` runs `typecheck`, `lint`, `format:check`, `test:ci` and `build` on every push and PR to `main`. The build step is what gates static generation — 51 pages are prerendered, and a page that throws during prerender is a red deploy the other four gates all report green. It runs with a deliberately unreachable `MONGODB_URI`, because `src/lib/mongodb.ts` throws at import when the variable is absent while the one page that reads the database at build time catches the connection failure. `test:ci` deliberately does **not** pass `--passWithNoTests`, and `jest.config.js` carries `coverageThreshold`s seeded at the coverage when they were added — raise them, do not lower them to get a build out.
 
 Two jest footguns in this repo: importing `jest` from `@jest/globals` defeats SWC's `jest.mock` hoisting, so a `jest.mock("next/navigation", ...)` in such a file silently does nothing — use the global `jest`. And `nanoid` is ESM-only, so `transformIgnorePatterns` must keep transforming it.
 
@@ -30,7 +30,9 @@ Tests are co-located in `__tests__/` folders next to the code they cover. Jest i
 
 `npm run lint` calls `eslint .` directly (`next lint` is removed in Next 16). `eslint.config.mjs` must keep its `ignores` entry for `.next/` — without it ESLint walks the build output and reports thousands of bogus errors in minified chunks. It uses eslint-config-next 16's native flat configs; do not reintroduce `FlatCompat`, which throws "Converting circular structure to JSON" against v16.
 
-`react-hooks/set-state-in-effect`, `react-hooks/immutability` and `react-hooks/purity` (new in eslint-plugin-react-hooks 7) are set to **warn**. They flag 24 pre-existing sites, a mix of genuine smells and false positives for what this code does. Triaging them is an open task; the warnings are deliberate, not noise to silence.
+`react-hooks/set-state-in-effect`, `react-hooks/immutability` and `react-hooks/purity` (new in eslint-plugin-react-hooks 7) are set to **warn**. The triage is done: 24 warnings became 18, and the `purity` and `immutability` classes are gone. Four were genuine and were fixed (`OrderFormTracker` held two values in state that are never rendered; `DateSelectionStep` mirrored the parent's dates and synced them back with an effect; `CreateOrderModal` set `price` unconditionally). Six were an effect calling a `const` fetcher declared below it — the effects moved, they were not suppressed. The one true false positive, `ReviewStep`'s `window.location.href`, carries a targeted disable and the reason.
+
+The remaining 18 are all `set-state-in-effect` and all benign: canonical `mounted` hydration guards, `setCurrentPage(1)` on a filter change, and conditionally-mounted form initialisation. **None loops, and there is no in-place state mutation anywhere in the set.** Do not add blanket disables to make the number zero.
 
 **Styling is Tailwind 4.** There is no `tailwind.config.ts` — the theme lives in an `@theme` block in `src/app/globals.css`, and `postcss.config.js` loads `@tailwindcss/postcss` (nesting and vendor prefixing are built in, so there is no `autoprefixer`). Add a colour or keyframe by adding a `--color-*` / `--animate-*` custom property there. The dark variant is `@custom-variant dark (&:where(.dark, .dark *))`, matching the class next-themes puts on `<html>`.
 
@@ -42,20 +44,20 @@ Next.js 16 (App Router) · React 19 · TypeScript 5 · MongoDB/Mongoose 9 · Nex
 
 ### Routing & Pages
 
-`src/app/` uses the Next.js App Router. Public pages live at the root (`/order`, `/pricing`, `/long-term-lease`, etc.), plus statically generated `/service-area/[city]` pages driven by `SERVICE_AREAS` in `src/lib/service-areas.ts` — the same list `MapSection` and `sitemap.ts` render from, so adding an area there gives it a page, a homepage link and a sitemap entry. Admin pages are under `src/app/admin/` and are protected by the proxy (`src/proxy.ts` — Next 16's rename of the middleware file convention). API routes are split between `src/app/api/v1/` (public) and `src/app/api/admin/` (auth-required). `/api/save-booking` (the public checkout) and `/api/cron/release-holds` sit outside both namespaces at `src/app/api/`.
+`src/app/` uses the Next.js App Router. Public pages live at the root (`/order`, `/pricing`, `/long-term-lease`, etc.), plus a `/service-area` hub and the statically generated `/service-area/[city]` pages under it, all driven by `SERVICE_AREAS` in `src/lib/service-areas.ts` — the same list `MapSection` and `sitemap.ts` render from, so adding an area there gives it a page, a homepage link, a hub entry and a sitemap entry. The hub exists because the bare path was a 404 and the city pages linked only within their own region, leaving four disconnected islands. Admin pages are under `src/app/admin/` and are protected by the proxy (`src/proxy.ts` — Next 16's rename of the middleware file convention). API routes are split between `src/app/api/v1/` (public) and `src/app/api/admin/` (auth-required). `/api/save-booking` (the public checkout) and `/api/cron/release-holds` sit outside both namespaces at `src/app/api/`.
 
 Two customer-facing verticals share this codebase: **event rentals** (the `/order` wizard, `Rental` model) and **long-term commercial leases** (`/long-term-lease`, an inquiry form only — no payment, `LeaseInquiry` model).
 
 ### Multi-Step Order Form
 
-The order flow (`/order`) is a single client component `src/components/order/OrderForm.tsx` that manages a 5-step wizard: date → machine → details → extras → review. Each step is lazy-loaded via `next/dynamic`. Form state is persisted to `localStorage` under key `satx-ritas-order-draft` so drafts survive page reloads. On mount, the form fetches `/api/v1/settings` to get dynamic overrides (mixer options, delivery window hours, pricing). The `StepProps` interface in `src/components/order/types.ts` is the contract between the parent form and each step component.
+The order flow (`/order`) is a single client component `src/components/order/OrderForm.tsx` that manages a 5-step wizard: date → machine → details → extras → review. Each step is lazy-loaded via `next/dynamic`. Form state is persisted to `localStorage` under key `satx-ritas-order-draft` so drafts survive page reloads. The draft carries a `version`; a mismatch discards it rather than merging. **Validate every field you restore** — `machineType` and both selection arrays reach `calculatePrice`, which _throws_ rather than defaulting, from inside a `useState` initialiser. An unchecked value took the whole order page into the error boundary, and "Try again" re-read the same draft, so it was unrecoverable without the visitor clearing localStorage. The `?machine=` query param is validated for the same reason. On mount, the form fetches `/api/v1/settings` to get dynamic overrides (mixer options, delivery window hours, pricing). The `StepProps` interface in `src/components/order/types.ts` is the contract between the parent form and each step component.
 
 ### Pricing
 
 The single source of truth for all order totals is `computeOrderTotal()` in `src/components/order/utils.ts`. It wraps `calculatePrice()` from `src/lib/pricing.ts` and adds multi-day, extras, and discount logic:
 
 - `perDayRate = basePrice + mixerPrice`
-- `rentalDays = calculateRentalDays(rentalDate, returnDate)` — diffs **UTC** calendar dates, minimum 1. Do not reintroduce a millisecond diff of local-midnight `Date`s: a DST fall-back day is 25 hours, which billed one night as two.
+- `rentalDays = calculateRentalDays(rentalDate, returnDate)` — a `Math.max(1, …)` clamp over `spanInDays()` from `src/lib/dates.ts`, which diffs **UTC** calendar dates. Do not reintroduce a millisecond diff of local-midnight `Date`s: a DST fall-back day is 25 hours, which billed one night as two. There is one implementation now; it used to exist twice, with the comment recording that bug on only one copy.
 - `subtotal = perDayRate × rentalDays + deliveryFee + extrasTotal` (machine rate is per-day; delivery is flat; each extra is per-day unless its catalog entry says `pricingType: "flat"`)
 - `serviceDiscountAmount = subtotal × discountRate` — **retired**. No UI sets it and no server route accepts it from a request body; the field survives only for legacy bookings.
 - `discountedSubtotal = subtotal − serviceDiscountAmount`
@@ -80,6 +82,8 @@ Default constants: delivery $20, sales tax 8.25%, processing 3%. Base machine pr
 So a machine type is bookable while units remain, not simply because one rental exists. `DEFAULT_INVENTORY` in `inventory.ts` matches the `Settings` schema defaults (`single: 3, double: 3, triple: 2`) and applies only when no Settings document or configured value exists — keep the two in sync.
 
 `isMachineAvailable` accepts an `excludeRentalId` option so a booking is not blocked by its own hold, and an `ignoreCreatedFrom` option that makes the post-write recheck asymmetric. `/api/save-booking` passes both to re-check after the write and roll back on oversell, which closes the check-then-write race on the last unit. The recheck must stay asymmetric: when it was symmetric, two racers for the last unit each saw the other and each rolled itself back, rejecting both customers and selling nothing.
+
+A third option, `tieBreakId`, settles the same-millisecond case. `createdAt` comes from `default: Date.now`, so two requests constructed in the same tick each fell outside the other's `$lt` cutoff and both survived, putting inventory one over. The id comparison decides which of the two counts as having been there first.
 
 **Only `pending` expires.** `releaseStaleHolds()` cancels `pending` holds older than `STALE_HOLD_MINUTES` (120); it runs from the `/api/cron/release-holds` Vercel cron (see `vercel.json`, guarded by `CRON_SECRET`) and again at the top of `/api/save-booking` as a safety net. `pending_payment` is the status a _submitted_ booking carries — the customer has a confirmation email and is invoiced out of band — and nothing promotes it to `confirmed` except a manual admin edit. Reaping it cancelled every real booking two hours after it was placed and put the machine back on sale. Do not add it back to either the reaper or the query-time cutoff.
 
@@ -118,11 +122,15 @@ The PayPal integration was removed — the component had no importers and its ro
 - `price` and `payment.amount` are both set from the server-side `computeOrderTotal`.
 - `isServiceDiscount` is hard-coded `false`.
 
-The admin order routes (`POST /api/admin/orders`, `PUT /api/admin/orders/[id]`) enforce the same invariants: an explicit field whitelist, `capacity` derived from `machineType`, extras re-resolved through the catalog, and `price` recomputed by `computeOrderTotal`. Both re-check `isMachineAvailable` before writing: `POST` on create, and `PUT` (with `excludeRentalId`) whenever an edit moves the machine type or the dates **or revives a cancelled order** — `PUT { status: "confirmed" }` on a cancelled booking put a unit back onto a date that may have filled up in the meantime. Neither route accepts `capacity` or `price` from the body.
+The admin order routes (`POST /api/admin/orders`, `PUT /api/admin/orders/[id]`) enforce the same invariants: an explicit field whitelist, `capacity` derived from `machineType`, extras re-resolved through the catalog, and `price` recomputed by `computeOrderTotal`. Both re-check `isMachineAvailable` before writing: `POST` on create, and `PUT` (with `excludeRentalId`) whenever an edit moves the machine type or the dates **or revives a cancelled order** — `PUT { status: "confirmed" }` on a cancelled booking put a unit back onto a date that may have filled up in the meantime. Neither route accepts `capacity` or `price` from the body, both re-resolve `selectedMixers` through `resolveSelectedMixers`, and `payment.amount` **always** follows the recomputed `price`. It used to be left alone whenever the caller sent a `payment` object, and `OrdersTable`'s payment-status control sends the whole object — so an order edited after a pricing change kept a stale amount against a fresh price.
 
 Model validators that need `machineType` must read it via `machineTypeInContext(this)` (`src/models/rental.ts`). Under `findByIdAndUpdate(..., { runValidators: true })` Mongoose binds `this` to the Query, not the document, so reading `this.machineType` directly is always `undefined` — that is what made every admin order edit fail validation and return a 500.
 
-Server-side "is this date in the past" checks go through `todayLocalIso()` in `src/lib/validation.ts`, which resolves the date in `America/Chicago`. Vercel functions run UTC; reading the server clock's local date rejected same-day bookings every evening after 19:00 Central.
+Server-side "is this date in the past" checks go through `todayLocalIso()` in `src/lib/dates.ts` (re-exported from `validation.ts`), which resolves the date in `America/Chicago`. Vercel functions run UTC; reading the server clock's local date rejected same-day bookings every evening after 19:00 Central.
+
+`src/lib/dates.ts` is the **zod-free** module both the browser and the server import: `todayLocalIso`, `spanInDays`, and the `EMAIL_PATTERN` / `PHONE_PATTERN` / `ZIP_PATTERN` field regexes. Do not import zod into it — that is what would put every request schema into the order-form bundle. The client's `validateEmail` / `validatePhone` / `validateZipCode` in `components/order/utils.ts` and the zod schemas in `validation.ts` share these constants, so a value cannot clear all five wizard steps and then 400 at checkout. It could: the client's old email regex was looser than zod's `.email()`.
+
+`/api/save-booking` also re-runs `validateDeliveryTime` and `isBexarCountyZipCode` server-side. Both rules were browser-only, so a direct POST could book a 03:00 delivery to any ZIP in the country.
 
 ### Public API Hardening
 
@@ -144,7 +152,9 @@ The `Settings` model (`src/models/settings.ts`) stores **one singleton document 
 - `operations` — `deliveryWindowStartHour` / `EndHour`, guarded by a `pre("validate")` hook requiring end > start
 - `documentation` — lease PDF URL/label
 
-`GET /api/v1/settings` is public and returns only these whitelisted fields; if no document exists it instantiates a non-persisted `new Settings({})` so callers always get the schema defaults. Both the route and any server component read it through `getPublicSettings()` (`src/lib/public-settings.ts`) — a server component must call that directly rather than HTTP-fetching the app's own route. Admin edits go through `/admin/settings` → `PUT /api/admin/settings`, which writes an explicit field whitelist rather than spreading the body. The order form consumes this through the `SettingsOverrides` type in `src/components/order/utils.ts`.
+`GET /api/v1/settings` is public and returns only these whitelisted fields; if no document exists it instantiates a non-persisted `new Settings({})` so callers always get the schema defaults. Both the route and any server component read it through `getPublicSettings()` (`src/lib/public-settings.ts`) — a server component must call that directly rather than HTTP-fetching the app's own route. **A page that calls it must also export `revalidate` (or `dynamic`)**, or Next prerenders it and freezes the settings into the build — `/long-term-lease` shipped that way, so lease-tier edits stayed invisible until the next deploy. It is `revalidate = 60` now. Admin edits go through `/admin/settings` → `PUT /api/admin/settings`, which parses the body with `settingsUpdateSchema` (`src/lib/validation.ts`) and then writes an explicit field whitelist rather than spreading the body.
+
+**The zod schema is not belt-and-braces — it is the only validation on this path.** The write is a `findOneAndUpdate`, and `runValidators` runs _path_ validators only, so the model's `pre("validate")` hook enforcing `deliveryWindowEndHour > deliveryWindowStartHour` never fires here. `src/models/__tests__/settings.test.ts` exercises that hook through `doc.validate()`, which does run it — so the rule was green in CI and absent in production, and an admin could persist an inverted window that made the order form reject every delivery time. The Mixed maps are unvalidated by Mongoose for the same reason; a string where a `price` belongs produced a `NaN` order total. A body that moves only one end of the window is re-checked in the route against the stored document, which the schema cannot see on its own. The order form consumes this through the `SettingsOverrides` type in `src/components/order/utils.ts`.
 
 Because mixers, extras, and lease tiers are `Mixed`, Mongoose does not deep-validate or dirty-track them — reassign the whole object (or `markModified`) when updating.
 
@@ -153,6 +163,8 @@ Because mixers, extras, and lease tiers are `Mixed`, Mongoose does not deep-vali
 There are **two independent analytics pipelines**, and they do not share data.
 
 **First-party (MongoDB).** `FingerprintTracker.tsx` uses ThumbmarkJS to generate a browser fingerprint and posts it to `/api/v1/analytics/fingerprint` (stored in `Thumbprint` model). `OrderFormTracker.tsx` posts the same payload per order step, plus a `formContext` and a virtual `/order/${step}` path. `GET /api/admin/analytics` aggregates visitor and funnel data for `/admin/analytics` (Chart.js via `react-chartjs-2`). This pipeline is unaffected by ad blockers and consent.
+
+Both trackers check `getConsent()` and do nothing when the visitor has opted out. The banner says "You can opt out at any time"; before that check it only downgraded Google Consent Mode while the first-party fingerprint kept posting on every page view.
 
 **GA4 (gtag).** `GoogleAnalytics.tsx` loads gtag with `NEXT_PUBLIC_GA_MEASUREMENT_ID` and is the **only** path by which GA4 gets data: the GTM container in `NEXT_PUBLIC_GTM_ID` carries just the Google Ads conversion tags (`AW-16908257875`), no GA4 tag, so the two do not double-count. Both components render in production builds only, and `AnalyticsGate.tsx` additionally keeps them off `/admin/*`.
 
@@ -199,6 +211,9 @@ Global shared types live in `src/types/index.ts` (`MachineType`, `MixerType`, `P
 - `src/lib/lease-data.ts` — `leaseTiers`, `mergeLeaseTiers()`, lease form enums
 - `src/lib/extras-catalog.ts` — `buildExtrasCatalog()`, `resolveSelectedExtras()` (authoritative add-on pricing)
 - `src/lib/validation.ts` — zod request schemas, `MACHINE_CAPACITY`, `escapeHtml()`
+- `src/lib/dates.ts` — `todayLocalIso()`, `spanInDays()`, the shared field regexes. **Zod-free on purpose**
+- `src/lib/admin-list.ts` — `adminListLimit()`, `adminListHeaders()`: bounds the three admin list routes, which returned whole collections with no index behind the sort. The cap is reported in `X-Total-Count` / `X-Result-Truncated` rather than silently dropping rows
+- `src/lib/with-timeout.ts` — bounds Twilio and Resend calls, which are awaited inline after the booking is committed
 - `src/lib/api-guard.ts` / `src/lib/rate-limit.ts` — `guardPublicWrite()` for public write routes
 - `src/lib/analytics.ts` — `trackEvent()`, the only sanctioned path to `window.gtag`
 - `src/lib/consent.ts` — `getConsent()`, `setConsent()` (Consent Mode v2 state)
