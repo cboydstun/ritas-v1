@@ -65,8 +65,17 @@ export function trackEvent(
  * `lead_submitted` replaces GTM's built-in Form Submission trigger, which
  * fires on the browser's submit event and therefore counted submissions whose
  * API call went on to fail (`preventDefault` does not suppress it).
+ * `contact_click` gives Ads a phone-lead signal on organic traffic: the
+ * existing Google Ads call tag does dynamic number insertion, which only ever
+ * converts visitors who arrived from an ad, so a tel: tap from the ~73% of
+ * sessions that come from organic search was invisible to it.
+ *
+ * The same name being both an `AnalyticsEvent` and a `DataLayerEvent` is
+ * deliberate — one visitor action, two transports, and they should not drift
+ * apart in the reports.
  */
-export type DataLayerEvent = "purchase_complete" | "lead_submitted";
+export type DataLayerEvent =
+  "purchase_complete" | "lead_submitted" | "contact_click";
 
 /**
  * Push a custom event to the GTM `dataLayer`.

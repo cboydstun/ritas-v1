@@ -1,12 +1,16 @@
 import { render } from "@testing-library/react";
 import ContactLinkTracker from "../ContactLinkTracker";
-import { trackEvent } from "@/lib/analytics";
+import { trackEvent, pushDataLayer } from "@/lib/analytics";
 
+// Stub both. A mock that omits one makes the missing export `undefined`, and
+// the component throws on the call — see CLAUDE.md.
 jest.mock("@/lib/analytics", () => ({
   trackEvent: jest.fn(),
+  pushDataLayer: jest.fn(),
 }));
 
 const trackEventMock = trackEvent as jest.Mock;
+const pushDataLayerMock = pushDataLayer as jest.Mock;
 
 function clickLink(href: string, text = "link") {
   const anchor = document.createElement("a");
@@ -20,6 +24,7 @@ function clickLink(href: string, text = "link") {
 describe("ContactLinkTracker", () => {
   beforeEach(() => {
     trackEventMock.mockClear();
+    pushDataLayerMock.mockClear();
     render(<ContactLinkTracker />);
   });
 
@@ -59,6 +64,36 @@ describe("ContactLinkTracker", () => {
       "file_download",
       expect.objectContaining({ file_extension: "pdf" }),
     );
+  });
+
+  // The Google Ads phone-lead conversion fires off this push, not off gtag.
+  it("mirrors a phone click to the dataLayer", () => {
+    clickLink("tel:+15122100194");
+
+    expect(pushDataLayerMock).toHaveBeenCalledWith("contact_click", {
+      method: "phone",
+    });
+  });
+
+  it("mirrors an email click to the dataLayer", () => {
+    clickLink("mailto:satxbounce@gmail.com");
+
+    expect(pushDataLayerMock).toHaveBeenCalledWith("contact_click", {
+      method: "email",
+    });
+  });
+
+  // The Ads tag is scoped to phone. A download must not reach the dataLayer at
+  // all, or the GTM trigger becomes the only thing standing between a PDF
+  // click and a counted phone lead.
+  it("does not push a download to the dataLayer", () => {
+    clickLink("/docs/lease.pdf", "Lease");
+
+    expect(trackEventMock).toHaveBeenCalledWith(
+      "file_download",
+      expect.anything(),
+    );
+    expect(pushDataLayerMock).not.toHaveBeenCalled();
   });
 
   // `Settings.documentation.pdfUrl` only has to be an http(s) url, so the
