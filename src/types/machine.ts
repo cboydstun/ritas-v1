@@ -19,13 +19,6 @@ export interface MachineAvailability {
   isLimited?: boolean;
 }
 
-export interface MachineRecommendation {
-  machineType: MachineType;
-  reason: string;
-  confidence: "high" | "medium" | "low";
-  suggestedMixers?: MixerType[];
-}
-
 export interface MachineCardProps {
   machineType: MachineType;
   name: string;
@@ -62,50 +55,4 @@ export function isMixerType(value: string): value is MixerType {
     "pina-colada",
     "strawberry-daiquiri",
   ].includes(value);
-}
-
-// Machine recommendation algorithm
-export function getRecommendation(
-  guestCount: number,
-  rentalDate: string,
-): MachineRecommendation | null {
-  if (!guestCount || guestCount <= 0) return null;
-
-  const rentalDateObj = new Date(rentalDate + "T00:00:00");
-  const month = rentalDateObj.getMonth();
-  const dayOfWeek = rentalDateObj.getDay();
-
-  // Determine season from date
-  const isSummer = month >= 5 && month <= 8;
-  const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
-
-  // Adjust capacity estimate for seasonal factors
-  const summerMultiplier = isSummer ? 1.25 : 1;
-  const weekendMultiplier = isWeekend ? 1.1 : 1;
-  const adjustedCount = Math.ceil(
-    guestCount * summerMultiplier * weekendMultiplier,
-  );
-
-  if (adjustedCount <= 30) {
-    return {
-      machineType: "single",
-      reason: `Perfect for ${guestCount} guests`,
-      confidence: "high",
-      suggestedMixers: ["margarita"],
-    };
-  } else if (adjustedCount <= 60) {
-    return {
-      machineType: "double",
-      reason: `Ideal for ${guestCount} guests with multiple flavors`,
-      confidence: "high",
-      suggestedMixers: ["margarita", "pina-colada"],
-    };
-  } else {
-    return {
-      machineType: "triple",
-      reason: `The ultimate setup for ${guestCount} guests`,
-      confidence: "high",
-      suggestedMixers: ["margarita", "pina-colada", "strawberry-daiquiri"],
-    };
-  }
 }

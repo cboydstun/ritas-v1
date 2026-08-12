@@ -31,7 +31,7 @@ type Counter = { count: number; expiresAt: number };
 const memoryStore = new Map<string, Counter>();
 
 /** Hard ceiling on distinct identifiers held in the fallback store. */
-const MEMORY_STORE_MAX = 5000;
+export const MEMORY_STORE_MAX = 5000;
 
 /**
  * Keep the in-memory map from growing without bound on a long-lived instance.

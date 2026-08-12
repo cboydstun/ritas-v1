@@ -44,29 +44,19 @@
 }
 
 @layer utilities {
-  :root {
-    --foreground-rgb: 0, 0, 0;
-    --background-start-rgb: 214, 219, 220;
-    --background-end-rgb: 255, 255, 255;
-    --light: #f0f9ff;
-    --margarita: #10b981;
-    --teal: #0ea5e9;
-    --orange: #f97316;
-    --pink: #ec4899;
-    --charcoal: #1e293b;
-  }
+  /* A second palette used to live here — --margarita: #10b981 and friends —
+     disagreeing with the @theme tokens above (--color-margarita: #4b7a0a) and
+     referenced by nothing. Two competing sets of colour variables in one file
+     is a trap for whoever picks the next colour, so only the theme tokens
+     remain.
 
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --foreground-rgb: 255, 255, 255;
-      --background-start-rgb: 0, 0, 0;
-      --background-end-rgb: 0, 0, 0;
-    }
-  }
-
-  body {
-    color: rgb(var(--foreground-rgb));
-  }
+     The body colour that used to be driven from here keyed its dark value off
+     @media (prefers-color-scheme: dark), but next-themes is class-based
+     (attribute="class"). A visitor on a dark OS who explicitly chose Light got
+     the dark foreground against `bg-white` — white text on white. The <body>
+     in app/layout.tsx already carries `dark:text-white`, which follows the
+     class the way everything else in the app does, so the rule is simply
+     gone rather than rewritten. */
 }
 
 @keyframes progress {

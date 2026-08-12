@@ -97,11 +97,6 @@ export default function FingerprintTracker() {
 
           throw new Error(errorMessage);
         }
-
-        // Log success for debugging
-        const result = await response.json();
-        if (process.env.NODE_ENV === "development") {
-        }
       } catch (error) {
         // Enhanced error logging
         console.error("Error tracking page view:", {
