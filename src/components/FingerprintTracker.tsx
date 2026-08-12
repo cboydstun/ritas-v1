@@ -91,9 +91,6 @@ export default function FingerprintTracker() {
           // Retry with exponential backoff for server errors
           if (shouldRetry && retryCount < maxRetries) {
             const delay = Math.min(1000 * Math.pow(2, retryCount), 10000); // Max 10 seconds
-            console.log(
-              `Retrying fingerprint tracking in ${delay}ms (attempt ${retryCount + 1}/${maxRetries})`,
-            );
             await sleep(delay);
             return trackPageView(retryCount + 1, maxRetries);
           }
@@ -104,10 +101,6 @@ export default function FingerprintTracker() {
         // Log success for debugging
         const result = await response.json();
         if (process.env.NODE_ENV === "development") {
-          console.log("Fingerprint tracked successfully:", {
-            page: pathname,
-            isNewVisitor: result.isNewVisitor,
-          });
         }
       } catch (error) {
         // Enhanced error logging

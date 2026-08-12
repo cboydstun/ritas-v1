@@ -1,3 +1,4 @@
+import { z } from "zod";
 import {
   MACHINE_CAPACITY,
   escapeHtml,
@@ -6,6 +7,19 @@ import {
   rentalDataSchema,
   todayLocalIso,
 } from "@/lib/validation";
+import { EMAIL_PATTERN, PHONE_PATTERN, ZIP_PATTERN } from "@/lib/dates";
+import {
+  validateEmail,
+  validatePhone,
+  validateZipCode,
+} from "@/components/order/utils";
+
+/** The exact shape the request schemas use for a customer email. */
+const customerEmailSchema = z
+  .string()
+  .trim()
+  .regex(EMAIL_PATTERN, "Invalid email address")
+  .max(200);
 
 const validRental = () => ({
   machineType: "triple",
@@ -260,5 +274,43 @@ describe("escapeHtml", () => {
   it("renders nullish values as an empty string", () => {
     expect(escapeHtml(null)).toBe("");
     expect(escapeHtml(undefined)).toBe("");
+  });
+});
+
+describe("client/server field agreement", () => {
+  // These reimplemented the server's rules and email diverged: the client's
+  // /^[^\s@]+@[^\s@]+\.[^\s@]+$/ was looser than zod's .email(), so a value
+  // could clear all five wizard steps and be rejected at submit.
+  const cases = [
+    ["sam@example.com", true],
+    ["sam.rivera+tag@sub.example.co.uk", true],
+    ["a@b..c", false],
+    [".sam@example.com", false],
+    ["sam@example", false],
+    ["sam @example.com", false],
+    ["", false],
+  ] as const;
+
+  it.each(cases)("client and server agree on %s", (email, expected) => {
+    expect(validateEmail(email)).toBe(expected);
+    expect(customerEmailSchema.safeParse(email).success).toBe(expected);
+  });
+
+  it.each([
+    ["(210) 555-0134", true],
+    ["210-555-0134", true],
+    ["555-0134", false],
+  ] as const)("client and server agree on phone %s", (phone, expected) => {
+    expect(validatePhone(phone)).toBe(expected);
+    expect(PHONE_PATTERN.test(phone)).toBe(expected);
+  });
+
+  it.each([
+    ["78205", true],
+    ["78205-1234", true],
+    ["7820", false],
+  ] as const)("client and server agree on ZIP %s", (zip, expected) => {
+    expect(validateZipCode(zip)).toBe(expected);
+    expect(ZIP_PATTERN.test(zip)).toBe(expected);
   });
 });

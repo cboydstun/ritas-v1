@@ -12,12 +12,14 @@ function allowedHost(): string | null {
   }
 }
 
-// Define permanent redirects
-const PERMANENT_REDIRECTS: Record<string, string> = {
-  // Add permanent redirects here as needed
-  // "/old-page": "/new-page",
-  // "/legacy": "/modern",
-};
+/**
+ * Permanent redirects, keyed by pathname.
+ *
+ * Empty, and only consulted for admin paths — the matcher at the bottom of this
+ * file is scoped to `/admin/*` and `/api/admin/*`. Adding a public-page entry
+ * therefore means widening that matcher too, or the redirect will never fire.
+ */
+const PERMANENT_REDIRECTS: Record<string, string> = {};
 
 export async function proxy(request: NextRequest) {
   // Redirect HTTP to HTTPS in production

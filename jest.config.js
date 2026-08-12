@@ -40,10 +40,10 @@ const customJestConfig = {
     // The money and availability logic is held to a much higher bar than the
     // page components that dominate the global figure.
     "./src/lib/": {
-      statements: 84,
+      statements: 85,
       branches: 79,
-      functions: 88,
-      lines: 85,
+      functions: 90,
+      lines: 87,
     },
   },
   collectCoverageFrom: [

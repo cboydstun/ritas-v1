@@ -1,7 +1,13 @@
 import { z } from "zod";
 import type { MachineType } from "@/types";
 import { LEASE_BUSINESS_TYPES, LEASE_TERMS } from "@/lib/lease-data";
-import { todayLocalIso } from "@/lib/dates";
+import {
+  todayLocalIso,
+  spanInDays,
+  PHONE_PATTERN,
+  ZIP_PATTERN,
+  EMAIL_PATTERN,
+} from "@/lib/dates";
 
 /**
  * Request-body validation for the public API routes.
@@ -63,19 +69,17 @@ const addressSchema = z.object({
   street: z.string().trim().min(1).max(200),
   city: z.string().trim().min(1).max(100),
   state: z.string().trim().min(2).max(50),
-  zipCode: z
-    .string()
-    .trim()
-    .regex(/^\d{5}(-\d{4})?$/, "Invalid ZIP code"),
+  zipCode: z.string().trim().regex(ZIP_PATTERN, "Invalid ZIP code"),
 });
 
 const customerSchema = z.object({
   name: z.string().trim().min(1).max(120),
-  email: z.string().trim().email().max(200),
-  phone: z
+  email: z
     .string()
     .trim()
-    .regex(/^\(?\d{3}\)?[-. ]?\d{3}[-. ]?\d{4}$/, "Invalid phone number"),
+    .regex(EMAIL_PATTERN, "Invalid email address")
+    .max(200),
+  phone: z.string().trim().regex(PHONE_PATTERN, "Invalid phone number"),
   address: addressSchema,
 });
 
@@ -93,15 +97,6 @@ const selectedExtraSchema = z
 
 /** Longest rental window the availability check will expand. */
 export const MAX_RANGE_DAYS = 90;
-
-/** Whole days between two YYYY-MM-DD strings, diffed as UTC calendar dates. */
-export function spanInDays(start: string, end: string): number {
-  const toUtc = (value: string) => {
-    const [year, month, day] = value.split("-").map(Number);
-    return Date.UTC(year, month - 1, day);
-  };
-  return Math.round((toUtc(end) - toUtc(start)) / 86_400_000);
-}
 
 export const rentalDataSchema = z
   .object({
@@ -154,7 +149,11 @@ function maxMixersFor(machineType: MachineType): number {
 export const contactSchema = z
   .object({
     name: z.string().trim().min(1).max(120),
-    email: z.string().trim().email().max(200),
+    email: z
+      .string()
+      .trim()
+      .regex(EMAIL_PATTERN, "Invalid email address")
+      .max(200),
     phone: z.string().trim().min(1).max(30),
     // Kept loose: the contact form lets people describe a date freely.
     eventDate: z.string().trim().min(1).max(100),
@@ -167,7 +166,11 @@ export const leaseInquirySchema = z
     businessName: z.string().trim().min(1).max(200),
     businessType: z.enum(LEASE_BUSINESS_TYPES),
     contactName: z.string().trim().min(1).max(120),
-    email: z.string().trim().email().max(200),
+    email: z
+      .string()
+      .trim()
+      .regex(EMAIL_PATTERN, "Invalid email address")
+      .max(200),
     phone: z.string().trim().min(1).max(30),
     address: z.object({
       street: z.string().trim().min(1).max(200),
@@ -290,3 +293,6 @@ export function firstIssueMessage(error: z.ZodError): string {
   const path = issue.path.join(".");
   return path ? `${path}: ${issue.message}` : issue.message;
 }
+
+/** Re-exported so server code can keep importing date helpers from here. */
+export { spanInDays };

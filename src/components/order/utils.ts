@@ -1,3 +1,9 @@
+import {
+  spanInDays,
+  PHONE_PATTERN,
+  ZIP_PATTERN,
+  EMAIL_PATTERN,
+} from "@/lib/dates";
 import { buildExtrasCatalog } from "@/lib/extras-catalog";
 
 export const getNextDay = (dateStr: string): string => {
@@ -22,32 +28,25 @@ export const calculateRentalDays = (
   rentalDate: string,
   returnDate: string,
 ): number => {
-  const toUtcDay = (dateStr: string): number => {
-    const [year, month, day] = dateStr.split("-").map(Number);
-    return Date.UTC(year, month - 1, day);
-  };
-
-  const diffDays = Math.round(
-    (toUtcDay(returnDate) - toUtcDay(rentalDate)) / (1000 * 60 * 60 * 24),
-  );
-
+  const diffDays = spanInDays(rentalDate, returnDate);
   return Number.isFinite(diffDays) ? Math.max(1, diffDays) : 1;
 };
 
-export const validateEmail = (email: string): boolean => {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(email);
-};
+/**
+ * The wizard's field checks, sharing their patterns with the zod request
+ * schemas so a value cannot pass all five steps and then be rejected at submit.
+ *
+ * The email pattern used to be `/^[^\s@]+@[^\s@]+\.[^\s@]+$/` here and zod's
+ * `.email()` on the server, so `a@b..c` cleared the form and 400'd at checkout.
+ */
+export const validateEmail = (email: string): boolean =>
+  EMAIL_PATTERN.test(email.trim());
 
-export const validatePhone = (phone: string): boolean => {
-  const phoneRegex = /^\(?([0-9]{3})\)?[-. ]?([0-9]{3})[-. ]?([0-9]{4})$/;
-  return phoneRegex.test(phone);
-};
+export const validatePhone = (phone: string): boolean =>
+  PHONE_PATTERN.test(phone);
 
-export const validateZipCode = (zipCode: string): boolean => {
-  const zipRegex = /^\d{5}(-\d{4})?$/;
-  return zipRegex.test(zipCode);
-};
+export const validateZipCode = (zipCode: string): boolean =>
+  ZIP_PATTERN.test(zipCode);
 
 export const isBexarCountyZipCode = (zipCode: string): boolean => {
   // Remove any non-digit characters (like dashes)
@@ -102,13 +101,6 @@ export const validateDeliveryTime = (
   const minTimeInMinutes = startHour * 60;
   const maxTimeInMinutes = endHour * 60;
   return timeInMinutes >= minTimeInMinutes && timeInMinutes <= maxTimeInMinutes;
-};
-
-// Format date from YYYY-MM-DD to MM-DD-YYYY
-export const formatDateForDisplay = (isoDate: string): string => {
-  if (!isoDate) return "";
-  const [year, month, day] = isoDate.split("-");
-  return `${month}-${day}-${year}`;
 };
 
 // ---------------------------------------------------------------------------

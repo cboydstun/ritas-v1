@@ -1,14 +1,12 @@
 import { ReactNode } from "react";
-import { MargaritaRental, PaymentStatus } from "./index";
+import { MargaritaRental } from "./index";
 
-export interface AdminOrdersResponse {
-  orders: MargaritaRental[];
-}
-
-export interface AdminOrderResponse {
-  order: MargaritaRental;
-}
-
+/**
+ * `AdminOrdersResponse`, `AdminOrderResponse` and a second `OrderFormData` used
+ * to live here with no importers. The `OrderFormData` in particular collided by
+ * name with the live one in `src/components/order/types.ts`, which is the one
+ * every consumer actually means.
+ */
 export interface OrderTableColumn {
   key: keyof MargaritaRental | "actions";
   label: string;
@@ -16,13 +14,4 @@ export interface OrderTableColumn {
   formatter?: (
     value: MargaritaRental[keyof MargaritaRental],
   ) => string | ReactNode;
-}
-
-export interface OrderFormData {
-  status: MargaritaRental["status"];
-  notes?: string;
-  payment?: {
-    status: PaymentStatus;
-    amount: number;
-  };
 }

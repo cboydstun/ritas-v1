@@ -58,9 +58,8 @@ function eachDayInRange(start: string, end: string): string[] {
   return dates;
 }
 
-export async function getMachineInventory(
-  machineType: MachineType,
-): Promise<number> {
+/** Internal: not exported — the only caller is `isMachineAvailable` below. */
+async function getMachineInventory(machineType: MachineType): Promise<number> {
   const settings = (await Settings.findOne({ key: "global" }).lean()) as {
     machines?: {
       single?: { inventory?: number };

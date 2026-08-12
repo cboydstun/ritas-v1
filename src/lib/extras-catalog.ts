@@ -97,17 +97,6 @@ export function buildExtrasCatalog(
 }
 
 /**
- * Look up an add-on's unit price. Returns `undefined` for ids that aren't in
- * the catalog so callers can decide between rejecting and ignoring them.
- */
-export function catalogPrice(
-  id: string,
-  overrides?: CatalogOverrides,
-): number | undefined {
-  return buildExtrasCatalog(overrides).get(id)?.price;
-}
-
-/**
  * Every mixer flavour that may legitimately appear in `selectedMixers`.
  *
  * The tank-mixer list the order form renders comes from `Settings.mixers`
