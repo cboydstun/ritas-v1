@@ -274,17 +274,18 @@ export default function OrdersTable() {
     newStatus: PaymentStatus,
   ) => {
     try {
-      // Find the current order to get existing payment details if available
       const currentOrder = orders.find(
         (order) => order._id?.toString() === orderId,
       );
 
-      // Create a payment object with all required fields
+      // Only the status is sent. `amount` used to come from this cached copy
+      // and the server honoured it, so it could drift from the price the
+      // server recomputes on the same request; the server now derives it. The
+      // `paypalTransactionId` fell back to `admin-${Date.now()}`, minting a
+      // fabricated transaction id on every status change for an integration
+      // that no longer exists.
       const paymentData = {
-        // Use existing values if available, otherwise provide defaults
-        paypalTransactionId:
-          currentOrder?.payment?.paypalTransactionId || `admin-${Date.now()}`,
-        amount: currentOrder?.payment?.amount || currentOrder?.price || 0,
+        ...currentOrder?.payment,
         date: currentOrder?.payment?.date || new Date().toISOString(),
         status: newStatus,
       };
@@ -336,10 +337,20 @@ export default function OrdersTable() {
         body: JSON.stringify(data),
       });
 
-      if (!response.ok) throw new Error("Failed to update order");
+      if (!response.ok) {
+        // Prefer the server's reason — a 409 explains that the machine is not
+        // available for the new dates, which is the common failure here.
+        const body = await response.json().catch(() => null);
+        throw new Error(body?.message ?? "Failed to update order");
+      }
       await fetchOrders(); // Refresh orders
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to update order");
+      // Rethrown so EditOrderModal keeps itself open. Swallowing it here let
+      // `await onSave(...)` resolve, the modal closed itself, the admin's
+      // edits were discarded, and the only trace was a banner behind a modal
+      // that had just vanished.
+      throw err;
     }
   };
 

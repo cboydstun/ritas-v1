@@ -1,3 +1,8 @@
+"use client";
+
+// Uses useState and useSession. This compiled only because all eight importers
+// are themselves client components; the first admin page converted to a server
+// component would have broken the build with a confusing error.
 import Link from "next/link";
 import ThemeToggle from "@/components/ThemeToggle";
 import SignOutButton from "@/components/admin/SignOutButton";

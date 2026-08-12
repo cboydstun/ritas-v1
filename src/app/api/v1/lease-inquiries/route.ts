@@ -11,6 +11,7 @@ import {
   leaseInquirySchema,
 } from "@/lib/validation";
 import { BUSINESS_TIME_ZONE } from "@/lib/dates";
+import { withTimeout, NOTIFICATION_TIMEOUT_MS } from "@/lib/with-timeout";
 
 const tierNameById = (id: string) =>
   leaseTiers.find((t) => t.id === (id as LeaseTierId))?.name ?? id;
@@ -74,19 +75,23 @@ export async function POST(request: Request) {
     if (accountSid && authToken && fromPhone && toPhone) {
       try {
         const twilioClient = twilio(accountSid, authToken);
-        await twilioClient.messages.create({
-          body:
-            `New Lease Inquiry!\n` +
-            `Business: ${inquiry.businessName} (${inquiry.businessType})\n` +
-            `Contact: ${inquiry.contactName}\n` +
-            `Email: ${inquiry.email}\n` +
-            `Phone: ${inquiry.phone}\n` +
-            `Term: ${inquiry.preferredTerm}\n` +
-            `Machines: ${machinesList}\n` +
-            `Submitted: ${submittedAt()}`,
-          from: fromPhone,
-          to: toPhone,
-        });
+        await withTimeout(
+          twilioClient.messages.create({
+            body:
+              `New Lease Inquiry!\n` +
+              `Business: ${inquiry.businessName} (${inquiry.businessType})\n` +
+              `Contact: ${inquiry.contactName}\n` +
+              `Email: ${inquiry.email}\n` +
+              `Phone: ${inquiry.phone}\n` +
+              `Term: ${inquiry.preferredTerm}\n` +
+              `Machines: ${machinesList}\n` +
+              `Submitted: ${submittedAt()}`,
+            from: fromPhone,
+            to: toPhone,
+          }),
+          NOTIFICATION_TIMEOUT_MS,
+          "notification",
+        );
       } catch (smsError) {
         console.error("Error sending SMS notification:", smsError);
       }
@@ -101,11 +106,12 @@ export async function POST(request: Request) {
       // unset, and the document is already persisted at this point.
       const resend = new Resend(process.env.RESEND_API_KEY);
 
-      await resend.emails.send({
-        from: "SATX Ritas Rentals <contact@satxritas.com>",
-        to: ["satxbounce@gmail.com"],
-        subject: "New Long-Term Lease Inquiry - SATX Ritas",
-        html: `
+      await withTimeout(
+        resend.emails.send({
+          from: "SATX Ritas Rentals <contact@satxritas.com>",
+          to: ["satxbounce@gmail.com"],
+          subject: "New Long-Term Lease Inquiry - SATX Ritas",
+          html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333; background-color: #f9fafb; border-radius: 8px;">
             <h1 style="color: #2b6cb0; text-align: center; margin-bottom: 30px; padding-bottom: 15px; border-bottom: 2px solid #e2e8f0;">New Long-Term Lease Inquiry</h1>
             <div style="background-color: #fff; padding: 15px; border-radius: 6px; margin: 20px 0; border: 1px solid #e2e8f0;">
@@ -126,7 +132,10 @@ export async function POST(request: Request) {
             <p style="font-size: 14px; color: #666;">This is an automated notification from your website lease inquiry form.</p>
           </div>
         `,
-      });
+        }),
+        NOTIFICATION_TIMEOUT_MS,
+        "notification",
+      );
     } catch (emailError) {
       console.error(
         "Error sending lease inquiry notification email:",

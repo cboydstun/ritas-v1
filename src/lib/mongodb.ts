@@ -12,6 +12,8 @@ const uri = process.env.MONGODB_URI;
 const dbName = process.env.MONGODB_DB;
 
 interface MongooseCache {
+  /** Set once the connection event listeners have been attached. */
+  listenersBound?: boolean;
   conn: typeof mongoose | null;
   promise: Promise<typeof mongoose> | null;
 }
@@ -25,6 +27,7 @@ if (!global.mongoose) {
   global.mongoose = {
     conn: null,
     promise: null,
+    listenersBound: false,
   };
 }
 
@@ -55,16 +58,22 @@ async function dbConnect() {
     // Wait for the connection
     global.mongoose.conn = await global.mongoose.promise;
 
-    // Set up connection error handling
-    global.mongoose.conn.connection.on("error", (error) => {
-      console.error("MongoDB connection error:", error);
-    });
+    // Registered once. The `disconnected` handler nulls the cache, so the
+    // next dbConnect() re-entered this block and added another pair of
+    // listeners every reconnect, up to MaxListenersExceededWarning.
+    if (!global.mongoose.listenersBound) {
+      global.mongoose.listenersBound = true;
 
-    global.mongoose.conn.connection.on("disconnected", () => {
-      console.warn("MongoDB disconnected");
-      global.mongoose.conn = null;
-      global.mongoose.promise = null;
-    });
+      global.mongoose.conn.connection.on("error", (error) => {
+        console.error("MongoDB connection error:", error);
+      });
+
+      global.mongoose.conn.connection.on("disconnected", () => {
+        console.warn("MongoDB disconnected");
+        global.mongoose.conn = null;
+        global.mongoose.promise = null;
+      });
+    }
 
     return global.mongoose.conn;
   } catch (error) {

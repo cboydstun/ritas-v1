@@ -7,7 +7,10 @@ import { MACHINE_CAPACITY } from "@/lib/validation";
 import { isMachineType } from "@/types/machine";
 import { Settings } from "@/models/settings";
 import { isMachineAvailable } from "@/lib/inventory";
-import { resolveSelectedExtras } from "@/lib/extras-catalog";
+import {
+  resolveSelectedExtras,
+  resolveSelectedMixers,
+} from "@/lib/extras-catalog";
 import {
   computeOrderTotal,
   type SettingsOverrides,
@@ -196,10 +199,27 @@ export async function PUT(request: Request, context: RouteParams) {
       );
     }
 
+    // Same gap as the create route: mixers reached computeOrderTotal
+    // unresolved, so a non-array 500'd and an unknown flavour priced at 0.
+    const { mixers: resolvedMixers, unknownIds: unknownMixerIds } =
+      resolveSelectedMixers(merged.selectedMixers, {
+        extras: settingsDoc?.extras,
+        mixers: settingsDoc?.mixers,
+      });
+    if (unknownMixerIds.length > 0) {
+      return NextResponse.json(
+        { message: `Unknown mixers: ${unknownMixerIds.join(", ")}` },
+        { status: 400 },
+      );
+    }
+    if (update.selectedMixers !== undefined) {
+      update.selectedMixers = resolvedMixers;
+    }
+
     const totals = computeOrderTotal(
       {
         machineType: merged.machineType,
-        selectedMixers: merged.selectedMixers,
+        selectedMixers: resolvedMixers,
         selectedExtras: resolvedExtras,
         rentalDate: merged.rentalDate,
         returnDate: merged.returnDate,
@@ -210,8 +230,16 @@ export async function PUT(request: Request, context: RouteParams) {
 
     update.selectedExtras = resolvedExtras;
     update.price = Number(totals.finalTotal.toFixed(2));
-    // Only follow the total when the caller isn't setting payment itself.
-    if (update.payment === undefined) {
+
+    // `payment.amount` follows the recomputed total unconditionally. It used
+    // to be left alone whenever the caller sent a `payment` object, and
+    // OrdersTable's payment-status control sends the whole object with the
+    // client's cached amount — so an order edited after a pricing change kept
+    // a stale amount against a fresh price.
+    if (update.payment !== undefined) {
+      const payment = update.payment as Record<string, unknown>;
+      update.payment = { ...payment, amount: update.price };
+    } else {
       update["payment.amount"] = update.price;
     }
 

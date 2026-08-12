@@ -5,7 +5,9 @@ const settingsSchema = new mongoose.Schema(
     // Unique: the write path is a `findOneAndUpdate({key:"global"}, …, {upsert:true})`,
     // so two concurrent first-writes could otherwise create two "global"
     // documents and make pricing depend on which one `findOne` returned.
-    key: { type: String, default: "global", unique: true, index: true },
+    // `unique` already builds the index — `index: true` on the same path is a
+    // duplicate declaration and warns under Mongoose 9.
+    key: { type: String, default: "global", unique: true },
     fees: {
       deliveryFee: {
         type: Number,

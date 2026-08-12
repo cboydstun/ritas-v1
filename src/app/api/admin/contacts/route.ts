@@ -3,9 +3,10 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import dbConnect from "@/lib/mongodb";
 import { Contact } from "@/models/contact";
+import { adminListLimit, adminListHeaders } from "@/lib/admin-list";
 
 // Get all contacts
-export async function GET() {
+export async function GET(request: Request) {
   // Check authentication
   const session = await getServerSession(authOptions);
   if (!session || session.user.role !== "admin") {
@@ -14,11 +15,21 @@ export async function GET() {
 
   try {
     await dbConnect();
-    const contacts = await Contact.find({})
-      .sort({ createdAt: -1 }) // Sort by newest first
-      .select("-__v"); // Exclude version key
+    const limit = adminListLimit(
+      new URL(request.url).searchParams.get("limit"),
+    );
+    const [contacts, total] = await Promise.all([
+      Contact.find({})
+        .sort({ createdAt: -1 }) // Sort by newest first
+        .limit(limit)
+        .select("-__v") // Exclude version key
+        .lean(),
+      Contact.countDocuments({}),
+    ]);
 
-    return NextResponse.json(contacts);
+    return NextResponse.json(contacts, {
+      headers: adminListHeaders(total, contacts.length),
+    });
   } catch (error) {
     console.error("Error fetching contacts:", error);
     return NextResponse.json(

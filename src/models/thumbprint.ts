@@ -87,8 +87,9 @@ const ThumbprintSchema = new Schema<IThumbprint>({
     // Unique: the route reads then upserts, so two concurrent first-hits for
     // the same hash both took the insert branch and split one visitor's
     // history across two documents.
+    // `unique` already builds the index; declaring `index: true` alongside it
+    // is a duplicate declaration and warns under Mongoose 9.
     unique: true,
-    index: true,
   },
   components: {
     type: Object,

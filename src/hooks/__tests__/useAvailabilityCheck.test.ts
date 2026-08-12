@@ -69,7 +69,33 @@ describe("useAvailabilityCheck", () => {
 
       expect(mockFetch).toHaveBeenCalledWith(
         expect.stringContaining("/api/v1/availability"),
+        expect.objectContaining({ signal: expect.anything() }),
       );
+    });
+
+    it("resolves into the soft error state when the request times out", async () => {
+      // Without a timeout a hung request left every machine card disabled and
+      // "Next" permanently blocked, with no way for the customer to proceed.
+      mockFetch.mockRejectedValueOnce(
+        new DOMException("The operation timed out.", "TimeoutError"),
+      );
+
+      const { result } = renderHook(() => useAvailabilityCheck());
+
+      let outcome;
+      await act(async () => {
+        outcome = await result.current.checkAvailability(
+          "single",
+          15,
+          "2024-01-15",
+        );
+      });
+
+      expect(outcome).toMatchObject({
+        available: false,
+        error: "Availability check timed out",
+      });
+      expect(result.current.isChecking).toBe(false);
     });
 
     it("includes machineType in the request URL", async () => {
@@ -91,6 +117,7 @@ describe("useAvailabilityCheck", () => {
 
       expect(mockFetch).toHaveBeenCalledWith(
         expect.stringContaining("machineType=single"),
+        expect.objectContaining({ signal: expect.anything() }),
       );
     });
 
@@ -113,6 +140,7 @@ describe("useAvailabilityCheck", () => {
 
       expect(mockFetch).toHaveBeenCalledWith(
         expect.stringContaining("capacity=15"),
+        expect.objectContaining({ signal: expect.anything() }),
       );
     });
 
@@ -135,6 +163,7 @@ describe("useAvailabilityCheck", () => {
 
       expect(mockFetch).toHaveBeenCalledWith(
         expect.stringContaining("date=2024-01-15"),
+        expect.objectContaining({ signal: expect.anything() }),
       );
     });
   });
@@ -376,9 +405,11 @@ describe("useAvailabilityCheck", () => {
 
       expect(mockFetch).toHaveBeenCalledWith(
         expect.stringContaining("machineType=double"),
+        expect.objectContaining({ signal: expect.anything() }),
       );
       expect(mockFetch).toHaveBeenCalledWith(
         expect.stringContaining("capacity=30"),
+        expect.objectContaining({ signal: expect.anything() }),
       );
     });
 

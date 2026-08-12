@@ -297,5 +297,50 @@ describe("POST /api/save-booking", () => {
 
       expect(response.status).toBe(400);
     });
+
+    // These two rules lived only in OrderForm/DetailsStep, so a direct POST
+    // could book a 03:00 delivery to any ZIP in the country.
+    it("rejects a delivery time outside the operating window", async () => {
+      const response = await post(validRental({ rentalTime: "03:00" }));
+
+      expect(response.status).toBe(400);
+      expect((await response.json()).message).toMatch(/Delivery time/);
+    });
+
+    it("rejects a pickup time outside the operating window", async () => {
+      const response = await post(validRental({ returnTime: "23:30" }));
+
+      expect(response.status).toBe(400);
+      expect((await response.json()).message).toMatch(/Pickup time/);
+    });
+
+    it("accepts ANY, which is what the form submits by default", async () => {
+      const response = await post(
+        validRental({ rentalTime: "ANY", returnTime: "ANY" }),
+      );
+
+      expect(response.status).toBe(200);
+    });
+
+    it("rejects a delivery address outside Bexar County", async () => {
+      const response = await post(
+        validRental({
+          customer: {
+            name: "Sam Rivera",
+            email: "sam@example.com",
+            phone: "(210) 555-0134",
+            address: {
+              street: "1 Congress Ave",
+              city: "Austin",
+              state: "TX",
+              zipCode: "78701",
+            },
+          },
+        }),
+      );
+
+      expect(response.status).toBe(400);
+      expect((await response.json()).message).toMatch(/Bexar County/);
+    });
   });
 });

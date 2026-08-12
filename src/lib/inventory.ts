@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import dbConnect from "@/lib/mongodb";
 import { Rental } from "@/models/rental";
 import { Settings } from "@/models/settings";
@@ -114,6 +115,15 @@ export interface AvailabilityOptions {
    * us, so exactly one of the two survives.
    */
   ignoreCreatedFrom?: Date;
+  /**
+   * Our own `_id`, used to break a `createdAt` tie deterministically.
+   *
+   * `createdAt` comes from `default: Date.now`, so two requests constructed in
+   * the same millisecond each fell outside the other's `$lt` cutoff, both
+   * survived the recheck, and inventory went one over. ObjectIds are unique,
+   * so comparing them settles which of the two counts as "already there".
+   */
+  tieBreakId?: string;
 }
 
 export async function isMachineAvailable(
@@ -183,7 +193,24 @@ export async function isMachineAvailable(
     overlapQuery._id = { $ne: options.excludeRentalId };
   }
   if (options?.ignoreCreatedFrom) {
-    overlapQuery.createdAt = { $lt: options.ignoreCreatedFrom };
+    const cutoff = options.ignoreCreatedFrom;
+    if (options.tieBreakId) {
+      // Strictly earlier, or the same millisecond with a lower _id. Without
+      // the second clause a same-millisecond tie let both racers through.
+      overlapQuery.$and = [
+        {
+          $or: [
+            { createdAt: { $lt: cutoff } },
+            {
+              createdAt: cutoff,
+              _id: { $lt: new mongoose.Types.ObjectId(options.tieBreakId) },
+            },
+          ],
+        },
+      ];
+    } else {
+      overlapQuery.createdAt = { $lt: cutoff };
+    }
   }
 
   const overlapping = await Rental.find(overlapQuery)

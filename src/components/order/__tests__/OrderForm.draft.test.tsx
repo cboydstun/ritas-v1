@@ -7,9 +7,11 @@ import "@testing-library/jest-dom";
 import OrderForm from "../OrderForm";
 import { todayLocalIso } from "@/lib/dates";
 
-// Mutable so a test can drive the `?machine=` param. Declared with `var` and
-// prefixed so SWC's jest.mock hoisting can reach it from inside the factory.
-var mockSearchParams = new URLSearchParams();
+// Mutable so a test can drive the `?machine=` param. The `mock` prefix is what
+// lets jest.mock's factory close over it despite the factory being hoisted;
+// the factory only runs when next/navigation is first required, by which point
+// this binding is initialised.
+let mockSearchParams = new URLSearchParams();
 
 jest.mock("next/navigation", () => ({
   useSearchParams: () => mockSearchParams,

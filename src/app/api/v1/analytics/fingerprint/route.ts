@@ -19,6 +19,37 @@ const asString = (value: unknown, fallback = ""): string =>
  * API route for storing fingerprint data
  * POST /api/v1/analytics/fingerprint
  */
+/** The eleven fields FingerprintTracker and OrderFormTracker actually send. */
+const COMPONENT_KEYS = [
+  "userAgent",
+  "language",
+  "platform",
+  "screenWidth",
+  "screenHeight",
+  "colorDepth",
+  "timezone",
+  "sessionStorage",
+  "localStorage",
+  "indexedDb",
+  "cookiesEnabled",
+] as const;
+
+/** Keep the known keys, as primitives, with strings bounded. */
+function pickComponents(
+  raw: unknown,
+): Record<string, string | number | boolean> {
+  const source = (raw ?? {}) as Record<string, unknown>;
+  const out: Record<string, string | number | boolean> = {};
+  for (const key of COMPONENT_KEYS) {
+    const value = source[key];
+    if (typeof value === "string") out[key] = value.slice(0, 512);
+    else if (typeof value === "number" && Number.isFinite(value))
+      out[key] = value;
+    else if (typeof value === "boolean") out[key] = value;
+  }
+  return out;
+}
+
 export async function POST(req: NextRequest) {
   try {
     const guard = await guardPublicWrite(req, {
@@ -46,7 +77,7 @@ export async function POST(req: NextRequest) {
     }
     const fingerprintHash = hashResult.data;
 
-    if (!data.components) {
+    if (!data.components || typeof data.components !== "object") {
       console.error("Validation error: Missing components");
       return NextResponse.json(
         {
@@ -56,6 +87,12 @@ export async function POST(req: NextRequest) {
         { status: 400 },
       );
     }
+    // Everything else on this unauthenticated route is whitelisted and
+    // clamped; `components` was written through verbatim, so any caller could
+    // store an arbitrary object of their choosing under a hash they also
+    // chose. Only the keys both trackers actually send are kept, and only as
+    // primitives.
+    const components = pickComponents(data.components);
 
     // Connect to database with error handling
     try {
@@ -181,7 +218,7 @@ export async function POST(req: NextRequest) {
         {
           $setOnInsert: {
             fingerprintHash: fingerprintHash,
-            components: data.components,
+            components,
             firstSeen: new Date(),
             visitCount: 1,
             userSegmentation: {

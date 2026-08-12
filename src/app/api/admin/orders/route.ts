@@ -7,13 +7,17 @@ import { Settings } from "@/models/settings";
 import { MACHINE_CAPACITY, dateStringSchema } from "@/lib/validation";
 import { isMachineAvailable } from "@/lib/inventory";
 import { isMachineType } from "@/types/machine";
-import { resolveSelectedExtras } from "@/lib/extras-catalog";
+import {
+  resolveSelectedExtras,
+  resolveSelectedMixers,
+} from "@/lib/extras-catalog";
 import {
   computeOrderTotal,
   type SettingsOverrides,
 } from "@/components/order/utils";
 import type { OrderFormData } from "@/components/order/types";
 import { nanoid } from "nanoid";
+import { adminListLimit, adminListHeaders } from "@/lib/admin-list";
 
 /** Fields an admin may set when creating an order by hand. */
 const CREATABLE_ORDER_FIELDS = [
@@ -30,7 +34,7 @@ const CREATABLE_ORDER_FIELDS = [
 ] as const;
 
 // Get all orders
-export async function GET() {
+export async function GET(request: Request) {
   // Check authentication
   const session = await getServerSession(authOptions);
   if (!session || session.user.role !== "admin") {
@@ -38,11 +42,21 @@ export async function GET() {
   }
   try {
     await dbConnect();
-    const rentals = await Rental.find({})
-      .sort({ createdAt: -1 }) // Sort by newest first
-      .select("-__v"); // Exclude version key
+    const limit = adminListLimit(
+      new URL(request.url).searchParams.get("limit"),
+    );
+    const [rentals, total] = await Promise.all([
+      Rental.find({})
+        .sort({ createdAt: -1 }) // Sort by newest first
+        .limit(limit)
+        .select("-__v") // Exclude version key
+        .lean(),
+      Rental.countDocuments({}),
+    ]);
 
-    return NextResponse.json(rentals);
+    return NextResponse.json(rentals, {
+      headers: adminListHeaders(total, rentals.length),
+    });
   } catch (error) {
     console.error("Error fetching orders:", error);
     return NextResponse.json(
@@ -138,10 +152,26 @@ export async function POST(request: Request) {
       );
     }
 
+    // Mixers went straight from the body into computeOrderTotal, which
+    // /api/save-booking never did. A non-array threw inside `mixers.reduce`
+    // and surfaced as a 500; an unknown flavour silently priced at 0.
+    const { mixers: resolvedMixers, unknownIds: unknownMixerIds } =
+      resolveSelectedMixers(doc.selectedMixers, {
+        extras: settingsDoc?.extras,
+        mixers: settingsDoc?.mixers,
+      });
+    if (unknownMixerIds.length > 0) {
+      return NextResponse.json(
+        { message: `Unknown mixers: ${unknownMixerIds.join(", ")}` },
+        { status: 400 },
+      );
+    }
+    doc.selectedMixers = resolvedMixers;
+
     const totals = computeOrderTotal(
       {
         machineType: doc.machineType,
-        selectedMixers: doc.selectedMixers ?? [],
+        selectedMixers: resolvedMixers,
         selectedExtras: resolvedExtras,
         rentalDate: rentalDate.data,
         returnDate: returnDate.data,

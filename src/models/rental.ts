@@ -193,16 +193,23 @@ rentalSchema.pre("save", function () {
 
 // Availability is the hottest query in the app — MachineStep checks all three
 // machine types in parallel on every mount — and it ran as a collection scan.
+//
+// `status` is deliberately not in this key. `isMachineAvailable` puts it
+// inside an `$or` (confirmed/in-progress/pending_payment, plus `pending`
+// bounded by the hold cutoff), which an index cannot serve, so listing it
+// third truncated the usable prefix to {machineType, capacity} and filtered
+// both date ranges in memory.
 rentalSchema.index({
   machineType: 1,
   capacity: 1,
-  status: 1,
   rentalDate: 1,
   returnDate: 1,
 });
 rentalSchema.index({ bookingId: 1 }, { sparse: true });
 // Drives the stale-hold reaper.
 rentalSchema.index({ status: 1, createdAt: 1 });
+// Drives the admin order list, which sorts the whole collection by recency.
+rentalSchema.index({ createdAt: -1 });
 
 // Only create the model if it hasn't been created already
 export const Rental =

@@ -36,7 +36,14 @@ export async function GET() {
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
+    // Every aggregation below narrows the document set *before* $unwind.
+    // Unwinding first materialised up to MAX_RETAINED_VISITS (200) rows per
+    // visitor across the whole collection and made the timestamp filter
+    // unindexable — the filter ran after the fan-out rather than before it.
+    const recentVisitors = { "visits.timestamp": { $gte: thirtyDaysAgo } };
+
     const dailyVisits = await Thumbprint.aggregate([
+      { $match: recentVisitors },
       {
         $unwind: "$visits",
       },
@@ -60,9 +67,11 @@ export async function GET() {
 
     // Get top pages
     const topPages = await Thumbprint.aggregate([
+      { $match: recentVisitors },
       {
         $unwind: "$visits",
       },
+      { $match: { "visits.timestamp": { $gte: thirtyDaysAgo } } },
       {
         $group: {
           _id: "$visits.page",
@@ -172,7 +181,9 @@ export async function GET() {
 
     // Get visits by day of week (1 = Sunday, 7 = Saturday in MongoDB)
     const visitsByDayOfWeek = await Thumbprint.aggregate([
+      { $match: recentVisitors },
       { $unwind: "$visits" },
+      { $match: { "visits.timestamp": { $gte: thirtyDaysAgo } } },
       {
         $group: {
           _id: { $dayOfWeek: "$visits.timestamp" },
@@ -192,7 +203,9 @@ export async function GET() {
 
     // Get visits by hour of day (0-23)
     const visitsByHourOfDay = await Thumbprint.aggregate([
+      { $match: recentVisitors },
       { $unwind: "$visits" },
+      { $match: { "visits.timestamp": { $gte: thirtyDaysAgo } } },
       {
         $group: {
           _id: { $hour: "$visits.timestamp" },

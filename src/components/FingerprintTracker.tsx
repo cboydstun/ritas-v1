@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
+import { getConsent } from "@/lib/consent";
 
 export default function FingerprintTracker() {
   const pathname = usePathname();
@@ -10,6 +11,14 @@ export default function FingerprintTracker() {
   useEffect(() => {
     // Skip tracking for admin pages
     if (pathname.startsWith("/admin")) {
+      return;
+    }
+
+    // The consent banner promises "You can opt out at any time", but opting
+    // out only downgraded Google Consent Mode — this first-party fingerprint
+    // (a ThumbmarkJS hash plus userAgent, platform, screen metrics, timezone
+    // and storage capabilities) kept posting on every page view regardless.
+    if (getConsent() === "denied") {
       return;
     }
 

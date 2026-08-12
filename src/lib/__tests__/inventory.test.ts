@@ -373,5 +373,44 @@ describe("isMachineAvailable", () => {
       const query = (Rental.find as jest.Mock).mock.calls[0][0];
       expect(query._id).toEqual({ $ne: "507f1f77bcf86cd799439011" });
     });
+
+    it("ignores rentals created at or after the cutoff", async () => {
+      mockSettingsInventory({ single: 3 });
+      mockOverlappingRentals([]);
+      mockBlackouts([]);
+      const cutoff = new Date("2026-06-01T00:00:00.000Z");
+
+      await isMachineAvailable("single", 15, "2026-06-15", "2026-06-15", {
+        ignoreCreatedFrom: cutoff,
+      });
+
+      const query = (Rental.find as jest.Mock).mock.calls[0][0];
+      expect(query.createdAt).toEqual({ $lt: cutoff });
+      expect(query.$and).toBeUndefined();
+    });
+
+    it("breaks a same-millisecond tie by _id rather than letting both through", async () => {
+      // `createdAt` is `default: Date.now`, so two requests constructed in the
+      // same tick each fell outside the other's `$lt` cutoff, both survived
+      // the post-write recheck, and inventory went one over.
+      mockSettingsInventory({ single: 3 });
+      mockOverlappingRentals([]);
+      mockBlackouts([]);
+      const cutoff = new Date("2026-06-01T00:00:00.000Z");
+      const ourId = "507f1f77bcf86cd799439011";
+
+      await isMachineAvailable("single", 15, "2026-06-15", "2026-06-15", {
+        ignoreCreatedFrom: cutoff,
+        tieBreakId: ourId,
+      });
+
+      const query = (Rental.find as jest.Mock).mock.calls[0][0];
+      expect(query.createdAt).toBeUndefined();
+      expect(query.$and).toHaveLength(1);
+      const [strictlyEarlier, sameTickLowerId] = query.$and[0].$or;
+      expect(strictlyEarlier).toEqual({ createdAt: { $lt: cutoff } });
+      expect(sameTickLowerId.createdAt).toEqual(cutoff);
+      expect(String(sameTickLowerId._id.$lt)).toBe(ourId);
+    });
   });
 });

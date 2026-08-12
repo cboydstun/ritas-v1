@@ -6,6 +6,7 @@ import twilio from "twilio";
 import { guardPublicWrite } from "@/lib/api-guard";
 import { contactSchema, escapeHtml, firstIssueMessage } from "@/lib/validation";
 import { BUSINESS_TIME_ZONE } from "@/lib/dates";
+import { withTimeout, NOTIFICATION_TIMEOUT_MS } from "@/lib/with-timeout";
 
 /**
  * API route for submitting contact form
@@ -59,18 +60,22 @@ export async function POST(request: Request) {
     if (accountSid && authToken && fromPhone && toPhone) {
       try {
         const twilioClient = twilio(accountSid, authToken);
-        await twilioClient.messages.create({
-          body:
-            `New Contact Form Submission!\n` +
-            `Name: ${contact.name}\n` +
-            `Email: ${contact.email}\n` +
-            `Phone: ${contact.phone}\n` +
-            `Event Date: ${contact.eventDate}\n` +
-            `Message: ${contact.message}\n` +
-            `Submitted: ${submittedAt()}`,
-          from: fromPhone,
-          to: toPhone,
-        });
+        await withTimeout(
+          twilioClient.messages.create({
+            body:
+              `New Contact Form Submission!\n` +
+              `Name: ${contact.name}\n` +
+              `Email: ${contact.email}\n` +
+              `Phone: ${contact.phone}\n` +
+              `Event Date: ${contact.eventDate}\n` +
+              `Message: ${contact.message}\n` +
+              `Submitted: ${submittedAt()}`,
+            from: fromPhone,
+            to: toPhone,
+          }),
+          NOTIFICATION_TIMEOUT_MS,
+          "notification",
+        );
       } catch (smsError) {
         console.error("Error sending SMS notification:", smsError);
         // Continue with the request even if SMS fails
@@ -87,11 +92,12 @@ export async function POST(request: Request) {
       const resend = new Resend(process.env.RESEND_API_KEY);
 
       // Send notification email
-      await resend.emails.send({
-        from: "SATX Ritas Rentals <contact@satxritas.com>",
-        to: ["satxbounce@gmail.com"], // Send to business email
-        subject: "New Contact Form Submission - SATX Ritas",
-        html: `
+      await withTimeout(
+        resend.emails.send({
+          from: "SATX Ritas Rentals <contact@satxritas.com>",
+          to: ["satxbounce@gmail.com"], // Send to business email
+          subject: "New Contact Form Submission - SATX Ritas",
+          html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333; background-color: #f9fafb; border-radius: 8px;">
             <h1 style="color: #2b6cb0; text-align: center; margin-bottom: 30px; padding-bottom: 15px; border-bottom: 2px solid #e2e8f0;">New Contact Form Submission</h1>
             <div style="background-color: #fff; padding: 15px; border-radius: 6px; margin: 20px 0; border: 1px solid #e2e8f0;">
@@ -108,7 +114,10 @@ export async function POST(request: Request) {
             <p style="font-size: 14px; color: #666;">This is an automated notification from your website contact form.</p>
           </div>
         `,
-      });
+        }),
+        NOTIFICATION_TIMEOUT_MS,
+        "notification",
+      );
     } catch (emailError) {
       console.error("Error sending contact notification email:", emailError);
       // Continue with the request even if email fails

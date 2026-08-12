@@ -10,6 +10,8 @@ import { mixerDetails } from "@/lib/rental-data";
 import { formatPrice } from "@/lib/pricing";
 import {
   computeOrderTotal,
+  validateDeliveryTime,
+  isBexarCountyZipCode,
   type SettingsOverrides,
 } from "@/components/order/utils";
 import type { OrderFormData } from "@/components/order/types";
@@ -18,6 +20,7 @@ import {
   resolveSelectedMixers,
 } from "@/lib/extras-catalog";
 import { guardPublicWrite } from "@/lib/api-guard";
+import { withTimeout, NOTIFICATION_TIMEOUT_MS } from "@/lib/with-timeout";
 import {
   MACHINE_CAPACITY,
   escapeHtml,
@@ -119,7 +122,42 @@ export async function POST(request: Request) {
         { price: number; label?: string; description?: string }
       >;
       extras?: Record<string, { price: number }>;
+      operations?: {
+        deliveryWindowStartHour?: number;
+        deliveryWindowEndHour?: number;
+      };
     } | null;
+
+    // The delivery window and the Bexar-County service area were enforced only
+    // in the browser (OrderForm/DetailsStep), so a direct POST could book a
+    // 03:00 delivery to any ZIP in the country. Money was never at risk —
+    // pricing is fully server-derived — but the operational rules were not
+    // enforced anywhere the customer could not reach.
+    const startHour = settingsDoc?.operations?.deliveryWindowStartHour ?? 8;
+    const endHour = settingsDoc?.operations?.deliveryWindowEndHour ?? 18;
+    for (const [label, time] of [
+      ["Delivery", rentalData.rentalTime],
+      ["Pickup", rentalData.returnTime],
+    ] as const) {
+      if (!validateDeliveryTime(time, startHour, endHour)) {
+        return NextResponse.json(
+          {
+            message: `${label} time must be between ${startHour}:00 and ${endHour}:00`,
+          },
+          { status: 400 },
+        );
+      }
+    }
+
+    if (!isBexarCountyZipCode(rentalData.customer.address.zipCode)) {
+      return NextResponse.json(
+        {
+          message:
+            "We currently deliver only within Bexar County. Please call us to arrange delivery outside the area.",
+        },
+        { status: 400 },
+      );
+    }
 
     // ── Authoritative server-side total ──────────────────────────────────
     // Reuses computeOrderTotal — the same function PricingSummary renders
@@ -253,6 +291,9 @@ export async function POST(request: Request) {
       {
         excludeRentalId: savedRental._id.toString(),
         ignoreCreatedFrom: savedRental.createdAt ?? new Date(),
+        // `createdAt` is millisecond-resolution, so two requests built in the
+        // same tick each fell outside the other's cutoff and both survived.
+        tieBreakId: savedRental._id.toString(),
       },
     );
     if (!recheck.available) {
@@ -307,23 +348,27 @@ export async function POST(request: Request) {
                 .join(", ")}\n`
             : "";
 
-        await twilioClient.messages.create({
-          body:
-            `🎉 NEW BOOKING - PAYMENT PENDING\n` +
-            `Booking ID: ${bookingId}\n` +
-            `Date: ${formattedDate}\n` +
-            `Time: ${formattedTime}\n` +
-            `Address: ${rental.customer.address.street}, ${rental.customer.address.city}, ${rental.customer.address.state} ${rental.customer.address.zipCode}\n` +
-            `Machine: ${rental.machineType}\n` +
-            `Mixers: ${resolvedMixers.map(mixerLabel).join(", ") || "None"}\n` +
-            `${extrasText}` +
-            `Customer: ${rental.customer.name}\n` +
-            `Phone: ${rental.customer.phone}\n` +
-            `Total: $${emailTotal.toFixed(2)}\n` +
-            `⚠️ INVOICE CUSTOMER FOR PAYMENT`,
-          from: fromPhone,
-          to: toPhone,
-        });
+        await withTimeout(
+          twilioClient.messages.create({
+            body:
+              `🎉 NEW BOOKING - PAYMENT PENDING\n` +
+              `Booking ID: ${bookingId}\n` +
+              `Date: ${formattedDate}\n` +
+              `Time: ${formattedTime}\n` +
+              `Address: ${rental.customer.address.street}, ${rental.customer.address.city}, ${rental.customer.address.state} ${rental.customer.address.zipCode}\n` +
+              `Machine: ${rental.machineType}\n` +
+              `Mixers: ${resolvedMixers.map(mixerLabel).join(", ") || "None"}\n` +
+              `${extrasText}` +
+              `Customer: ${rental.customer.name}\n` +
+              `Phone: ${rental.customer.phone}\n` +
+              `Total: $${emailTotal.toFixed(2)}\n` +
+              `⚠️ INVOICE CUSTOMER FOR PAYMENT`,
+            from: fromPhone,
+            to: toPhone,
+          }),
+          NOTIFICATION_TIMEOUT_MS,
+          "Twilio",
+        );
       } catch (smsError) {
         console.error("Error sending SMS:", smsError);
         // Continue with order processing even if SMS fails
@@ -451,12 +496,13 @@ export async function POST(request: Request) {
       const resend = new Resend(process.env.RESEND_API_KEY);
 
       // Send confirmation email to customer
-      await resend.emails.send({
-        from: "SATX Ritas Rentals <bookings@satxritas.com>",
-        to: [rental.customer.email],
-        bcc: ["satxbounce@gmail.com"], // BCC the business email
-        subject: "SATX Ritas Margarita Rentals - Booking Confirmation",
-        html: `
+      await withTimeout(
+        resend.emails.send({
+          from: "SATX Ritas Rentals <bookings@satxritas.com>",
+          to: [rental.customer.email],
+          bcc: ["satxbounce@gmail.com"], // BCC the business email
+          subject: "SATX Ritas Margarita Rentals - Booking Confirmation",
+          html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333; background-color: #f9fafb; border-radius: 8px;">
           <h1 style="color: #2b6cb0; text-align: center; margin-bottom: 30px; padding-bottom: 15px; border-bottom: 2px solid #e2e8f0;">Booking Confirmed!</h1>
           <p style="font-size: 16px;">Dear ${escapeHtml(rental.customer.name)},</p>
@@ -530,7 +576,10 @@ export async function POST(request: Request) {
           </p>
           </div>
         `,
-      });
+        }),
+        NOTIFICATION_TIMEOUT_MS,
+        "Resend",
+      );
     } catch (emailError) {
       console.error("Error sending confirmation email:", emailError);
       // Continue with the booking process even if email fails

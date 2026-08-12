@@ -26,6 +26,12 @@ contactSchema.pre("save", function () {
 });
 
 // Only create the model if it hasn't been created already
+// The admin list sorts the whole collection by recency; without this it was an
+// in-memory sort that fails outright at Mongo's 32 MB limit as the collection
+// grows. `status` is the other field the triage view filters on.
+contactSchema.index({ createdAt: -1 });
+contactSchema.index({ status: 1, createdAt: -1 });
+
 export const Contact =
   mongoose.models.Contact || mongoose.model("Contact", contactSchema);
 

@@ -31,6 +31,17 @@ async function errorMessageFrom(
   }
 }
 
+/**
+ * How long to wait for `/api/v1/availability` before giving up.
+ *
+ * Without a bound, a hung request left every machine card on "loading" — and
+ * therefore disabled — while `handleNextStep` kept answering "Still checking
+ * availability for your dates". The customer could not check out and had no
+ * escape hatch. A timeout resolves into the existing soft error state, which
+ * already lets them continue and be confirmed by phone.
+ */
+const AVAILABILITY_TIMEOUT_MS = 8000;
+
 export function useAvailabilityCheck() {
   const [isChecking, setIsChecking] = useState(false);
   const [availability, setAvailability] = useState<AvailabilityResponse | null>(
@@ -51,6 +62,7 @@ export function useAvailabilityCheck() {
       const returnDateQuery = returnDate ? `&returnDate=${returnDate}` : "";
       const response = await fetch(
         `/api/v1/availability?machineType=${machineType}&capacity=${capacity}&date=${date}${returnDateQuery}`,
+        { signal: AbortSignal.timeout(AVAILABILITY_TIMEOUT_MS) },
       );
 
       if (!response.ok) {
@@ -63,8 +75,14 @@ export function useAvailabilityCheck() {
       setAvailability(data);
       return data;
     } catch (err) {
+      // AbortSignal.timeout rejects with a TimeoutError whose message is not
+      // something to show a customer.
       const errorMessage =
-        err instanceof Error ? err.message : "An unknown error occurred";
+        err instanceof DOMException && err.name === "TimeoutError"
+          ? "Availability check timed out"
+          : err instanceof Error
+            ? err.message
+            : "An unknown error occurred";
       setError(errorMessage);
       return {
         available: false,

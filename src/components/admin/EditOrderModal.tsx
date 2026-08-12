@@ -70,12 +70,17 @@ export default function EditOrderModal({
       customer: formData.customer,
     };
 
-    await onSave(order._id!, updatedData);
+    try {
+      await onSave(order._id!, updatedData);
+    } catch {
+      // The table surfaces the message; staying open keeps the admin's edits.
+      return;
+    }
     onClose();
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-2xl">
         <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
           Edit Order

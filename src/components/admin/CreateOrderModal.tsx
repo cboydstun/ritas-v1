@@ -49,7 +49,14 @@ export default function CreateOrderModal({ onClose }: CreateOrderModalProps) {
   // Fetch settings on mount
   useEffect(() => {
     fetch("/api/admin/settings")
-      .then((res) => res.json())
+      .then((res) => {
+        // Without this the route's `{ message }` error body was stored as the
+        // settings object, so every override read undefined and the modal
+        // quoted defaults while /api/admin/orders stored the override-based
+        // total. Same bug the public order form documents having fixed.
+        if (!res.ok) throw new Error("settings unavailable");
+        return res.json();
+      })
       .then((data) => setSettings(data))
       .catch(() => setSettings(null))
       .finally(() => setSettingsLoading(false));
@@ -294,7 +301,7 @@ export default function CreateOrderModal({ onClose }: CreateOrderModalProps) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 overflow-y-auto">
       <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
           Create New Order

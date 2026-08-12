@@ -1,6 +1,6 @@
 import Image from "next/image";
 import { StepProps, extraItems, ExtraItem } from "../types";
-import { useState } from "react";
+
 import { PlusIcon, MinusIcon } from "@heroicons/react/24/solid";
 import {
   buildExtrasCatalog,
@@ -45,10 +45,13 @@ export default function ExtrasStep({
     (item) => item.id.startsWith(mixerExtraId("")),
   );
 
-  // Local state to track selected extras
-  const [selectedExtras, setSelectedExtras] = useState<ExtraItem[]>(
-    formData.selectedExtras || [],
-  );
+  // Derived, not mirrored. A `useState` snapshot taken at mount never re-synced
+  // with the parent, so when OrderForm's catalog prune removed an orphaned
+  // add-on from `formData` a moment after this step mounted, the local copy
+  // kept it — and the next checkbox click dispatched it straight back. The
+  // customer then got a 400 from /api/save-booking naming an extra with no
+  // line item on screen to uncheck.
+  const selectedExtras: ExtraItem[] = formData.selectedExtras || [];
 
   // Handle checkbox change
   const handleExtraChange = (extra: ExtraItem, isChecked: boolean) => {
@@ -62,7 +65,6 @@ export default function ExtrasStep({
       newSelectedExtras = selectedExtras.filter((item) => item.id !== extra.id);
     }
 
-    setSelectedExtras(newSelectedExtras);
     updateFormData(newSelectedExtras);
   };
 
@@ -77,7 +79,6 @@ export default function ExtrasStep({
       item.id === extraId ? { ...item, quantity: newQuantity } : item,
     );
 
-    setSelectedExtras(newSelectedExtras);
     updateFormData(newSelectedExtras);
   };
 

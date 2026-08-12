@@ -1,8 +1,49 @@
 "use client";
 
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback } from "react";
 import { OrderStep, OrderFormData, steps } from "./types";
 import { trackEvent } from "@/lib/analytics";
+import { getConsent } from "@/lib/consent";
+
+// Extract relevant form data for each step (without sensitive information)
+const getFormContextForStep = (step: OrderStep, formData: OrderFormData) => {
+  switch (step) {
+    case "date":
+      return {
+        rentalDate: formData.rentalDate,
+        returnDate: formData.returnDate,
+        rentalTime: formData.rentalTime,
+        returnTime: formData.returnTime,
+      };
+    case "machine":
+      return {
+        machineType: formData.machineType,
+        capacity: formData.capacity,
+        selectedMixers: formData.selectedMixers,
+      };
+    case "details":
+      // Exclude sensitive information
+      return {
+        hasName: !!formData.customer?.name,
+        hasEmail: !!formData.customer?.email,
+        hasPhone: !!formData.customer?.phone,
+        hasAddress: !!formData.customer?.address?.street,
+        zipCode: formData.customer?.address?.zipCode,
+      };
+    case "extras":
+      return {
+        selectedExtras: formData.selectedExtras?.map((item) => item.id) || [],
+        totalExtrasCount: formData.selectedExtras?.length || 0,
+      };
+    case "review":
+      return {
+        totalPrice: formData.price,
+        hasExtras: (formData.selectedExtras?.length || 0) > 0,
+      };
+    default:
+      return {};
+  }
+};
 
 interface OrderFormTrackerProps {
   currentStep: OrderStep;
@@ -13,11 +54,25 @@ export default function OrderFormTracker({
   currentStep,
   formData,
 }: OrderFormTrackerProps) {
-  const [lastStep, setLastStep] = useState<OrderStep | null>(null);
+  // Both of these were `useState`. Neither is rendered, and both are written
+  // from inside the tracking effect, so each step change cost three renders
+  // and churned `trackStepChange`'s identity. `useState(Date.now())` also
+  // re-evaluated `Date.now()` on every render and threw the result away —
+  // impure render work that misbehaves under the React Compiler.
+  const lastStepRef = useRef<OrderStep | null>(null);
   const fingerprintRef = useRef<string | null>(null);
-  const [stepStartTime, setStepStartTime] = useState<number>(Date.now());
+  // Never read before `trackStepChange` has written it: `timeSpentMs` is 0
+  // until `lastStep` is set, and that only happens after the first write.
+  const stepStartTimeRef = useRef<number>(0);
 
   const trackStepChange = useCallback(async () => {
+    const lastStep = lastStepRef.current;
+
+    // Opting out of cookies must actually stop the first-party fingerprint,
+    // not just downgrade Google Consent Mode. The GA4 events above carry no
+    // device identifier and stay.
+    if (getConsent() === "denied") return;
+
     try {
       // Get fingerprint (only once per session). Imported lazily so the
       // fingerprinting library stays out of the /order entry bundle.
@@ -27,10 +82,10 @@ export default function OrderFormTracker({
       }
 
       // Calculate time spent on previous step
-      const timeSpentMs = lastStep ? Date.now() - stepStartTime : 0;
+      const timeSpentMs = lastStep ? Date.now() - stepStartTimeRef.current : 0;
 
       // Reset timer for new step
-      setStepStartTime(Date.now());
+      stepStartTimeRef.current = Date.now();
 
       // Prepare data
       const data = {
@@ -70,11 +125,11 @@ export default function OrderFormTracker({
     } catch (error) {
       console.error("Error tracking form step:", error);
     }
-  }, [currentStep, lastStep, formData, stepStartTime]);
+  }, [currentStep, formData]);
 
   useEffect(() => {
     // Only track if the step has changed
-    if (currentStep !== lastStep) {
+    if (currentStep !== lastStepRef.current) {
       // GA4 first, and synchronously: the wizard never changes the URL, so
       // without this GA4 sees a single /order pageview and no funnel at all.
       // Kept out of `trackStepChange` because that awaits a lazy import and a
@@ -95,55 +150,9 @@ export default function OrderFormTracker({
       }
 
       trackStepChange();
-      setLastStep(currentStep);
+      lastStepRef.current = currentStep;
     }
-  }, [
-    currentStep,
-    lastStep,
-    trackStepChange,
-    formData.price,
-    formData.machineType,
-  ]);
-
-  // Extract relevant form data for each step (without sensitive information)
-  const getFormContextForStep = (step: OrderStep, formData: OrderFormData) => {
-    switch (step) {
-      case "date":
-        return {
-          rentalDate: formData.rentalDate,
-          returnDate: formData.returnDate,
-          rentalTime: formData.rentalTime,
-          returnTime: formData.returnTime,
-        };
-      case "machine":
-        return {
-          machineType: formData.machineType,
-          capacity: formData.capacity,
-          selectedMixers: formData.selectedMixers,
-        };
-      case "details":
-        // Exclude sensitive information
-        return {
-          hasName: !!formData.customer?.name,
-          hasEmail: !!formData.customer?.email,
-          hasPhone: !!formData.customer?.phone,
-          hasAddress: !!formData.customer?.address?.street,
-          zipCode: formData.customer?.address?.zipCode,
-        };
-      case "extras":
-        return {
-          selectedExtras: formData.selectedExtras?.map((item) => item.id) || [],
-          totalExtrasCount: formData.selectedExtras?.length || 0,
-        };
-      case "review":
-        return {
-          totalPrice: formData.price,
-          hasExtras: (formData.selectedExtras?.length || 0) > 0,
-        };
-      default:
-        return {};
-    }
-  };
+  }, [currentStep, trackStepChange, formData.price, formData.machineType]);
 
   return null; // This component doesn't render anything
 }

@@ -53,6 +53,12 @@ leaseInquirySchema.pre("save", function () {
   this.updatedAt = new Date();
 });
 
+// The admin list sorts the whole collection by recency; without this it was an
+// in-memory sort that fails outright at Mongo's 32 MB limit as the collection
+// grows. `status` is the other field the triage view filters on.
+leaseInquirySchema.index({ createdAt: -1 });
+leaseInquirySchema.index({ status: 1, createdAt: -1 });
+
 export const LeaseInquiry =
   mongoose.models.LeaseInquiry ||
   mongoose.model("LeaseInquiry", leaseInquirySchema);

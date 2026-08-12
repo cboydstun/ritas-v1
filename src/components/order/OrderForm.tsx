@@ -103,6 +103,7 @@ export default function OrderForm() {
 
   const [settings, setSettings] = useState<SettingsOverrides>({});
   const [settingsLoaded, setSettingsLoaded] = useState(false);
+  const [settingsFailed, setSettingsFailed] = useState(false);
 
   useEffect(() => {
     fetch("/api/v1/settings")
@@ -114,13 +115,20 @@ export default function OrderForm() {
         if (!res.ok) throw new Error("settings unavailable");
         return res.json();
       })
-      .then((data: SettingsOverrides) => setSettings(data))
-      .catch(() => {
-        // keep defaults on network error
+      .then((data: SettingsOverrides) => {
+        setSettings(data);
+        // Draft pruning below has to wait for the real catalog. Pruning
+        // against the empty default would drop every admin-added extra from a
+        // draft — which is what setting this in `.finally()` did, because
+        // `.finally()` also runs on the `.catch()` path.
+        setSettingsLoaded(true);
       })
-      // Draft pruning below has to wait for the real catalog. Pruning against
-      // the empty default would drop every admin-added extra from a draft.
-      .finally(() => setSettingsLoaded(true));
+      .catch(() => {
+        // Defaults are kept, but they are not the prices the server will
+        // invoice from, so the customer is told rather than quietly shown a
+        // total that will not match their invoice.
+        setSettingsFailed(true);
+      });
   }, []);
 
   // Build ordered mixer list from settings for MachineStep
@@ -386,6 +394,15 @@ export default function OrderForm() {
     const { name, value } = e.target;
 
     // Update returnDate when rentalDate changes
+    if (name === "rentalDate" || name === "returnDate") {
+      // A "fully booked" message belongs to the dates that produced it. It
+      // was never cleared, so picking a different week and returning to the
+      // machine step re-rendered the old message against the new dates —
+      // MachineStep's derive effect early-returns while the fresh checks are
+      // still in flight, so nothing overwrote it in the meantime.
+      setDateAvailabilityError(null);
+    }
+
     if (name === "rentalDate") {
       // Issue 2: getNextDay now accepts a YYYY-MM-DD string and returns one
       const nextDayString = getNextDay(value);
@@ -607,6 +624,21 @@ export default function OrderForm() {
     <div className="max-w-7xl mx-auto px-4 py-8">
       {/* Track form step changes */}
       <OrderFormTracker currentStep={step} formData={formData} />
+
+      {/* Pricing could not be confirmed against the server */}
+      {settingsFailed && (
+        <div
+          role="alert"
+          className="mb-4 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-lg"
+        >
+          <p className="text-sm text-amber-800 dark:text-amber-300">
+            ⚠️ We couldn&apos;t confirm current pricing just now, so the totals
+            below are our standard rates. Your invoice is calculated on our
+            server and is the figure that counts — we&apos;ll confirm it with
+            you before anything is due.
+          </p>
+        </div>
+      )}
 
       {/* Draft restored banner */}
       {draftRestored && (
