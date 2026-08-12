@@ -146,7 +146,7 @@ Server-side "is this date in the past" checks go through `todayLocalIso()` in `s
 
 ### Public API Hardening
 
-All four public write routes (`/api/save-booking`, `/api/v1/contacts`, `/api/v1/lease-inquiries`, `/api/v1/analytics/fingerprint`) go through `guardPublicWrite()` in `src/lib/api-guard.ts`, which applies a per-IP fixed-window rate limit and a body-size cap before parsing JSON. The limiter (`src/lib/rate-limit.ts`) uses Upstash Redis when `UPSTASH_REDIS_REST_URL`/`_TOKEN` are set and falls back to per-instance memory otherwise. Each route then parses through a zod schema and builds its Mongo document from an explicit field list — never `Model.create(body)`.
+All four public write routes (`/api/save-booking`, `/api/v1/contacts`, `/api/v1/lease-inquiries`, `/api/v1/analytics/fingerprint`) go through `guardPublicWrite()` in `src/lib/api-guard.ts`, which applies a per-IP fixed-window rate limit and a body-size cap before parsing JSON. The limiter (`src/lib/rate-limit.ts`) uses Upstash Redis when it is configured and falls back to per-instance memory otherwise. It accepts **either** `UPSTASH_REDIS_REST_URL`/`_TOKEN` (Upstash's own names, for a hand-configured deployment) **or** `KV_REST_API_URL`/`_TOKEN` (what the Vercel Marketplace integration injects). Reading only the first meant the integration could be provisioned, connected and billed while every request silently used the memory limiter — invisible, because the fallback works. Do not duplicate the values under both names; rotating the resource's token in Vercel should flow through without a second edit. Each route then parses through a zod schema and builds its Mongo document from an explicit field list — never `Model.create(body)`.
 
 Customer-supplied strings interpolated into notification email must go through `escapeHtml()` from `src/lib/validation.ts`.
 
@@ -248,7 +248,10 @@ TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER, USER_PHONE_NUMBER
 RESEND_API_KEY
 NEXT_PUBLIC_GTM_ID, NEXT_PUBLIC_GA_MEASUREMENT_ID   (production only; unset means no GA4 data)
 CRON_SECRET
-UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN   (optional; shared rate-limit store)
+KV_REST_API_URL, KV_REST_API_TOKEN                 (shared rate-limit store; set by the
+                                                    Upstash Marketplace integration. Falls back
+                                                    to per-instance memory when absent. The
+                                                    UPSTASH_REDIS_REST_* names also work.)
 NEXT_PUBLIC_GOOGLE_REVIEW_URL   (optional; unset hides the review CTA on /success)
 ```
 

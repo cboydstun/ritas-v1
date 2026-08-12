@@ -232,3 +232,104 @@ describe("readJsonBody without a Content-Length", () => {
     expect(result).toEqual({ ok: false, tooLarge: false });
   });
 });
+
+/**
+ * The shared store is opt-in by environment, and its absence is silent: every
+ * request just falls through to the per-instance memory limiter, which works.
+ * So a credential the code cannot see is invisible in production — the store
+ * is provisioned, connected, billed, and doing nothing.
+ *
+ * The Vercel Marketplace integration injects `KV_REST_API_*`; Upstash's own
+ * docs (and a hand-configured deployment) use `UPSTASH_REDIS_REST_*`. Both
+ * must resolve.
+ */
+describe("shared-store credential resolution", () => {
+  const OLD_ENV = process.env;
+  let fetchMock: jest.Mock;
+
+  beforeEach(() => {
+    process.env = { ...OLD_ENV };
+    for (const k of [
+      "UPSTASH_REDIS_REST_URL",
+      "UPSTASH_REDIS_REST_TOKEN",
+      "KV_REST_API_URL",
+      "KV_REST_API_TOKEN",
+    ]) {
+      delete process.env[k];
+    }
+    fetchMock = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => [{ result: 1 }, { result: 1 }],
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+  });
+
+  afterAll(() => {
+    process.env = OLD_ENV;
+  });
+
+  it("uses the store when Upstash's own variable names are set", async () => {
+    process.env.UPSTASH_REDIS_REST_URL = "https://example.upstash.io";
+    process.env.UPSTASH_REDIS_REST_TOKEN = "token-a";
+
+    await rateLimit(`upstash-${Math.random()}`, {
+      limit: 5,
+      windowSeconds: 60,
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls[0][0]).toBe(
+      "https://example.upstash.io/pipeline",
+    );
+  });
+
+  it("uses the store when the Vercel integration's names are set", async () => {
+    process.env.KV_REST_API_URL = "https://example.kv.upstash.io";
+    process.env.KV_REST_API_TOKEN = "token-b";
+
+    await rateLimit(`kv-${Math.random()}`, { limit: 5, windowSeconds: 60 });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls[0][0]).toBe(
+      "https://example.kv.upstash.io/pipeline",
+    );
+  });
+
+  it("prefers the explicit Upstash names when both are present", async () => {
+    process.env.UPSTASH_REDIS_REST_URL = "https://explicit.upstash.io";
+    process.env.UPSTASH_REDIS_REST_TOKEN = "token-a";
+    process.env.KV_REST_API_URL = "https://integration.upstash.io";
+    process.env.KV_REST_API_TOKEN = "token-b";
+
+    await rateLimit(`both-${Math.random()}`, { limit: 5, windowSeconds: 60 });
+
+    expect(fetchMock.mock.calls[0][0]).toBe(
+      "https://explicit.upstash.io/pipeline",
+    );
+  });
+
+  it("falls back to memory, not an error, when neither pair is set", async () => {
+    const result = await rateLimit(`none-${Math.random()}`, {
+      limit: 5,
+      windowSeconds: 60,
+    });
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(result.allowed).toBe(true);
+  });
+
+  // A limiter outage must not take the booking form down with it.
+  it("falls back to memory when the store errors", async () => {
+    process.env.KV_REST_API_URL = "https://example.kv.upstash.io";
+    process.env.KV_REST_API_TOKEN = "token-b";
+    fetchMock.mockRejectedValue(new Error("ECONNRESET"));
+    jest.spyOn(console, "error").mockImplementation(() => {});
+
+    const result = await rateLimit(`err-${Math.random()}`, {
+      limit: 5,
+      windowSeconds: 60,
+    });
+
+    expect(result.allowed).toBe(true);
+  });
+});

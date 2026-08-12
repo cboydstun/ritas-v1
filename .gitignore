@@ -40,3 +40,11 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Agent-skill docs dropped in by Vercel Marketplace integrations. These are
+# vendor SDK references (@upstash/redis, @upstash/ratelimit) for packages this
+# project does not install — src/lib/rate-limit.ts calls the REST API with
+# fetch — so they are ~4.4k lines of noise in diffs and reviews.
+.agents/
+skills-lock.json
+.claude/settings.local.json

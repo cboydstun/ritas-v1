@@ -60,9 +60,26 @@ function pruneMemoryStore(now: number): void {
   }
 }
 
+/**
+ * Credentials for the shared limiter store, if one is configured.
+ *
+ * Two accepted spellings, deliberately. `UPSTASH_REDIS_REST_*` is what
+ * Upstash's own docs use and what a manually-configured deployment sets;
+ * `KV_REST_API_*` is what the Vercel Marketplace integration injects when the
+ * Redis resource is provisioned through it. Reading only the first meant the
+ * integration could be fully provisioned and connected while every request
+ * silently fell through to the per-instance memory limiter — the failure mode
+ * this store exists to remove, and an invisible one, because the fallback
+ * works.
+ *
+ * Reading the integration's variables directly rather than duplicating them
+ * under the other names keeps one source of truth: rotating the resource's
+ * token in the Vercel dashboard flows through without a second edit.
+ */
 function redisConfig(): { url: string; token: string } | null {
-  const url = process.env.UPSTASH_REDIS_REST_URL;
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+  const url = process.env.UPSTASH_REDIS_REST_URL ?? process.env.KV_REST_API_URL;
+  const token =
+    process.env.UPSTASH_REDIS_REST_TOKEN ?? process.env.KV_REST_API_TOKEN;
   return url && token ? { url, token } : null;
 }
 
