@@ -52,6 +52,12 @@ export interface StepProps {
   setAgreedToTerms?: (value: boolean) => void;
   onAvailabilityError?: (errorMsg: string | null) => void;
   /**
+   * Reports whether an availability check is still in flight, so the parent
+   * can hold "Next" until the answer lands rather than letting the customer
+   * walk to review on a machine the server will refuse.
+   */
+  onAvailabilityChecking?: (checking: boolean) => void;
+  /**
    * The service/military discount is no longer offered to customers — the
    * self-serve checkbox was abused and was hard to reconcile. Nothing in the
    * order wizard sets this. The flag survives only so admins can apply a

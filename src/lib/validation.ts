@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { MachineType } from "@/types";
 import { LEASE_BUSINESS_TYPES, LEASE_TERMS } from "@/lib/lease-data";
+import { todayLocalIso } from "@/lib/dates";
 
 /**
  * Request-body validation for the public API routes.
@@ -20,12 +21,20 @@ export const MACHINE_CAPACITY: Record<MachineType, 15 | 30 | 45> = {
 
 export const machineTypeSchema = z.enum(["single", "double", "triple"]);
 
-export const mixerTypeSchema = z.enum([
-  "non-alcoholic",
-  "margarita",
-  "pina-colada",
-  "strawberry-daiquiri",
-]);
+/**
+ * A mixer id. The valid set is dynamic — an admin can add flavours in
+ * `/admin/settings` and `MachineStep` renders a card for each — so membership
+ * is checked against the catalog at the route layer (`resolveSelectedMixers`)
+ * rather than pinned to an enum here. Pinning it to the static four rejected
+ * every booking that used an admin-added flavour, with the raw Zod message
+ * shown to the customer.
+ */
+export const mixerIdSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(64)
+  .regex(/^[a-z0-9-]+$/i, "Invalid mixer");
 
 /** YYYY-MM-DD that also has to be a real calendar date. */
 export const dateStringSchema = z
@@ -46,24 +55,9 @@ export const timeStringSchema = z
   .string()
   .regex(/^(ANY|([01]\d|2[0-3]):[0-5]\d)$/, "Invalid time");
 
-/**
- * Today in the business's timezone as YYYY-MM-DD.
- *
- * Deliberately not the server clock: Vercel functions run UTC, so after 19:00
- * Central the server was already on tomorrow's date and rejected same-day
- * bookings that the client's date picker had just offered. `en-CA` formats as
- * YYYY-MM-DD, which is the format used throughout this codebase.
- */
-export const BUSINESS_TIME_ZONE = "America/Chicago";
-
-export function todayLocalIso(): string {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: BUSINESS_TIME_ZONE,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date());
-}
+// Re-exported from `@/lib/dates` so client components can reach them without
+// pulling zod into the browser bundle. Server code may import from either.
+export { BUSINESS_TIME_ZONE, todayLocalIso } from "@/lib/dates";
 
 const addressSchema = z.object({
   street: z.string().trim().min(1).max(200),
@@ -116,7 +110,7 @@ export const rentalDataSchema = z
     // server derives it from machineType. Sending a mismatched pair used to
     // slip past every availability check.
     capacity: z.union([z.literal(15), z.literal(30), z.literal(45)]).optional(),
-    selectedMixers: z.array(mixerTypeSchema).max(3).default([]),
+    selectedMixers: z.array(mixerIdSchema).max(3).default([]),
     selectedExtras: z.array(selectedExtraSchema).max(20).default([]),
     rentalDate: dateStringSchema,
     rentalTime: timeStringSchema,
@@ -136,10 +130,13 @@ export const rentalDataSchema = z
   })
   // The range is expanded day by day downstream, so an unbounded span
   // (returnDate: "9999-12-31") burns seconds of CPU per request.
-  .refine((data) => spanInDays(data.rentalDate, data.returnDate) <= MAX_RANGE_DAYS, {
-    message: `Rental cannot exceed ${MAX_RANGE_DAYS} days`,
-    path: ["returnDate"],
-  })
+  .refine(
+    (data) => spanInDays(data.rentalDate, data.returnDate) <= MAX_RANGE_DAYS,
+    {
+      message: `Rental cannot exceed ${MAX_RANGE_DAYS} days`,
+      path: ["returnDate"],
+    },
+  )
   .refine(
     (data) => data.selectedMixers.length <= maxMixersFor(data.machineType),
     {

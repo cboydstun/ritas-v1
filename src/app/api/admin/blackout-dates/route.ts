@@ -19,7 +19,12 @@ interface BlackoutDateQuery {
 }
 
 /** Bounded page size, so `?limit=abc` cannot put NaN into `.limit()`. */
-function clampInt(raw: string | null, fallback: number, min: number, max: number) {
+function clampInt(
+  raw: string | null,
+  fallback: number,
+  min: number,
+  max: number,
+) {
   const n = Number.parseInt(raw ?? "", 10);
   if (!Number.isFinite(n)) return fallback;
   return Math.min(Math.max(n, min), max);
@@ -149,10 +154,25 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Validate date range using createLocalDate to avoid timezone issues
-    if (endDate && createLocalDate(startDate) > createLocalDate(endDate)) {
+    // `createLocalDate` is fed straight from the request body. Rejecting a
+    // non-date here keeps a numeric or malformed `startDate` a 400 rather than
+    // a Mongoose cast failure surfacing as a 500.
+    const parsedStart = createLocalDate(startDate);
+    const parsedEnd = endDate ? createLocalDate(endDate) : undefined;
+    if (
+      Number.isNaN(parsedStart.getTime()) ||
+      (parsedEnd && Number.isNaN(parsedEnd.getTime()))
+    ) {
       return NextResponse.json(
-        { message: "End date must be after start date" },
+        { message: "Dates must be valid calendar dates" },
+        { status: 400 },
+      );
+    }
+
+    // Validate date range using createLocalDate to avoid timezone issues
+    if (parsedEnd && parsedStart > parsedEnd) {
+      return NextResponse.json(
+        { message: "End date must be on or after start date" },
         { status: 400 },
       );
     }
@@ -161,8 +181,8 @@ export async function POST(request: NextRequest) {
 
     // Create new blackout date using createLocalDate to avoid timezone shifts
     const blackoutDate = new BlackoutDate({
-      startDate: createLocalDate(startDate),
-      endDate: endDate ? createLocalDate(endDate) : undefined,
+      startDate: parsedStart,
+      endDate: parsedEnd,
       reason: reason || undefined,
       type,
       startTime: type === "time_range" ? startTime : undefined,

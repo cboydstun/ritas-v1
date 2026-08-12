@@ -185,6 +185,14 @@ export const metadata: Metadata = {
   title: "Pricing | SATX Ritas Rentals - Frozen Drink Machine Rentals",
   description:
     "Transparent pricing for frozen drink machine rentals in San Antonio. Professional delivery, setup, and pickup included. Single, double, and triple tank machines available with various mixer options.",
+  openGraph: {
+    title: "Pricing | SATX Ritas Rentals - Frozen Drink Machine Rentals",
+    description:
+      "Transparent pricing for frozen drink machine rentals in San Antonio. Professional delivery, setup, and pickup included. Single, double, and triple tank machines available with various mixer options.",
+    url: `${SITE_URL}/pricing`,
+    images: [`${SITE_URL}/og-image.jpg`],
+    type: "website",
+  },
 };
 
 export default function PricingPage() {

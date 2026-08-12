@@ -1,63 +1,15 @@
-"use client";
+import ReviewCarousel from "./ReviewCarousel";
+import { getReviewSummary } from "@/lib/reviews";
 
-import { useEffect, useState } from "react";
-
-interface Review {
-  _id: string;
-  authorName: string;
-  rating: number;
-  text: string;
-  time: string;
-}
-
-export default function SocialProofSection() {
-  const [reviews, setReviews] = useState<Review[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
-
-  const reviewsPerPage = 3;
-  const totalPages = Math.ceil(reviews.length / reviewsPerPage);
-  const startIndex = (currentPage - 1) * reviewsPerPage;
-  const currentReviews = reviews.slice(startIndex, startIndex + reviewsPerPage);
-
-  const averageRating =
-    reviews.length > 0
-      ? (
-          reviews.reduce((acc, review) => acc + review.rating, 0) /
-          reviews.length
-        ).toFixed(1)
-      : "0.0";
-
-  useEffect(() => {
-    const fetchReviews = async () => {
-      try {
-        const response = await fetch("/api/v1/reviews");
-        if (!response.ok) {
-          throw new Error("Failed to fetch reviews");
-        }
-        const data = await response.json();
-        // Ensure we're setting an array of reviews
-        if (Array.isArray(data)) {
-          setReviews(data);
-        } else if (data.reviews && Array.isArray(data.reviews)) {
-          // If the API returns an object with a reviews property that's an array
-          setReviews(data.reviews);
-        } else {
-          // If we can't find an array of reviews, log the structure and set an empty array
-          console.error("Unexpected reviews data structure:", data);
-          setReviews([]);
-          throw new Error("Unexpected data structure from reviews API");
-        }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load reviews");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchReviews();
-  }, []);
+/**
+ * Server component: the review text and the headline numbers are in the HTML
+ * Google reads. This was a client component fetching `/api/v1/reviews` in an
+ * effect, so the reviews existed only after hydration and the section rendered
+ * "0 / 0.0 / Loading reviews..." on first paint.
+ */
+export default async function SocialProofSection() {
+  const { reviews, count, averageRating, fiveStarCount, satisfactionRate } =
+    await getReviewSummary();
 
   return (
     <div className="bg-white dark:bg-charcoal py-8 sm:py-16">
@@ -77,7 +29,7 @@ export default function SocialProofSection() {
             {/* The real review count. This used to be `reviews.length * 8`,
                 a made-up multiplier presented to visitors as a fact. */}
             <div className="text-2xl sm:text-4xl font-bold text-margarita mb-1 sm:mb-2">
-              {reviews.length}
+              {count}
             </div>
             <div className="text-sm sm:text-base text-charcoal/80 dark:text-white/80">
               Customer Reviews
@@ -85,7 +37,7 @@ export default function SocialProofSection() {
           </div>
           <div className="text-center p-2">
             <div className="text-2xl sm:text-4xl font-bold text-margarita mb-1 sm:mb-2">
-              {averageRating}
+              {averageRating?.toFixed(1) ?? "—"}
             </div>
             <div className="text-sm sm:text-base text-charcoal/80 dark:text-white/80">
               Average Rating
@@ -94,7 +46,7 @@ export default function SocialProofSection() {
           <div className="text-center p-2">
             {/* Counts 5s only. The tile said "5-Star" while filtering >= 4. */}
             <div className="text-2xl sm:text-4xl font-bold text-margarita mb-1 sm:mb-2">
-              {reviews.filter((r) => r.rating === 5).length}
+              {fiveStarCount}
             </div>
             <div className="text-sm sm:text-base text-charcoal/80 dark:text-white/80">
               5-Star Reviews
@@ -102,11 +54,7 @@ export default function SocialProofSection() {
           </div>
           <div className="text-center p-2">
             <div className="text-2xl sm:text-4xl font-bold text-margarita mb-1 sm:mb-2">
-              {Math.round(
-                (reviews.filter((r) => r.rating >= 4).length / reviews.length) *
-                  100 || 0,
-              )}
-              %
+              {satisfactionRate}%
             </div>
             <div className="text-sm sm:text-base text-charcoal/80 dark:text-white/80">
               Satisfaction Rate
@@ -115,75 +63,7 @@ export default function SocialProofSection() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-8">
-          {isLoading ? (
-            <div className="col-span-full text-center py-8">
-              <div className="text-base sm:text-lg text-charcoal/80 dark:text-white/80">
-                Loading reviews...
-              </div>
-            </div>
-          ) : error ? (
-            <div className="col-span-full text-center py-8">
-              <div className="text-base sm:text-lg text-red-500">{error}</div>
-            </div>
-          ) : (
-            <>
-              {currentReviews.map((review) => (
-                <div
-                  key={review._id}
-                  className="bg-light dark:bg-charcoal/50 p-4 sm:p-6 rounded-lg"
-                >
-                  <div className="flex items-center mb-3 sm:mb-4">
-                    <div className="flex text-orange">
-                      {[...Array(review.rating)].map((_, i) => (
-                        <svg
-                          key={i}
-                          className="w-4 h-4 sm:w-5 sm:h-5"
-                          fill="currentColor"
-                          viewBox="0 0 20 20"
-                        >
-                          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                        </svg>
-                      ))}
-                    </div>
-                  </div>
-                  <p className="text-sm sm:text-base text-charcoal/80 dark:text-white/80 mb-3 sm:mb-4">
-                    {review.text}
-                  </p>
-                  <div className="font-semibold text-sm sm:text-base text-charcoal dark:text-white">
-                    {review.authorName}
-                  </div>
-                  <div className="text-xs sm:text-sm text-charcoal/80 dark:text-white/80">
-                    {new Date(review.time).toLocaleDateString()}
-                  </div>
-                </div>
-              ))}
-
-              {/* Pagination Controls */}
-              {reviews.length > reviewsPerPage && (
-                <div className="col-span-full flex flex-col sm:flex-row justify-center items-center gap-3 mt-6 sm:mt-8">
-                  <button
-                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                    disabled={currentPage === 1}
-                    className="w-full sm:w-auto px-4 py-3 sm:py-2 text-sm font-medium text-charcoal dark:text-white bg-light dark:bg-charcoal/50 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-light/80 dark:hover:bg-charcoal/40 transition-colors"
-                  >
-                    Previous
-                  </button>
-                  <span className="text-sm sm:text-base text-charcoal/80 dark:text-white/80">
-                    Page {currentPage} of {totalPages}
-                  </span>
-                  <button
-                    onClick={() =>
-                      setCurrentPage((p) => Math.min(totalPages, p + 1))
-                    }
-                    disabled={currentPage === totalPages}
-                    className="w-full sm:w-auto px-4 py-3 sm:py-2 text-sm font-medium text-charcoal dark:text-white bg-light dark:bg-charcoal/50 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-light/80 dark:hover:bg-charcoal/40 transition-colors"
-                  >
-                    Next
-                  </button>
-                </div>
-              )}
-            </>
-          )}
+          <ReviewCarousel reviews={reviews} />
         </div>
       </div>
     </div>

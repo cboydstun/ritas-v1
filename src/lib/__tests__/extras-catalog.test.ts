@@ -1,7 +1,9 @@
 import {
   MAX_EXTRA_QUANTITY,
   buildExtrasCatalog,
+  buildMixerCatalog,
   resolveSelectedExtras,
+  resolveSelectedMixers,
 } from "@/lib/extras-catalog";
 
 describe("extras catalog", () => {
@@ -163,5 +165,70 @@ describe("admin-added mixers", () => {
     expect(extras).toHaveLength(1);
     expect(extras[0].price).toBe(22.5);
     expect(extras[0].quantity).toBe(2);
+  });
+});
+
+describe("tank mixers", () => {
+  const overrides = {
+    mixers: {
+      "blue-hawaiian": { label: "Blue Hawaiian Mixer", price: 22.5 },
+    },
+  };
+
+  it("includes the static flavours", () => {
+    const catalog = buildMixerCatalog();
+
+    expect(catalog.has("margarita")).toBe(true);
+    expect(catalog.has("pina-colada")).toBe(true);
+  });
+
+  it("includes a settings-only flavour alongside the static ones", () => {
+    const catalog = buildMixerCatalog(overrides);
+
+    expect(catalog.has("blue-hawaiian")).toBe(true);
+    expect(catalog.has("margarita")).toBe(true);
+  });
+
+  it("resolves a settings-only flavour instead of rejecting it", () => {
+    const { mixers, unknownIds } = resolveSelectedMixers(
+      ["blue-hawaiian"],
+      overrides,
+    );
+
+    expect(unknownIds).toEqual([]);
+    expect(mixers).toEqual(["blue-hawaiian"]);
+  });
+
+  it("reports a flavour that is in neither source", () => {
+    const { mixers, unknownIds } = resolveSelectedMixers(
+      ["margarita", "tequila-sunrise"],
+      overrides,
+    );
+
+    expect(mixers).toEqual(["margarita"]);
+    expect(unknownIds).toEqual(["tequila-sunrise"]);
+  });
+
+  // The array is positional — one entry per tank — so order is significant
+  // and the same flavour may legitimately appear in more than one tank.
+  it("preserves order and keeps repeated flavours", () => {
+    const { mixers } = resolveSelectedMixers([
+      "pina-colada",
+      "margarita",
+      "margarita",
+    ]);
+
+    expect(mixers).toEqual(["pina-colada", "margarita", "margarita"]);
+  });
+
+  it("ignores non-string entries", () => {
+    const { mixers, unknownIds } = resolveSelectedMixers([
+      "margarita",
+      42,
+      null,
+    ]);
+
+    expect(mixers).toEqual(["margarita"]);
+    expect(unknownIds).toEqual([]);
   });
 });

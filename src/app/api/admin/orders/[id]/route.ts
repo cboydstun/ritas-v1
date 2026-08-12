@@ -135,10 +135,21 @@ export async function PUT(request: Request, context: RouteParams) {
       status?: string;
     };
 
+    // Reviving a cancelled order puts a unit back on a date that may have
+    // filled up while it was cancelled. Only the machine/date fields used to
+    // count as a booking change, so `PUT { status: "confirmed" }` restored the
+    // order with no availability check at all.
+    const existingStatus = (existing as { status?: string }).status;
+    const revivesCancelled =
+      existingStatus === "cancelled" &&
+      update.status !== undefined &&
+      update.status !== "cancelled";
+
     const changesBooking =
       update.machineType !== undefined ||
       update.rentalDate !== undefined ||
-      update.returnDate !== undefined;
+      update.returnDate !== undefined ||
+      revivesCancelled;
 
     // An admin edit used to bypass the availability check entirely, so moving
     // an order onto a full date silently oversold it.

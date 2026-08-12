@@ -4,7 +4,8 @@ import { authOptions } from "@/lib/auth";
 import dbConnect from "@/lib/mongodb";
 import { Rental } from "@/models/rental";
 import { Settings } from "@/models/settings";
-import { MACHINE_CAPACITY } from "@/lib/validation";
+import { MACHINE_CAPACITY, dateStringSchema } from "@/lib/validation";
+import { isMachineAvailable } from "@/lib/inventory";
 import { isMachineType } from "@/types/machine";
 import { resolveSelectedExtras } from "@/lib/extras-catalog";
 import {
@@ -71,13 +72,53 @@ export async function POST(request: Request) {
       if (data[field] !== undefined) doc[field] = data[field];
     }
 
-    if (typeof doc.machineType !== "string" || !isMachineType(doc.machineType)) {
+    if (
+      typeof doc.machineType !== "string" ||
+      !isMachineType(doc.machineType)
+    ) {
       return NextResponse.json(
         { message: "Invalid machine type" },
         { status: 400 },
       );
     }
-    doc.capacity = MACHINE_CAPACITY[doc.machineType];
+    const capacity = MACHINE_CAPACITY[doc.machineType];
+    doc.capacity = capacity;
+
+    // Dates were previously passed through unvalidated and defaulted to ""
+    // for the price computation, so a missing or malformed date silently
+    // priced as a single rental day before Mongoose's `required` fired.
+    const rentalDate = dateStringSchema.safeParse(doc.rentalDate);
+    const returnDate = dateStringSchema.safeParse(doc.returnDate);
+    if (!rentalDate.success || !returnDate.success) {
+      return NextResponse.json(
+        { message: "rentalDate and returnDate must be valid YYYY-MM-DD dates" },
+        { status: 400 },
+      );
+    }
+    if (returnDate.data < rentalDate.data) {
+      return NextResponse.json(
+        { message: "Return date must be on or after the rental date" },
+        { status: 400 },
+      );
+    }
+
+    // The PUT handler has re-checked availability since admin edits were found
+    // to oversell dates; POST had no check at all, so creating an order by
+    // hand on a full date was the same hole by another route.
+    if (doc.status !== "cancelled") {
+      const availability = await isMachineAvailable(
+        doc.machineType,
+        capacity,
+        rentalDate.data,
+        returnDate.data,
+      );
+      if (!availability.available) {
+        return NextResponse.json(
+          { message: availability.reason ?? "Machine is not available" },
+          { status: 409 },
+        );
+      }
+    }
 
     const settingsDoc = (await Settings.findOne({ key: "global" }).lean()) as {
       fees?: SettingsOverrides["fees"];
@@ -102,8 +143,8 @@ export async function POST(request: Request) {
         machineType: doc.machineType,
         selectedMixers: doc.selectedMixers ?? [],
         selectedExtras: resolvedExtras,
-        rentalDate: doc.rentalDate ?? "",
-        returnDate: doc.returnDate ?? "",
+        rentalDate: rentalDate.data,
+        returnDate: returnDate.data,
         isServiceDiscount: false,
       } as OrderFormData,
       {
@@ -117,7 +158,7 @@ export async function POST(request: Request) {
     doc.selectedExtras = resolvedExtras;
     doc.price = Number(totals.finalTotal.toFixed(2));
     doc.isServiceDiscount = false;
-    doc.bookingId = nanoid(10);
+    doc.bookingId = nanoid(10).toUpperCase();
     doc.payment = {
       paypalTransactionId: null,
       amount: doc.price,
@@ -141,12 +182,11 @@ export async function POST(request: Request) {
       });
 
       // Check for validation errors (e.g., missing required fields or invalid mixer selections)
+      // `error.message` carries model names, field paths and index names, so
+      // it is logged above rather than returned.
       if (error.name === "ValidationError") {
         return NextResponse.json(
-          {
-            message: "Invalid rental data",
-            details: error.message,
-          },
+          { message: "Invalid rental data" },
           { status: 400 },
         );
       }

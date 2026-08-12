@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BUSINESS_PHONE_DISPLAY, BUSINESS_PHONE_HREF } from "@/lib/site";
 
 export default function Footer() {
   return (
@@ -80,10 +81,10 @@ export default function Footer() {
               <li>San Antonio, TX</li>
               <li>
                 <a
-                  href="tel:+15122100194"
+                  href={BUSINESS_PHONE_HREF}
                   className="hover:text-margarita dark:hover:text-margarita transition-colors"
                 >
-                  (512) 210-0194
+                  {BUSINESS_PHONE_DISPLAY}
                 </a>
               </li>
               <li>

@@ -7,6 +7,7 @@ import {
   mixerExtraId,
   MAX_EXTRA_QUANTITY,
 } from "@/lib/extras-catalog";
+import { calculateRentalDays } from "../utils";
 
 export default function ExtrasStep({
   formData,
@@ -22,6 +23,20 @@ export default function ExtrasStep({
     extras: settings?.extras,
     mixers: settings?.mixers,
   });
+
+  // Per-day extras bill for every day of the rental, exactly as
+  // `computeOrderTotal` charges them. The card used to print price x quantity
+  // for an item whose own label two lines above says "/day", so a 3-day
+  // booking showed one figure here and three times that in the sidebar.
+  const rentalDays =
+    formData.rentalDate && formData.returnDate
+      ? calculateRentalDays(formData.rentalDate, formData.returnDate)
+      : 1;
+
+  const lineTotal = (extra: ExtraItem, quantity: number): number =>
+    extra.pricingType === "flat"
+      ? extra.price * quantity
+      : extra.price * quantity * rentalDays;
 
   const staticExtraItems: ExtraItem[] = extraItems.map(
     (item) => extrasCatalog.get(item.id) ?? item,
@@ -190,9 +205,12 @@ export default function ExtrasStep({
                   <PlusIcon className="h-4 w-4" />
                 </button>
               </div>
-              {getExtraQuantity(extra.id) > 1 && (
+              {(getExtraQuantity(extra.id) > 1 || rentalDays > 1) && (
                 <span className="text-sm text-orange font-medium ml-2">
-                  ${(extra.price * getExtraQuantity(extra.id)).toFixed(2)}
+                  ${lineTotal(extra, getExtraQuantity(extra.id)).toFixed(2)}
+                  {extra.pricingType !== "flat" && rentalDays > 1
+                    ? ` (${rentalDays} days)`
+                    : ""}
                 </span>
               )}
             </div>

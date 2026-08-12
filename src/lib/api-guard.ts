@@ -20,8 +20,7 @@ export interface PublicWriteOptions {
 }
 
 export type PublicWriteGuard =
-  | { ok: true; data: unknown }
-  | { ok: false; response: NextResponse };
+  { ok: true; data: unknown } | { ok: false; response: NextResponse };
 
 export async function guardPublicWrite(
   request: Request,

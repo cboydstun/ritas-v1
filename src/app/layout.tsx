@@ -3,17 +3,31 @@ import { Metadata } from "next";
 import { Poppins } from "next/font/google";
 import { SITE_URL } from "@/lib/site";
 
+/** Production domain, the preview deployment's own host, or localhost. */
+function siteOrigin(): string {
+  if (process.env.NODE_ENV === "production" && !process.env.VERCEL_ENV) {
+    return SITE_URL;
+  }
+  if (process.env.VERCEL_ENV === "production") return SITE_URL;
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
+  return "http://localhost:3000";
+}
+
 const poppins = Poppins({
   subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
+  // 800 is loaded because `font-extrabold` is on the <h1> of nearly every
+  // page and was rendering as faux-bold; 300 is not, because `font-light` is
+  // used nowhere and was costing a preloaded woff2 for nothing.
+  weight: ["400", "500", "600", "700", "800"],
   display: "swap",
   preload: true,
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(
-    process.env.NODE_ENV === "production" ? SITE_URL : "http://localhost:3000",
-  ),
+  // Preview deploys are neither production nor localhost: falling back to
+  // localhost there emitted `http://localhost:3000/...` canonicals and OG
+  // image URLs in every preview build.
+  metadataBase: new URL(siteOrigin()),
   title: "Ritas Rentals",
   description:
     "Rent top-quality frozen drink machines in San Antonio, TX for your next party or event. Offering margaritas, daiquiris, piña coladas, and more with professional service. Perfect for birthdays, weddings, and corporate events. Visit SATXRitas.com for pricing and booking!",
@@ -67,6 +81,7 @@ export const metadata: Metadata = {
 
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
+import StickyCallBar from "@/components/StickyCallBar";
 import ThemeWrapper from "@/components/ThemeWrapper";
 import AnalyticsGate from "@/components/AnalyticsGate";
 import SessionProvider from "@/components/SessionProvider";
@@ -95,8 +110,11 @@ export default function RootLayout({
         <SessionProvider>
           <ThemeWrapper>
             <Navigation />
-            <main className="flex-grow">{children}</main>
+            {/* pb-16 on mobile clears the fixed StickyCallBar, which would
+                otherwise cover the last row of the footer. */}
+            <main className="flex-grow pb-16 sm:pb-0">{children}</main>
             <Footer />
+            <StickyCallBar />
             <FingerprintTracker />
             <ContactLinkTracker />
             <CookieConsent />

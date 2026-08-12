@@ -7,7 +7,9 @@ import MixerCard from "./MixerCard";
 import { useAvailabilityCheck } from "@/hooks/useAvailabilityCheck";
 import type { MachineType } from "@/types";
 
-type AvailabilityState = "loading" | "available" | "unavailable" | "error";
+/** "idle" = no date range yet, so there is nothing to check. */
+type AvailabilityState =
+  "idle" | "loading" | "available" | "unavailable" | "error";
 
 // Define the sub-steps for the machine step
 enum MachineSubStep {
@@ -47,6 +49,7 @@ export default function MachineStep({
   onInputChange,
   error,
   onAvailabilityError,
+  onAvailabilityChecking,
   mixers: mixersProp,
   settings,
 }: StepProps) {
@@ -71,15 +74,36 @@ export default function MachineStep({
   // before the customer commits to a choice.
   const [availabilityByType, setAvailabilityByType] = useState<
     Record<MachineType, AvailabilityState>
-  >({ single: "loading", double: "loading", triple: "loading" });
+  >({ single: "idle", double: "idle", triple: "idle" });
 
-  const { checkAvailability, isChecking } = useAvailabilityCheck();
+  const { checkAvailability } = useAvailabilityCheck();
+
+  // Told to the parent so "Next" cannot advance on a machine whose
+  // availability has not come back yet. The hook's own `isChecking` flag is
+  // useless here: three calls share it, so the first response cleared it while
+  // the other two were still outstanding.
+  const isChecking = Object.values(availabilityByType).includes("loading");
+
+  // Announced when the auto-fallback swaps the customer's machine out from
+  // under them — it also changes capacity, clears the tank mixers and moves
+  // the price, all of which used to happen silently.
+  const [fallbackNotice, setFallbackNotice] = useState<string | null>(null);
 
   // Check all three machine types in parallel so the cards reflect inventory
-  // up front — re-runs when the date range or the selected machine changes
-  // so the hard-block error stays in sync.
+  // up front. This depends on the date range only — deriving the hard-block
+  // error used to put `machineType` in the dep array too, so every auto-switch
+  // and every manual card click fired three more availability requests.
   useEffect(() => {
-    if (!formData.rentalDate) return;
+    if (!formData.rentalDate) {
+      // Nothing to check yet. Leaving the cards on "loading" would make every
+      // one of them unselectable with no request ever coming to clear it.
+      setAvailabilityByType({
+        single: "idle",
+        double: "idle",
+        triple: "idle",
+      });
+      return;
+    }
     const types: MachineType[] = ["single", "double", "triple"];
 
     setAvailabilityByType({
@@ -124,45 +148,61 @@ export default function MachineStep({
           ? "⚠️ We couldn't verify availability right now. You can still continue — we'll confirm your booking by phone."
           : null,
       );
-
-      // Auto-fallback: if the currently selected machine is unavailable but
-      // another type is available, switch to it (priority: triple > double > single).
-      if (
-        formData.machineType &&
-        next[formData.machineType as MachineType] === "unavailable"
-      ) {
-        const fallbackOrder: MachineType[] = ["triple", "double", "single"];
-        const fallback = fallbackOrder.find(
-          (t) => t !== formData.machineType && next[t] === "available",
-        );
-        if (fallback) {
-          const pkg = machinePackages.find((p) => p.type === fallback)!;
-          onInputChange(createSyntheticEvent("machineType", fallback));
-          onInputChange(createSyntheticEvent("capacity", String(pkg.capacity)));
-          onInputChange(createSyntheticEvent("selectedMixers", []));
-          if (onAvailabilityError) onAvailabilityError(null);
-          return;
-        }
-      }
-
-      if (
-        onAvailabilityError &&
-        formData.machineType &&
-        next[formData.machineType as MachineType] === "unavailable"
-      ) {
-        onAvailabilityError(
-          `Sorry, our ${formData.machineType} tank machines are fully booked for one or more days in your selected range. Please choose a different machine or go back and pick another date.`,
-        );
-      } else if (onAvailabilityError) {
-        onAvailabilityError(null);
-      }
     });
 
     return () => {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [formData.rentalDate, formData.returnDate, formData.machineType]);
+  }, [formData.rentalDate, formData.returnDate]);
+
+  // Derive the selection consequences from whatever the checks returned. Kept
+  // separate from the fetch above so a machine switch re-derives without
+  // re-requesting.
+  useEffect(() => {
+    const selected = formData.machineType as MachineType;
+    const state = selected ? availabilityByType[selected] : "idle";
+    if (!selected || state === "loading" || state === "idle") return;
+
+    if (state !== "unavailable") {
+      setFallbackNotice(null);
+      if (onAvailabilityError) onAvailabilityError(null);
+      return;
+    }
+
+    // Auto-fallback: if the currently selected machine is unavailable but
+    // another type is available, switch to it (priority: triple > double > single).
+    const fallbackOrder: MachineType[] = ["triple", "double", "single"];
+    const fallback = fallbackOrder.find(
+      (t) => t !== selected && availabilityByType[t] === "available",
+    );
+    if (fallback) {
+      const pkg = machinePackages.find((p) => p.type === fallback)!;
+      onInputChange(createSyntheticEvent("machineType", fallback));
+      onInputChange(createSyntheticEvent("capacity", String(pkg.capacity)));
+      onInputChange(createSyntheticEvent("selectedMixers", []));
+      setFallbackNotice(
+        `Our ${selected} tank machines are booked for your dates, so we switched you to the ${fallback} tank — ${pkg.capacity} litres at $${pkg.basePrice}/day. Your mixer choices were cleared; pick them again below.`,
+      );
+      if (onAvailabilityError) onAvailabilityError(null);
+      return;
+    }
+
+    setFallbackNotice(null);
+    if (onAvailabilityError) {
+      onAvailabilityError(
+        `Sorry, our ${selected} tank machines are fully booked for one or more days in your selected range. Please choose a different machine or go back and pick another date.`,
+      );
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [availabilityByType, formData.machineType]);
+
+  // Keep the parent in step with the in-flight checks so "Next" cannot skip
+  // ahead onto a machine the server is about to refuse.
+  useEffect(() => {
+    onAvailabilityChecking?.(isChecking);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isChecking]);
 
   // Helper function to create a properly typed synthetic event
   const createSyntheticEvent = (name: string, value: string | string[]) => {
@@ -172,7 +212,10 @@ export default function MachineStep({
   };
 
   const handleMachineSelect = (machineType: "single" | "double" | "triple") => {
-    if (availabilityByType[machineType] === "unavailable") return;
+    // "loading" used to count as selectable, so every card was clickable —
+    // and "Next" reachable — before any check had come back.
+    const state = availabilityByType[machineType];
+    if (state === "loading" || state === "unavailable") return;
     const pkg = machinePackages.find((p) => p.type === machineType)!;
     // Update machineType
     onInputChange(createSyntheticEvent("machineType", machineType));
@@ -360,7 +403,10 @@ export default function MachineStep({
                   settings?.machines?.[pkg.type]?.basePrice ?? pkg.basePrice
                 }
                 isSelected={formData.machineType === pkg.type}
-                isAvailable={availabilityByType[pkg.type] !== "unavailable"}
+                isAvailable={
+                  availabilityByType[pkg.type] !== "loading" &&
+                  availabilityByType[pkg.type] !== "unavailable"
+                }
                 isPopular={machinePopular[pkg.type]}
                 onSelect={handleMachineSelect}
                 image={machineImages[pkg.type]}
@@ -439,7 +485,11 @@ export default function MachineStep({
         </div>
 
         {isChecking && (
-          <div className="flex items-center space-x-2 text-sm text-charcoal/60 dark:text-white/60 px-4 py-3">
+          <div
+            role="status"
+            aria-live="polite"
+            className="flex items-center space-x-2 text-sm text-charcoal/60 dark:text-white/60 px-4 py-3"
+          >
             <svg
               className="animate-spin h-4 w-4 text-margarita"
               xmlns="http://www.w3.org/2000/svg"
@@ -464,9 +514,25 @@ export default function MachineStep({
           </div>
         )}
 
+        {/* The auto-fallback rewrites machine, capacity, mixers and price. It
+            used to do all of that with no visible explanation. */}
+        {fallbackNotice && (
+          <div
+            role="status"
+            aria-live="polite"
+            className="bg-blue-50 border border-blue-300 text-blue-800 dark:bg-blue-900/20 dark:border-blue-600 dark:text-blue-300 px-4 py-3 rounded relative text-sm"
+          >
+            {fallbackNotice}
+          </div>
+        )}
+
         {/* Soft warning when availability API is unreachable — does NOT block Next */}
         {apiWarning && !error && (
-          <div className="bg-yellow-50 border border-yellow-300 text-yellow-800 dark:bg-yellow-900/20 dark:border-yellow-600 dark:text-yellow-300 px-4 py-3 rounded relative text-sm">
+          <div
+            role="status"
+            aria-live="polite"
+            className="bg-yellow-50 border border-yellow-300 text-yellow-800 dark:bg-yellow-900/20 dark:border-yellow-600 dark:text-yellow-300 px-4 py-3 rounded relative text-sm"
+          >
             {apiWarning}
           </div>
         )}

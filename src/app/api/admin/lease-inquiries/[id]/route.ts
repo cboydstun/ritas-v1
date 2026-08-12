@@ -21,7 +21,10 @@ export async function GET(request: Request, context: RouteParams) {
 
   // An invalid id produced a Mongoose CastError and a 500 instead of a 404.
   if (!mongoose.Types.ObjectId.isValid(id)) {
-    return NextResponse.json({ message: "Lease inquiry not found" }, { status: 404 });
+    return NextResponse.json(
+      { message: "Lease inquiry not found" },
+      { status: 404 },
+    );
   }
 
   try {
@@ -87,10 +90,11 @@ export async function PUT(request: Request, context: RouteParams) {
     console.error("Error updating lease inquiry:", error);
 
     if (error instanceof Error && error.name === "ValidationError") {
+      // `error.message` carries model names, field paths and index names; it
+      // is logged above rather than handed back to the caller.
       return NextResponse.json(
         {
           message: "Invalid lease inquiry data",
-          details: error.message,
         },
         { status: 400 },
       );
@@ -113,7 +117,10 @@ export async function DELETE(request: Request, context: RouteParams) {
 
   // An invalid id produced a Mongoose CastError and a 500 instead of a 404.
   if (!mongoose.Types.ObjectId.isValid(id)) {
-    return NextResponse.json({ message: "Lease inquiry not found" }, { status: 404 });
+    return NextResponse.json(
+      { message: "Lease inquiry not found" },
+      { status: 404 },
+    );
   }
 
   try {

@@ -118,10 +118,25 @@ export async function PUT(request: NextRequest, context: RouteParams) {
       }
     }
 
-    // Validate date range using createLocalDate to avoid timezone issues
-    if (endDate && createLocalDate(startDate) > createLocalDate(endDate)) {
+    // `createLocalDate` is fed straight from the request body. Rejecting a
+    // non-date here keeps a numeric or malformed `startDate` a 400 rather than
+    // a Mongoose cast failure surfacing as a 500.
+    const parsedStart = createLocalDate(startDate);
+    const parsedEnd = endDate ? createLocalDate(endDate) : undefined;
+    if (
+      Number.isNaN(parsedStart.getTime()) ||
+      (parsedEnd && Number.isNaN(parsedEnd.getTime()))
+    ) {
       return NextResponse.json(
-        { message: "End date must be after start date" },
+        { message: "Dates must be valid calendar dates" },
+        { status: 400 },
+      );
+    }
+
+    // Validate date range using createLocalDate to avoid timezone issues
+    if (parsedEnd && parsedStart > parsedEnd) {
+      return NextResponse.json(
+        { message: "End date must be on or after start date" },
         { status: 400 },
       );
     }
@@ -145,14 +160,14 @@ export async function PUT(request: NextRequest, context: RouteParams) {
     // time_range → full_day left stale times. Either way the blackout kept
     // blocking its original, wider range.
     const $set: Record<string, unknown> = {
-      startDate: createLocalDate(startDate),
+      startDate: parsedStart,
       type,
       updatedAt: new Date(),
     };
     const $unset: Record<string, ""> = {};
 
     if (endDate) {
-      $set.endDate = createLocalDate(endDate);
+      $set.endDate = parsedEnd;
     } else {
       $unset.endDate = "";
     }
@@ -176,6 +191,15 @@ export async function PUT(request: NextRequest, context: RouteParams) {
       Object.keys($unset).length > 0 ? { $set, $unset } : { $set },
       { new: true, runValidators: true },
     );
+
+    // The existence check above is a separate query, so a concurrent DELETE
+    // left this null — which was serialised as a 200 with a `null` body.
+    if (!updatedBlackoutDate) {
+      return NextResponse.json(
+        { message: "Blackout date not found" },
+        { status: 404 },
+      );
+    }
 
     return NextResponse.json(updatedBlackoutDate);
   } catch (error) {

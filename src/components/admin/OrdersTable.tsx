@@ -12,11 +12,7 @@ type SortConfig = {
 } | null;
 
 type DateFilter =
-  | "all"
-  | "this-week"
-  | "next-week"
-  | "this-month"
-  | "next-month";
+  "all" | "this-week" | "next-week" | "this-month" | "next-month";
 
 const STATUS_OPTIONS: RentalStatus[] = [
   "pending",
@@ -72,8 +68,20 @@ export default function OrdersTable() {
     if (filter === "all") return null;
 
     const now = new Date();
+    // Zeroed: the range was built from the current time of day, so "this week"
+    // ran Sunday 14:30 to Saturday 14:30 while rental dates are compared at
+    // local midnight — silently dropping every order on the range's Sunday.
     const startOfWeek = new Date(now);
     startOfWeek.setDate(now.getDate() - now.getDay()); // Start of current week (Sunday)
+    startOfWeek.setHours(0, 0, 0, 0);
+
+    /** Inclusive end of the day `start` + `days`. */
+    const endOfDayAfter = (start: Date, days: number): Date => {
+      const end = new Date(start);
+      end.setDate(start.getDate() + days);
+      end.setHours(23, 59, 59, 999);
+      return end;
+    };
 
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const startOfNextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
@@ -81,16 +89,12 @@ export default function OrdersTable() {
 
     switch (filter) {
       case "this-week": {
-        const end = new Date(startOfWeek);
-        end.setDate(startOfWeek.getDate() + 6);
-        return { start: startOfWeek, end };
+        return { start: startOfWeek, end: endOfDayAfter(startOfWeek, 6) };
       }
       case "next-week": {
         const start = new Date(startOfWeek);
         start.setDate(startOfWeek.getDate() + 7);
-        const end = new Date(start);
-        end.setDate(start.getDate() + 6);
-        return { start, end };
+        return { start, end: endOfDayAfter(start, 6) };
       }
       case "this-month":
         return {

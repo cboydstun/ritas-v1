@@ -5,6 +5,7 @@ import Link from "next/link";
 import { mixerDetails, MixerType } from "@/lib/rental-data";
 import { generateOrderJsonLd } from "./jsonld";
 import { Suspense } from "react";
+import SuccessNextActions from "@/components/success/SuccessNextActions";
 
 // Component that uses useSearchParams
 function OrderDetails() {
@@ -273,6 +274,8 @@ function OrderDetails() {
           </div>
         </div>
       </div>
+
+      <SuccessNextActions bookingId={displayId} />
     </>
   );
 }

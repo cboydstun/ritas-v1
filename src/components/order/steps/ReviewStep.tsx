@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Image from "next/image";
 import { StepProps } from "../types";
 import { mixerDetails, MixerType } from "@/lib/rental-data";
@@ -34,6 +34,7 @@ export default function ReviewStep({
   settings,
 }: StepProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const submitLatch = useRef(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const {
@@ -64,6 +65,12 @@ export default function ReviewStep({
       setSubmitError("Please agree to the terms and conditions");
       return;
     }
+
+    // A ref, not the `isSubmitting` state: the button's disabled attribute
+    // only takes effect on the next render, so two clicks dispatched in the
+    // same tick both reached the fetch and booked the machine twice.
+    if (submitLatch.current) return;
+    submitLatch.current = true;
 
     setIsSubmitting(true);
     setSubmitError(null);
@@ -105,6 +112,14 @@ export default function ReviewStep({
       }
 
       const result = await response.json();
+
+      // A 200 with no booking id is not a booking. Redirecting anyway sent the
+      // customer to `/success?bookingId=undefined` with nothing to reference.
+      if (!result?.bookingId) {
+        throw new Error(
+          "We could not confirm your booking reference. Please call us and we will take it over the phone.",
+        );
+      }
 
       // The only place a booking's id and total exist together on the client,
       // so it is the only place `purchase` can be emitted. gtag sends via
@@ -153,6 +168,8 @@ export default function ReviewStep({
         error instanceof Error ? error.message : "Failed to confirm booking",
       );
       setIsSubmitting(false);
+      // Release the latch so a failed attempt can be retried.
+      submitLatch.current = false;
     }
   };
 

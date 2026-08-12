@@ -38,6 +38,14 @@ export const metadata: Metadata = {
   title: "About SATX Ritas Rentals | Our Story & Values",
   description:
     "Learn about SATX Ritas Rentals, San Antonio's trusted source for premium frozen drink machine rentals. Discover our story, values, and commitment to creating unforgettable events with quality service.",
+  openGraph: {
+    title: "About SATX Ritas Rentals | Our Story & Values",
+    description:
+      "Learn about SATX Ritas Rentals, San Antonio's trusted source for premium frozen drink machine rentals. Discover our story, values, and commitment to creating unforgettable events with quality service.",
+    url: `${SITE_URL}/about`,
+    images: [`${SITE_URL}/og-image.jpg`],
+    type: "website",
+  },
 };
 
 export default function AboutPage() {

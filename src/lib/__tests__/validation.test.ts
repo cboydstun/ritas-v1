@@ -118,13 +118,27 @@ describe("rentalDataSchema", () => {
     expect(result.success).toBe(false);
   });
 
-  it("rejects an unknown mixer", () => {
+  // An admin can add flavours in /admin/settings, so the valid set is dynamic
+  // and membership is checked at the route layer via resolveSelectedMixers.
+  // The schema's job is only to reject ids that are malformed.
+  it("accepts a well-formed mixer id the static list does not know", () => {
     const result = rentalDataSchema.safeParse({
       ...validRental(),
-      selectedMixers: ["tequila-sunrise"],
+      selectedMixers: ["mango-habanero"],
     });
 
-    expect(result.success).toBe(false);
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects a malformed mixer id", () => {
+    for (const bad of ["", " ", "a".repeat(65), { $ne: null }, "not an id"]) {
+      const result = rentalDataSchema.safeParse({
+        ...validRental(),
+        selectedMixers: [bad],
+      });
+
+      expect(result.success).toBe(false);
+    }
   });
 
   it("bounds free-text notes", () => {
@@ -177,7 +191,6 @@ describe("fingerprintHashSchema", () => {
     );
   });
 });
-
 
 describe("todayLocalIso", () => {
   afterEach(() => {

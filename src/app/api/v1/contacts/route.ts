@@ -5,11 +5,22 @@ import { Resend } from "resend";
 import twilio from "twilio";
 import { guardPublicWrite } from "@/lib/api-guard";
 import { contactSchema, escapeHtml, firstIssueMessage } from "@/lib/validation";
+import { BUSINESS_TIME_ZONE } from "@/lib/dates";
 
 /**
  * API route for submitting contact form
  * POST /api/v1/contacts
  */
+/**
+ * Now, rendered in the business's timezone.
+ *
+ * Vercel functions run UTC, so a bare `toLocaleString()` stamped every evening
+ * submission with tomorrow's date in the operator's SMS and email.
+ */
+function submittedAt(): string {
+  return new Date().toLocaleString("en-US", { timeZone: BUSINESS_TIME_ZONE });
+}
+
 export async function POST(request: Request) {
   try {
     const guard = await guardPublicWrite(request, {
@@ -56,7 +67,7 @@ export async function POST(request: Request) {
             `Phone: ${contact.phone}\n` +
             `Event Date: ${contact.eventDate}\n` +
             `Message: ${contact.message}\n` +
-            `Submitted: ${new Date().toLocaleString()}`,
+            `Submitted: ${submittedAt()}`,
           from: fromPhone,
           to: toPhone,
         });
@@ -91,7 +102,7 @@ export async function POST(request: Request) {
                 <li style="margin-bottom: 8px;"><strong>Phone:</strong> ${escapeHtml(contact.phone)}</li>
                 <li style="margin-bottom: 8px;"><strong>Event Date:</strong> ${escapeHtml(contact.eventDate)}</li>
                 <li style="margin-bottom: 8px;"><strong>Message:</strong> ${escapeHtml(contact.message)}</li>
-                <li style="margin-bottom: 8px;"><strong>Submitted:</strong> ${new Date().toLocaleString()}</li>
+                <li style="margin-bottom: 8px;"><strong>Submitted:</strong> ${submittedAt()}</li>
               </ul>
             </div>
             <p style="font-size: 14px; color: #666;">This is an automated notification from your website contact form.</p>

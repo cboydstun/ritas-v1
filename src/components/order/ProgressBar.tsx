@@ -5,7 +5,11 @@ interface ProgressBarProps {
 }
 
 export function ProgressBar({ currentStep }: ProgressBarProps) {
-  const currentIndex = steps.findIndex((s) => s.id === currentStep);
+  // Defence in depth: OrderForm validates the restored draft step, but an
+  // index of -1 here used to throw on `steps[-1].label` and take the whole
+  // order page down.
+  const foundIndex = steps.findIndex((s) => s.id === currentStep);
+  const currentIndex = foundIndex === -1 ? 0 : foundIndex;
   const progress = (currentIndex / (steps.length - 1)) * 100;
 
   return (
@@ -16,7 +20,7 @@ export function ProgressBar({ currentStep }: ProgressBarProps) {
           Step {currentIndex + 1} of {steps.length}
         </span>
         <span className="text-sm font-semibold text-orange">
-          {steps[currentIndex].label}
+          {steps[currentIndex]?.label ?? currentStep}
         </span>
       </div>
 

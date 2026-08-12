@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import AdminAuthCheck from "@/components/admin/AdminAuthCheck";
+import AdminLayout from "@/components/admin/AdminLayout";
 import { leaseTiers as staticLeaseTiers } from "@/lib/lease-data";
 
 interface MixerEntry {
@@ -412,7 +412,7 @@ export default function SettingsPage() {
 
   if (loading) {
     return (
-      <AdminAuthCheck>
+      <AdminLayout>
         <div className="p-6">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
             Settings
@@ -436,12 +436,12 @@ export default function SettingsPage() {
             ))}
           </div>
         </div>
-      </AdminAuthCheck>
+      </AdminLayout>
     );
   }
 
   return (
-    <AdminAuthCheck>
+    <AdminLayout>
       <div className="p-6">
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
@@ -1076,6 +1076,6 @@ export default function SettingsPage() {
           </div>
         </SectionCard>
       </div>
-    </AdminAuthCheck>
+    </AdminLayout>
   );
 }

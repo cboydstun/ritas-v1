@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import AdminAuthCheck from "@/components/admin/AdminAuthCheck";
+import AdminLayout from "@/components/admin/AdminLayout";
 import BlackoutDatesTable from "@/components/admin/BlackoutDatesTable";
 import BlackoutDateForm from "@/components/admin/BlackoutDateForm";
 import { BlackoutDateDocument } from "@/models/blackout-date";
@@ -90,7 +90,7 @@ export default function BlackoutDatesPage() {
   };
 
   return (
-    <AdminAuthCheck>
+    <AdminLayout>
       <div className="p-6">
         <div className="flex justify-between items-center mb-6">
           <div>
@@ -134,6 +134,6 @@ export default function BlackoutDatesPage() {
           />
         </div>
       </div>
-    </AdminAuthCheck>
+    </AdminLayout>
   );
 }

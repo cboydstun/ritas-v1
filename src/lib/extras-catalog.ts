@@ -74,10 +74,12 @@ export function buildExtrasCatalog(
     const id = mixerExtraId(mixer);
 
     const label = settingsMixer?.label ?? details?.label ?? mixer;
-    const description = settingsMixer?.description ?? details?.description ?? "";
+    const description =
+      settingsMixer?.description ?? details?.description ?? "";
     // An admin can price the add-on either as an extra or via the mixer itself;
     // an explicit `extras` entry is the more specific of the two, so it wins.
-    const price = overrides?.extras?.[id]?.price ?? settingsMixer?.price ?? details?.price;
+    const price =
+      overrides?.extras?.[id]?.price ?? settingsMixer?.price ?? details?.price;
     if (typeof price !== "number") continue;
 
     catalog.set(id, {
@@ -103,6 +105,56 @@ export function catalogPrice(
   overrides?: CatalogOverrides,
 ): number | undefined {
   return buildExtrasCatalog(overrides).get(id)?.price;
+}
+
+/**
+ * Every mixer flavour that may legitimately appear in `selectedMixers`.
+ *
+ * The tank-mixer list the order form renders comes from `Settings.mixers`
+ * (`OrderForm` -> `MachineStep`), so a flavour an admin adds is selectable in
+ * the UI. Validating the submission against the static four rejected those
+ * bookings at checkout with a raw Zod message — the same bug this module
+ * already fixes for the extras path.
+ */
+export function buildMixerCatalog(overrides?: CatalogOverrides): Set<string> {
+  return new Set<string>([
+    ...Object.keys(mixerDetails),
+    ...Object.keys(overrides?.mixers ?? {}),
+  ]);
+}
+
+export interface ResolveMixersResult {
+  mixers: string[];
+  /** Ids present in the request that don't exist in the catalog. */
+  unknownIds: string[];
+}
+
+/**
+ * Validate an untrusted `selectedMixers` payload against the catalog.
+ *
+ * Order is significant — the array is positional, one entry per tank — and the
+ * same flavour may legitimately repeat across tanks, so nothing is deduped or
+ * reordered. Only unknown ids are split out for the caller to reject.
+ */
+export function resolveSelectedMixers(
+  selected: unknown,
+  overrides?: CatalogOverrides,
+): ResolveMixersResult {
+  if (!Array.isArray(selected)) {
+    return { mixers: [], unknownIds: [] };
+  }
+
+  const catalog = buildMixerCatalog(overrides);
+  const mixers: string[] = [];
+  const unknownIds: string[] = [];
+
+  for (const raw of selected) {
+    if (typeof raw !== "string") continue;
+    if (catalog.has(raw)) mixers.push(raw);
+    else unknownIds.push(raw);
+  }
+
+  return { mixers, unknownIds };
 }
 
 export interface ResolveExtrasResult {

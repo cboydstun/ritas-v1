@@ -1,21 +1,20 @@
 import { NextResponse } from "next/server";
 import { isMachineAvailable } from "@/lib/inventory";
-import { MAX_RANGE_DAYS, spanInDays } from "@/lib/validation";
+import { MACHINE_CAPACITY, MAX_RANGE_DAYS, spanInDays } from "@/lib/validation";
 import { MachineType } from "@/types";
 
 export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
     const machineType = url.searchParams.get("machineType") as MachineType;
-    const capacityParam = url.searchParams.get("capacity");
     const date = url.searchParams.get("date");
     const returnDateParam = url.searchParams.get("returnDate");
 
-    if (!machineType || !capacityParam || !date) {
+    if (!machineType || !date) {
       return NextResponse.json(
         {
           message:
-            "Missing required parameters: machineType, capacity, and date are required",
+            "Missing required parameters: machineType and date are required",
         },
         { status: 400 },
       );
@@ -31,13 +30,13 @@ export async function GET(request: Request) {
       );
     }
 
-    const capacity = parseInt(capacityParam, 10);
-    if (![15, 30, 45].includes(capacity)) {
-      return NextResponse.json(
-        { message: "Invalid capacity. Must be 15, 30, or 45" },
-        { status: 400 },
-      );
-    }
+    // Capacity is derived, never read from the query. `isMachineAvailable`
+    // filters overlapping rentals by capacity while inventory is keyed off
+    // machineType alone, so a mismatched pair (?machineType=triple&capacity=15)
+    // matched zero overlaps and reported a fully booked date as available.
+    // A `capacity` param is still accepted, and ignored, so an in-flight
+    // client from a previous deploy keeps working.
+    const capacity = MACHINE_CAPACITY[machineType];
 
     const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
     if (!dateRegex.test(date)) {
@@ -72,7 +71,7 @@ export async function GET(request: Request) {
 
     const result = await isMachineAvailable(
       machineType,
-      capacity as 15 | 30 | 45,
+      capacity,
       date,
       returnDateParam ?? undefined,
     );
