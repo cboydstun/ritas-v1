@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import dbConnect from "@/lib/mongodb";
 import { Contact } from "@/models/contact";
 import mongoose from "mongoose";
+import { guardAdminWrite } from "@/lib/api-guard";
 
 interface RouteParams {
   params: Promise<{
@@ -63,7 +64,11 @@ export async function PUT(request: Request, context: RouteParams) {
   }
 
   try {
-    const data = await request.json();
+    // Admin handlers read the body directly, so MAX_BODY_BYTES never
+    // applied to them. Post-auth this bounds a compromised session.
+    const guard = await guardAdminWrite(request);
+    if (!guard.ok) return guard.response;
+    const data = guard.data as Record<string, unknown>;
     await dbConnect();
 
     // Triage only changes status; spreading the body allowed writes to `_id`

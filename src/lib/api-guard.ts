@@ -54,3 +54,30 @@ export async function guardPublicWrite(
 
   return { ok: true, data: body.data };
 }
+
+/**
+ * Body-size cap for authenticated admin writes.
+ *
+ * Admin handlers called `request.json()` directly, so `MAX_BODY_BYTES` never
+ * applied to them. Post-auth this is an amplifier for a compromised session
+ * rather than an entry point, but the cap costs nothing and every write path
+ * should have one. There is deliberately no rate limit here: an admin
+ * legitimately batches edits, and the login throttle is the control that
+ * matters on this surface.
+ */
+export async function guardAdminWrite(
+  request: Request,
+  maxBytes: number = MAX_BODY_BYTES,
+): Promise<PublicWriteGuard> {
+  const body = await readJsonBody(request, maxBytes);
+  if (!body.ok) {
+    return {
+      ok: false,
+      response: body.tooLarge
+        ? NextResponse.json({ message: "Request too large" }, { status: 413 })
+        : NextResponse.json({ message: "Invalid JSON body" }, { status: 400 }),
+    };
+  }
+
+  return { ok: true, data: body.data };
+}

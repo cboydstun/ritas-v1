@@ -3,6 +3,7 @@
  */
 import {
   MAX_BODY_BYTES,
+  MEMORY_STORE_MAX,
   clientIdentifier,
   rateLimit,
   readJsonBody,
@@ -60,6 +61,30 @@ describe("clientIdentifier", () => {
 
     expect(clientIdentifier(new Request("http://localhost/x"))).toBe("unknown");
   });
+
+  // A proxy *appends* to x-forwarded-for, so its leftmost entry is whatever
+  // the client wrote. Keying on it let a caller rotate the header per request
+  // and dissolve every bucket in the app — the public-write caps and, worse,
+  // the admin login throttle. x-vercel-forwarded-for is platform-set.
+  it("prefers the platform header over a client-supplied x-forwarded-for", () => {
+    const request = new Request("http://localhost/x", {
+      headers: {
+        "x-forwarded-for": "1.2.3.4",
+        "x-vercel-forwarded-for": "203.0.113.7",
+        "x-real-ip": "5.6.7.8",
+      },
+    });
+
+    expect(clientIdentifier(request)).toBe("203.0.113.7");
+  });
+
+  it("ignores a spoofed prefix on the platform header", () => {
+    const request = new Request("http://localhost/x", {
+      headers: { "x-vercel-forwarded-for": "203.0.113.7, 10.0.0.1" },
+    });
+
+    expect(clientIdentifier(request)).toBe("203.0.113.7");
+  });
 });
 
 describe("readJsonBody", () => {
@@ -109,4 +134,101 @@ describe("readJsonBody", () => {
       expect(result).toEqual({ ok: false, tooLarge: true });
     },
   );
+});
+
+// The fallback limiter is the live path whenever UPSTASH_* is unset.
+describe("memory-store fallback", () => {
+  const OLD_ENV = process.env;
+
+  beforeEach(() => {
+    process.env = { ...OLD_ENV };
+    delete process.env.UPSTASH_REDIS_REST_URL;
+    delete process.env.UPSTASH_REDIS_REST_TOKEN;
+  });
+
+  afterAll(() => {
+    process.env = OLD_ENV;
+  });
+
+  it("counts within a window and refuses past the limit", async () => {
+    const id = `count-${Math.random()}`;
+
+    expect((await rateLimit(id, { limit: 2, windowSeconds: 60 })).allowed).toBe(
+      true,
+    );
+    expect((await rateLimit(id, { limit: 2, windowSeconds: 60 })).allowed).toBe(
+      true,
+    );
+
+    const third = await rateLimit(id, { limit: 2, windowSeconds: 60 });
+    expect(third.allowed).toBe(false);
+    expect(third.retryAfter).toBeGreaterThan(0);
+  });
+
+  it("keys separate identifiers into separate buckets", async () => {
+    const a = `bucket-a-${Math.random()}`;
+    const b = `bucket-b-${Math.random()}`;
+
+    await rateLimit(a, { limit: 1, windowSeconds: 60 });
+
+    expect((await rateLimit(a, { limit: 1, windowSeconds: 60 })).allowed).toBe(
+      false,
+    );
+    expect((await rateLimit(b, { limit: 1, windowSeconds: 60 })).allowed).toBe(
+      true,
+    );
+  });
+
+  // Evicting only *expired* counters was no bound at all: a flood of distinct
+  // identifiers leaves every entry live, so nothing could be reclaimed and the
+  // full O(N) sweep then ran on every later request for the rest of the
+  // window — unbounded memory plus quadratic CPU on the hot path.
+  it("stays bounded under a flood of distinct live identifiers", async () => {
+    for (let i = 0; i < MEMORY_STORE_MAX + 500; i++) {
+      await rateLimit(`flood-${i}`, { limit: 100, windowSeconds: 600 });
+    }
+
+    // Nothing here has expired, so expiry-based pruning alone would reclaim
+    // none of it. The oldest-first pass is what holds the ceiling.
+    const probe = await rateLimit("flood-probe", {
+      limit: 1,
+      windowSeconds: 600,
+    });
+    expect(probe.allowed).toBe(true);
+  });
+});
+
+describe("readJsonBody without a Content-Length", () => {
+  const chunked = (payload: string) =>
+    new Request("http://localhost/x", {
+      method: "POST",
+      body: new ReadableStream({
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode(payload));
+          controller.close();
+        },
+      }),
+      // @ts-expect-error duplex is required for a streaming body in undici
+      duplex: "half",
+    });
+
+  it("parses a chunked body that is within the cap", async () => {
+    const result = await readJsonBody(chunked('{"a":1}'), 1024);
+
+    expect(result).toEqual({ ok: true, data: { a: 1 } });
+  });
+
+  // The declared-length check is skipped entirely without Content-Length, so
+  // request.text() would materialise the whole payload before the cap fired.
+  it("refuses a chunked body over the cap without buffering it whole", async () => {
+    const result = await readJsonBody(chunked("x".repeat(5000)), 1024);
+
+    expect(result).toEqual({ ok: false, tooLarge: true });
+  });
+
+  it("reports malformed JSON as a parse failure, not a size failure", async () => {
+    const result = await readJsonBody(chunked("{not json"), 1024);
+
+    expect(result).toEqual({ ok: false, tooLarge: false });
+  });
 });

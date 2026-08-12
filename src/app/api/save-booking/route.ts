@@ -3,6 +3,7 @@ import dbConnect from "@/lib/mongodb";
 import { Rental } from "@/models/rental";
 import { Settings } from "@/models/settings";
 import { isMachineAvailable, releaseStaleHolds } from "@/lib/inventory";
+import { safeErrorSummary } from "@/lib/safe-error";
 import twilio from "twilio";
 import { Resend } from "resend";
 import { nanoid } from "nanoid";
@@ -297,7 +298,24 @@ export async function POST(request: Request) {
       },
     );
     if (!recheck.available) {
-      await Rental.deleteOne({ _id: savedRental._id });
+      // The compensating delete is the only thing standing between a losing
+      // racer and an oversold unit. If it throws, the outer catch returns a
+      // generic 500 and the rental stays in the collection holding inventory,
+      // indistinguishable in the logs from any other failure — so it gets its
+      // own marker an operator can alert on.
+      try {
+        await Rental.deleteOne({ _id: savedRental._id });
+      } catch (rollbackError) {
+        console.error("OVERSELL_ROLLBACK_FAILED", {
+          rentalId: savedRental._id.toString(),
+          bookingId: savedRental.bookingId,
+          reason:
+            rollbackError instanceof Error
+              ? rollbackError.name
+              : "UnknownError",
+        });
+        throw rollbackError;
+      }
       return NextResponse.json(
         {
           message:
@@ -307,6 +325,10 @@ export async function POST(request: Request) {
         { status: 409 },
       );
     }
+
+    // Holds the in-flight Twilio send so it can overlap the Resend call
+    // below rather than serialising with it.
+    let smsInFlight: Promise<unknown> | null = null;
 
     // Send SMS notification if Twilio credentials are configured
     const accountSid = process.env.TWILIO_ACCOUNT_SID;
@@ -348,7 +370,12 @@ export async function POST(request: Request) {
                 .join(", ")}\n`
             : "";
 
-        await withTimeout(
+        // Started, not awaited. Both notifications are fire-and-log — the
+        // booking is already committed and stands either way — but awaiting
+        // them one after the other made the customer wait up to two full
+        // NOTIFICATION_TIMEOUT_MS windows after their booking had succeeded.
+        // The result is collected alongside the email below.
+        smsInFlight = withTimeout(
           twilioClient.messages.create({
             body:
               `🎉 NEW BOOKING - PAYMENT PENDING\n` +
@@ -370,7 +397,7 @@ export async function POST(request: Request) {
           "Twilio",
         );
       } catch (smsError) {
-        console.error("Error sending SMS:", smsError);
+        console.error("Error sending SMS:", safeErrorSummary(smsError));
         // Continue with order processing even if SMS fails
       }
     } else {
@@ -529,7 +556,12 @@ export async function POST(request: Request) {
                   ? `<li style="margin-bottom: 8px;">🎉 Party Extras: ${rental.selectedExtras
                       .map(
                         (extra: { name: string; quantity?: number }) =>
-                          `${extra.name}${extra.quantity && extra.quantity > 1 ? ` (${extra.quantity}x)` : ""}`,
+                          // Names come from buildExtrasCatalog, which composes
+                          // mixer entries from admin-controlled
+                          // Settings.mixers[*].label — so this is not a
+                          // server-derived constant and reaches the customer's
+                          // inbox as raw HTML if left unescaped.
+                          `${escapeHtml(extra.name)}${extra.quantity && extra.quantity > 1 ? ` (${extra.quantity}x)` : ""}`,
                       )
                       .join(", ")}</li>`
                   : ""
@@ -581,8 +613,22 @@ export async function POST(request: Request) {
         "Resend",
       );
     } catch (emailError) {
-      console.error("Error sending confirmation email:", emailError);
+      console.error(
+        "Error sending confirmation email:",
+        safeErrorSummary(emailError),
+      );
       // Continue with the booking process even if email fails
+    }
+
+    // Collect the Twilio send that was started before the email. It ran
+    // concurrently with it, so this usually resolves immediately; a failure
+    // is logged and never changes the response, exactly as before.
+    if (smsInFlight) {
+      try {
+        await smsInFlight;
+      } catch (smsError) {
+        console.error("Error sending SMS:", safeErrorSummary(smsError));
+      }
     }
 
     return NextResponse.json({
@@ -592,16 +638,11 @@ export async function POST(request: Request) {
       message: "Booking confirmed successfully",
     });
   } catch (error) {
-    console.error("Error saving booking:", error);
-
-    // Log detailed error information
-    if (error instanceof Error) {
-      console.error("Error details:", {
-        name: error.name,
-        message: error.message,
-        stack: error.stack,
-      });
-    }
+    // Only the error's shape is logged. Mongoose validation and duplicate-key
+    // messages embed the offending values — name, email, phone, address — and
+    // production builds keep console.error, so logging them wholesale shipped
+    // customer PII into the runtime logs.
+    console.error("Error saving booking:", safeErrorSummary(error));
 
     // Detail stays in the logs — Mongoose validation and MongoServerError
     // messages expose collection names, field paths and index names.

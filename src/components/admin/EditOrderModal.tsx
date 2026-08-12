@@ -4,6 +4,7 @@ import { MargaritaRental, MachineType, MixerType } from "@/types/index";
 import { machinePackages, mixerDetails } from "@/lib/rental-data";
 import { isMixerType } from "@/types/machine";
 import { useState } from "react";
+import { useModalFocus } from "@/hooks/useModalFocus";
 
 /** Tanks each machine type has, and therefore how many mixers it accepts. */
 const TANKS: Record<MachineType, number> = { single: 1, double: 2, triple: 3 };
@@ -79,9 +80,15 @@ export default function EditOrderModal({
     onClose();
   };
 
+  // role="dialog" aria-modal="true" was declared without any of the behaviour
+  // it promises — no focus entry, no Tab containment, no Escape, no restore.
+  const dialogRef = useModalFocus<HTMLDivElement>(onClose);
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div
+        ref={dialogRef}
+        tabIndex={-1}
         role="dialog"
         aria-modal="true"
         aria-labelledby="edit-order-title"
@@ -203,10 +210,14 @@ export default function EditOrderModal({
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  <label
+                    htmlFor="edit-order-rental-date"
+                    className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+                  >
                     Rental Date
                   </label>
                   <input
+                    id="edit-order-rental-date"
                     type="date"
                     value={formData.rentalDate}
                     onChange={(e) =>
@@ -219,10 +230,14 @@ export default function EditOrderModal({
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  <label
+                    htmlFor="edit-order-rental-time"
+                    className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+                  >
                     Rental Time
                   </label>
                   <input
+                    id="edit-order-rental-time"
                     type="time"
                     value={formData.rentalTime}
                     onChange={(e) =>
@@ -235,10 +250,14 @@ export default function EditOrderModal({
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  <label
+                    htmlFor="edit-order-return-date"
+                    className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+                  >
                     Return Date
                   </label>
                   <input
+                    id="edit-order-return-date"
                     type="date"
                     value={formData.returnDate}
                     onChange={(e) =>
@@ -251,10 +270,14 @@ export default function EditOrderModal({
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  <label
+                    htmlFor="edit-order-return-time"
+                    className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+                  >
                     Return Time
                   </label>
                   <input
+                    id="edit-order-return-time"
                     type="time"
                     value={formData.returnTime}
                     onChange={(e) =>
@@ -276,10 +299,14 @@ export default function EditOrderModal({
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  <label
+                    htmlFor="edit-order-name"
+                    className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+                  >
                     Name
                   </label>
                   <input
+                    id="edit-order-name"
                     type="text"
                     value={formData.customer.name}
                     onChange={(e) =>
@@ -295,10 +322,14 @@ export default function EditOrderModal({
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  <label
+                    htmlFor="edit-order-email"
+                    className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+                  >
                     Email
                   </label>
                   <input
+                    id="edit-order-email"
                     type="email"
                     value={formData.customer.email}
                     onChange={(e) =>
@@ -314,10 +345,14 @@ export default function EditOrderModal({
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  <label
+                    htmlFor="edit-order-phone"
+                    className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+                  >
                     Phone
                   </label>
                   <input
+                    id="edit-order-phone"
                     type="tel"
                     value={formData.customer.phone}
                     onChange={(e) =>
@@ -342,10 +377,14 @@ export default function EditOrderModal({
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  <label
+                    htmlFor="edit-order-street"
+                    className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+                  >
                     Street
                   </label>
                   <input
+                    id="edit-order-street"
                     type="text"
                     value={formData.customer.address.street}
                     onChange={(e) =>
@@ -364,10 +403,14 @@ export default function EditOrderModal({
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  <label
+                    htmlFor="edit-order-city"
+                    className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+                  >
                     City
                   </label>
                   <input
+                    id="edit-order-city"
                     type="text"
                     value={formData.customer.address.city}
                     onChange={(e) =>
@@ -386,10 +429,14 @@ export default function EditOrderModal({
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  <label
+                    htmlFor="edit-order-state"
+                    className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+                  >
                     State
                   </label>
                   <input
+                    id="edit-order-state"
                     type="text"
                     value={formData.customer.address.state}
                     onChange={(e) =>
@@ -408,10 +455,14 @@ export default function EditOrderModal({
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  <label
+                    htmlFor="edit-order-zip-code"
+                    className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+                  >
                     ZIP Code
                   </label>
                   <input
+                    id="edit-order-zip-code"
                     type="text"
                     value={formData.customer.address.zipCode}
                     onChange={(e) =>
@@ -434,10 +485,14 @@ export default function EditOrderModal({
 
             {/* Notes */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              <label
+                htmlFor="edit-order-notes"
+                className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+              >
                 Notes
               </label>
               <textarea
+                id="edit-order-notes"
                 value={formData.notes}
                 onChange={(e) =>
                   setFormData({

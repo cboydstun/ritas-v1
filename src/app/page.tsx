@@ -44,6 +44,23 @@ const baseJsonLd = {
     },
     geoRadius: "50000",
   },
+  // /contact declared these and this node did not, even though this is the
+  // one carrying the canonical @id and the aggregateRating — so the richer
+  // description hung off the weaker node. Kept identical to /contact's.
+  openingHoursSpecification: [
+    {
+      "@type": "OpeningHoursSpecification",
+      dayOfWeek: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
+      opens: "09:00",
+      closes: "18:00",
+    },
+    {
+      "@type": "OpeningHoursSpecification",
+      dayOfWeek: "Saturday",
+      opens: "10:00",
+      closes: "16:00",
+    },
+  ],
 };
 
 /**

@@ -66,9 +66,20 @@ export const securityHeaders = [
       form-action 'self';
       frame-ancestors 'self';
       upgrade-insecure-requests;
+      report-uri /api/v1/csp-report;
+      report-to csp;
     `
       .replace(/\s+/g, " ")
       .trim(),
+  },
+  {
+    // Without a reporting endpoint a CSP violation is silent in production —
+    // which is exactly how the two collection outages this policy's comments
+    // describe went unnoticed until someone checked the GA property. `report-uri`
+    // above is the deprecated-but-universally-supported form; this is the
+    // modern one, and browsers that honour both send once.
+    key: "Reporting-Endpoints",
+    value: 'csp="/api/v1/csp-report"',
   },
 ];
 

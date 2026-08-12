@@ -91,7 +91,6 @@ import Footer from "@/components/Footer";
 import StickyCallBar from "@/components/StickyCallBar";
 import ThemeWrapper from "@/components/ThemeWrapper";
 import AnalyticsGate from "@/components/AnalyticsGate";
-import SessionProvider from "@/components/SessionProvider";
 import FingerprintTracker from "@/components/FingerprintTracker";
 import ContactLinkTracker from "@/components/ContactLinkTracker";
 import CookieConsent from "@/components/CookieConsent";
@@ -123,21 +122,24 @@ export default function RootLayout({
           Skip to main content
         </a>
         <AnalyticsGate />
-        <SessionProvider>
-          <ThemeWrapper>
-            <Navigation />
-            {/* pb-16 on mobile clears the fixed StickyCallBar, which would
-                otherwise cover the last row of the footer. */}
-            <main id="main" tabIndex={-1} className="grow pb-16 sm:pb-0">
-              {children}
-            </main>
-            <Footer />
-            <StickyCallBar />
-            <FingerprintTracker />
-            <ContactLinkTracker />
-            <CookieConsent />
-          </ThemeWrapper>
-        </SessionProvider>
+        {/* SessionProvider used to wrap this tree, which put
+            next-auth/react and its session fetch into the first-load JS of
+            every customer-facing route. Every useSession/signIn/signOut
+            caller is under /admin, so the provider lives in
+            app/admin/layout.tsx now. */}
+        <ThemeWrapper>
+          <Navigation />
+          {/* pb-16 on mobile clears the fixed StickyCallBar, which would
+              otherwise cover the last row of the footer. */}
+          <main id="main" tabIndex={-1} className="grow pb-16 sm:pb-0">
+            {children}
+          </main>
+          <Footer />
+          <StickyCallBar />
+          <FingerprintTracker />
+          <ContactLinkTracker />
+          <CookieConsent />
+        </ThemeWrapper>
       </body>
     </html>
   );

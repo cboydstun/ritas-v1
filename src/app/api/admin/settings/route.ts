@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import dbConnect from "@/lib/mongodb";
 import { Settings } from "@/models/settings";
 import { settingsUpdateSchema, firstIssueMessage } from "@/lib/validation";
+import { guardAdminWrite } from "@/lib/api-guard";
 
 /** The only settings an admin may write through this route. */
 const EDITABLE_SETTINGS_FIELDS = [
@@ -48,7 +49,11 @@ export async function PUT(request: Request) {
   }
 
   try {
-    const body = await request.json();
+    // Admin handlers read the body directly, so MAX_BODY_BYTES never
+    // applied to them. Post-auth this bounds a compromised session.
+    const guard = await guardAdminWrite(request);
+    if (!guard.ok) return guard.response;
+    const body = guard.data as Record<string, unknown>;
 
     // `findOneAndUpdate` + `runValidators` runs path validators only, so the
     // model's `pre("validate")` delivery-window rule never fired here and the

@@ -30,11 +30,33 @@ type Counter = { count: number; expiresAt: number };
 
 const memoryStore = new Map<string, Counter>();
 
-/** Keep the in-memory map from growing without bound on a long-lived instance. */
+/** Hard ceiling on distinct identifiers held in the fallback store. */
+export const MEMORY_STORE_MAX = 5000;
+
+/**
+ * Keep the in-memory map from growing without bound on a long-lived instance.
+ *
+ * Evicting only *expired* counters was not a bound: a flood of distinct
+ * identifiers produces entries that are all still live, so nothing could be
+ * reclaimed, and the full O(N) sweep then ran on every subsequent request for
+ * the rest of the window — unbounded memory plus quadratic CPU on the hot
+ * path. Expired entries still go first; if that is not enough, the oldest
+ * entries go too. Map iteration is insertion-ordered, so "oldest" is just the
+ * front of the map, and evicting a live counter early only means its owner
+ * gets a fresh window — the failure mode is leniency, not a crash.
+ */
 function pruneMemoryStore(now: number): void {
-  if (memoryStore.size < 5000) return;
+  if (memoryStore.size < MEMORY_STORE_MAX) return;
+
   for (const [key, counter] of memoryStore) {
     if (counter.expiresAt <= now) memoryStore.delete(key);
+  }
+
+  let excess = memoryStore.size - MEMORY_STORE_MAX;
+  if (excess <= 0) return;
+  for (const key of memoryStore.keys()) {
+    memoryStore.delete(key);
+    if (--excess <= 0) break;
   }
 }
 
@@ -113,16 +135,41 @@ export async function rateLimit(
 }
 
 /**
- * Best-effort client identity. Vercel sets `x-forwarded-for`; the leftmost
- * entry is the original client.
+ * Client identity for rate limiting, resolved from headers.
+ *
+ * The leftmost `x-forwarded-for` entry is whatever the *client* wrote — a
+ * proxy appends, it does not overwrite. Keying every bucket in the app on it
+ * meant a caller could rotate `X-Forwarded-For` per request and dissolve the
+ * public-write caps (unbounded Twilio and Resend spend, unbounded inventory
+ * holds) and, worse, the admin login throttle, leaving an unlimited brute
+ * force against one credential with no lockout and no MFA.
+ *
+ * `x-vercel-forwarded-for` is set by the platform and cannot be forged by the
+ * client, so it wins wherever it is present. `x-forwarded-for` remains the
+ * fallback for local dev and self-hosted `next start`, where there is no
+ * trusted proxy in front and nothing better to key on.
  */
-export function clientIdentifier(request: Request): string {
-  const forwarded = request.headers.get("x-forwarded-for");
+export function identifierFromHeaders(
+  get: (name: string) => string | null | undefined,
+): string {
+  const platform = get("x-vercel-forwarded-for");
+  if (platform) {
+    const first = platform.split(",")[0]?.trim();
+    if (first) return first;
+  }
+
+  const forwarded = get("x-forwarded-for");
   if (forwarded) {
     const first = forwarded.split(",")[0]?.trim();
     if (first) return first;
   }
-  return request.headers.get("x-real-ip") ?? "unknown";
+
+  return get("x-real-ip")?.trim() || "unknown";
+}
+
+/** Client identity for a `Request`. See `identifierFromHeaders`. */
+export function clientIdentifier(request: Request): string {
+  return identifierFromHeaders((name) => request.headers.get(name));
 }
 
 /** Largest JSON body any public write route will read, in bytes. */
@@ -145,7 +192,34 @@ export async function readJsonBody(
     }
   }
 
-  const text = await request.text();
+  // Without a Content-Length (chunked transfer) the declared check above is
+  // skipped, and `request.text()` would materialise the whole payload before
+  // the cap below could fire. Stream instead and stop at the ceiling.
+  const body = request.body;
+  let text: string;
+  if (declared === null && body) {
+    const reader = body.getReader();
+    const chunks: Uint8Array[] = [];
+    let total = 0;
+    try {
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        total += value.byteLength;
+        if (total > maxBytes) {
+          await reader.cancel();
+          return { ok: false, tooLarge: true };
+        }
+        chunks.push(value);
+      }
+    } finally {
+      reader.releaseLock();
+    }
+    text = Buffer.concat(chunks).toString("utf8");
+  } else {
+    text = await request.text();
+  }
+
   // `text.length` counts UTF-16 units, so a multi-byte payload could be about
   // three times the nominal cap before this check fired.
   if (Buffer.byteLength(text, "utf8") > maxBytes) {

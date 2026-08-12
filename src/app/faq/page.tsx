@@ -2,7 +2,7 @@ import { Metadata } from "next";
 import { mixerDetails } from "@/lib/rental-data";
 import Link from "next/link";
 import BookingCTA from "@/components/BookingCTA";
-import { SITE_URL } from "@/lib/site";
+import { SITE_URL, breadcrumbJsonLd } from "@/lib/site";
 
 // Get all mixer names except "non-alcoholic" for the mixer options text
 const alcoholicMixers = Object.entries(mixerDetails)
@@ -185,6 +185,16 @@ export default function FAQ() {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+      />
+      {/* Only the service-area pages emitted breadcrumbs, so the main funnel
+          pages gave Google no trail to render in the SERP. */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(
+            breadcrumbJsonLd([{ name: "FAQ", path: "/faq" }]),
+          ),
+        }}
       />
 
       {/* Decorative blurs */}

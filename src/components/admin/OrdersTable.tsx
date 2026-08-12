@@ -583,14 +583,20 @@ export default function OrdersTable() {
                   </select>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm space-x-3">
+                  {/* The visible text stays "Edit"/"Delete"; the accessible
+                      name carries the customer and date, so tabbing the table
+                      no longer reads as "Edit, Delete, Edit, Delete…" with no
+                      indication of which row is which. */}
                   <button
                     onClick={() => handleEdit(order)}
+                    aria-label={`Edit order for ${order.customer.name} on ${order.rentalDate}`}
                     className="text-teal hover:text-teal-700 dark:text-teal-400 dark:hover:text-teal-300 transition-colors"
                   >
                     Edit
                   </button>
                   <button
                     onClick={() => handleDelete(order._id!.toString())}
+                    aria-label={`Delete order for ${order.customer.name} on ${order.rentalDate}`}
                     className="text-red-600 hover:text-red-900 dark:hover:text-red-400 transition-colors"
                   >
                     Delete

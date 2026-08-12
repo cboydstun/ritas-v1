@@ -262,7 +262,15 @@ export const settingsUpdateSchema = z
       .partial(),
     documentation: z
       .object({
-        pdfUrl: z.string().max(2000),
+        // Rendered straight into an href on the public /long-term-lease
+        // page, so an unrestricted string was a stored-XSS sink: React 19 no
+        // longer warns on a `javascript:` href.
+        pdfUrl: z
+          .string()
+          .max(2000)
+          .refine((url) => url === "" || /^https?:\/\//i.test(url), {
+            message: "pdfUrl must be an http(s) URL",
+          }),
         pdfLabel: z.string().max(200),
       })
       .partial(),
@@ -285,6 +293,50 @@ export const settingsUpdateSchema = z
       });
     }
   });
+
+/**
+ * Blackout-date create/update body.
+ *
+ * This was the one write path in the app still validating by hand, with the
+ * same ~50 lines duplicated across the collection and [id] handlers and free
+ * to drift apart. `reason` was also unbounded and untyped.
+ */
+const blackoutTimeSchema = z
+  .string()
+  .regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Times must be in HH:MM format");
+
+export const blackoutDateSchema = z
+  .object({
+    startDate: dateStringSchema,
+    endDate: dateStringSchema.optional(),
+    reason: z.string().trim().max(500).optional(),
+    type: z.enum(["full_day", "time_range"]),
+    startTime: blackoutTimeSchema.optional(),
+    endTime: blackoutTimeSchema.optional(),
+  })
+  .refine(
+    (data) => data.endDate === undefined || data.endDate >= data.startDate,
+    { message: "End date must be on or after start date", path: ["endDate"] },
+  )
+  .refine(
+    (data) =>
+      data.type !== "time_range" ||
+      (data.startTime !== undefined && data.endTime !== undefined),
+    {
+      message: "Start time and end time are required for time_range type",
+      path: ["startTime"],
+    },
+  )
+  .refine(
+    (data) =>
+      data.type !== "time_range" ||
+      data.startTime === undefined ||
+      data.endTime === undefined ||
+      data.startTime < data.endTime,
+    { message: "End time must be after start time", path: ["endTime"] },
+  );
+
+export type BlackoutDateInput = z.infer<typeof blackoutDateSchema>;
 
 /** Collapse a ZodError into a single short, non-leaky message. */
 export function firstIssueMessage(error: z.ZodError): string {

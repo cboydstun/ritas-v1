@@ -3,8 +3,8 @@ import BookingCTA from "@/components/BookingCTA";
 import LeaseTierCard from "@/components/lease/LeaseTierCard";
 import LeaseInquiryForm from "@/components/lease/LeaseInquiryForm";
 import { mergeLeaseTiers } from "@/lib/lease-data";
-import { SITE_URL } from "@/lib/site";
 import { getPublicSettings } from "@/lib/public-settings";
+import { SITE_URL, breadcrumbJsonLd } from "@/lib/site";
 
 const jsonLd = {
   "@context": "https://schema.org",
@@ -143,6 +143,18 @@ export default async function LongTermLeasePage() {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      {/* Only the service-area pages emitted breadcrumbs, so the main funnel
+          pages gave Google no trail to render in the SERP. */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(
+            breadcrumbJsonLd([
+              { name: "Long-Term Lease", path: "/long-term-lease" },
+            ]),
+          ),
+        }}
       />
       <div className="min-h-screen bg-linear-to-br from-light via-margarita/10 to-teal/20 dark:from-charcoal dark:via-margarita/5 dark:to-teal/10">
         <div className="absolute inset-0 pointer-events-none">

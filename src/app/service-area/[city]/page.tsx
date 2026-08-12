@@ -3,7 +3,14 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import BookingCTA from "@/components/BookingCTA";
 import { machinePackages } from "@/lib/rental-data";
-import { formatPrice } from "@/lib/pricing";
+import {
+  formatPrice,
+  publicPriceTable,
+  offerPriceValidUntil,
+  type PublicPriceTable,
+  type PricingOverrides,
+} from "@/lib/pricing";
+import { getPublicSettingsSafe } from "@/lib/public-settings";
 import {
   SERVICE_AREAS,
   getServiceArea,
@@ -20,6 +27,11 @@ import {
 interface PageProps {
   params: Promise<{ city: string }>;
 }
+
+// These pages are prerendered from generateStaticParams below, and they now
+// read Settings — without this the prices are frozen into the build, which is
+// exactly how /long-term-lease hid lease-tier edits until the next deploy.
+export const revalidate = 60;
 
 export function generateStaticParams() {
   return SERVICE_AREAS.map((area) => ({ city: area.slug }));
@@ -74,7 +86,11 @@ function buildBreadcrumbs(area: ServiceArea) {
   };
 }
 
-function buildJsonLd(area: ServiceArea) {
+function buildJsonLd(
+  area: ServiceArea,
+  table: PublicPriceTable,
+  priceValidUntil: string,
+) {
   return {
     "@context": "https://schema.org",
     "@type": "Service",
@@ -91,11 +107,16 @@ function buildJsonLd(area: ServiceArea) {
       "@type": "Place",
       name: `${area.name}, San Antonio, TX`,
     },
+    // Prices come from Settings, not the rental-data constants: these Offer
+    // nodes used to contradict what the order wizard would actually charge
+    // after any admin price change. priceValidUntil keeps the rich result
+    // eligible — Google may drop an Offer without it.
     offers: machinePackages.map((pkg) => ({
       "@type": "Offer",
       name: pkg.name,
-      price: pkg.basePrice,
+      price: table.machineBasePrice(pkg.type),
       priceCurrency: "USD",
+      priceValidUntil,
       availability: "https://schema.org/InStock",
     })),
   };
@@ -105,6 +126,12 @@ export default async function ServiceAreaPage({ params }: PageProps) {
   const { city } = await params;
   const area = getServiceArea(city);
   if (!area) notFound();
+
+  const settings = await getPublicSettingsSafe("Service-area page");
+  const table = publicPriceTable({
+    machines: settings.machines as PricingOverrides["machines"],
+    mixers: settings.mixers as PricingOverrides["mixers"],
+  });
 
   const sameRegion = SERVICE_AREAS.filter(
     (other) => other.region === area.region && other.slug !== area.slug,
@@ -126,7 +153,11 @@ export default async function ServiceAreaPage({ params }: PageProps) {
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(buildJsonLd(area)) }}
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(
+            buildJsonLd(area, table, offerPriceValidUntil()),
+          ),
+        }}
       />
       <script
         type="application/ld+json"
@@ -196,7 +227,7 @@ export default async function ServiceAreaPage({ params }: PageProps) {
                 {pkg.name}
               </h3>
               <p className="text-2xl font-bold text-margarita mb-3">
-                ${formatPrice(pkg.basePrice)}
+                ${formatPrice(table.machineBasePrice(pkg.type))}
                 <span className="text-sm font-normal text-charcoal/70 dark:text-white/70">
                   {" "}
                   / day

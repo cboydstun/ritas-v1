@@ -40,7 +40,7 @@ export default function Navigation() {
               className="flex items-center"
               onClick={closeMobileMenu}
             >
-              <span className="text-2xl font-bold text-margarita hover:text-teal transition-colors">
+              <span className="text-2xl font-bold text-margarita dark:text-margarita-dark hover:text-teal transition-colors">
                 🍹SATX Ritas
               </span>
             </Link>
@@ -50,31 +50,31 @@ export default function Navigation() {
           <div className="hidden sm:flex sm:items-center">
             <Link
               href="/pricing"
-              className="px-3 py-2 text-charcoal dark:text-white hover:text-margarita transition-colors"
+              className="px-3 py-2 text-charcoal dark:text-white hover:text-margarita dark:hover:text-margarita-dark transition-colors"
             >
               Pricing
             </Link>
             <Link
               href="/about"
-              className="px-3 py-2 text-charcoal dark:text-white hover:text-margarita transition-colors"
+              className="px-3 py-2 text-charcoal dark:text-white hover:text-margarita dark:hover:text-margarita-dark transition-colors"
             >
               About
             </Link>
             <Link
               href="/faq"
-              className="px-3 py-2 text-charcoal dark:text-white hover:text-margarita transition-colors"
+              className="px-3 py-2 text-charcoal dark:text-white hover:text-margarita dark:hover:text-margarita-dark transition-colors"
             >
               FAQ
             </Link>
             <Link
               href="/long-term-lease"
-              className="px-3 py-2 text-charcoal dark:text-white hover:text-margarita transition-colors"
+              className="px-3 py-2 text-charcoal dark:text-white hover:text-margarita dark:hover:text-margarita-dark transition-colors"
             >
               Long-Term Lease
             </Link>
             <Link
               href="/contact"
-              className="px-3 py-2 text-charcoal dark:text-white hover:text-margarita transition-colors"
+              className="px-3 py-2 text-charcoal dark:text-white hover:text-margarita dark:hover:text-margarita-dark transition-colors"
             >
               Contact
             </Link>
@@ -83,7 +83,7 @@ export default function Navigation() {
                 shortest path from "interested" to "booked". */}
             <a
               href={BUSINESS_PHONE_HREF}
-              className="ml-2 px-3 py-2 flex items-center gap-1.5 font-semibold text-margarita hover:text-teal transition-colors"
+              className="ml-2 px-3 py-2 flex items-center gap-1.5 font-semibold text-margarita dark:text-margarita-dark hover:text-teal transition-colors"
             >
               <PhoneIcon className="h-4 w-4" />
               {BUSINESS_PHONE_DISPLAY}
@@ -101,14 +101,14 @@ export default function Navigation() {
           <div className="sm:hidden flex items-center">
             <a
               href={BUSINESS_PHONE_HREF}
-              className="p-2 text-margarita hover:text-teal transition-colors"
+              className="p-2 text-margarita dark:text-margarita-dark hover:text-teal transition-colors"
             >
               <span className="sr-only">Call {BUSINESS_PHONE_DISPLAY}</span>
               <PhoneIcon className="h-6 w-6" />
             </a>
             <button
               type="button"
-              className="inline-flex items-center justify-center p-2 rounded-md text-charcoal dark:text-white hover:text-margarita focus:outline-hidden focus:ring-2 focus:ring-margarita focus:ring-offset-1"
+              className="inline-flex items-center justify-center p-2 rounded-md text-charcoal dark:text-white hover:text-margarita dark:hover:text-margarita-dark focus:outline-hidden focus:ring-2 focus:ring-margarita focus:ring-offset-1"
               onClick={toggleMobileMenu}
               aria-expanded={isMobileMenuOpen}
               aria-controls="mobile-menu"
@@ -163,35 +163,35 @@ export default function Navigation() {
         <div className="px-4 pt-2 pb-3 space-y-1">
           <Link
             href="/pricing"
-            className="block px-3 py-4 text-base font-medium text-charcoal dark:text-white hover:text-margarita border-b border-gray-200 dark:border-gray-700"
+            className="block px-3 py-4 text-base font-medium text-charcoal dark:text-white hover:text-margarita dark:hover:text-margarita-dark border-b border-gray-200 dark:border-gray-700"
             onClick={closeMobileMenu}
           >
             Pricing
           </Link>
           <Link
             href="/about"
-            className="block px-3 py-4 text-base font-medium text-charcoal dark:text-white hover:text-margarita border-b border-gray-200 dark:border-gray-700"
+            className="block px-3 py-4 text-base font-medium text-charcoal dark:text-white hover:text-margarita dark:hover:text-margarita-dark border-b border-gray-200 dark:border-gray-700"
             onClick={closeMobileMenu}
           >
             About
           </Link>
           <Link
             href="/faq"
-            className="block px-3 py-4 text-base font-medium text-charcoal dark:text-white hover:text-margarita border-b border-gray-200 dark:border-gray-700"
+            className="block px-3 py-4 text-base font-medium text-charcoal dark:text-white hover:text-margarita dark:hover:text-margarita-dark border-b border-gray-200 dark:border-gray-700"
             onClick={closeMobileMenu}
           >
             FAQ
           </Link>
           <Link
             href="/long-term-lease"
-            className="block px-3 py-4 text-base font-medium text-charcoal dark:text-white hover:text-margarita border-b border-gray-200 dark:border-gray-700"
+            className="block px-3 py-4 text-base font-medium text-charcoal dark:text-white hover:text-margarita dark:hover:text-margarita-dark border-b border-gray-200 dark:border-gray-700"
             onClick={closeMobileMenu}
           >
             Long-Term Lease
           </Link>
           <Link
             href="/contact"
-            className="block px-3 py-4 text-base font-medium text-charcoal dark:text-white hover:text-margarita border-b border-gray-200 dark:border-gray-700"
+            className="block px-3 py-4 text-base font-medium text-charcoal dark:text-white hover:text-margarita dark:hover:text-margarita-dark border-b border-gray-200 dark:border-gray-700"
             onClick={closeMobileMenu}
           >
             Contact

@@ -8,6 +8,8 @@ import {
   MODEL_RULE_MESSAGES,
 } from "@/models/blackout-date";
 import mongoose from "mongoose";
+import { guardAdminWrite } from "@/lib/api-guard";
+import { blackoutDateSchema, firstIssueMessage } from "@/lib/validation";
 
 // Type for MongoDB query structure
 interface BlackoutDateQuery {
@@ -72,14 +74,17 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Get blackout dates with pagination
-    const blackoutDates = await BlackoutDate.find(query)
-      .sort({ startDate: 1 })
-      .limit(limit)
-      .skip(offset);
-
-    // Get total count for pagination
-    const total = await BlackoutDate.countDocuments(query);
+    // The sibling list routes (orders, contacts, lease-inquiries) already
+    // run these two in parallel and read lean; this one awaited them in
+    // sequence and hydrated full Mongoose documents only to serialise them.
+    const [blackoutDates, total] = await Promise.all([
+      BlackoutDate.find(query)
+        .sort({ startDate: 1 })
+        .limit(limit)
+        .skip(offset)
+        .lean(),
+      BlackoutDate.countDocuments(query),
+    ]);
 
     return NextResponse.json({
       blackoutDates,
@@ -108,66 +113,27 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
-    const body = await request.json();
-    const { startDate, endDate, reason, type, startTime, endTime } = body;
+    // Admin handlers read the body directly, so MAX_BODY_BYTES never
+    // applied to them. Post-auth this bounds a compromised session.
+    const guard = await guardAdminWrite(request);
+    if (!guard.ok) return guard.response;
 
-    // Validate required fields
-    if (!startDate) {
+    // This handler validated by hand, duplicating ~50 lines with the [id]
+    // route that were free to drift apart, and left `reason` unbounded.
+    const parsed = blackoutDateSchema.safeParse(guard.data);
+    if (!parsed.success) {
       return NextResponse.json(
-        { message: "Start date is required" },
+        { message: firstIssueMessage(parsed.error) },
         { status: 400 },
       );
     }
+    const { startDate, endDate, reason, type, startTime, endTime } =
+      parsed.data;
 
-    if (!type || !["full_day", "time_range"].includes(type)) {
-      return NextResponse.json(
-        { message: "Valid type is required (full_day or time_range)" },
-        { status: 400 },
-      );
-    }
-
-    // Validate time range requirements
-    if (type === "time_range") {
-      if (!startTime || !endTime) {
-        return NextResponse.json(
-          {
-            message: "Start time and end time are required for time_range type",
-          },
-          { status: 400 },
-        );
-      }
-
-      // Validate time format
-      const timeRegex = /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/;
-      if (!timeRegex.test(startTime) || !timeRegex.test(endTime)) {
-        return NextResponse.json(
-          { message: "Times must be in HH:MM format" },
-          { status: 400 },
-        );
-      }
-
-      if (startTime >= endTime) {
-        return NextResponse.json(
-          { message: "End time must be after start time" },
-          { status: 400 },
-        );
-      }
-    }
-
-    // `createLocalDate` is fed straight from the request body. Rejecting a
-    // non-date here keeps a numeric or malformed `startDate` a 400 rather than
-    // a Mongoose cast failure surfacing as a 500.
+    // createLocalDate keeps the stored instant on the same calendar day the
+    // admin picked; the schema has already proved both are real dates.
     const parsedStart = createLocalDate(startDate);
     const parsedEnd = endDate ? createLocalDate(endDate) : undefined;
-    if (
-      Number.isNaN(parsedStart.getTime()) ||
-      (parsedEnd && Number.isNaN(parsedEnd.getTime()))
-    ) {
-      return NextResponse.json(
-        { message: "Dates must be valid calendar dates" },
-        { status: 400 },
-      );
-    }
 
     // Validate date range using createLocalDate to avoid timezone issues
     if (parsedEnd && parsedStart > parsedEnd) {

@@ -98,6 +98,12 @@ const rentalSchema = new mongoose.Schema(
         {
           validator: function (mixers: string[]) {
             const machineType = machineTypeInContext(this);
+            // Same reasoning as the capacity validator above: on a partial
+            // update that leaves machineType alone there is nothing to check
+            // against. Falling through to the triple-tank limit let
+            // `PUT { selectedMixers: [a, b, c] }` put three mixers on a
+            // single-tank order and bill all three.
+            if (!machineType) return true;
             // Single tank can have 0 or 1 mixer
             if (machineType === "single") {
               return mixers.length <= 1;
@@ -186,9 +192,21 @@ const rentalSchema = new mongoose.Schema(
   },
 );
 
-// Update timestamps before saving
+// Update timestamps before saving.
+//
+// `createdAt` is re-stamped here rather than left to `default: Date.now`,
+// which Mongoose evaluates in the document *constructor* — a full DB
+// round-trip before the write lands. The oversell recheck in
+// `isMachineAvailable` (`ignoreCreatedFrom` + `tieBreakId`) decides which of
+// two racers for the last unit was there first by comparing `createdAt`, and
+// that only holds if `createdAt` orders the same way persistence does. It did
+// not: a request constructed first but saved slowly was invisible to a
+// request constructed later and saved sooner, so each recheck discarded the
+// other and both bookings survived on one unit.
 rentalSchema.pre("save", function () {
-  this.updatedAt = new Date();
+  const now = new Date();
+  if (this.isNew) this.createdAt = now;
+  this.updatedAt = now;
 });
 
 // Availability is the hottest query in the app — MachineStep checks all three

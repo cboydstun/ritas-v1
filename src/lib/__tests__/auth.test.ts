@@ -19,6 +19,14 @@ import { rateLimit } from "@/lib/rate-limit";
 
 jest.mock("@/lib/rate-limit", () => ({
   rateLimit: jest.fn(),
+  // The real implementation: the login throttle and the public-write limiter
+  // must agree on which headers are forgeable, so auth.ts shares this helper
+  // rather than keeping a second copy.
+  identifierFromHeaders: (get: (name: string) => string | null | undefined) =>
+    get("x-vercel-forwarded-for")?.split(",")[0]?.trim() ||
+    get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    get("x-real-ip")?.trim() ||
+    "unknown",
 }));
 
 const mockRateLimit = rateLimit as jest.MockedFunction<typeof rateLimit>;
@@ -101,7 +109,7 @@ describe("authOptions credentials authorize", () => {
       ).toBeNull();
     });
 
-    it("ignores the plaintext fallback when a hash is set", async () => {
+    it("ignores a stray ADMIN_PASSWORD when a hash is set", async () => {
       process.env.ADMIN_PASSWORD_HASH = bcrypt.hashSync("s3cret", 4);
       process.env.ADMIN_PASSWORD = "plaintext";
 
@@ -111,22 +119,22 @@ describe("authOptions credentials authorize", () => {
     });
   });
 
-  describe("legacy plaintext fallback", () => {
-    it("accepts the correct password and warns", async () => {
+  // The plaintext ADMIN_PASSWORD fallback was removed: it kept a second copy
+  // of the credential in the environment, and a typo'd or dropped hash
+  // silently downgraded admin auth to a plaintext comparison.
+  describe("without a configured hash", () => {
+    it("refuses to authenticate even when ADMIN_PASSWORD is set", async () => {
       process.env.ADMIN_PASSWORD = "plaintext";
 
-      const user = await authorize(
-        { username: "admin", password: "plaintext" },
-        req(),
-      );
-
-      expect(user).toEqual({ id: "1", name: "Admin", role: "admin" });
-      expect(console.warn).toHaveBeenCalledWith(
+      expect(
+        await authorize({ username: "admin", password: "plaintext" }, req()),
+      ).toBeNull();
+      expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining("ADMIN_PASSWORD_HASH is not set"),
       );
     });
 
-    it("rejects when neither a hash nor a plaintext password is configured", async () => {
+    it("rejects when nothing is configured", async () => {
       expect(
         await authorize({ username: "admin", password: "anything" }, req()),
       ).toBeNull();

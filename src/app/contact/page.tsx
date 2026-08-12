@@ -1,7 +1,7 @@
 import { Metadata } from "next";
 import ContactForm from "@/components/contact/ContactForm";
 import BookingCTA from "@/components/BookingCTA";
-import { BUSINESS_ID, SITE_URL } from "@/lib/site";
+import { BUSINESS_ID, SITE_URL, breadcrumbJsonLd } from "@/lib/site";
 
 // Add JSON-LD structured data for contact page
 const jsonLd = {
@@ -91,6 +91,16 @@ export default function ContactPage() {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      {/* Only the service-area pages emitted breadcrumbs, so the main funnel
+          pages gave Google no trail to render in the SERP. */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(
+            breadcrumbJsonLd([{ name: "Contact", path: "/contact" }]),
+          ),
+        }}
       />
       <div className="min-h-screen relative overflow-hidden bg-linear-to-br from-light via-margarita/10 to-teal/20 dark:from-charcoal dark:via-margarita/5 dark:to-teal/10">
         {/* Decorative Elements */}

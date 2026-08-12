@@ -2,7 +2,12 @@ import { ChangeEvent, useMemo } from "react";
 import { DayPicker, DateRange } from "react-day-picker";
 import { format, addDays, startOfDay, parseISO } from "date-fns";
 import { StepProps, labelClassName, inputClassName } from "../types";
-import "react-day-picker/dist/style.css";
+// v10 moved the stylesheet out of dist/; the old path still resolves through
+// a fallback in the package exports map, but this is the documented one.
+// globals.css styles the picker through the rdp-* class names and CSS custom
+// properties, which v10 kept unchanged from v9 — a rename there is silent,
+// which is what the v8 -> v9 note in globals.css records.
+import "react-day-picker/style.css";
 
 function formatHour(h: number): string {
   if (h === 0) return "12:00 AM";

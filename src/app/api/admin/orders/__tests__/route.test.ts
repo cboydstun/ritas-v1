@@ -221,9 +221,30 @@ describe("admin order routes", () => {
         reason: "Fully booked",
       });
 
-      const response = await put({ rentalDate: futureDate(30) });
+      // Both ends move together: shifting only rentalDate past the stored
+      // returnDate is an inverted range, which the date guard below rejects
+      // with a 400 before availability is ever consulted.
+      const response = await put({
+        rentalDate: futureDate(30),
+        returnDate: futureDate(31),
+      });
 
       expect(response.status).toBe(409);
+      expect(Rental.findByIdAndUpdate).not.toHaveBeenCalled();
+    });
+
+    // The POST handler validated both dates and their ordering; PUT did
+    // neither. An inverted range made eachDayInRange return [], so
+    // isMachineAvailable skipped both loops and reported available, and
+    // Math.max(1, negative span) repriced a multi-day rental as one day.
+    it.each([
+      ["an inverted range", { returnDate: futureDate(5) }],
+      ["a malformed rentalDate", { rentalDate: "06/15/2026" }],
+      ["a range beyond MAX_RANGE_DAYS", { returnDate: futureDate(200) }],
+    ])("rejects %s with a 400", async (_label, payload) => {
+      const response = await put(payload);
+
+      expect(response.status).toBe(400);
       expect(Rental.findByIdAndUpdate).not.toHaveBeenCalled();
     });
 
@@ -257,6 +278,96 @@ describe("admin order routes", () => {
 
       expect(response.status).toBe(200);
       expect(mockAvailable).not.toHaveBeenCalled();
+    });
+
+    // price was recomputed from *current* Settings on every PUT, so flipping
+    // an old order's status — or marking its payment collected, which is the
+    // same request shape — silently rewrote the total the customer was
+    // invoiced for. Historical orders keep the price they were sold at.
+    it("leaves price and payment.amount alone on a status-only edit", async () => {
+      (Rental.findById as jest.Mock).mockReturnValue({
+        lean: jest.fn().mockResolvedValue(existingOrder({ price: 183.86 })),
+      });
+
+      const response = await put({ status: "completed" });
+
+      expect(response.status).toBe(200);
+      const [, update] = (Rental.findByIdAndUpdate as jest.Mock).mock.calls[0];
+      expect(update.price).toBeUndefined();
+      expect(update["payment.amount"]).toBeUndefined();
+    });
+
+    it("pins a payment edit to the stored price, not the client's amount", async () => {
+      (Rental.findById as jest.Mock).mockReturnValue({
+        lean: jest.fn().mockResolvedValue(existingOrder({ price: 183.86 })),
+      });
+
+      const response = await put({
+        payment: { status: "completed", amount: 9.99, date: futureDate(1) },
+      });
+
+      expect(response.status).toBe(200);
+      const [, update] = (Rental.findByIdAndUpdate as jest.Mock).mock.calls[0];
+      expect(update.price).toBeUndefined();
+      expect(update.payment.amount).toBe(183.86);
+    });
+
+    it("still recomputes price when a pricing field moves", async () => {
+      (Rental.findById as jest.Mock).mockReturnValue({
+        lean: jest.fn().mockResolvedValue(
+          existingOrder({
+            payment: { amount: 1, status: "pending", date: futureDate(1) },
+          }),
+        ),
+      });
+
+      const response = await put({ machineType: "triple" });
+
+      expect(response.status).toBe(200);
+      const [, update] = (Rental.findByIdAndUpdate as jest.Mock).mock.calls[0];
+      expect(update.price).toBeGreaterThan(0);
+      expect(update["payment.amount"]).toBe(update.price);
+    });
+
+    // The dotted `payment.amount` $set on an order with no payment
+    // subdocument created one with neither `status` nor `date`; update
+    // validators skip absent paths, so the schema's `required` never fired.
+    it("writes a complete payment subdocument when the order had none", async () => {
+      const response = await put({ machineType: "triple" });
+
+      expect(response.status).toBe(200);
+      const [, update] = (Rental.findByIdAndUpdate as jest.Mock).mock.calls[0];
+      expect(update["payment.amount"]).toBeUndefined();
+      expect(update.payment).toMatchObject({
+        amount: update.price,
+        status: "pending",
+      });
+      expect(update.payment.date).toBeInstanceOf(Date);
+    });
+
+    // An admin who deletes a custom mixer from Settings used to lock every
+    // order that had booked it out of *every* edit: merged.selectedMixers
+    // falls back to the stored value, so resolving it against the current
+    // catalog 400'd on an id the caller never sent. The order could not even
+    // be cancelled, and went on holding its unit.
+    it("allows a status edit on an order whose mixer was since deleted", async () => {
+      (Rental.findById as jest.Mock).mockReturnValue({
+        lean: jest
+          .fn()
+          .mockResolvedValue(
+            existingOrder({ selectedMixers: ["blue-hawaiian"] }),
+          ),
+      });
+
+      const response = await put({ status: "cancelled" });
+
+      expect(response.status).toBe(200);
+    });
+
+    it("still rejects an unknown mixer the caller actually sent", async () => {
+      const response = await put({ selectedMixers: ["blue-hawaiian"] });
+
+      expect(response.status).toBe(400);
     });
 
     it("does not re-check on an edit that touches neither dates nor status", async () => {

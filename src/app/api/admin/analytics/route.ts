@@ -17,13 +17,13 @@ export async function GET() {
     await dbConnect();
 
     // Get basic stats
-    const totalVisitors = await Thumbprint.countDocuments();
-    const newVisitorsLast30Days = await Thumbprint.countDocuments({
+    const totalVisitorsPromise = Thumbprint.countDocuments();
+    const newVisitorsLast30DaysPromise = Thumbprint.countDocuments({
       firstSeen: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
     });
 
     // Get device breakdown
-    const deviceBreakdown = await Thumbprint.aggregate([
+    const deviceBreakdownPromise = Thumbprint.aggregate([
       {
         $group: {
           _id: "$device.type",
@@ -42,7 +42,7 @@ export async function GET() {
     // unindexable — the filter ran after the fan-out rather than before it.
     const recentVisitors = { "visits.timestamp": { $gte: thirtyDaysAgo } };
 
-    const dailyVisits = await Thumbprint.aggregate([
+    const dailyVisitsPromise = Thumbprint.aggregate([
       { $match: recentVisitors },
       {
         $unwind: "$visits",
@@ -66,7 +66,7 @@ export async function GET() {
     ]);
 
     // Get top pages
-    const topPages = await Thumbprint.aggregate([
+    const topPagesPromise = Thumbprint.aggregate([
       { $match: recentVisitors },
       {
         $unwind: "$visits",
@@ -87,7 +87,13 @@ export async function GET() {
     ]);
 
     // Get order form step completion rates with time spent
-    const orderSteps = await Thumbprint.aggregate([
+    const orderStepsPromise = Thumbprint.aggregate([
+      // The note above claims every aggregation narrows before $unwind. This
+      // one did not: it fanned the whole collection out to one row per
+      // retained visit and only then filtered.
+      {
+        $match: { "visits.page": { $regex: "^/order/" } },
+      },
       {
         $unwind: "$visits",
       },
@@ -120,7 +126,7 @@ export async function GET() {
     ]);
 
     // Get funnel completion metrics
-    const funnelMetrics = await Thumbprint.aggregate([
+    const funnelMetricsPromise = Thumbprint.aggregate([
       {
         $match: {
           funnelData: { $exists: true },
@@ -161,7 +167,7 @@ export async function GET() {
     ]);
 
     // Get step abandonment data
-    const stepAbandonment = await Thumbprint.aggregate([
+    const stepAbandonmentPromise = Thumbprint.aggregate([
       {
         $match: {
           "funnelData.exitStep": { $exists: true },
@@ -180,7 +186,7 @@ export async function GET() {
     ]);
 
     // Get visits by day of week (1 = Sunday, 7 = Saturday in MongoDB)
-    const visitsByDayOfWeek = await Thumbprint.aggregate([
+    const visitsByDayOfWeekPromise = Thumbprint.aggregate([
       { $match: recentVisitors },
       { $unwind: "$visits" },
       { $match: { "visits.timestamp": { $gte: thirtyDaysAgo } } },
@@ -202,7 +208,7 @@ export async function GET() {
     ]);
 
     // Get visits by hour of day (0-23)
-    const visitsByHourOfDay = await Thumbprint.aggregate([
+    const visitsByHourOfDayPromise = Thumbprint.aggregate([
       { $match: recentVisitors },
       { $unwind: "$visits" },
       { $match: { "visits.timestamp": { $gte: thirtyDaysAgo } } },
@@ -221,6 +227,33 @@ export async function GET() {
         },
       },
       { $sort: { _id: 1 } },
+    ]);
+
+    // All ten reads are independent, so awaiting them in sequence cost the
+    // sum of their latencies rather than the max. Nothing here feeds
+    // anything else.
+    const [
+      totalVisitors,
+      newVisitorsLast30Days,
+      deviceBreakdown,
+      dailyVisits,
+      topPages,
+      orderSteps,
+      funnelMetrics,
+      stepAbandonment,
+      visitsByDayOfWeek,
+      visitsByHourOfDay,
+    ] = await Promise.all([
+      totalVisitorsPromise,
+      newVisitorsLast30DaysPromise,
+      deviceBreakdownPromise,
+      dailyVisitsPromise,
+      topPagesPromise,
+      orderStepsPromise,
+      funnelMetricsPromise,
+      stepAbandonmentPromise,
+      visitsByDayOfWeekPromise,
+      visitsByHourOfDayPromise,
     ]);
 
     return NextResponse.json({

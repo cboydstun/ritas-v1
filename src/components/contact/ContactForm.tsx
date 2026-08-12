@@ -85,7 +85,12 @@ export default function ContactForm() {
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {submitStatus.type && (
+        // Both forms submit inline with no navigation, so without a live
+        // region a screen-reader user got no feedback at all on submit.
+        // ReviewStep and OrdersTable already do this.
         <div
+          role="alert"
+          aria-live="polite"
           className={`p-4 mb-6 rounded-lg ${
             submitStatus.type === "success"
               ? "bg-green-100 text-green-800 dark:bg-green-800/20 dark:text-green-400"
