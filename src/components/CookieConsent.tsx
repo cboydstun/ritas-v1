@@ -63,7 +63,9 @@ export default function CookieConsent(): React.ReactNode {
           <button
             type="button"
             onClick={() => choose("granted")}
-            className="px-4 py-2 rounded-lg text-sm font-semibold bg-margarita text-charcoal hover:opacity-90 transition-opacity"
+            // text-charcoal on bg-margarita is 2.46:1 — this button failed AA in
+            // both themes, not just dark. White on the same green is 5.14:1.
+            className="px-4 py-2 rounded-lg text-sm font-semibold bg-margarita text-white hover:opacity-90 transition-opacity"
           >
             Got it
           </button>

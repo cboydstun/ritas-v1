@@ -73,7 +73,14 @@ export default function ReviewCarousel({ reviews }: { reviews: Review[] }) {
           >
             Previous
           </button>
-          <span className="text-sm sm:text-base text-charcoal/80 dark:text-white/80">
+          {/* Paging swapped the reviews with no announcement, so a screen
+              reader user pressing Next heard nothing change. The counter is
+              the natural thing to announce. */}
+          <span
+            aria-live="polite"
+            aria-atomic="true"
+            className="text-sm sm:text-base text-charcoal/80 dark:text-white/80"
+          >
             Page {currentPage} of {totalPages}
           </span>
           <button

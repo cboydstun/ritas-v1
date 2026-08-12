@@ -107,7 +107,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               aria-label={isSidebarOpen ? "Close sidebar" : "Open sidebar"}
             >
               <svg
-                className="w-6 h-6 text-margarita hover:text-teal transition-colors"
+                className="w-6 h-6 text-margarita dark:text-margarita-dark hover:text-teal transition-colors"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -134,7 +134,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           aria-label="Open sidebar"
         >
           <svg
-            className="w-6 h-6 text-margarita hover:text-teal transition-colors"
+            className="w-6 h-6 text-margarita dark:text-margarita-dark hover:text-teal transition-colors"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"

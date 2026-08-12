@@ -215,10 +215,14 @@ export default function BlackoutDateForm({
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label
+              htmlFor="blackout-start-date"
+              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+            >
               Start Date *
             </label>
             <input
+              id="blackout-start-date"
               type="date"
               name="startDate"
               value={formData.startDate}
@@ -229,10 +233,14 @@ export default function BlackoutDateForm({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label
+              htmlFor="blackout-end-date-optional"
+              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+            >
               End Date (Optional)
             </label>
             <input
+              id="blackout-end-date-optional"
               type="date"
               name="endDate"
               value={formData.endDate}
@@ -246,10 +254,14 @@ export default function BlackoutDateForm({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          <label
+            htmlFor="blackout-blackout-type"
+            className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+          >
             Blackout Type *
           </label>
           <select
+            id="blackout-blackout-type"
             name="type"
             value={formData.type}
             onChange={handleInputChange}
@@ -275,10 +287,14 @@ export default function BlackoutDateForm({
         {formData.type === "time_range" && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              <label
+                htmlFor="blackout-start-time"
+                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+              >
                 Start Time *
               </label>
               <input
+                id="blackout-start-time"
                 type="time"
                 name="startTime"
                 value={formData.startTime}
@@ -289,10 +305,14 @@ export default function BlackoutDateForm({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              <label
+                htmlFor="blackout-end-time"
+                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+              >
                 End Time *
               </label>
               <input
+                id="blackout-end-time"
                 type="time"
                 name="endTime"
                 value={formData.endTime}
@@ -305,10 +325,14 @@ export default function BlackoutDateForm({
         )}
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          <label
+            htmlFor="blackout-reason-optional"
+            className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+          >
             Reason (Optional)
           </label>
           <textarea
+            id="blackout-reason-optional"
             name="reason"
             value={formData.reason}
             onChange={handleInputChange}

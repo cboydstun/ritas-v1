@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useId } from "react";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { leaseTiers as staticLeaseTiers } from "@/lib/lease-data";
 
@@ -159,12 +159,23 @@ function NumberInput({
   step?: string;
   min?: string;
 }) {
+  // The label was a sibling of the input with no htmlFor and no wrapping, so
+  // there was no association at all: a screen reader announced every field on
+  // this page — the one that sets every price, fee and inventory count — as
+  // unlabelled, and clicking the text did not focus the input. useId keeps the
+  // pairing unique across the many instances this helper renders.
+  const inputId = useId();
+
   return (
     <div>
-      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+      <label
+        htmlFor={inputId}
+        className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+      >
         {label}
       </label>
       <input
+        id={inputId}
         type="number"
         step={step}
         min={min}
@@ -915,10 +926,14 @@ export default function SettingsPage() {
         >
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              <label
+                htmlFor="documentation-pdfUrl"
+                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+              >
                 PDF URL
               </label>
               <input
+                id="documentation-pdfUrl"
                 type="url"
                 value={settings.documentation.pdfUrl}
                 onChange={(e) =>
@@ -940,10 +955,14 @@ export default function SettingsPage() {
               </p>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              <label
+                htmlFor="documentation-pdfLabel"
+                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+              >
                 Button Label
               </label>
               <input
+                id="documentation-pdfLabel"
                 type="text"
                 value={settings.documentation.pdfLabel}
                 onChange={(e) =>

@@ -11,6 +11,7 @@ import {
   type SettingsOverrides,
 } from "@/components/order/utils";
 import type { OrderFormData } from "@/components/order/types";
+import { useModalFocus } from "@/hooks/useModalFocus";
 
 interface CreateOrderModalProps {
   onClose: () => void;
@@ -303,9 +304,15 @@ export default function CreateOrderModal({ onClose }: CreateOrderModalProps) {
     return selectedMachine ? selectedMachine.maxMixers : 1;
   };
 
+  // role="dialog" aria-modal="true" was declared without any of the behaviour
+  // it promises — no focus entry, no Tab containment, no Escape, no restore.
+  const dialogRef = useModalFocus<HTMLDivElement>(onClose);
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 overflow-y-auto">
       <div
+        ref={dialogRef}
+        tabIndex={-1}
         role="dialog"
         aria-modal="true"
         aria-labelledby="create-order-title"
@@ -339,10 +346,14 @@ export default function CreateOrderModal({ onClose }: CreateOrderModalProps) {
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  <label
+                    htmlFor="create-order-machine-type"
+                    className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+                  >
                     Machine Type
                   </label>
                   <select
+                    id="create-order-machine-type"
                     value={formData.machineType}
                     onChange={handleMachineTypeChange}
                     className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-xs"
@@ -358,10 +369,14 @@ export default function CreateOrderModal({ onClose }: CreateOrderModalProps) {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  <label
+                    htmlFor="create-order-capacity-l"
+                    className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+                  >
                     Capacity (L)
                   </label>
                   <select
+                    id="create-order-capacity-l"
                     value={formData.capacity}
                     onChange={handleCapacityChange}
                     className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-xs"
@@ -444,10 +459,14 @@ export default function CreateOrderModal({ onClose }: CreateOrderModalProps) {
                           (extra) => extra.id === item.id,
                         ) && (
                           <div className="mt-2 flex items-center space-x-2">
-                            <label className="text-xs text-gray-700 dark:text-gray-300">
+                            <label
+                              htmlFor="create-order-quantity"
+                              className="text-xs text-gray-700 dark:text-gray-300"
+                            >
                               Quantity:
                             </label>
                             <input
+                              id="create-order-quantity"
                               type="number"
                               min="1"
                               value={
@@ -478,10 +497,14 @@ export default function CreateOrderModal({ onClose }: CreateOrderModalProps) {
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  <label
+                    htmlFor="create-order-rental-date"
+                    className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+                  >
                     Rental Date *
                   </label>
                   <input
+                    id="create-order-rental-date"
                     type="date"
                     value={formData.rentalDate}
                     onChange={(e) =>
@@ -495,10 +518,14 @@ export default function CreateOrderModal({ onClose }: CreateOrderModalProps) {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  <label
+                    htmlFor="create-order-rental-time"
+                    className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+                  >
                     Rental Time *
                   </label>
                   <input
+                    id="create-order-rental-time"
                     type="time"
                     value={formData.rentalTime}
                     onChange={(e) =>
@@ -512,10 +539,14 @@ export default function CreateOrderModal({ onClose }: CreateOrderModalProps) {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  <label
+                    htmlFor="create-order-return-date"
+                    className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+                  >
                     Return Date *
                   </label>
                   <input
+                    id="create-order-return-date"
                     type="date"
                     value={formData.returnDate}
                     onChange={(e) =>
@@ -529,10 +560,14 @@ export default function CreateOrderModal({ onClose }: CreateOrderModalProps) {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  <label
+                    htmlFor="create-order-return-time"
+                    className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+                  >
                     Return Time *
                   </label>
                   <input
+                    id="create-order-return-time"
                     type="time"
                     value={formData.returnTime}
                     onChange={(e) =>
@@ -555,10 +590,14 @@ export default function CreateOrderModal({ onClose }: CreateOrderModalProps) {
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  <label
+                    htmlFor="create-order-name"
+                    className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+                  >
                     Name *
                   </label>
                   <input
+                    id="create-order-name"
                     type="text"
                     value={formData.customer?.name || ""}
                     onChange={(e) =>
@@ -575,10 +614,14 @@ export default function CreateOrderModal({ onClose }: CreateOrderModalProps) {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  <label
+                    htmlFor="create-order-email"
+                    className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+                  >
                     Email *
                   </label>
                   <input
+                    id="create-order-email"
                     type="email"
                     value={formData.customer?.email || ""}
                     onChange={(e) =>
@@ -595,10 +638,14 @@ export default function CreateOrderModal({ onClose }: CreateOrderModalProps) {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  <label
+                    htmlFor="create-order-phone"
+                    className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+                  >
                     Phone *
                   </label>
                   <input
+                    id="create-order-phone"
                     type="tel"
                     value={formData.customer?.phone || ""}
                     onChange={(e) =>
@@ -624,10 +671,14 @@ export default function CreateOrderModal({ onClose }: CreateOrderModalProps) {
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  <label
+                    htmlFor="create-order-street"
+                    className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+                  >
                     Street *
                   </label>
                   <input
+                    id="create-order-street"
                     type="text"
                     value={formData.customer?.address?.street || ""}
                     onChange={(e) =>
@@ -647,10 +698,14 @@ export default function CreateOrderModal({ onClose }: CreateOrderModalProps) {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  <label
+                    htmlFor="create-order-city"
+                    className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+                  >
                     City *
                   </label>
                   <input
+                    id="create-order-city"
                     type="text"
                     value={formData.customer?.address?.city || ""}
                     onChange={(e) =>
@@ -670,10 +725,14 @@ export default function CreateOrderModal({ onClose }: CreateOrderModalProps) {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  <label
+                    htmlFor="create-order-state"
+                    className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+                  >
                     State *
                   </label>
                   <input
+                    id="create-order-state"
                     type="text"
                     value={formData.customer?.address?.state || ""}
                     onChange={(e) =>
@@ -693,10 +752,14 @@ export default function CreateOrderModal({ onClose }: CreateOrderModalProps) {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  <label
+                    htmlFor="create-order-zip-code"
+                    className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+                  >
                     ZIP Code *
                   </label>
                   <input
+                    id="create-order-zip-code"
                     type="text"
                     value={formData.customer?.address?.zipCode || ""}
                     onChange={(e) =>
@@ -720,10 +783,14 @@ export default function CreateOrderModal({ onClose }: CreateOrderModalProps) {
 
             {/* Notes */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              <label
+                htmlFor="create-order-notes"
+                className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+              >
                 Notes
               </label>
               <textarea
+                id="create-order-notes"
                 value={formData.notes || ""}
                 onChange={(e) =>
                   setFormData({

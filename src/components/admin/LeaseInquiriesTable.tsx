@@ -342,8 +342,11 @@ export default function LeaseInquiriesTable() {
                   </select>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm space-x-3">
+                  {/* Row context in the accessible name: without it, tabbing
+                      the table reads as "Delete, Delete, Delete…". */}
                   <button
                     onClick={() => handleDelete(inquiry._id!.toString())}
+                    aria-label={`Delete lease inquiry from ${inquiry.businessName}`}
                     className="text-red-600 hover:text-red-900 dark:hover:text-red-400 transition-colors"
                   >
                     Delete

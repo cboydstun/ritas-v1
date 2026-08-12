@@ -8,7 +8,7 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* Brand Section */}
           <div className="col-span-1 md:col-span-2">
-            <h3 className="text-2xl font-bold text-margarita mb-4">
+            <h3 className="text-2xl font-bold text-margarita dark:text-margarita-dark mb-4">
               SATX Ritas
             </h3>
             <p className="text-charcoal dark:text-white/80 mb-4">
@@ -26,7 +26,7 @@ export default function Footer() {
               <li>
                 <Link
                   href="/order"
-                  className="text-charcoal dark:text-white/80 hover:text-margarita dark:hover:text-margarita transition-colors"
+                  className="text-charcoal dark:text-white/80 hover:text-margarita dark:hover:text-margarita-dark transition-colors"
                 >
                   Order Online
                 </Link>
@@ -34,7 +34,7 @@ export default function Footer() {
               <li>
                 <Link
                   href="/pricing"
-                  className="text-charcoal dark:text-white/80 hover:text-margarita dark:hover:text-margarita transition-colors"
+                  className="text-charcoal dark:text-white/80 hover:text-margarita dark:hover:text-margarita-dark transition-colors"
                 >
                   Pricing
                 </Link>
@@ -44,7 +44,7 @@ export default function Footer() {
               <li>
                 <Link
                   href="/service-area"
-                  className="text-charcoal dark:text-white/80 hover:text-margarita dark:hover:text-margarita transition-colors"
+                  className="text-charcoal dark:text-white/80 hover:text-margarita dark:hover:text-margarita-dark transition-colors"
                 >
                   Service Areas
                 </Link>
@@ -52,7 +52,7 @@ export default function Footer() {
               <li>
                 <Link
                   href="/about"
-                  className="text-charcoal dark:text-white/80 hover:text-margarita dark:hover:text-margarita transition-colors"
+                  className="text-charcoal dark:text-white/80 hover:text-margarita dark:hover:text-margarita-dark transition-colors"
                 >
                   About
                 </Link>
@@ -60,7 +60,7 @@ export default function Footer() {
               <li>
                 <Link
                   href="/faq"
-                  className="text-charcoal dark:text-white/80 hover:text-margarita dark:hover:text-margarita transition-colors"
+                  className="text-charcoal dark:text-white/80 hover:text-margarita dark:hover:text-margarita-dark transition-colors"
                 >
                   FAQ
                 </Link>
@@ -68,7 +68,7 @@ export default function Footer() {
               <li>
                 <Link
                   href="/long-term-lease"
-                  className="text-charcoal dark:text-white/80 hover:text-margarita dark:hover:text-margarita transition-colors"
+                  className="text-charcoal dark:text-white/80 hover:text-margarita dark:hover:text-margarita-dark transition-colors"
                 >
                   Long-Term Lease
                 </Link>
@@ -76,7 +76,7 @@ export default function Footer() {
               <li>
                 <Link
                   href="/contact"
-                  className="text-charcoal dark:text-white/80 hover:text-margarita dark:hover:text-margarita transition-colors"
+                  className="text-charcoal dark:text-white/80 hover:text-margarita dark:hover:text-margarita-dark transition-colors"
                 >
                   Contact
                 </Link>
@@ -92,7 +92,7 @@ export default function Footer() {
               <li>
                 <a
                   href={BUSINESS_PHONE_HREF}
-                  className="hover:text-margarita dark:hover:text-margarita transition-colors"
+                  className="hover:text-margarita dark:hover:text-margarita-dark transition-colors"
                 >
                   {BUSINESS_PHONE_DISPLAY}
                 </a>
@@ -100,7 +100,7 @@ export default function Footer() {
               <li>
                 <a
                   href="mailto:satxbounce@gmail.com"
-                  className="hover:text-margarita dark:hover:text-margarita transition-colors"
+                  className="hover:text-margarita dark:hover:text-margarita-dark transition-colors"
                 >
                   satxbounce@gmail.com
                 </a>

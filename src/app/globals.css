@@ -7,6 +7,11 @@
   --animate-wiggle: wiggle 1s ease-in-out infinite;
 
   --color-margarita: #4b7a0a;
+  /* #4b7a0a clears AA against white (5.14:1) but not against --color-charcoal
+     (2.46:1, where AA wants 4.5). Anywhere the brand green is text or an icon
+     on the dark surface, use this instead — it is 6.20:1 on charcoal. Only
+     for dark mode: on white it is 2.04:1 and fails badly. */
+  --color-margarita-dark: #8ec63f;
   --color-teal: #026b62;
   --color-orange: #ff9f40;
   --color-pink: #ff6f91;

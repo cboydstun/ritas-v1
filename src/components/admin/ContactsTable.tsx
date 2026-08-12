@@ -334,8 +334,11 @@ export default function ContactsTable() {
                   </select>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm space-x-3">
+                  {/* Row context in the accessible name: without it, tabbing
+                      the table reads as "Delete, Delete, Delete…". */}
                   <button
                     onClick={() => handleDelete(contact._id!.toString())}
+                    aria-label={`Delete contact from ${contact.name}`}
                     className="text-red-600 hover:text-red-900 dark:hover:text-red-400 transition-colors"
                   >
                     Delete
