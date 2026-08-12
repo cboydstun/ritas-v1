@@ -39,6 +39,16 @@ export default function Footer() {
                   Pricing
                 </Link>
               </li>
+              {/* The 16 per-city pages had no inbound link from anywhere in
+                  the site chrome. */}
+              <li>
+                <Link
+                  href="/service-area"
+                  className="text-charcoal dark:text-white/80 hover:text-margarita dark:hover:text-margarita transition-colors"
+                >
+                  Service Areas
+                </Link>
+              </li>
               <li>
                 <Link
                   href="/about"

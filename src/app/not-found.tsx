@@ -1,4 +1,13 @@
+import type { Metadata } from "next";
 import Link from "next/link";
+
+// Without this the 404 inherited the root title and its OG card advertised the
+// homepage, so a shared dead link previewed as if it were the real site.
+export const metadata: Metadata = {
+  title: "Page Not Found",
+  description: "This page could not be found.",
+  robots: { index: false, follow: true },
+};
 
 export default function NotFound() {
   return (

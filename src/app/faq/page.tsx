@@ -20,6 +20,10 @@ export const metadata: Metadata = {
     description:
       "Everything you need to know about renting frozen drink machines in San Antonio, from setup to mixers and policies.",
     type: "website",
+    // Every sibling page sets these; without them the card fell back to the
+    // root defaults and pointed at the homepage URL.
+    url: "/faq",
+    images: [{ url: "/og-image.jpg", width: 1200, height: 630, alt: "FAQ" }],
   },
 };
 

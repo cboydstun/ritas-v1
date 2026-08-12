@@ -1,9 +1,16 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useState, useEffect } from "react";
 import AdminLayout from "@/components/admin/AdminLayout";
 import BlackoutDatesTable from "@/components/admin/BlackoutDatesTable";
-import BlackoutDateForm from "@/components/admin/BlackoutDateForm";
+// Conditionally mounted and most admin sessions never open it, so it does not
+// belong in the eagerly-loaded admin bundle — the same treatment
+// AnalyticsCharts already gets.
+const BlackoutDateForm = dynamic(
+  () => import("@/components/admin/BlackoutDateForm"),
+  { ssr: false },
+);
 import { type BlackoutDateRecord } from "@/lib/blackout-dates";
 
 export default function BlackoutDatesPage() {

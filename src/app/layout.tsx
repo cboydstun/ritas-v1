@@ -28,7 +28,14 @@ export const metadata: Metadata = {
   // localhost there emitted `http://localhost:3000/...` canonicals and OG
   // image URLs in every preview build.
   metadataBase: new URL(siteOrigin()),
-  title: "Ritas Rentals",
+  // A template rather than a bare string: any route without its own title used
+  // to render "Ritas Rentals", which matched neither the openGraph title below
+  // nor the brand string on the homepage.
+  title: {
+    default:
+      "SATX Ritas Rentals | Frozen Drink Machine Rentals in San Antonio, TX",
+    template: "%s | SATX Ritas Rentals",
+  },
   description:
     "Rent top-quality frozen drink machines in San Antonio, TX for your next party or event. Offering margaritas, daiquiris, piña coladas, and more with professional service. Perfect for birthdays, weddings, and corporate events. Visit SATXRitas.com for pricing and booking!",
   openGraph: {

@@ -159,7 +159,11 @@ export default function AboutSection() {
                   src="/pina-colada-1.jpg"
                   alt="Piña Colada"
                   width={400}
-                  height={400}
+                  // 256 to match the h-64 container. Declaring 400 against a
+                  // 256px box meant the reserved aspect ratio disagreed with
+                  // the rendered one, which is what shifts as it resolves.
+                  height={256}
+                  sizes="(min-width: 768px) 400px, 100vw"
                   className="w-full h-auto object-cover"
                 />
               </div>
@@ -171,6 +175,7 @@ export default function AboutSection() {
                   alt="Blue Hawaiian"
                   width={400}
                   height={192}
+                  sizes="(min-width: 768px) 400px, 100vw"
                   className="w-full h-auto object-cover"
                 />
               </div>
@@ -180,6 +185,7 @@ export default function AboutSection() {
                   alt="Strawberry Daiquiri"
                   width={400}
                   height={256}
+                  sizes="(min-width: 768px) 400px, 100vw"
                   className="w-full h-auto object-cover"
                 />
               </div>

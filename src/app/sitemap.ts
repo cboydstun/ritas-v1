@@ -16,6 +16,9 @@ const routes: Array<{
   { path: "/about", priority: 0.8, changeFrequency: "monthly" },
   { path: "/contact", priority: 0.8, changeFrequency: "monthly" },
   { path: "/faq", priority: 0.8, changeFrequency: "monthly" },
+  // Hub for the per-city pages below, which are otherwise reachable only from
+  // each other within a single region.
+  { path: "/service-area", priority: 0.75, changeFrequency: "monthly" },
 ];
 
 export default function sitemap(): MetadataRoute.Sitemap {

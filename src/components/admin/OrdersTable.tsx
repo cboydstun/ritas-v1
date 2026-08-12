@@ -1,9 +1,15 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useState, useEffect, useMemo } from "react";
 import { MargaritaRental, RentalStatus, PaymentStatus } from "@/types/index";
 import { OrderTableColumn } from "@/types/admin";
-import EditOrderModal from "./EditOrderModal";
+// Conditionally mounted and most admin sessions never open it, so it does not
+// belong in the eagerly-loaded admin bundle — the same treatment
+// AnalyticsCharts already gets.
+const EditOrderModal = dynamic(() => import("./EditOrderModal"), {
+  ssr: false,
+});
 
 type SortDirection = "asc" | "desc";
 type SortConfig = {

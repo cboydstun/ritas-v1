@@ -1,9 +1,16 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { Suspense, useState } from "react";
 import AdminLayout from "@/components/admin/AdminLayout";
 import OrdersTable from "@/components/admin/OrdersTable";
-import CreateOrderModal from "@/components/admin/CreateOrderModal";
+// Conditionally mounted and most admin sessions never open it, so it does not
+// belong in the eagerly-loaded admin bundle — the same treatment
+// AnalyticsCharts already gets.
+const CreateOrderModal = dynamic(
+  () => import("@/components/admin/CreateOrderModal"),
+  { ssr: false },
+);
 
 export default function AdminOrdersPage() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);

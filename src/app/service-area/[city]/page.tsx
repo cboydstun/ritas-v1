@@ -30,7 +30,8 @@ export async function generateMetadata({
 }: PageProps): Promise<Metadata> {
   const { city } = await params;
   const area = getServiceArea(city);
-  if (!area) return {};
+  // A bare `{}` left an unknown slug inheriting the root title on a 404.
+  if (!area) return { title: "Area Not Found", robots: { index: false } };
 
   return {
     title: `Margarita Machine Rental in ${area.name} | SATX Ritas`,
@@ -51,6 +52,28 @@ export async function generateMetadata({
  * describing a second business, so these pages reinforce one entity instead of
  * competing with it.
  */
+function buildBreadcrumbs(area: ServiceArea) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Home", item: SITE_URL },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: "Service Areas",
+        item: `${SITE_URL}/service-area`,
+      },
+      {
+        "@type": "ListItem",
+        position: 3,
+        name: area.name,
+        item: `${SITE_URL}/service-area/${area.slug}`,
+      },
+    ],
+  };
+}
+
 function buildJsonLd(area: ServiceArea) {
   return {
     "@context": "https://schema.org",
@@ -83,9 +106,21 @@ export default async function ServiceAreaPage({ params }: PageProps) {
   const area = getServiceArea(city);
   if (!area) notFound();
 
-  const nearby = SERVICE_AREAS.filter(
+  const sameRegion = SERVICE_AREAS.filter(
     (other) => other.region === area.region && other.slug !== area.slug,
   );
+  // Filtering to the same region alone split the 16 pages into four
+  // disconnected islands with no path between them. Two picks from other
+  // regions — chosen deterministically so the markup stays stable across
+  // builds — join them up.
+  const otherRegions = SERVICE_AREAS.filter(
+    (other) => other.region !== area.region,
+  );
+  const offset = SERVICE_AREAS.findIndex((a) => a.slug === area.slug);
+  const crossRegion = otherRegions.length
+    ? [0, 1].map((i) => otherRegions[(offset + i) % otherRegions.length])
+    : [];
+  const nearby = [...sameRegion, ...crossRegion];
 
   return (
     <>
@@ -93,8 +128,35 @@ export default async function ServiceAreaPage({ params }: PageProps) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(buildJsonLd(area)) }}
       />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(buildBreadcrumbs(area)),
+        }}
+      />
 
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <nav aria-label="Breadcrumb" className="mb-6">
+          <ol className="flex flex-wrap gap-2 text-sm text-charcoal/60 dark:text-white/60">
+            <li>
+              <Link href="/" className="hover:text-margarita underline">
+                Home
+              </Link>
+            </li>
+            <li aria-hidden="true">/</li>
+            <li>
+              <Link
+                href="/service-area"
+                className="hover:text-margarita underline"
+              >
+                Service Areas
+              </Link>
+            </li>
+            <li aria-hidden="true">/</li>
+            <li aria-current="page">{area.name}</li>
+          </ol>
+        </nav>
+
         <p className="text-sm font-semibold uppercase tracking-wide text-teal mb-3">
           {area.region} San Antonio
         </p>
@@ -177,6 +239,14 @@ export default async function ServiceAreaPage({ params }: PageProps) {
                 </li>
               ))}
             </ul>
+            <p className="mb-12 text-sm text-charcoal/60 dark:text-white/60">
+              <Link
+                href="/service-area"
+                className="text-margarita underline hover:no-underline"
+              >
+                See every area we deliver to
+              </Link>
+            </p>
           </>
         )}
 
