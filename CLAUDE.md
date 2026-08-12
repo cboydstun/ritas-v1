@@ -20,6 +20,10 @@ npm run test:ci      # Jest in CI mode with coverage
 
 Run a single test file: `npx jest src/components/order/steps/__tests__/SomeTest.test.tsx`
 
+`.github/workflows/ci.yml` runs `typecheck`, `lint`, `format:check` and `test:ci` on every push and PR to `main`. `test:ci` deliberately does **not** pass `--passWithNoTests`, and `jest.config.js` carries `coverageThreshold`s seeded at the coverage when they were added — raise them, do not lower them to get a build out.
+
+Two jest footguns in this repo: importing `jest` from `@jest/globals` defeats SWC's `jest.mock` hoisting, so a `jest.mock("next/navigation", ...)` in such a file silently does nothing — use the global `jest`. And `nanoid` is ESM-only, so `transformIgnorePatterns` must keep transforming it.
+
 Tests are co-located in `__tests__/` folders next to the code they cover. Jest is configured via `next/jest` with `jest-environment-jsdom`. The path alias `@/*` resolves to `src/*` (set in both `tsconfig.json` and `jest.config.js`). Test scripts pass `--passWithNoTests`, so a filter that matches nothing exits 0 — check the reported test count, don't trust a green exit alone.
 
 `npm run typecheck` (`tsc --noEmit`) is the fast type gate. `next.config.ts` sets `typescript.ignoreBuildErrors: false`, so `npm run build` type-checks too — do not flip it back to `true` to get a build out; fix the type.
@@ -34,7 +38,7 @@ Next.js 15 (App Router) · React 19 · TypeScript 5 · MongoDB/Mongoose · NextA
 
 ### Routing & Pages
 
-`src/app/` uses the Next.js App Router. Public pages live at the root (`/order`, `/pricing`, `/long-term-lease`, etc.). Admin pages are under `src/app/admin/` and are protected by middleware. API routes are split between `src/app/api/v1/` (public) and `src/app/api/admin/` (auth-required). `/api/save-booking` (the public checkout) and `/api/cron/release-holds` sit outside both namespaces at `src/app/api/`.
+`src/app/` uses the Next.js App Router. Public pages live at the root (`/order`, `/pricing`, `/long-term-lease`, etc.), plus statically generated `/service-area/[city]` pages driven by `SERVICE_AREAS` in `src/lib/service-areas.ts` — the same list `MapSection` and `sitemap.ts` render from, so adding an area there gives it a page, a homepage link and a sitemap entry. Admin pages are under `src/app/admin/` and are protected by middleware. API routes are split between `src/app/api/v1/` (public) and `src/app/api/admin/` (auth-required). `/api/save-booking` (the public checkout) and `/api/cron/release-holds` sit outside both namespaces at `src/app/api/`.
 
 Two customer-facing verticals share this codebase: **event rentals** (the `/order` wizard, `Rental` model) and **long-term commercial leases** (`/long-term-lease`, an inquiry form only — no payment, `LeaseInquiry` model).
 
@@ -56,13 +60,13 @@ The single source of truth for all order totals is `computeOrderTotal()` in `src
 - `salesTax = (discountedSubtotal + processingFee) × salesTaxRate` — the processing fee is a taxable line item, matching the QuickBooks invoice
 - `finalTotal = discountedSubtotal + processingFee + salesTax`
 
-Extras prices always come from `buildExtrasCatalog()` in `src/lib/extras-catalog.ts` (the static items in `types.ts` plus one `mixer-*` entry per flavour). Mixer entries are enumerated from `Settings.mixers` when overrides are passed, so a flavour an admin adds in `/admin/settings` is a real, purchasable add-on; enumerating only the static four made those cards price at $0 and then fail checkout with a 400. `computeOrderTotal` looks each `selectedExtras[].id` up there and **ignores any `price`/`pricingType` on the item itself** — those may have arrived in a request body. Any UI that renders extras line items must use the same catalog, or the lines will not sum to the total.
+Extras prices always come from `buildExtrasCatalog()` in `src/lib/extras-catalog.ts` (the static items in `types.ts` plus one `mixer-*` entry per flavour). Mixer entries are enumerated from `Settings.mixers` when overrides are passed, so a flavour an admin adds in `/admin/settings` is a real, purchasable add-on; enumerating only the static four made those cards price at $0 and then fail checkout with a 400. Tank mixers work the same way: `buildMixerCatalog()`/`resolveSelectedMixers()` resolve `selectedMixers` against `mixerDetails` ∪ `Settings.mixers`, and `mixerIdSchema` in `validation.ts` only checks that an id is well-formed. Pinning the schema to the original four flavours meant a flavour an admin added rendered a selectable tank card and then 400'd at checkout. `computeOrderTotal` looks each `selectedExtras[].id` up in the catalog and **ignores any `price`/`pricingType` on the item itself** — those may have arrived in a request body. Any UI that renders extras line items must use the same catalog, or the lines will not sum to the total.
 
 Default constants: delivery $20, sales tax 8.25%, processing 3%. Base machine prices come from `src/lib/rental-data.ts`. The `PricingOverrides` type in `src/lib/pricing.ts` and `SettingsOverrides` in `utils.ts` allow the admin `Settings` document to override any of these at runtime.
 
 ### Availability & Inventory
 
-`isMachineAvailable()` in `src/lib/inventory.ts` is the single source of truth for "can this machine be booked". `GET /api/v1/availability?machineType=&capacity=&date=&returnDate=` is a thin validating wrapper over it (`returnDate` optional, defaults to `date`). The algorithm:
+`isMachineAvailable()` in `src/lib/inventory.ts` is the single source of truth for "can this machine be booked". `GET /api/v1/availability?machineType=&date=&returnDate=` is a thin validating wrapper over it (`returnDate` optional, defaults to `date`). **`capacity` is derived from `machineType` via `MACHINE_CAPACITY`, never read from the query** — the overlap count filters by capacity while inventory is keyed off machineType alone, so a mismatched pair matched no rentals and reported a full date as available. The param is still accepted and ignored for older clients. The algorithm:
 
 1. Expand `[rentalDate, returnDate]` into every `YYYY-MM-DD` day in range.
 2. Reject if any day falls in a `BlackoutDate` range (`isDateBlackedOut`).
@@ -105,7 +109,7 @@ The PayPal integration was removed — the component had no importers and its ro
 - `price` and `payment.amount` are both set from the server-side `computeOrderTotal`.
 - `isServiceDiscount` is hard-coded `false`.
 
-The admin order routes (`POST /api/admin/orders`, `PUT /api/admin/orders/[id]`) enforce the same invariants: an explicit field whitelist, `capacity` derived from `machineType`, extras re-resolved through the catalog, and `price` recomputed by `computeOrderTotal`. `PUT` also re-checks `isMachineAvailable` (with `excludeRentalId`) whenever an edit moves the machine type or the dates, so an admin edit cannot oversell a date. Neither route accepts `capacity` or `price` from the body.
+The admin order routes (`POST /api/admin/orders`, `PUT /api/admin/orders/[id]`) enforce the same invariants: an explicit field whitelist, `capacity` derived from `machineType`, extras re-resolved through the catalog, and `price` recomputed by `computeOrderTotal`. Both re-check `isMachineAvailable` before writing: `POST` on create, and `PUT` (with `excludeRentalId`) whenever an edit moves the machine type or the dates **or revives a cancelled order** — `PUT { status: "confirmed" }` on a cancelled booking put a unit back onto a date that may have filled up in the meantime. Neither route accepts `capacity` or `price` from the body.
 
 Model validators that need `machineType` must read it via `machineTypeInContext(this)` (`src/models/rental.ts`). Under `findByIdAndUpdate(..., { runValidators: true })` Mongoose binds `this` to the Query, not the document, so reading `this.machineType` directly is always `undefined` — that is what made every admin order edit fail validation and return a 500.
 
@@ -131,7 +135,7 @@ The `Settings` model (`src/models/settings.ts`) stores **one singleton document 
 - `operations` — `deliveryWindowStartHour` / `EndHour`, guarded by a `pre("validate")` hook requiring end > start
 - `documentation` — lease PDF URL/label
 
-`GET /api/v1/settings` is public and returns only these whitelisted fields; if no document exists it instantiates a non-persisted `new Settings({})` so callers always get the schema defaults. Admin edits go through `/admin/settings` → `PATCH /api/admin/settings`. The order form consumes this through the `SettingsOverrides` type in `src/components/order/utils.ts`.
+`GET /api/v1/settings` is public and returns only these whitelisted fields; if no document exists it instantiates a non-persisted `new Settings({})` so callers always get the schema defaults. Both the route and any server component read it through `getPublicSettings()` (`src/lib/public-settings.ts`) — a server component must call that directly rather than HTTP-fetching the app's own route. Admin edits go through `/admin/settings` → `PUT /api/admin/settings`, which writes an explicit field whitelist rather than spreading the body. The order form consumes this through the `SettingsOverrides` type in `src/components/order/utils.ts`.
 
 Because mixers, extras, and lease tiers are `Mixed`, Mongoose does not deep-validate or dirty-track them — reassign the whole object (or `markModified`) when updating.
 
@@ -161,7 +165,7 @@ Consent Mode v2 defaults to `granted` (inlined in `GoogleAnalytics.tsx` ahead of
 
 ### Reviews
 
-`GET /api/v1/reviews` is a server-side proxy to `https://satxbounce.com/api/v1/reviews` with `next: { revalidate: 3600 }`. It exists so the browser never calls the external host directly (the CSP `connect-src` would block it) and so responses are cached for an hour.
+`getReviewSummary()` in `src/lib/reviews.ts` fetches `https://satxbounce.com/api/v1/reviews` with `next: { revalidate: 3600 }` and never throws — a feed outage returns an empty summary rather than taking the homepage down. `SocialProofSection` is a **server** component reading it directly, so the review text is in the HTML Google indexes and the homepage `LocalBusiness` node can carry `aggregateRating`; fetching it from a client effect meant neither. `GET /api/v1/reviews` is the same helper behind a public route, kept so the browser never calls the external host directly (the CSP `connect-src` would block it).
 
 ### Security Headers & CSP
 
@@ -205,6 +209,7 @@ RESEND_API_KEY
 NEXT_PUBLIC_GTM_ID, NEXT_PUBLIC_GA_MEASUREMENT_ID   (production only; unset means no GA4 data)
 CRON_SECRET
 UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN   (optional; shared rate-limit store)
+NEXT_PUBLIC_GOOGLE_REVIEW_URL   (optional; unset hides the review CTA on /success)
 ```
 
 See `.env.sample` for the full list.
