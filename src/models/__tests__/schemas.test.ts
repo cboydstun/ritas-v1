@@ -13,6 +13,7 @@ import { Rental } from "@/models/rental";
 import { Settings } from "@/models/settings";
 import { Contact } from "@/models/contact";
 import { LeaseInquiry } from "@/models/leaseInquiry";
+import { BlogPost } from "@/models/blogPost";
 
 const validRental = (overrides: Record<string, unknown> = {}) => ({
   machineType: "double",
@@ -162,5 +163,67 @@ describe("Contact and LeaseInquiry schemas", () => {
         preferredTerm: "12-months",
       }).validate(),
     ).rejects.toThrow();
+  });
+});
+
+const validPost = (overrides: Record<string, unknown> = {}) => ({
+  slug: "frozen-margarita-machine-rental",
+  title: "Frozen Margarita Machine Rental",
+  body: "<p>How delivery works.</p>",
+  status: "draft",
+  ...overrides,
+});
+
+describe("BlogPost schema", () => {
+  it("accepts a well-formed draft", async () => {
+    await expect(new BlogPost(validPost()).validate()).resolves.toBeUndefined();
+  });
+
+  it("requires a title", async () => {
+    const post = validPost() as { title?: string };
+    delete post.title;
+
+    await expect(new BlogPost(post).validate()).rejects.toThrow();
+  });
+
+  it("requires a body", async () => {
+    const post = validPost() as { body?: string };
+    delete post.body;
+
+    await expect(new BlogPost(post).validate()).rejects.toThrow();
+  });
+
+  it.each(["Not A Slug", "trailing-", "double--hyphen", "has space"])(
+    "rejects the slug %s",
+    async (slug) => {
+      await expect(
+        new BlogPost(validPost({ slug })).validate(),
+      ).rejects.toThrow(/lowercase words/);
+    },
+  );
+
+  it("rejects an unknown status", async () => {
+    await expect(
+      new BlogPost(validPost({ status: "archived" })).validate(),
+    ).rejects.toThrow();
+  });
+
+  it("defaults a new post to draft", () => {
+    const post = validPost() as { status?: string };
+    delete post.status;
+
+    expect(new BlogPost(post).status).toBe("draft");
+  });
+
+  // A pre("save") hook, which is the middleware whose signature mongoose 9
+  // changed. `validate()` does not run save hooks, so this exercises it
+  // through save() with the write stubbed out.
+  it("refuses to save a published post with no publishedAt", async () => {
+    const post = new BlogPost(validPost({ status: "published" }));
+
+    await expect(post.validate()).resolves.toBeUndefined();
+    await expect(post.save({ validateBeforeSave: false })).rejects.toThrow(
+      /publishedAt/,
+    );
   });
 });

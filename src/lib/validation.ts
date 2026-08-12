@@ -8,6 +8,18 @@ import {
   ZIP_PATTERN,
   EMAIL_PATTERN,
 } from "@/lib/dates";
+import {
+  BLOG_STATUSES,
+  MAX_BODY_LENGTH,
+  MAX_EXCERPT_LENGTH,
+  MAX_SLUG_LENGTH,
+  MAX_TAGS,
+  MAX_TAG_LENGTH,
+  MAX_TITLE_LENGTH,
+  SLUG_PATTERN,
+  hasDangerousHtml,
+  isSafeCoverImagePath,
+} from "@/lib/blog";
 
 /**
  * Request-body validation for the public API routes.
@@ -337,6 +349,82 @@ export const blackoutDateSchema = z
   );
 
 export type BlackoutDateInput = z.infer<typeof blackoutDateSchema>;
+
+/**
+ * Blog post writes (`/api/admin/blog`).
+ *
+ * The admin surface is authenticated, but these routes still parse rather than
+ * trust: the same field-whitelist discipline every other write path in this
+ * app follows. `.strip()` drops anything not named here, so a body carrying
+ * `_id`, `createdAt` or `author` cannot reach the update document.
+ */
+export const blogSlugSchema = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .min(1)
+  .max(MAX_SLUG_LENGTH)
+  .regex(SLUG_PATTERN, "Slug must be lowercase words separated by hyphens");
+
+/**
+ * Rejects the obvious script-injection shapes. This is defense-in-depth, not
+ * sanitisation — see `hasDangerousHtml`. The control that matters is the
+ * session check on the route.
+ */
+const blogBodySchema = z
+  .string()
+  .min(1, "Body is required")
+  .max(MAX_BODY_LENGTH)
+  .refine((value) => !hasDangerousHtml(value), {
+    message:
+      "Body contains a script, iframe, inline event handler or scheme URL",
+  });
+
+/**
+ * Site-relative only, which is what keeps `next.config.ts` `remotePatterns`
+ * and the CSP `img-src` out of this feature entirely.
+ */
+const coverImagePathSchema = z
+  .string()
+  .trim()
+  .max(300)
+  .refine(isSafeCoverImagePath, {
+    message: "Cover image must be a site-relative path such as /images/foo.jpg",
+  });
+
+const blogPostFields = {
+  slug: blogSlugSchema,
+  title: z.string().trim().min(1, "Title is required").max(MAX_TITLE_LENGTH),
+  excerpt: z.string().trim().max(MAX_EXCERPT_LENGTH).optional(),
+  body: blogBodySchema,
+  coverImagePath: coverImagePathSchema.optional(),
+  coverImageAlt: z.string().trim().max(200).optional(),
+  tags: z
+    .array(z.string().trim().min(1).max(MAX_TAG_LENGTH))
+    .max(MAX_TAGS)
+    .optional(),
+  status: z.enum(BLOG_STATUSES).optional(),
+  seoTitle: z.string().trim().max(MAX_TITLE_LENGTH).optional(),
+  seoDescription: z.string().trim().max(MAX_EXCERPT_LENGTH).optional(),
+};
+
+export const blogPostCreateSchema = z.object(blogPostFields).strip();
+
+/**
+ * Every field optional, but not *no* fields: an empty PUT would otherwise be a
+ * 200 that wrote nothing but a fresh `updatedAt`, which reads as a successful
+ * save in the admin UI.
+ */
+export const blogPostUpdateSchema = z
+  .object(blogPostFields)
+  .partial()
+  .strip()
+  .refine((data) => Object.keys(data).length > 0, {
+    message: "No editable fields supplied",
+  });
+
+export type BlogPostInput = z.infer<typeof blogPostCreateSchema>;
+export type BlogPostUpdateInput = z.infer<typeof blogPostUpdateSchema>;
 
 /** Collapse a ZodError into a single short, non-leaky message. */
 export function firstIssueMessage(error: z.ZodError): string {
