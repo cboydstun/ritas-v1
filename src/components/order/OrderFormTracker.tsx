@@ -3,6 +3,12 @@
 import { useEffect, useRef, useCallback } from "react";
 import { OrderStep, OrderFormData, steps } from "./types";
 import { trackEvent } from "@/lib/analytics";
+import {
+  buildAnalyticsItems,
+  computeOrderTotal,
+  type SettingsOverrides,
+} from "./utils";
+import { buildExtrasCatalog } from "@/lib/extras-catalog";
 import { getConsent } from "@/lib/consent";
 
 // Extract relevant form data for each step (without sensitive information)
@@ -48,11 +54,20 @@ const getFormContextForStep = (step: OrderStep, formData: OrderFormData) => {
 interface OrderFormTrackerProps {
   currentStep: OrderStep;
   formData: OrderFormData;
+  /**
+   * The admin pricing overrides, so `begin_checkout`'s items are priced from
+   * the same catalog `purchase` uses. Without them an admin-added mixer
+   * flavour would price at $0 in the checkout event and at its real price in
+   * the purchase event, and GA4's funnel would show the cart changing value
+   * between two steps that did not touch it.
+   */
+  settings?: SettingsOverrides;
 }
 
 export default function OrderFormTracker({
   currentStep,
   formData,
+  settings,
 }: OrderFormTrackerProps) {
   // Both of these were `useState`. Neither is rendered, and both are written
   // from inside the tracking effect, so each step change cost three renders
@@ -142,17 +157,30 @@ export default function OrderFormTracker({
       });
 
       if (currentStep === "review") {
+        // Items are attached here so `begin_checkout` and `purchase` describe
+        // the same cart. Without them GA4's ecommerce funnel had item detail
+        // only at the final step, which makes "which add-on gets abandoned"
+        // unanswerable.
+        const totals = computeOrderTotal(formData, settings);
         trackEvent("begin_checkout", {
-          value: formData.price,
+          value: totals.finalTotal,
           currency: "USD",
           machine_type: formData.machineType,
+          items: buildAnalyticsItems(
+            formData,
+            totals,
+            buildExtrasCatalog({
+              extras: settings?.extras,
+              mixers: settings?.mixers,
+            }),
+          ),
         });
       }
 
       trackStepChange();
       lastStepRef.current = currentStep;
     }
-  }, [currentStep, trackStepChange, formData.price, formData.machineType]);
+  }, [currentStep, trackStepChange, formData, settings]);
 
   return null; // This component doesn't render anything
 }

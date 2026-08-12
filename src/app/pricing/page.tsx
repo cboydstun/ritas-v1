@@ -14,6 +14,7 @@ import { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
 import BookingCTA from "@/components/BookingCTA";
+import ViewItemListTracker from "@/components/ViewItemListTracker";
 import { SITE_URL, breadcrumbJsonLd } from "@/lib/site";
 
 // Prices come from `Settings` at request time, not from the rental-data
@@ -247,6 +248,15 @@ export default async function PricingPage() {
 
   return (
     <>
+      <ViewItemListTracker
+        listName="pricing_page"
+        items={machinePackages.map((pkg) => ({
+          item_id: `machine-${pkg.type}`,
+          item_name: pkg.name,
+          item_category: "machine",
+          price: table.machineBasePrice(pkg.type),
+        }))}
+      />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}

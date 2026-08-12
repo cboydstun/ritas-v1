@@ -1,4 +1,4 @@
-import { ChangeEvent, useState, useEffect } from "react";
+import { ChangeEvent, useState, useEffect, useRef } from "react";
 import { StepProps } from "../types";
 import { mixerDetails, machinePackages, MixerType } from "@/lib/rental-data";
 import { format, parseISO } from "date-fns";
@@ -6,6 +6,7 @@ import MachineCard from "./MachineCard";
 import MixerCard from "./MixerCard";
 import { useAvailabilityCheck } from "@/hooks/useAvailabilityCheck";
 import type { MachineType } from "@/types";
+import { trackEvent } from "@/lib/analytics";
 
 /** "idle" = no date range yet, so there is nothing to check. */
 type AvailabilityState =
@@ -37,6 +38,24 @@ const machineGuestRanges: Record<string, { min: number; max: number }> = {
   double: { min: 20, max: 60 },
   triple: { min: 40, max: 90 },
 };
+
+/** The GA4 item for one machine package, priced with admin overrides applied. */
+function machineItem(
+  type: string,
+  basePrice: number,
+  name: string,
+  index?: number,
+) {
+  return {
+    item_id: `machine-${type}`,
+    item_name: name,
+    item_category: "machine",
+    item_list_name: "machine_types",
+    price: basePrice,
+    quantity: 1,
+    ...(index === undefined ? {} : { index }),
+  };
+}
 
 const machinePopular: Record<string, boolean> = {
   single: false,
@@ -211,12 +230,50 @@ export default function MachineStep({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isChecking]);
 
+  // The three machine cards are the site's real product list, and GA4 saw no
+  // item events at all before this — so "looked at machines but did not book"
+  // was not a question the funnel could answer.
+  //
+  // Latched to one impression per mount. `settings` arrives from an async
+  // fetch in the parent, so it appears in the dependency list honestly, but
+  // a second run on its arrival would count the same card view twice.
+  const listImpressionSent = useRef(false);
+
+  useEffect(() => {
+    if (listImpressionSent.current) return;
+    listImpressionSent.current = true;
+
+    trackEvent("view_item_list", {
+      item_list_name: "machine_types",
+      items: machinePackages.map((pkg, index) =>
+        machineItem(
+          pkg.type,
+          settings?.machines?.[pkg.type]?.basePrice ?? pkg.basePrice,
+          pkg.name,
+          index,
+        ),
+      ),
+    });
+  }, [settings?.machines]);
+
   const handleMachineSelect = (machineType: "single" | "double" | "triple") => {
     // "loading" used to count as selectable, so every card was clickable —
     // and "Next" reachable — before any check had come back.
     const state = availabilityByType[machineType];
     if (state === "loading" || state === "unavailable") return;
     const pkg = machinePackages.find((p) => p.type === machineType)!;
+
+    trackEvent("select_item", {
+      item_list_name: "machine_types",
+      items: [
+        machineItem(
+          pkg.type,
+          settings?.machines?.[pkg.type]?.basePrice ?? pkg.basePrice,
+          pkg.name,
+        ),
+      ],
+    });
+
     // Update machineType
     onInputChange(createSyntheticEvent("machineType", machineType));
     // Update capacity via separate event

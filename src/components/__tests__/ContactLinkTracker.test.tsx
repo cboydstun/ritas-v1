@@ -61,6 +61,51 @@ describe("ContactLinkTracker", () => {
     );
   });
 
+  // `Settings.documentation.pdfUrl` only has to be an http(s) url, so the
+  // real lease link is quite likely to be a Drive or Dropbox share with no
+  // `.pdf` anywhere in it. The attribute is what makes those track.
+  it("tracks a download marked with data-track-download regardless of extension", () => {
+    const anchor = document.createElement("a");
+    anchor.setAttribute("href", "https://drive.google.com/file/d/abc123/view");
+    anchor.setAttribute("data-track-download", "pdf");
+    anchor.textContent = "Lease Documentation";
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+
+    expect(trackEventMock).toHaveBeenCalledWith("file_download", {
+      file_extension: "pdf",
+      file_name: "Lease Documentation",
+      link_url: "https://drive.google.com/file/d/abc123/view",
+    });
+  });
+
+  it("strips a fragment before testing the extension", () => {
+    clickLink("/docs/lease.pdf#page=2", "Lease");
+
+    expect(trackEventMock).toHaveBeenCalledWith(
+      "file_download",
+      expect.objectContaining({ file_extension: "pdf" }),
+    );
+  });
+
+  // Middle-click and open-in-new-tab fire `auxclick` and no `click` at all.
+  it("tracks a middle-click", () => {
+    const anchor = document.createElement("a");
+    anchor.setAttribute("href", "/docs/lease.pdf");
+    anchor.textContent = "Lease";
+    document.body.appendChild(anchor);
+    anchor.dispatchEvent(
+      new MouseEvent("auxclick", { bubbles: true, button: 1 }),
+    );
+    anchor.remove();
+
+    expect(trackEventMock).toHaveBeenCalledWith(
+      "file_download",
+      expect.objectContaining({ link_url: "/docs/lease.pdf" }),
+    );
+  });
+
   it("fires when the click lands on a child of the anchor", () => {
     const anchor = document.createElement("a");
     anchor.setAttribute("href", "tel:+15122100194");

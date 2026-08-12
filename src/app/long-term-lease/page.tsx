@@ -207,6 +207,9 @@ export default async function LongTermLeasePage() {
                   href={docPdf.url}
                   target="_blank"
                   rel="noopener noreferrer"
+                  // Marks this as a download for ContactLinkTracker. The URL
+                  // is admin-configured and need not end in `.pdf`.
+                  data-track-download="pdf"
                   className="inline-block px-8 py-3 bg-linear-to-r from-orange to-pink text-white rounded-lg hover:shadow-lg hover:shadow-orange/30 transform hover:-translate-y-1 transition-all duration-300 font-semibold"
                 >
                   📄 {docPdf.label}

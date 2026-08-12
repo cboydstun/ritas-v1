@@ -3,9 +3,13 @@ import Image from "next/image";
 import { StepProps } from "../types";
 import { mixerDetails, MixerType } from "@/lib/rental-data";
 import { formatPrice } from "@/lib/pricing";
-import { computeOrderTotal, buildSuccessUrl } from "../utils";
+import {
+  computeOrderTotal,
+  buildSuccessUrl,
+  buildAnalyticsItems,
+} from "../utils";
 import { buildExtrasCatalog } from "@/lib/extras-catalog";
-import { trackEvent } from "@/lib/analytics";
+import { trackEvent, pushDataLayer } from "@/lib/analytics";
 
 /**
  * The `message` from an error response, or a fallback.
@@ -131,25 +135,23 @@ export default function ReviewStep({
         tax: salesTax + processingFee,
         shipping: deliveryFee,
         machine_type: formData.machineType,
-        items: [
-          {
-            item_id: `machine-${formData.machineType}`,
-            item_name: `${formData.machineType} margarita machine`,
-            item_category: "machine",
-            price: perDayRate,
-            quantity: rentalDays,
-          },
-          ...formData.selectedExtras.map((extra) => {
-            const item = extrasCatalog.get(extra.id);
-            return {
-              item_id: extra.id,
-              item_name: item?.name ?? extra.id,
-              item_category: "extra",
-              price: item?.price ?? 0,
-              quantity: extra.quantity ?? 1,
-            };
-          }),
-        ],
+        items: buildAnalyticsItems(
+          formData,
+          { perDayRate, rentalDays },
+          extrasCatalog,
+        ),
+      });
+
+      // The Google Ads conversion fires off this push, not off a `/success`
+      // pageview. The pageview trigger could not see the order total — the
+      // success URL carries only what `buildSuccessUrl` deems safe — so every
+      // booking reported to Ads as a valueless conversion, which no
+      // value-based bid strategy can use. `transaction_id` doubles as the Ads
+      // `orderId`, which is what dedupes a resubmitted conversion.
+      pushDataLayer("purchase_complete", {
+        transaction_id: result.bookingId,
+        value: finalTotal,
+        currency: "USD",
       });
 
       // Clear the saved draft before redirecting so a future visit starts fresh

@@ -638,7 +638,11 @@ export default function OrderForm() {
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
       {/* Track form step changes */}
-      <OrderFormTracker currentStep={step} formData={formData} />
+      <OrderFormTracker
+        currentStep={step}
+        formData={formData}
+        settings={settings}
+      />
 
       {/* Pricing could not be confirmed against the server */}
       {settingsFailed && (

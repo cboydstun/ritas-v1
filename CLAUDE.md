@@ -182,15 +182,31 @@ Both trackers check `getConsent()` and do nothing when the visitor has opted out
 
 Every GA4 event goes through `trackEvent()` in `src/lib/analytics.ts` — one typed name union, and an optional `window.gtag?.` call so a missing tag (dev, ad blocker, pre-load) is a no-op rather than a throw. Do not call `gtag` directly.
 
-| Event                            | Emitted from                                        | Notes                                                                                                                                       |
-| -------------------------------- | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| `purchase`                       | `ReviewStep.tsx`, after `/api/save-booking` returns | `transaction_id` = `bookingId`, `value` = server-side `finalTotal`; items priced from `buildExtrasCatalog()`, never from the submitted item |
-| `order_step`                     | `OrderFormTracker.tsx`                              | The wizard never changes the URL, so this is the only GA4 funnel signal                                                                     |
-| `begin_checkout`                 | `OrderFormTracker.tsx`, on reaching `review`        |                                                                                                                                             |
-| `generate_lead`                  | `ContactForm.tsx`, `LeaseInquiryForm.tsx`           | Both submit inline with no navigation                                                                                                       |
-| `contact_click`, `file_download` | `ContactLinkTracker.tsx`                            | One delegated listener matching `tel:` / `mailto:` / `.pdf` hrefs                                                                           |
+| Event                             | Emitted from                                          | Notes                                                                                                  |
+| --------------------------------- | ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `purchase`                        | `ReviewStep.tsx`, after `/api/save-booking` returns   | `transaction_id` = `bookingId`, `value` = server-side `finalTotal`; items from `buildAnalyticsItems()` |
+| `order_step`                      | `OrderFormTracker.tsx`                                | The wizard never changes the URL, so this is the only GA4 funnel signal                                |
+| `begin_checkout`                  | `OrderFormTracker.tsx`, on reaching `review`          | `value` from `computeOrderTotal`, plus the same `items` array `purchase` sends                         |
+| `view_item_list`                  | `MachineStep.tsx`, `ViewItemListTracker` (`/pricing`) | `item_list_name` is `machine_types` or `pricing_page`. One impression per mount, latched by a ref      |
+| `select_item`                     | `MachineStep.tsx`, on choosing a machine              |                                                                                                        |
+| `add_to_cart`, `remove_from_cart` | `ExtrasStep.tsx`, on toggling an extra                | Priced from the catalog entry the card was built from                                                  |
+| `generate_lead`                   | `ContactForm.tsx`, `LeaseInquiryForm.tsx`             | Both submit inline with no navigation                                                                  |
+| `contact_click`, `file_download`  | `ContactLinkTracker.tsx`                              | One delegated `click`+`auxclick` listener matching `tel:` / `mailto:` / `.pdf` / `data-track-download` |
 
-Event params carry segmentation only (`step_id`, `step_index`, `lead_type`, `machine_type`) — **never contact details**. Those four are registered as event-scoped custom dimensions in the GA4 property; an unregistered param is dropped from reporting, and registration is not retroactive. `order_step`, `generate_lead` and `purchase` are marked as key events.
+`purchase` and `begin_checkout` must build their `items` from **`buildAnalyticsItems()`** in `utils.ts`. They used to build it separately, which is how the two came to disagree about what was in the cart.
+
+Event params carry segmentation only (`step_id`, `step_index`, `lead_type`, `machine_type`) — **never contact details**. Those four are registered as event-scoped custom dimensions in the GA4 property; an unregistered param is dropped from reporting, and registration is not retroactive.
+
+**`order_step` must not be a key event.** It fires up to five times per visitor and once more on every backwards step. While it was marked as one, 31 of the property's 35 key events over 90 days were wizard steps — the `conversions` metric measured nothing, and importing it into Ads would have taught Smart Bidding to optimise for step two of a form. `purchase`, `generate_lead` and `contact_click` are the key events.
+
+### GTM dataLayer events
+
+`pushDataLayer()` in `analytics.ts` is the only sanctioned path to `window.dataLayer`, and there are exactly two events. Both exist because the Google Ads conversion tags in `GTM-NRQ9HDL9` need to fire on a **confirmed outcome carrying real values**, which is not what they used to fire on:
+
+- **`purchase_complete`** (`ReviewStep.tsx`) — carries `transaction_id`, `value`, `currency`. The Ads conversion previously fired on a `/success` pageview, which cannot see the order total, so every booking reported as a valueless conversion; `buildSuccessUrl` deliberately keeps money and PII out of the URL, so the value has to arrive out of band. `transaction_id` is the Ads `orderId` and is what dedupes a resubmission.
+- **`lead_submitted`** (`ContactForm.tsx`, `LeaseInquiryForm.tsx`) — carries `lead_type`. Replaces GTM's built-in Form Submission trigger, which listens for the browser's submit event and is **not** suppressed by `preventDefault()`, so a submission whose API POST then failed still counted as an Ads lead.
+
+A partial `jest.mock("@/lib/analytics", ...)` that stubs `trackEvent` but not `pushDataLayer` makes the missing export `undefined`, and calling it throws inside the booking submit handler's `try` — which the `catch` turns into "Failed to confirm booking" for the customer. Mock both.
 
 **Never put customer data in a URL.** GA4 records the whole query string as `page_location`. The success redirect is built by `buildSuccessUrl()` in `src/components/order/utils.ts`, which emits only the three params `/success` reads; it previously appended `customerName`, which shipped PII to Google and made every booking its own page path.
 
