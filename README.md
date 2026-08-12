@@ -1,172 +1,192 @@
 # SATX Ritas Rental Service
 
-A modern web application built with Next.js and TypeScript for managing frozen drink machine rentals in San Antonio, TX. Features secure PayPal payment processing and a streamlined rental booking experience.
+A Next.js application for renting frozen drink machines in San Antonio, TX. It
+covers two verticals: event rentals booked through a five-step wizard, and
+long-term commercial leases captured as inquiries.
+
+**There is no online payment.** The checkout persists a booking and sends
+confirmations; the customer is invoiced out of band afterwards. An earlier
+PayPal integration was removed — only `Rental.paypalOrderId` survives, for
+historical documents.
 
 ## Features
 
-- 🎨 Modern, responsive design with dark/light theme support
-- 💳 Secure PayPal payment integration
-- 🗺️ Interactive map showing service area
-- 📱 Multi-step rental booking process with Party Extras options
-- 🔒 MongoDB database for order management
-- 📄 Informative content pages (About, FAQ, Pricing, Contact)
-- 🌙 Dark/light theme toggle
-- 📝 Contact form for inquiries with email and SMS notifications
-- 📊 Advanced analytics with browser fingerprinting and conversion tracking
-- 📈 Order form funnel analysis to track user progression
-- 📧 Email notifications for order confirmations
-- 🍹 Multiple machine options (15L, 30L, and 45L capacities)
+- 📱 Five-step rental booking wizard (date → machine → details → extras → review)
+  with drafts persisted to `localStorage`
+- 🍹 Three machine sizes (15L, 30L, 45L) with per-type inventory and live
+  availability checks
+- 🏢 Long-term lease tiers with an inquiry form, priced from admin settings
+- 🗺️ Static landing pages for each service area, driven by one shared list
+- 🔒 Admin dashboard for orders, contacts, lease inquiries, blackout dates and
+  runtime settings
+- 📧 Email via Resend and SMS via Twilio on every booking, contact and inquiry
+- 📊 Two independent analytics pipelines: first-party fingerprinting in MongoDB,
+  and GA4 via gtag
+- 🌙 Dark/light theme with system preference detection
 
 ## Tech Stack
 
-- [Next.js](https://nextjs.org/) - React framework with App Router
-- [TypeScript](https://www.typescriptlang.org/) - Type-safe JavaScript
-- [Tailwind CSS](https://tailwindcss.com/) - Utility-first CSS framework
-- [MongoDB](https://www.mongodb.com/) - NoSQL database
-- [PayPal API](https://developer.paypal.com/) - Secure payment processing
-- [Twilio](https://www.twilio.com/) - SMS notifications
-- [Nodemailer](https://nodemailer.com/) - Email notifications
-- [Google Analytics](https://analytics.google.com/) - Website analytics
-- [ThumbmarkJS](https://github.com/thumbmarkjs/thumbmarkjs) - Browser fingerprinting for enhanced analytics
+- [Next.js 16](https://nextjs.org/) — App Router
+- [React 19](https://react.dev/) · [TypeScript 5](https://www.typescriptlang.org/)
+- [Tailwind CSS 4](https://tailwindcss.com/) — theme lives in an `@theme` block
+  in `src/app/globals.css`; there is no `tailwind.config.ts`
+- [MongoDB](https://www.mongodb.com/) via [Mongoose 9](https://mongoosejs.com/)
+- [NextAuth.js v4](https://next-auth.js.org/) — credentials provider, JWT sessions
+- [Zod](https://zod.dev/) — request-body validation on every write route
+- [Resend](https://resend.com/) — transactional email
+- [Twilio](https://www.twilio.com/) — SMS notifications
+- [Google Analytics 4](https://analytics.google.com/) — via gtag only
+- [ThumbmarkJS](https://github.com/thumbmarkjs/thumbmarkjs) — first-party
+  fingerprinting
 
 ## Getting Started
 
 1. Clone the repository
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-3. Set up environment variables:
-   Create a `.env.local` file with the following variables:
+2. Install dependencies: `npm install`
+3. Copy `.env.sample` to `.env.local` and fill it in. `MONGODB_URI` and
+   `MONGODB_DB` are required — `src/lib/mongodb.ts` throws at import without
+   them. See **Environment Variables** below.
+4. `npm run dev`
 
-   ```
-   # MongoDB Configuration
-   MONGODB_URI=your_mongodb_connection_string
-   MONGODB_DB=your_database_name
+Open [http://localhost:3000](http://localhost:3000).
 
-   # PayPal Configuration
-   NEXT_PUBLIC_PAYPAL_CLIENT_ID=your_paypal_client_id    # Used by PayPal button component
-   PAYPAL_CLIENT_SECRET=your_paypal_client_secret        # Server-side only
-   PAYPAL_LIVE_MODE=false                               # Set to true in production
+## Commands
 
-   # Node Environment
-   NODE_ENV=development                                 # Use 'production' for live deployment
+```bash
+npm run dev           # Dev server (Turbopack)
+npm run build         # Production build — also type-checks
+npm run typecheck     # tsc --noEmit
+npm run lint          # eslint .
+npm run format        # Prettier, writes in place
+npm run format:check  # Prettier, verify only
+npm test              # Jest
+npm run test:ci       # Jest with coverage thresholds (what CI runs)
+```
 
-   # Twilio Configuration (for SMS notifications)
-   TWILIO_ACCOUNT_SID=your_twilio_account_sid
-   TWILIO_AUTH_TOKEN=your_twilio_auth_token
-   TWILIO_PHONE_NUMBER=your_twilio_phone_number
-   USER_PHONE_NUMBER=your_notification_phone_number
+`.github/workflows/ci.yml` runs typecheck, lint, format:check, test:ci and build
+on every push and PR to `main`.
 
-   # Nodemailer Configuration (for email notifications)
-   NODEMAILER_USERNAME=your_gmail_address
-   NODEMAILER_PASSWORD=your_gmail_app_password
+## Environment Variables
 
-   # Admin Panel Credentials
-   ADMIN_USERNAME=admin
-   ADMIN_PASSWORD=your-secure-password
+`.env.sample` is the authoritative list. In brief:
 
-   # Analytics Configuration (optional)
-   ANALYTICS_ENABLED=true
-   ```
+| Variable                                                                              | Notes                                                               |
+| ------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| `MONGODB_URI`, `MONGODB_DB`                                                           | Required; read at import time                                       |
+| `ADMIN_USERNAME`                                                                      | Admin login                                                         |
+| `ADMIN_PASSWORD_HASH`                                                                 | bcrypt hash — preferred                                             |
+| `ADMIN_PASSWORD`                                                                      | Legacy plaintext fallback; warns loudly. Prefer the hash            |
+| `NEXTAUTH_SECRET`, `NEXTAUTH_URL`                                                     | NextAuth session signing                                            |
+| `RESEND_API_KEY`                                                                      | Email. Unset disables email, booking still succeeds                 |
+| `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_PHONE_NUMBER`, `USER_PHONE_NUMBER` | SMS                                                                 |
+| `NEXT_PUBLIC_GA_MEASUREMENT_ID`, `NEXT_PUBLIC_GTM_ID`                                 | Production only                                                     |
+| `NEXT_PUBLIC_GOOGLE_REVIEW_URL`                                                       | Optional; unset hides the review CTA                                |
+| `CRON_SECRET`                                                                         | Guards `/api/cron/release-holds`; the route fails closed without it |
+| `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`                                  | Optional shared rate-limit store; falls back to per-instance memory |
 
-4. Run the development server:
-   ```bash
-   npm run dev
-   ```
+Generate a password hash with:
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the application.
+```bash
+node -e "console.log(require('bcrypt').hashSync(process.argv[1], 12))" 'your-password'
+```
 
 ## Project Structure
 
 ```
 src/
-├── app/                    # Next.js App Router pages and API routes
-│   ├── api/               # API routes
-│   │   ├── admin/        # Admin API endpoints
-│   │   │   ├── orders/   # Order management endpoints
-│   │   │   └── analytics/ # Analytics data endpoints
-│   │   ├── v1/           # Version 1 API endpoints
-│   │   │   └── analytics/ # Analytics data collection endpoints
-│   │   ├── create-paypal-order/    # PayPal order creation
-│   │   └── capture-paypal-order/   # PayPal payment capture
-│   ├── about/             # About page
-│   ├── admin/            # Admin dashboard
-│   ├── contact/           # Contact page
-│   ├── faq/               # FAQ page
-│   ├── order/             # Rental order flow
-│   ├── pricing/           # Pricing information
-│   └── rentals/           # Rental management
-├── components/            # React components
-│   ├── admin/            # Admin dashboard components
-│   ├── FingerprintTracker.tsx # Site-wide fingerprint tracking
-│   ├── contact/           # Contact form components
-│   ├── home/              # Homepage sections
-│   │   ├── AboutSection   # Home page about section
-│   │   ├── HeroSection   # Hero banner
-│   │   ├── MapSection    # Service area map
-│   │   └── SocialProof   # Customer testimonials
-│   └── order/             # Order flow components
-│       ├── steps/         # Multi-step form components including ExtrasStep
-│       ├── OrderFormTracker.tsx # Form step tracking for analytics
-│       └── types.ts       # Order type definitions and extras configuration
-├── config/                # Configuration files
-├── lib/                   # Utility functions
-│   ├── mongodb.ts         # MongoDB connection
-│   ├── paypal-server.ts   # PayPal integration
-│   └── rental-data.ts     # Rental data utilities
-├── models/                # MongoDB models
-│   ├── rental.ts         # Rental order model
-│   └── thumbprint.ts     # Analytics fingerprint model
-└── types/                 # TypeScript type definitions
+├── app/
+│   ├── api/
+│   │   ├── admin/          # Auth-required: orders, contacts, lease-inquiries,
+│   │   │                   # blackout-dates, settings, analytics
+│   │   ├── v1/             # Public: availability, contacts, lease-inquiries,
+│   │   │                   # settings, reviews, analytics/fingerprint
+│   │   ├── save-booking/   # Public checkout
+│   │   ├── cron/           # release-holds (Vercel cron)
+│   │   └── auth/           # NextAuth
+│   ├── admin/              # Admin dashboard pages
+│   ├── service-area/[city] # Statically generated area landing pages
+│   ├── order/              # Rental wizard
+│   ├── long-term-lease/    # Lease tiers and inquiry form
+│   └── …                   # about, contact, faq, pricing, success
+├── components/
+│   ├── admin/              # Dashboard tables and modals
+│   ├── order/steps/        # The five wizard steps
+│   ├── lease/ · contact/ · home/
+│   └── FingerprintTracker.tsx · OrderFormTracker.tsx · GoogleAnalytics.tsx
+├── lib/
+│   ├── pricing.ts          # calculatePrice — the per-day price primitive
+│   ├── extras-catalog.ts   # Authoritative add-on and mixer pricing
+│   ├── inventory.ts        # isMachineAvailable — every availability decision
+│   ├── validation.ts       # Zod schemas, MACHINE_CAPACITY, escapeHtml
+│   ├── api-guard.ts        # guardPublicWrite: rate limit + body cap
+│   ├── auth.ts · mongodb.ts · dates.ts · analytics.ts · consent.ts
+│   └── service-areas.ts · lease-data.ts · rental-data.ts · reviews.ts
+├── models/                 # rental, contact, leaseInquiry, blackout-date,
+│                           # settings, thumbprint
+├── proxy.ts                # Next 16's middleware convention: admin auth + HTTPS
+└── types/
 ```
 
 ## API Routes
 
-- `/api/create-paypal-order` - Initializes a new PayPal order with rental details and creates a pending rental in the database
-- `/api/capture-paypal-order` - Captures and processes approved PayPal payments, updates rental status to confirmed, sends SMS notifications via Twilio, and sends confirmation emails via Nodemailer
-- `/api/admin/orders` - Admin endpoints for retrieving all orders and creating new orders
-- `/api/admin/orders/[id]` - Admin endpoints for retrieving, updating, and deleting specific orders by ID
-- `/api/admin/analytics` - Admin endpoint for retrieving analytics data including visitor stats and order form funnel metrics
-- `/api/v1/analytics/fingerprint` - Endpoint for storing browser fingerprint data and tracking user journeys
-- `/api/v1/contacts` - Endpoint for submitting contact form inquiries with email and SMS notifications
-- `/api/admin/contacts` - Admin endpoints for managing contact form submissions
-- `/api/admin/contacts/[id]` - Admin endpoints for retrieving, updating, and deleting specific contact submissions
+**Public**
+
+- `POST /api/save-booking` — the checkout. Persists a `Rental` as
+  `pending_payment`, then emails and texts. Never trusts the body for money:
+  `capacity` is derived from `machineType`, extras are re-priced from the
+  catalog, and `price` comes from the server-side total.
+- `GET /api/v1/availability` — thin wrapper over `isMachineAvailable`
+- `POST /api/v1/contacts` · `POST /api/v1/lease-inquiries`
+- `POST /api/v1/analytics/fingerprint`
+- `GET /api/v1/settings` — whitelisted runtime overrides
+- `GET /api/v1/reviews` — proxy for the shared review feed
+
+All four public write routes go through `guardPublicWrite()` (per-IP rate limit
+and body-size cap) before the body is parsed.
+
+**Admin** (session required, enforced in `src/proxy.ts` and again per route)
+
+- `GET|POST /api/admin/orders` · `GET|PUT|DELETE /api/admin/orders/[id]`
+- `GET|POST /api/admin/contacts` · `GET|PATCH|DELETE /api/admin/contacts/[id]`
+- `GET|POST /api/admin/lease-inquiries` · `…/[id]`
+- `GET|POST /api/admin/blackout-dates` · `DELETE …/[id]`
+- `GET|PUT /api/admin/settings`
+- `GET /api/admin/analytics`
+
+**Cron**
+
+- `GET /api/cron/release-holds` — cancels stale `pending` holds
 
 ## Key Components
 
-- `OrderForm` - Multi-step rental booking process with validation and analytics tracking
-- `ExtrasStep` - Party extras selection with quantity controls for table & chairs
-- `ReviewStep` - Comprehensive order summary with detailed pricing breakdown
-- `PaymentStep` - Secure payment processing with accurate pricing calculations
-- `PayPalCheckout` - Secure PayPal payment integration
-- `ThemeToggle` - Dark/light theme switcher with system preference detection
-- `MapSection` - Interactive service area map with delivery zone highlighting
-- `Navigation` - Responsive navigation bar with mobile menu
-- `Footer` - Site-wide footer with social links and contact information
-- `ContactForm` - Validated contact form with email and SMS notifications
-- `ThemeWrapper` - Theme context provider for consistent styling
-- `OrdersTable` - Admin dashboard for managing rental orders
-- `EditOrderModal` - Modal for editing order details in admin panel
-- `GoogleAnalytics` - Component for integrating Google Analytics tracking
-- `FingerprintTracker` - Site-wide browser fingerprinting for enhanced analytics
-- `OrderFormTracker` - Step-by-step tracking of user progression through the order form
+- `OrderForm` — owns wizard state, the draft, settings overrides and `price`
+- `MachineStep` — checks all three machine types in parallel and greys out
+  whatever is unavailable
+- `ExtrasStep` · `ReviewStep` · `DateSelectionStep` · `DetailsStep`
+- `PricingSummary` — renders `computeOrderTotal`, the single source of totals
+- `LeaseInquiryForm` · `LeaseTierCard`
+- `OrdersTable` · `EditOrderModal` · `CreateOrderModal` · `BlackoutDateForm`
+- `FingerprintTracker` · `OrderFormTracker` — first-party analytics, both
+  suppressed when the visitor has opted out
+- `CookieConsent` — Consent Mode v2 opt-out
+- `ThemeToggle` · `Navigation` · `Footer` · `MapSection`
 
 ## Deployment
 
-The application is optimized for deployment on [Vercel](https://vercel.com). To deploy:
+Optimised for [Vercel](https://vercel.com):
 
-1. Push your code to a Git repository
-2. Import the project to Vercel
-3. Configure environment variables in the Vercel dashboard
-4. Deploy!
+1. Push to a Git repository
+2. Import the project
+3. Configure the environment variables above
+4. Deploy
 
-For other deployment options, refer to the [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying).
+`vercel.json` registers the `release-holds` cron. Security headers and the CSP
+are set in `next.config.ts` — **any new third-party script, iframe, font or
+fetch target needs a CSP edit**, or it fails silently in the browser.
 
-## Images and Assets
+## Further Reading
 
-The `/public` directory contains optimized images for:
-
-- Frozen drink machines (VEVOR 15L and 30L models)
-- Popular drink varieties (Margaritas, Piña Coladas, etc.)
-- Favicons and OG images for social sharing
+- `CLAUDE.md` — architecture notes and the reasoning behind the non-obvious
+  invariants (pricing, availability, the booking lifecycle, the CSP)
+- `docs/security.md` — security headers and CSP
+- `docs/auth-implementation.md` — admin authentication

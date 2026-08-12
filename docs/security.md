@@ -4,24 +4,25 @@ This document outlines the security measures implemented in the SATX Ritas appli
 
 ## HTTPS Enforcement
 
-HTTPS is enforced for all traffic in production environments through two mechanisms:
+HTTPS is enforced for all traffic in production through three layers:
 
-1. **Middleware Redirect**: The application uses Next.js middleware to automatically redirect all HTTP requests to HTTPS.
+1. **Vercel's edge** forces HTTPS before a request reaches the application at
+   all. This is the layer that actually does the work.
 
-   ```typescript
-   // src/proxy.ts
-   if (
-     process.env.NODE_ENV === "production" &&
-     request.headers.get("x-forwarded-proto") !== "https"
-   ) {
-     const secureUrl = request.nextUrl.clone();
-     secureUrl.protocol = "https";
-     secureUrl.host = request.headers.get("host") || request.nextUrl.host;
-     return NextResponse.redirect(secureUrl, { status: 301 });
-   }
-   ```
+2. **`src/proxy.ts`** (Next 16's rename of the middleware file convention)
+   redirects any remaining HTTP request. See `src/proxy.ts` for the current
+   code — the important detail is that the redirect target host comes from
+   `SITE_URL` via `allowedHost()`, **never from the `Host` header**.
 
-2. **Upgrade-Insecure-Requests Header**: The Content-Security-Policy includes the `upgrade-insecure-requests` directive, which instructs browsers to upgrade HTTP requests to HTTPS.
+   Trusting the header made this a cacheable open redirect: `Host: evil.com`
+   plus `x-forwarded-proto: http` returned a 301 to `https://evil.com/<path>`.
+   Do not reintroduce `request.headers.get("host")` here.
+
+   Note that the proxy's matcher is scoped to `/admin/*` and `/api/admin/*`, so
+   this redirect no longer runs for public traffic — layers 1 and 3 cover it.
+
+3. **`upgrade-insecure-requests`** in the Content-Security-Policy, which
+   instructs browsers to upgrade HTTP subresource requests to HTTPS.
 
 ## Security Headers
 
@@ -126,7 +127,9 @@ You can verify the security headers using:
 
 - Security headers are applied in all environments, but HTTPS redirects only occur in production
 - The CSP allows 'unsafe-inline' and 'unsafe-eval' for development convenience, but these should be restricted further in a high-security environment
-- PayPal and Google Analytics domains are explicitly allowed in the CSP
+- Google Analytics, GTM, Google Ads (`doubleclick.net`, `googleadservices.com`)
+  and `google.com` frames are explicitly allowed in the CSP. PayPal origins were
+  removed with the integration.
 
 ## Future Enhancements
 

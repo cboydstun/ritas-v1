@@ -157,6 +157,13 @@ export default function ReviewStep({
 
       // Redirect to success page immediately (no alert). buildSuccessUrl owns
       // which params are safe to put in a URL GA4 will record — see its docs.
+      //
+      // react-hooks/immutability reads this as mutating a value defined outside
+      // the component. It is a full-page navigation from an async submit
+      // handler, not render-phase state, and it deliberately leaves React's
+      // world behind — the draft has just been cleared and /success is a
+      // separate route.
+      // eslint-disable-next-line react-hooks/immutability
       window.location.href = buildSuccessUrl(
         result.bookingId,
         formData.machineType,

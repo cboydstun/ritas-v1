@@ -13,10 +13,6 @@ export default function AdminDashboard() {
     totalRevenue: 0,
   });
 
-  useEffect(() => {
-    fetchStats();
-  }, []);
-
   const fetchStats = async () => {
     try {
       const response = await fetch("/api/admin/orders");
@@ -46,6 +42,12 @@ export default function AdminDashboard() {
       console.error("Error fetching stats:", error);
     }
   };
+
+  // Declared after `fetchStats` on purpose: referencing it from an effect
+  // above its `const` declaration is what react-hooks/immutability flags.
+  useEffect(() => {
+    fetchStats();
+  }, []);
 
   return (
     <AdminLayout>

@@ -136,10 +136,6 @@ export default function ContactsTable() {
     return sortedContacts.slice(startIndex, startIndex + pageSize);
   }, [sortedContacts, currentPage, pageSize]);
 
-  useEffect(() => {
-    fetchContacts();
-  }, []);
-
   // Reset to first page when changing filters
   useEffect(() => {
     setCurrentPage(1);
@@ -158,6 +154,13 @@ export default function ContactsTable() {
       setLoading(false);
     }
   };
+
+  // Declared after the fetcher on purpose: calling it from an effect
+  // placed above its `const` declaration is what react-hooks/immutability
+  // flags, and the ordering carries no other meaning.
+  useEffect(() => {
+    fetchContacts();
+  }, []);
 
   const handleStatusChange = async (contactId: string, newStatus: string) => {
     try {

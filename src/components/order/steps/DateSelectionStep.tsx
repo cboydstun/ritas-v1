@@ -1,4 +1,4 @@
-import { ChangeEvent, useEffect, useState } from "react";
+import { ChangeEvent, useMemo } from "react";
 import { DayPicker, DateRange } from "react-day-picker";
 import { format, addDays, startOfDay, parseISO } from "date-fns";
 import { StepProps, labelClassName, inputClassName } from "../types";
@@ -32,13 +32,6 @@ export default function DateSelectionStep({
     deliveryWindowStartHour,
     deliveryWindowEndHour,
   );
-  // Issue 2: use parseISO so the calendar always shows the correct local date
-  // (new Date("YYYY-MM-DD") parses as UTC midnight, which can show the wrong day)
-  const [range, setRange] = useState<DateRange | undefined>({
-    from: formData.rentalDate ? parseISO(formData.rentalDate) : undefined,
-    to: formData.returnDate ? parseISO(formData.returnDate) : undefined,
-  });
-
   // Helper function to create a synthetic event
   const createSyntheticEvent = (name: string, value: string) => {
     return {
@@ -46,15 +39,21 @@ export default function DateSelectionStep({
     } as unknown as ChangeEvent<HTMLInputElement>;
   };
 
-  // Follow formData when the parent changes it — "Start fresh" clears the
-  // draft while this step stays mounted, and the calendar used to keep showing
-  // the old range while "Next" errored "Please select a delivery date".
-  useEffect(() => {
-    setRange({
+  // Derived, not mirrored. `handleRangeSelect` writes both dates to the parent
+  // on every path, so the parent is already the only source of truth — the
+  // local copy plus a sync effect meant each calendar click re-parsed and
+  // re-rendered twice. Deriving also keeps "Start fresh" working, which is
+  // what the effect was there for.
+  //
+  // Issue 2: use parseISO so the calendar always shows the correct local date
+  // (new Date("YYYY-MM-DD") parses as UTC midnight, which can show the wrong day)
+  const range: DateRange | undefined = useMemo(
+    () => ({
       from: formData.rentalDate ? parseISO(formData.rentalDate) : undefined,
       to: formData.returnDate ? parseISO(formData.returnDate) : undefined,
-    });
-  }, [formData.rentalDate, formData.returnDate]);
+    }),
+    [formData.rentalDate, formData.returnDate],
+  );
 
   // Disable past dates
   const disabledDays = {
@@ -62,8 +61,6 @@ export default function DateSelectionStep({
   };
 
   const handleRangeSelect = (newRange: DateRange | undefined) => {
-    setRange(newRange);
-
     // DayPicker passes undefined when the user clicks to clear the range.
     // Leaving formData alone meant the calendar showed nothing selected while
     // the wizard happily advanced on the previous dates.

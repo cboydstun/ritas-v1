@@ -122,10 +122,13 @@ export default function CreateOrderModal({ onClose }: CreateOrderModalProps) {
   // Use effect to update price whenever relevant form fields change
   useEffect(() => {
     const priceDetails = calculateTotalPrice();
-    setFormData((prev) => ({
-      ...prev,
-      price: priceDetails.total,
-    }));
+    setFormData((prev) =>
+      // Bail out when nothing moved. An unconditional set cost a render on
+      // every recalculation, the same guard OrderForm's price-sync effect uses.
+      prev.price === priceDetails.total
+        ? prev
+        : { ...prev, price: priceDetails.total },
+    );
   }, [calculateTotalPrice]);
 
   // Handle machine type change

@@ -146,10 +146,6 @@ export default function LeaseInquiriesTable() {
   }, [sortedInquiries, currentPage, pageSize]);
 
   useEffect(() => {
-    fetchInquiries();
-  }, []);
-
-  useEffect(() => {
     setCurrentPage(1);
   }, [statusFilter]);
 
@@ -166,6 +162,13 @@ export default function LeaseInquiriesTable() {
       setLoading(false);
     }
   };
+
+  // Declared after the fetcher on purpose: calling it from an effect
+  // placed above its `const` declaration is what react-hooks/immutability
+  // flags, and the ordering carries no other meaning.
+  useEffect(() => {
+    fetchInquiries();
+  }, []);
 
   const handleStatusChange = async (id: string, newStatus: string) => {
     try {

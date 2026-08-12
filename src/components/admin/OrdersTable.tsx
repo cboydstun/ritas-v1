@@ -228,10 +228,6 @@ export default function OrdersTable() {
     return sortedOrders.slice(startIndex, startIndex + pageSize);
   }, [sortedOrders, currentPage, pageSize]);
 
-  useEffect(() => {
-    fetchOrders();
-  }, []);
-
   // Reset to first page when changing filters
   useEffect(() => {
     setCurrentPage(1);
@@ -250,6 +246,13 @@ export default function OrdersTable() {
       setLoading(false);
     }
   };
+
+  // Declared after the fetcher on purpose: calling it from an effect
+  // placed above its `const` declaration is what react-hooks/immutability
+  // flags, and the ordering carries no other meaning.
+  useEffect(() => {
+    fetchOrders();
+  }, []);
 
   const handleStatusChange = async (
     orderId: string,

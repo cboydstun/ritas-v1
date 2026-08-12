@@ -22,12 +22,15 @@ npm install next-auth
 
 ### 2. Create API Route for NextAuth.js
 
-Create a file at `src/app/api/auth/[...nextauth]/route.ts`:
+The live configuration is `src/lib/auth.ts`; `src/app/api/auth/[...nextauth]/route.ts`
+just re-exports the handler. Abridged, and pinned by `src/lib/__tests__/auth.test.ts`:
 
 ```typescript
 import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
-import { compare } from "bcrypt"; // For password comparison (install with npm install bcrypt)
+import bcrypt from "bcrypt";
+import { rateLimit } from "@/lib/rate-limit";
+import { timingSafeEquals } from "@/lib/timing-safe";
 
 export const authOptions = {
   providers: [
@@ -37,20 +40,32 @@ export const authOptions = {
         username: { label: "Username", type: "text" },
         password: { label: "Password", type: "password" },
       },
-      async authorize(credentials) {
-        // In production, replace with database lookup and proper password hashing
+      async authorize(credentials, req) {
         if (!credentials?.username || !credentials?.password) return null;
 
-        // Compare with hashed password in production
-        if (
-          credentials.username === process.env.ADMIN_USERNAME &&
-          credentials.password === process.env.ADMIN_PASSWORD
-        ) {
-          return {
-            id: "1",
-            name: "Admin",
-            role: "admin",
-          };
+        // Throttle by IP. There is no lockout upstream, so without this the
+        // single admin credential is brute-forceable.
+        const { allowed } = await rateLimit(`admin-login:${clientIp(req)}`, {
+          limit: 10,
+          windowSeconds: 600,
+        });
+        if (!allowed) return null;
+
+        const expectedUsername = process.env.ADMIN_USERNAME;
+        if (!expectedUsername) return null;
+
+        // Both factors compared in constant time, and the password check runs
+        // even when the username is wrong. Short-circuiting with `&&` would
+        // make a wrong username measurably faster than a wrong password —
+        // a timing oracle that tells an attacker when they have the username.
+        const usernameOk = timingSafeEquals(
+          credentials.username,
+          expectedUsername,
+        );
+        const passwordOk = await verifyPassword(credentials.password);
+
+        if (usernameOk && passwordOk) {
+          return { id: "1", name: "Admin", role: "admin" };
         }
         return null;
       },
@@ -219,7 +234,8 @@ export default function RootLayout({
 
 ### 6. Update Middleware for Authentication
 
-Replace the Basic Auth check in middleware with NextAuth.js session check:
+The proxy (`src/proxy.ts` — Next 16 renamed the middleware file convention)
+checks the NextAuth session:
 
 ```typescript
 // src/proxy.ts
@@ -227,7 +243,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   // Redirect HTTP to HTTPS in production
   if (
     process.env.NODE_ENV === "production" &&
@@ -235,7 +251,7 @@ export async function middleware(request: NextRequest) {
   ) {
     const secureUrl = request.nextUrl.clone();
     secureUrl.protocol = "https";
-    secureUrl.host = request.headers.get("host") || request.nextUrl.host;
+    secureUrl.host = allowedHost() ?? request.nextUrl.host; // never the Host header
     return NextResponse.redirect(secureUrl, { status: 301 });
   }
 
@@ -351,7 +367,7 @@ export default function AdminComponent() {
 
 1. Implement NextAuth.js alongside Basic Auth
 2. Test thoroughly in development and staging environments
-3. Switch middleware to use NextAuth.js authentication
+3. Switch the proxy to use NextAuth.js authentication
 4. Remove Basic Auth implementation
 5. Update all protected routes to use NextAuth.js session checks
 

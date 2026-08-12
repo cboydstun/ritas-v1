@@ -89,6 +89,13 @@ export default function MachineStep({
   // the price, all of which used to happen silently.
   const [fallbackNotice, setFallbackNotice] = useState<string | null>(null);
 
+  // Helper function to create a properly typed synthetic event
+  const createSyntheticEvent = (name: string, value: string | string[]) => {
+    return {
+      target: { name, value },
+    } as unknown as ChangeEvent<HTMLInputElement>;
+  };
+
   // Check all three machine types in parallel so the cards reflect inventory
   // up front. This depends on the date range only — deriving the hard-block
   // error used to put `machineType` in the dep array too, so every auto-switch
@@ -203,13 +210,6 @@ export default function MachineStep({
     onAvailabilityChecking?.(isChecking);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isChecking]);
-
-  // Helper function to create a properly typed synthetic event
-  const createSyntheticEvent = (name: string, value: string | string[]) => {
-    return {
-      target: { name, value },
-    } as unknown as ChangeEvent<HTMLInputElement>;
-  };
 
   const handleMachineSelect = (machineType: "single" | "double" | "triple") => {
     // "loading" used to count as selectable, so every card was clickable —
