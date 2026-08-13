@@ -1,12 +1,18 @@
 import { z } from "zod";
 import {
   MACHINE_CAPACITY,
+  blogPostCreateSchema,
   escapeHtml,
   fingerprintHashSchema,
+  landingPageCreateSchema,
+  landingPageUpdateSchema,
   MAX_RANGE_DAYS,
+  pageSectionSchema,
   rentalDataSchema,
+  sharedBlockCreateSchema,
   todayLocalIso,
 } from "@/lib/validation";
+import { MAX_SECTIONS } from "@/lib/landing";
 import { EMAIL_PATTERN, PHONE_PATTERN, ZIP_PATTERN } from "@/lib/dates";
 import {
   validateEmail,
@@ -312,5 +318,199 @@ describe("client/server field agreement", () => {
   ] as const)("client and server agree on ZIP %s", (zip, expected) => {
     expect(validateZipCode(zip)).toBe(expected);
     expect(ZIP_PATTERN.test(zip)).toBe(expected);
+  });
+});
+
+const validLandingPage = (overrides: Record<string, unknown> = {}) => ({
+  path: "/margarita-machine-rental-weddings",
+  title: "Wedding margarita machine rental",
+  sections: [{ kind: "hero", heading: "Frozen drinks for your reception" }],
+  ...overrides,
+});
+
+describe("landing page schemas", () => {
+  it("accepts a minimal page", () => {
+    expect(landingPageCreateSchema.safeParse(validLandingPage()).success).toBe(
+      true,
+    );
+  });
+
+  it("strips fields the caller is not allowed to set", () => {
+    const parsed = landingPageCreateSchema.parse(
+      validLandingPage({ _id: "deadbeef", createdAt: "2020-01-01" }),
+    );
+
+    expect(parsed).not.toHaveProperty("_id");
+    expect(parsed).not.toHaveProperty("createdAt");
+  });
+
+  it.each([
+    ["a path with no leading slash", { path: "weddings" }],
+    ["a path with a dot", { path: "/weddings.html" }],
+    ["a path with a space", { path: "/wedding rentals" }],
+  ])("rejects %s", (_label, overrides) => {
+    expect(
+      landingPageCreateSchema.safeParse(validLandingPage(overrides)).success,
+    ).toBe(false);
+  });
+
+  // Normalised, not rejected: the schema lowercases before it checks, and the
+  // model's `lowercase: true` does the same, so one path cannot be stored
+  // under two casings.
+  it("lowercases the path rather than rejecting it", () => {
+    const parsed = landingPageCreateSchema.parse(
+      validLandingPage({ path: "/Wedding-Rentals" }),
+    );
+
+    expect(parsed.path).toBe("/wedding-rentals");
+  });
+
+  // 400, not 409 — a duplicate key is the only thing that earns a 409.
+  it("rejects a path an existing route owns, with a readable message", () => {
+    const result = landingPageCreateSchema.safeParse(
+      validLandingPage({ path: "/order" }),
+    );
+
+    expect(result.success).toBe(false);
+    expect(result.error?.issues[0]?.message).toMatch(/reserved/);
+  });
+
+  it("allows a path below the service-area hub", () => {
+    expect(
+      landingPageCreateSchema.safeParse(
+        validLandingPage({ path: "/service-area/olmos-park" }),
+      ).success,
+    ).toBe(true);
+  });
+
+  it("rejects more than MAX_SECTIONS sections", () => {
+    const sections = Array(MAX_SECTIONS + 1).fill({ kind: "cta" });
+
+    expect(
+      landingPageCreateSchema.safeParse(validLandingPage({ sections })).success,
+    ).toBe(false);
+  });
+
+  it("rejects an unknown section kind", () => {
+    expect(
+      landingPageCreateSchema.safeParse(
+        validLandingPage({ sections: [{ kind: "carousel" }] }),
+      ).success,
+    ).toBe(false);
+  });
+
+  it("rejects a script in rich text", () => {
+    expect(
+      pageSectionSchema.safeParse({
+        kind: "richText",
+        html: "<script>alert(1)</script>",
+      }).success,
+    ).toBe(false);
+  });
+
+  it.each([
+    ["a remote link", "https://evil.example"],
+    ["a protocol-relative link", "//evil.example"],
+    ["a javascript scheme", "javascript:alert(1)"],
+  ])("rejects %s in a CTA", (_label, href) => {
+    expect(
+      pageSectionSchema.safeParse({
+        kind: "linkList",
+        items: [{ label: "Go", href }],
+      }).success,
+    ).toBe(false);
+  });
+
+  // Breadcrumb targets point at real routes, /service-area among them, so
+  // they must not be run through the reserved-path check.
+  it("allows a breadcrumb pointing at a reserved route", () => {
+    expect(
+      landingPageCreateSchema.safeParse(
+        validLandingPage({
+          breadcrumbs: [{ name: "Service Areas", path: "/service-area" }],
+        }),
+      ).success,
+    ).toBe(true);
+  });
+
+  it("rejects an update that names no fields", () => {
+    expect(landingPageUpdateSchema.safeParse({}).success).toBe(false);
+  });
+
+  it("accepts a status-only update", () => {
+    expect(
+      landingPageUpdateSchema.safeParse({ status: "published" }).success,
+    ).toBe(true);
+  });
+});
+
+describe("shared block schema", () => {
+  const validBlock = (overrides: Record<string, unknown> = {}) => ({
+    slug: "delivery-includes",
+    name: "What delivery includes",
+    sections: [{ kind: "features", items: [{ body: "Delivery and pickup." }] }],
+    ...overrides,
+  });
+
+  it("accepts a block of content sections", () => {
+    expect(sharedBlockCreateSchema.safeParse(validBlock()).success).toBe(true);
+  });
+
+  // No cycle is expressible, so resolution needs no depth counter.
+  it("rejects a blockRef nested inside a block", () => {
+    expect(
+      sharedBlockCreateSchema.safeParse(
+        validBlock({ sections: [{ kind: "blockRef", blockSlug: "other" }] }),
+      ).success,
+    ).toBe(false);
+  });
+
+  it("rejects a block with no sections", () => {
+    expect(
+      sharedBlockCreateSchema.safeParse(validBlock({ sections: [] })).success,
+    ).toBe(false);
+  });
+});
+
+/**
+ * `.optional()` permits only `undefined`. An admin form sends `""` for a blank
+ * field, which is *present*, so a refined optional field rejects it — that is
+ * what made every blog save without a cover image a 400 and left the `$unset`
+ * branch in the PUT route unreachable. Every optional refined field in this
+ * codebase must carry an explicit empty-string escape.
+ */
+describe("optional fields accept the empty string a form sends", () => {
+  it("blog coverImagePath", () => {
+    const result = blogPostCreateSchema.safeParse({
+      slug: "a-post",
+      title: "A post",
+      body: "<p>Hello.</p>",
+      coverImagePath: "",
+      coverImageAlt: "",
+      excerpt: "",
+      seoTitle: "",
+      seoDescription: "",
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it("landing page ogImagePath", () => {
+    expect(
+      landingPageCreateSchema.safeParse(
+        validLandingPage({
+          ogImagePath: "",
+          seoTitle: "",
+          seoDescription: "",
+          serviceAreaName: "",
+        }),
+      ).success,
+    ).toBe(true);
+  });
+
+  it("a nearbyAreas section before an area has been chosen", () => {
+    expect(
+      pageSectionSchema.safeParse({ kind: "nearbyAreas", forSlug: "" }).success,
+    ).toBe(true);
   });
 });

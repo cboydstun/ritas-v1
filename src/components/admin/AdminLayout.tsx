@@ -56,6 +56,18 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             Blog
           </Link>
           <Link
+            href="/admin/landing-pages"
+            className="block px-6 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+          >
+            Landing Pages
+          </Link>
+          <Link
+            href="/admin/shared-blocks"
+            className="block px-6 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+          >
+            Shared Blocks
+          </Link>
+          <Link
             href="/admin/contacts"
             className="block px-6 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
           >

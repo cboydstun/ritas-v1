@@ -20,6 +20,23 @@ import {
   hasDangerousHtml,
   isSafeCoverImagePath,
 } from "@/lib/blog";
+import {
+  LANDING_STATUSES,
+  MAX_BREADCRUMBS,
+  MAX_DESCRIPTION_LENGTH,
+  MAX_HEADING_LENGTH,
+  MAX_HREF_LENGTH,
+  MAX_LABEL_LENGTH,
+  MAX_PATH_LENGTH,
+  MAX_RICH_TEXT_LENGTH,
+  MAX_SECTIONS,
+  MAX_SECTION_ITEMS,
+  MAX_TEXT_LENGTH,
+  SCHEMA_TYPES,
+  isLandingPath,
+  isReservedPath,
+  isSafeHref,
+} from "@/lib/landing";
 
 /**
  * Request-body validation for the public API routes.
@@ -431,6 +448,273 @@ export const blogPostUpdateSchema = z
 
 export type BlogPostInput = z.infer<typeof blogPostCreateSchema>;
 export type BlogPostUpdateInput = z.infer<typeof blogPostUpdateSchema>;
+
+/**
+ * Landing page and shared block writes (`/api/admin/landing-pages`,
+ * `/api/admin/shared-blocks`).
+ *
+ * **This is the only real validation on `sections`.** That path is `Mixed` on
+ * both models, so mongoose neither casts nor deep-validates it, and
+ * `runValidators` on a query update runs path validators only — the same trap
+ * documented on `settingsUpdateSchema` above. The models carry a shallow
+ * `sectionShapeError` net for anything that reaches a document without going
+ * through a route; everything below is what actually checks field contents.
+ */
+
+/**
+ * Optional, and tolerant of the empty string an admin form sends for a blank
+ * field. `.optional()` alone permits only `undefined`, so a refined optional
+ * field rejects `""` — the bug fixed on `coverImagePathSchema` above.
+ */
+function optionalOrBlank<T extends z.ZodType<string, string>>(schema: T) {
+  return z.union([z.literal(""), schema]).optional();
+}
+
+const landingPathSchema = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .max(MAX_PATH_LENGTH)
+  .refine(isLandingPath, {
+    message:
+      "Path must be lowercase slug segments beginning with a slash, e.g. /service-area/olmos-park",
+  })
+  // A page at a real route would save and then never render, because Next
+  // always prefers a static or `[param]` route over the root catch-all. 400,
+  // not 409 — 409 stays reserved for the duplicate-path key error.
+  .refine((value) => !isReservedPath(value), {
+    message: "That path is reserved by an existing route",
+  });
+
+const headingSchema = z.string().trim().max(MAX_HEADING_LENGTH);
+const bodyTextSchema = z.string().trim().max(MAX_TEXT_LENGTH);
+const linkLabelSchema = z.string().trim().min(1).max(MAX_LABEL_LENGTH);
+
+const hrefSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(MAX_HREF_LENGTH)
+  .refine(isSafeHref, {
+    message: "Links must be site-relative, or a tel: or mailto: address",
+  });
+
+const ctaLinkSchema = z
+  .object({ label: linkLabelSchema, href: hrefSchema })
+  .strip();
+
+/**
+ * `contentSlugSchema` is `blogSlugSchema` by another name — one slug shape in
+ * the codebase. Kept as a separate binding only so the landing schemas do not
+ * read as if they were validating blog posts.
+ */
+const contentSlugSchema = blogSlugSchema;
+
+const heroSectionSchema = z
+  .object({
+    kind: z.literal("hero"),
+    eyebrow: headingSchema.optional(),
+    heading: z
+      .string()
+      .trim()
+      .min(1, "Hero heading is required")
+      .max(MAX_HEADING_LENGTH),
+    body: bodyTextSchema.optional(),
+    primaryCta: ctaLinkSchema.optional(),
+    secondaryCta: ctaLinkSchema.optional(),
+    phoneCta: z.boolean().optional(),
+  })
+  .strip();
+
+const richTextSectionSchema = z
+  .object({
+    kind: z.literal("richText"),
+    heading: headingSchema.optional(),
+    html: z
+      .string()
+      .min(1, "Rich text is required")
+      .max(MAX_RICH_TEXT_LENGTH)
+      // Applied per section rather than to the serialised array, which would
+      // false-positive on ordinary JSON punctuation.
+      .refine((value) => !hasDangerousHtml(value), {
+        message:
+          "Rich text contains a script, iframe, inline event handler or scheme URL",
+      }),
+  })
+  .strip();
+
+const featuresSectionSchema = z
+  .object({
+    kind: z.literal("features"),
+    heading: headingSchema.optional(),
+    intro: bodyTextSchema.optional(),
+    items: z
+      .array(
+        z
+          .object({
+            icon: z.string().trim().max(8).optional(),
+            title: headingSchema.optional(),
+            body: z.string().trim().min(1).max(MAX_TEXT_LENGTH),
+          })
+          .strip(),
+      )
+      .min(1)
+      .max(MAX_SECTION_ITEMS),
+  })
+  .strip();
+
+const faqSectionSchema = z
+  .object({
+    kind: z.literal("faq"),
+    heading: headingSchema.optional(),
+    items: z
+      .array(
+        z
+          .object({
+            question: z.string().trim().min(1).max(MAX_HEADING_LENGTH),
+            answer: z.string().trim().min(1).max(MAX_TEXT_LENGTH),
+          })
+          .strip(),
+      )
+      .min(1)
+      .max(MAX_SECTION_ITEMS),
+  })
+  .strip();
+
+const ctaSectionSchema = z
+  .object({
+    kind: z.literal("cta"),
+    headline: headingSchema.optional(),
+    subtext: bodyTextSchema.optional(),
+  })
+  .strip();
+
+const linkListSectionSchema = z
+  .object({
+    kind: z.literal("linkList"),
+    heading: headingSchema.optional(),
+    items: z.array(ctaLinkSchema).min(1).max(MAX_SECTION_ITEMS),
+    footerLink: ctaLinkSchema.optional(),
+  })
+  .strip();
+
+/** Stores no prices; the renderer reads them from Settings at request time. */
+const pricingCardsSectionSchema = z
+  .object({
+    kind: z.literal("pricingCards"),
+    heading: headingSchema.optional(),
+    source: z.literal("machines"),
+  })
+  .strip();
+
+/**
+ * `forSlug` tolerates `""` because that is what "Add section" produces before
+ * the admin picks an area — the editor must not be able to add a section the
+ * API then refuses. An empty slug renders nothing.
+ */
+const nearbyAreasSectionSchema = z
+  .object({
+    kind: z.literal("nearbyAreas"),
+    heading: headingSchema.optional(),
+    forSlug: z.union([z.literal(""), contentSlugSchema]),
+    footerLink: ctaLinkSchema.optional(),
+  })
+  .strip();
+
+const blockRefSectionSchema = z
+  .object({
+    kind: z.literal("blockRef"),
+    blockSlug: z.union([z.literal(""), contentSlugSchema]),
+    headingOverride: headingSchema.optional(),
+  })
+  .strip();
+
+const CONTENT_SECTION_MEMBERS = [
+  heroSectionSchema,
+  richTextSectionSchema,
+  featuresSectionSchema,
+  faqSectionSchema,
+  ctaSectionSchema,
+  linkListSectionSchema,
+  pricingCardsSectionSchema,
+  nearbyAreasSectionSchema,
+] as const;
+
+/**
+ * A shared block's contents. `blockRef` is deliberately absent: a block that
+ * cannot express a reference cannot participate in a cycle, so resolution
+ * needs no depth counter and no visited set.
+ */
+export const contentSectionSchema = z.discriminatedUnion(
+  "kind",
+  CONTENT_SECTION_MEMBERS,
+);
+
+/** A landing page's contents — the content union plus `blockRef`. */
+export const pageSectionSchema = z.discriminatedUnion("kind", [
+  ...CONTENT_SECTION_MEMBERS,
+  blockRefSectionSchema,
+]);
+
+const landingPageFields = {
+  path: landingPathSchema,
+  title: z.string().trim().min(1, "Title is required").max(MAX_TITLE_LENGTH),
+  seoTitle: z.string().trim().max(MAX_TITLE_LENGTH).optional(),
+  seoDescription: z.string().trim().max(MAX_DESCRIPTION_LENGTH).optional(),
+  ogImagePath: optionalOrBlank(
+    z.string().trim().max(300).refine(isSafeCoverImagePath, {
+      message: "OG image must be a site-relative path such as /og-image.jpg",
+    }),
+  ),
+  // Breadcrumb targets are real routes — `/service-area` among them — so they
+  // are checked as safe links, not as landing paths, which would reject every
+  // reserved ancestor.
+  breadcrumbs: z
+    .array(z.object({ name: linkLabelSchema, path: hrefSchema }).strip())
+    .max(MAX_BREADCRUMBS)
+    .optional(),
+  sections: z.array(pageSectionSchema).max(MAX_SECTIONS),
+  schemaType: z.enum(SCHEMA_TYPES).optional(),
+  serviceAreaName: z.string().trim().max(MAX_TITLE_LENGTH).optional(),
+  status: z.enum(LANDING_STATUSES).optional(),
+};
+
+export const landingPageCreateSchema = z.object(landingPageFields).strip();
+
+/**
+ * Every field optional, but not *no* fields — an empty PUT would otherwise be
+ * a 200 that wrote nothing but a fresh `updatedAt`, which reads in the admin
+ * UI as a successful save.
+ */
+export const landingPageUpdateSchema = z
+  .object(landingPageFields)
+  .partial()
+  .strip()
+  .refine((data) => Object.keys(data).length > 0, {
+    message: "No editable fields supplied",
+  });
+
+const sharedBlockFields = {
+  slug: contentSlugSchema,
+  name: z.string().trim().min(1, "Name is required").max(MAX_TITLE_LENGTH),
+  sections: z.array(contentSectionSchema).min(1).max(MAX_SECTIONS),
+  status: z.enum(LANDING_STATUSES).optional(),
+};
+
+export const sharedBlockCreateSchema = z.object(sharedBlockFields).strip();
+
+export const sharedBlockUpdateSchema = z
+  .object(sharedBlockFields)
+  .partial()
+  .strip()
+  .refine((data) => Object.keys(data).length > 0, {
+    message: "No editable fields supplied",
+  });
+
+export type LandingPageInput = z.infer<typeof landingPageCreateSchema>;
+export type LandingPageUpdateInput = z.infer<typeof landingPageUpdateSchema>;
+export type SharedBlockInput = z.infer<typeof sharedBlockCreateSchema>;
+export type SharedBlockUpdateInput = z.infer<typeof sharedBlockUpdateSchema>;
 
 /** Collapse a ZodError into a single short, non-leaky message. */
 export function firstIssueMessage(error: z.ZodError): string {

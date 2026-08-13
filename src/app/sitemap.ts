@@ -2,6 +2,11 @@ import type { MetadataRoute } from "next";
 import { SITE_URL } from "@/lib/site";
 import { SERVICE_AREAS } from "@/lib/service-areas";
 import { getPublishedSlugsSafe } from "@/lib/blog-posts";
+import {
+  getAllLandingPathsSafe,
+  getPublishedPathsSafe,
+} from "@/lib/landing-page-data";
+import { isReservedPath } from "@/lib/landing";
 
 // Public, indexable routes only — /success is a post-checkout landing page,
 // and /admin + /api are disallowed in robots.ts.
@@ -23,20 +28,43 @@ const routes: Array<{
   { path: "/blog", priority: 0.7, changeFrequency: "weekly" },
 ];
 
-// Async now that the blog slugs come from the database. The read goes through
-// `getPublishedSlugsSafe`, which degrades to an empty list rather than
+// Async now that the blog slugs and the landing paths come from the database. The read goes through
+// the `…Safe` helpers, which degrade to an empty list rather than
 // throwing: this file is evaluated during prerender, and CI builds against a
 // deliberately unreachable MONGODB_URI.
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const lastModified = new Date();
 
-  // Generated from the same list the pages and the homepage map render from,
-  // so a new area cannot be added and then quietly left out of the sitemap.
-  const serviceAreaRoutes = SERVICE_AREAS.map((area) => ({
-    path: `/service-area/${area.slug}`,
-    priority: 0.7,
-    changeFrequency: "monthly" as const,
-  }));
+  // Landing pages, published only, from the same helper the catch-all reads.
+  //
+  // Then the service-area URLs the catch-all *also* serves from the static
+  // fallback: those with no stored document at all, because the seed has not
+  // been run. The sitemap has to list exactly what returns 200, and this is
+  // the only way to tell "not seeded yet" (renders, so list it) apart from
+  // "deliberately unpublished" (404s, so do not). Both reads degrade to an
+  // empty list, and an empty stored list means nothing is seeded, so every
+  // area is correctly treated as falling back.
+  const [publishedPaths, storedPaths] = await Promise.all([
+    getPublishedPathsSafe("sitemap"),
+    getAllLandingPathsSafe("sitemap"),
+  ]);
+
+  const stored = new Set(storedPaths);
+  const unseededAreas = SERVICE_AREAS.map(
+    (area) => `/service-area/${area.slug}`,
+  ).filter((path) => !stored.has(path));
+
+  const paths = [...publishedPaths, ...unseededAreas];
+
+  const landingRoutes = paths
+    // A reserved path cannot render, so it must not be advertised — belt and
+    // braces against a row written before the reserved check existed.
+    .filter((path) => !isReservedPath(path))
+    .map((path) => ({
+      path,
+      priority: 0.7,
+      changeFrequency: "monthly" as const,
+    }));
 
   // Published posts only, from the same helper the /blog pages read, so a
   // draft cannot be advertised to Google.
@@ -47,12 +75,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     changeFrequency: "monthly" as const,
   }));
 
-  return [...routes, ...serviceAreaRoutes, ...blogRoutes].map(
-    ({ path, priority, changeFrequency }) => ({
+  // Deduped by path: a landing page could in principle be created at a path
+  // the static list also names, and the same URL twice is a validation error
+  // in Search Console.
+  const seen = new Set<string>();
+  return [...routes, ...landingRoutes, ...blogRoutes]
+    .filter(({ path }) => !seen.has(path) && seen.add(path))
+    .map(({ path, priority, changeFrequency }) => ({
       url: `${SITE_URL}${path}`,
       lastModified,
       changeFrequency,
       priority,
-    }),
-  );
+    }));
 }

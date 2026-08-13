@@ -20,7 +20,7 @@ npm run test:ci      # Jest in CI mode with coverage
 
 Run a single test file: `npx jest src/components/order/steps/__tests__/SomeTest.test.tsx`
 
-`.github/workflows/ci.yml` runs `typecheck`, `lint`, `format:check`, `test:ci` and `build` on every push and PR to `main`. The build step is what gates static generation — 51 pages are prerendered, and a page that throws during prerender is a red deploy the other four gates all report green. It runs with a deliberately unreachable `MONGODB_URI`, because `src/lib/mongodb.ts` throws at import when the variable is absent while the one page that reads the database at build time catches the connection failure. `test:ci` deliberately does **not** pass `--passWithNoTests`, and `jest.config.js` carries `coverageThreshold`s set just under the measured coverage — raise them, do not lower them to get a build out. They had drifted to within 0.12 of a point of actual, which makes the next uncovered helper a red build for a reason unrelated to the change that tripped it; keep a point or two of headroom when you raise them.
+`.github/workflows/ci.yml` runs `typecheck`, `lint`, `format:check`, `test:ci` and `build` on every push and PR to `main`. The build step is what gates static generation — 62 pages are prerendered, and a page that throws during prerender is a red deploy the other four gates all report green. It runs with a deliberately unreachable `MONGODB_URI`, because `src/lib/mongodb.ts` throws at import when the variable is absent while the one page that reads the database at build time catches the connection failure. `test:ci` deliberately does **not** pass `--passWithNoTests`, and `jest.config.js` carries `coverageThreshold`s set just under the measured coverage — raise them, do not lower them to get a build out. They had drifted to within 0.12 of a point of actual, which makes the next uncovered helper a red build for a reason unrelated to the change that tripped it; keep a point or two of headroom when you raise them.
 
 Two jest footguns in this repo: importing `jest` from `@jest/globals` defeats SWC's `jest.mock` hoisting, so a `jest.mock("next/navigation", ...)` in such a file silently does nothing — use the global `jest`. And `nanoid` is ESM-only, so `transformIgnorePatterns` must keep transforming it.
 
@@ -48,7 +48,9 @@ Next.js 16 (App Router) · React 19 · TypeScript 5 · MongoDB/Mongoose 9 · Nex
 
 ### Routing & Pages
 
-`src/app/` uses the Next.js App Router. Public pages live at the root (`/order`, `/pricing`, `/long-term-lease`, etc.), plus a `/service-area` hub and the statically generated `/service-area/[city]` pages under it, all driven by `SERVICE_AREAS` in `src/lib/service-areas.ts` — the same list `MapSection` and `sitemap.ts` render from, so adding an area there gives it a page, a homepage link, a hub entry and a sitemap entry. The hub exists because the bare path was a 404 and the city pages linked only within their own region, leaving four disconnected islands. Admin pages are under `src/app/admin/` and are protected by the proxy (`src/proxy.ts` — Next 16's rename of the middleware file convention). API routes are split between `src/app/api/v1/` (public) and `src/app/api/admin/` (auth-required). `/api/save-booking` (the public checkout) and `/api/cron/release-holds` sit outside both namespaces at `src/app/api/`.
+`src/app/` uses the Next.js App Router. Public pages live at the root (`/order`, `/pricing`, `/long-term-lease`, etc.), plus a `/service-area` hub. The hub exists because the bare path was a 404 and the city pages linked only within their own region, leaving four disconnected islands.
+
+**`src/app/[...slug]/page.tsx` is a root catch-all serving every database-backed landing page**, including the 16 `/service-area/[city]` URLs, which are now `LandingPage` documents rather than a route file (see **Landing Pages** below). Admin pages are under `src/app/admin/` and are protected by the proxy (`src/proxy.ts` — Next 16's rename of the middleware file convention). API routes are split between `src/app/api/v1/` (public) and `src/app/api/admin/` (auth-required). `/api/save-booking` (the public checkout) and `/api/cron/release-holds` sit outside both namespaces at `src/app/api/`.
 
 Two customer-facing verticals share this codebase: **event rentals** (the `/order` wizard, `Rental` model) and **long-term commercial leases** (`/long-term-lease`, an inquiry form only — no payment, `LeaseInquiry` model).
 
@@ -96,6 +98,100 @@ A third option, `tieBreakId`, settles the same-millisecond case. `createdAt` com
 `MachineStep.tsx` checks all three machine types **in parallel** on mount so every card shows live availability, greys out unavailable ones, and auto-switches the selection to another available type (priority `triple > double > single`) when the current pick is unavailable. `useAvailabilityCheck` (`src/hooks/useAvailabilityCheck.ts`) wraps the single-type fetch.
 
 Admins manage blackout date ranges via `/admin/blackout-dates` → `GET/POST /api/admin/blackout-dates` and `DELETE /api/admin/blackout-dates/[id]`.
+
+### Landing Pages
+
+Admin-authored pages at arbitrary paths, served by the root catch-all
+`src/app/[...slug]/page.tsx`. The 16 `/service-area/[city]` pages are seeded
+instances of this; `src/app/service-area/[city]/page.tsx` **was deleted**,
+because Next matches `[city]` before `[...slug]` and leaving it in place made
+every seeded row unreachable.
+
+Two models, both with a `Mixed` `sections` array: `LandingPage`
+(`src/models/landingPage.ts`, keyed by `path`) and `SharedBlock`
+(`src/models/sharedBlock.ts`, keyed by `slug`) — a run of sections written once
+and inserted into many pages by `{ kind: "blockRef", blockSlug }`.
+
+`src/lib/landing.ts` is the **zod-free, mongoose-free** shared module, the same
+split `blog.ts` makes: the section types, the path helpers, `resolveSections`
+and `defaultSection`, imported by the client editor _and_ the models _and_
+`validation.ts`. It reuses `SLUG_PATTERN`/`slugify` from `blog.ts` rather than
+declaring a second slug regex.
+
+**Because `sections` is `Mixed`, the zod union in `validation.ts` is the only
+real validation on it** — mongoose neither casts nor deep-validates it, and
+`runValidators` on a query update runs path validators only, the same trap
+documented on `settingsUpdateSchema`. Every writer goes through
+`landingPageCreateSchema`, the seeder included. Writes replace the **whole**
+array with `$set`, never a positional update. The models carry a shallow
+`sectionShapeError` net for anything that reaches a document another way.
+
+Recursion is impossible by construction, not by a depth limit: there are two
+unions, `contentSectionSchema` (no `blockRef`) and `pageSectionSchema`. A block
+validates against the former, so a cycle cannot be expressed.
+
+Two section kinds deliberately store **no content**. `pricingCards` resolves
+machine prices from `Settings` at render, and `nearbyAreas` computes its link
+mesh from `SERVICE_AREAS` via `nearbyServiceAreas(slug)`. Flattening either
+into stored JSON would freeze prices into the database and stop a newly added
+area from joining the other pages' mesh.
+
+**Reserved paths.** `isReservedPath()` refuses a write at a path a real route
+owns — it would save and then never render. `service-area` is exact-reserved
+(the hub owns it) but _not_ prefix-reserved, which is what lets the 16 city
+pages live below it. Path validity is checked structurally, `SLUG_PATTERN` per
+segment, which rejects dots for free — so `/og-image.jpg` can never be a
+landing path and `public/` needs no entry.
+`src/lib/__tests__/reserved-paths.test.ts` walks `src/app/` and fails if a
+route exists the list does not cover. **That test, not the list, is what keeps
+this honest when someone adds a route.**
+
+**Seeding.** `POST /api/admin/service-area-seed`, driven by a button on
+`/admin/landing-pages`. It upserts with **`$setOnInsert`, never `$set`**, so
+re-running can never overwrite an admin's edits. It sits in its own namespace
+on purpose: as a `landing-pages/seed/` child it would win precedence over the
+`[...path]` catch-all and make a landing page at `/seed` unaddressable.
+
+**The `SERVICE_AREAS` invariant has weakened, and this is the biggest cost of
+the feature.** Adding an area to `src/lib/service-areas.ts` still gives it a
+homepage link, a hub entry, a `generateStaticParams` entry and a sitemap entry
+— but no longer a page, because the page lives in Mongo. **The new ritual is:
+add the area, then click "Seed" on `/admin/landing-pages`.** CI cannot catch
+the drift (it has no database), so the admin page renders a banner listing any
+area with no page yet.
+
+Two mitigations make the gap survivable. `generateStaticParams` unions the
+database paths with `SERVICE_AREAS`, so a CI build against an unreachable Mongo
+still prerenders all 16. And `getPublishedPageByPathSafe` falls back to
+`serviceAreaFallbackPage()` in two cases: the read **threw**, or a service-area
+path has **no stored document at all**. It does _not_ fall back when a document
+exists but is not published — that is a deliberate unpublish, and resurrecting
+it would make taking a page down impossible. `src/lib/service-area-page.ts`
+builds both the seed and the fallback from one function, so they cannot drift.
+
+`sitemap.ts` lists the published paths plus any service-area path with no
+stored document, so it advertises exactly what returns 200.
+
+**Draft preview** is `src/app/admin/preview/[...slug]/page.tsx`,
+`dynamic = "force-dynamic"`, rendering the same `SectionRenderer`. It is under
+`/admin/*` so the proxy authenticates it, `robots.ts` disallows it and
+`AnalyticsGate` keeps GA4 off it. A `?preview=` param on the public route was
+rejected: reading `searchParams` opts the route out of static rendering for
+_every_ visitor.
+
+Rich text is authored HTML rendered with `dangerouslySetInnerHTML`, the same
+trust model as the blog — `hasDangerousHtml` is defense-in-depth, not a
+sanitizer, and the control that matters is the admin session.
+
+A root catch-all means every unrouted request could reach the database, so the
+path-shape and reserved checks run **before** any I/O; a crawler probing
+`/wp-login.php` costs no round trip. `SectionRenderer` returns `null` for a
+kind it does not know, so a document written by a newer deploy cannot take a
+page into the error boundary. Admin writes call `revalidatePath` through
+`src/lib/landing-revalidate.ts`, always caught — it runs after the write has
+committed, and a cache-API throw must not turn a successful save into a 500.
+
+**A path rename does not redirect the old URL.** Same gap the blog has.
 
 ### Long-Term Lease Flow
 
@@ -214,7 +310,7 @@ Marking and unmarking are not retroactive, so historical rows keep whatever flag
 
 - **`purchase_complete`** (`ReviewStep.tsx`) — carries `transaction_id`, `value`, `currency`. The Ads conversion previously fired on a `/success` pageview, which cannot see the order total, so every booking reported as a valueless conversion; `buildSuccessUrl` deliberately keeps money and PII out of the URL, so the value has to arrive out of band. `transaction_id` is the Ads `orderId` and is what dedupes a resubmission.
 - **`lead_submitted`** (`ContactForm.tsx`, `LeaseInquiryForm.tsx`) — carries `lead_type`. Replaces GTM's built-in Form Submission trigger, which listens for the browser's submit event and is **not** suppressed by `preventDefault()`, so a submission whose API POST then failed still counted as an Ads lead.
-- **`contact_click`** (`ContactLinkTracker.tsx`) — carries `method` (`phone` or `email`). The Google Ads call tag does dynamic number insertion, which only ever converts visitors who arrived from an ad; roughly 77% of sessions are organic (272 of 351 over the 90 days to 2026-08-11), so a `tel:` tap from them reached Ads not at all. The GTM consumer is the **`Contact Click - phone`** trigger (id `19`, workspace `9`), whose `{{DLV - method}} equals phone` condition lives in the *trigger*, not in the tag. Note that the push shipped in `e0aa248` on 2026-08-12 with no GTM counterpart at all, so for a time it fed nothing — a dataLayer push is only half of a conversion. Downloads deliberately do **not** push — the GTM filter must not be the only thing between a PDF click and a counted phone lead. The name is intentionally both an `AnalyticsEvent` and a `DataLayerEvent`: one visitor action, two transports.
+- **`contact_click`** (`ContactLinkTracker.tsx`) — carries `method` (`phone` or `email`). The Google Ads call tag does dynamic number insertion, which only ever converts visitors who arrived from an ad; roughly 77% of sessions are organic (272 of 351 over the 90 days to 2026-08-11), so a `tel:` tap from them reached Ads not at all. The GTM consumer is the **`Contact Click - phone`** trigger (id `19`, workspace `9`), whose `{{DLV - method}} equals phone` condition lives in the _trigger_, not in the tag. Note that the push shipped in `e0aa248` on 2026-08-12 with no GTM counterpart at all, so for a time it fed nothing — a dataLayer push is only half of a conversion. Downloads deliberately do **not** push — the GTM filter must not be the only thing between a PDF click and a counted phone lead. The name is intentionally both an `AnalyticsEvent` and a `DataLayerEvent`: one visitor action, two transports.
 
 A partial `jest.mock("@/lib/analytics", ...)` that stubs `trackEvent` but not `pushDataLayer` makes the missing export `undefined`, and calling it throws inside the booking submit handler's `try` — which the `catch` turns into "Failed to confirm booking" for the customer. Mock both.
 
@@ -255,6 +351,10 @@ Global shared types live in `src/types/index.ts` (`MachineType`, `MixerType`, `P
 - `src/lib/api-guard.ts` / `src/lib/rate-limit.ts` — `guardPublicWrite()` for public write routes, `guardAdminWrite()` for the body cap on authenticated admin writes. `identifierFromHeaders()` is the single definition of client identity: prefer `x-vercel-forwarded-for` (platform-set), fall back to `x-forwarded-for` only for local/self-hosted. **Never key a limiter on the leftmost `x-forwarded-for` entry** — a proxy appends rather than overwrites, so that value is client-written, and using it dissolved both the public-write caps and the admin login throttle
 - `src/lib/safe-error.ts` — `safeErrorSummary()`. Log this, never `error.message`/`error.stack`: Mongoose validation and duplicate-key messages embed the offending customer values, and `removeConsole` deliberately keeps `console.error` in production
 - `src/lib/public-settings.ts` — `getPublicSettings()`, and `getPublicSettingsSafe()` for any **prerendered** page. CI builds against an unreachable `MONGODB_URI`, so an uncaught settings read during prerender is a red build the other four gates report green
+- `src/lib/landing.ts` — section types, path helpers, `isReservedPath()`, `resolveSections()`, `defaultSection()`. **Zod-free and mongoose-free on purpose**
+- `src/lib/landing-page-data.ts` — the landing-page read side, all `…Safe`
+- `src/lib/service-area-page.ts` — `serviceAreaPageDoc()` / `serviceAreaFallbackPage()`: one function behind both the seed and the outage fallback
+- `src/lib/landing-jsonld.ts` — `buildServiceJsonLd()`, `buildWebPageJsonLd()`, `buildFaqJsonLd()`
 - `src/lib/analytics.ts` — `trackEvent()`, the only sanctioned path to `window.gtag`
 - `src/lib/site.ts` — `SITE_URL`, `BUSINESS_ID`, the business phone constants, and `breadcrumbJsonLd()`
 - `src/hooks/useModalFocus.ts` — focus entry, Tab containment, Escape and focus restore for anything carrying `aria-modal="true"`. Its visibility filter reads attributes rather than layout on purpose: `offsetParent`/`getClientRects` are always empty under jsdom, so a layout-based check matches nothing there and the hook looks inert in its own tests while working in a browser

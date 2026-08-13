@@ -2,6 +2,7 @@ import {
   SERVICE_AREAS,
   SERVICE_AREA_REGIONS,
   getServiceArea,
+  nearbyServiceAreas,
   serviceAreasByRegion,
 } from "@/lib/service-areas";
 
@@ -43,5 +44,58 @@ describe("service areas", () => {
   it("looks an area up by slug and reports an unknown one", () => {
     expect(getServiceArea("stone-oak")?.name).toBe("Stone Oak");
     expect(getServiceArea("not-a-place")).toBeUndefined();
+  });
+});
+
+/**
+ * The internal-link mesh. Extracted from `/service-area/[city]/page.tsx` so
+ * the landing-page renderer and the seed compute the identical set.
+ */
+describe("nearbyServiceAreas", () => {
+  it("returns every other area in the same region, plus cross-region picks", () => {
+    const nearby = nearbyServiceAreas("stone-oak");
+    const sameRegion = nearby.filter((area) => area.region === "North");
+    const crossRegion = nearby.filter((area) => area.region !== "North");
+
+    expect(sameRegion.map((a) => a.slug).sort()).toEqual(
+      ["castle-hills", "hollywood-park", "shavano-park"].sort(),
+    );
+    expect(crossRegion).toHaveLength(2);
+  });
+
+  it("never includes the area itself", () => {
+    for (const area of SERVICE_AREAS) {
+      const slugs = nearbyServiceAreas(area.slug).map((other) => other.slug);
+
+      expect(slugs).not.toContain(area.slug);
+    }
+  });
+
+  // Index-based rather than random, so prerendered markup is stable across
+  // builds and two renders of the same page never differ.
+  it("is deterministic", () => {
+    expect(nearbyServiceAreas("helotes")).toEqual(
+      nearbyServiceAreas("helotes"),
+    );
+  });
+
+  it("never repeats an area", () => {
+    for (const area of SERVICE_AREAS) {
+      const slugs = nearbyServiceAreas(area.slug).map((other) => other.slug);
+
+      expect(new Set(slugs).size).toBe(slugs.length);
+    }
+  });
+
+  it("gives every area a link out of its own region", () => {
+    for (const area of SERVICE_AREAS) {
+      const nearby = nearbyServiceAreas(area.slug);
+
+      expect(nearby.some((other) => other.region !== area.region)).toBe(true);
+    }
+  });
+
+  it("returns nothing for an unknown slug", () => {
+    expect(nearbyServiceAreas("not-a-place")).toEqual([]);
   });
 });

@@ -14,6 +14,8 @@ import { Settings } from "@/models/settings";
 import { Contact } from "@/models/contact";
 import { LeaseInquiry } from "@/models/leaseInquiry";
 import { BlogPost } from "@/models/blogPost";
+import { LandingPage } from "@/models/landingPage";
+import { SharedBlock } from "@/models/sharedBlock";
 
 const validRental = (overrides: Record<string, unknown> = {}) => ({
   machineType: "double",
@@ -224,6 +226,125 @@ describe("BlogPost schema", () => {
     await expect(post.validate()).resolves.toBeUndefined();
     await expect(post.save({ validateBeforeSave: false })).rejects.toThrow(
       /publishedAt/,
+    );
+  });
+});
+
+const validLandingPage = (overrides: Record<string, unknown> = {}) => ({
+  path: "/service-area/olmos-park",
+  title: "Margarita Machine Rental in Olmos Park",
+  sections: [
+    { kind: "hero", heading: "Margarita Machine Rental in Olmos Park" },
+    { kind: "pricingCards", source: "machines" },
+  ],
+  status: "draft",
+  ...overrides,
+});
+
+describe("LandingPage schema", () => {
+  it("accepts a well-formed page", async () => {
+    await expect(
+      new LandingPage(validLandingPage()).validate(),
+    ).resolves.toBeUndefined();
+  });
+
+  it("requires a path and a title", async () => {
+    await expect(new LandingPage({ sections: [] }).validate()).rejects.toThrow(
+      /path/,
+    );
+  });
+
+  // Path validators rather than a hook, so they fire here *and* under
+  // findOneAndUpdate's runValidators, where a pre("save") hook does not.
+  it.each([
+    ["no leading slash", "service-area/olmos-park"],
+    ["a trailing slash", "/service-area/"],
+    ["a dot", "/og-image.jpg"],
+  ])("rejects a path with %s", async (_label, path) => {
+    await expect(
+      new LandingPage(validLandingPage({ path })).validate(),
+    ).rejects.toThrow(/lowercase slug segments/);
+  });
+
+  it("rejects a path an existing route already owns", async () => {
+    await expect(
+      new LandingPage(validLandingPage({ path: "/order" })).validate(),
+    ).rejects.toThrow(/reserved/);
+  });
+
+  it("defaults status to draft and schemaType to WebPage", () => {
+    const page = new LandingPage({
+      path: "/x",
+      title: "X",
+      sections: [],
+    });
+
+    expect(page.status).toBe("draft");
+    expect(page.schemaType).toBe("WebPage");
+  });
+
+  it("rejects an unknown schemaType", async () => {
+    await expect(
+      new LandingPage(validLandingPage({ schemaType: "Recipe" })).validate(),
+    ).rejects.toThrow(/schemaType/);
+  });
+
+  // The section rules live in a pre("save") hook because `sections` is Mixed
+  // and mongoose neither casts nor validates it — validate() alone passes.
+  it("rejects a published page with no publishedAt", async () => {
+    const page = new LandingPage(validLandingPage({ status: "published" }));
+
+    await expect(page.validate()).resolves.toBeUndefined();
+    await expect(page.save({ validateBeforeSave: false })).rejects.toThrow(
+      /publishedAt/,
+    );
+  });
+
+  // A scalar never reaches the hook as a scalar — mongoose casts it into a
+  // one-element array — so it surfaces as "not an object", not "not an array".
+  // The bare non-array case is covered against the pure function in
+  // `src/lib/__tests__/landing.test.ts`.
+  it.each([
+    ["a scalar", "nope", /object/],
+    ["an element with no kind", [{ heading: "x" }], /known kind/],
+    ["an unknown kind", [{ kind: "carousel" }], /known kind/],
+  ])("rejects sections that are %s", async (_label, sections, pattern) => {
+    const page = new LandingPage(validLandingPage({ sections }));
+
+    await expect(page.save({ validateBeforeSave: false })).rejects.toThrow(
+      pattern as RegExp,
+    );
+  });
+});
+
+describe("SharedBlock schema", () => {
+  const validBlock = (overrides: Record<string, unknown> = {}) => ({
+    slug: "delivery-includes",
+    name: "What delivery includes",
+    sections: [{ kind: "features", items: [{ body: "Delivery and pickup." }] }],
+    ...overrides,
+  });
+
+  it("accepts a well-formed block", async () => {
+    await expect(
+      new SharedBlock(validBlock()).validate(),
+    ).resolves.toBeUndefined();
+  });
+
+  it("rejects a slug that is not lowercase-hyphenated", async () => {
+    await expect(
+      new SharedBlock(validBlock({ slug: "Delivery Includes" })).validate(),
+    ).rejects.toThrow(/lowercase words/);
+  });
+
+  // A block that cannot express a reference cannot participate in a cycle.
+  it("rejects a blockRef nested inside a block", async () => {
+    const block = new SharedBlock(
+      validBlock({ sections: [{ kind: "blockRef", blockSlug: "other" }] }),
+    );
+
+    await expect(block.save({ validateBeforeSave: false })).rejects.toThrow(
+      /known kind/,
     );
   });
 });

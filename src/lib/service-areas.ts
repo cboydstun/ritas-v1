@@ -147,3 +147,40 @@ export function serviceAreasByRegion(
 ): ServiceArea[] {
   return SERVICE_AREAS.filter((area) => area.region === region);
 }
+
+/**
+ * The "we also deliver nearby" mesh for one area: every other area in the same
+ * region, plus two deterministic picks from other regions.
+ *
+ * Filtering to the same region alone split the 16 pages into four
+ * disconnected islands with no path between them. The cross-region picks are
+ * index-based rather than random so the markup stays stable across builds.
+ *
+ * Extracted from `/service-area/[city]/page.tsx` so the landing-page renderer
+ * and the seed share one implementation. The dedupe is new: with only one
+ * other region, `[0, 1]` selected the same area twice, which is a duplicate
+ * React key and a repeated chip. Unreachable with 16 areas across 4 regions,
+ * reachable the moment someone prunes the list.
+ */
+export function nearbyServiceAreas(slug: string): ServiceArea[] {
+  const area = getServiceArea(slug);
+  if (!area) return [];
+
+  const sameRegion = SERVICE_AREAS.filter(
+    (other) => other.region === area.region && other.slug !== area.slug,
+  );
+  const otherRegions = SERVICE_AREAS.filter(
+    (other) => other.region !== area.region,
+  );
+  const offset = SERVICE_AREAS.findIndex((other) => other.slug === area.slug);
+  const crossRegion = otherRegions.length
+    ? [0, 1].map((i) => otherRegions[(offset + i) % otherRegions.length])
+    : [];
+
+  const seen = new Set<string>();
+  return [...sameRegion, ...crossRegion].filter((other) => {
+    if (seen.has(other.slug)) return false;
+    seen.add(other.slug);
+    return true;
+  });
+}

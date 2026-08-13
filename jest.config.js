@@ -32,10 +32,10 @@ const customJestConfig = {
     // Everything outside src/lib — a path-keyed threshold below removes those
     // files from this bucket.
     global: {
-      statements: 36,
+      statements: 38,
       branches: 35,
-      functions: 22,
-      lines: 37,
+      functions: 24,
+      lines: 39,
     },
     // The money and availability logic is held to a much higher bar than the
     // page components that dominate the global figure.
@@ -44,10 +44,10 @@ const customJestConfig = {
     // uncovered helper added here would have turned CI red for a reason
     // unrelated to the change that tripped it.
     "./src/lib/": {
-      statements: 86,
-      branches: 81,
-      functions: 90,
-      lines: 88,
+      statements: 90,
+      branches: 85,
+      functions: 92,
+      lines: 91,
     },
   },
   collectCoverageFrom: [
