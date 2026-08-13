@@ -8,6 +8,17 @@ import {
 } from "@/lib/landing-page-data";
 import { isReservedPath } from "@/lib/landing";
 
+// Revalidated hourly rather than prerendered once at build.
+//
+// Without this, Next treats the sitemap as a fully static route and freezes it
+// into the build. The blog slugs and landing paths below come from the
+// database, so every post or page created after a deploy stayed out of the
+// sitemap indefinitely — the pages returned 200 and were simply never
+// advertised, with nothing failing anywhere to say so. Three published blog
+// posts sat unlisted exactly that way. The same rule the settings-reading
+// pages follow: a route that reads the database needs `revalidate`.
+export const revalidate = 3600;
+
 // Public, indexable routes only — /success is a post-checkout landing page,
 // and /admin + /api are disallowed in robots.ts.
 const routes: Array<{
