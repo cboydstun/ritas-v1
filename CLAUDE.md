@@ -20,7 +20,7 @@ npm run test:ci      # Jest in CI mode with coverage
 
 Run a single test file: `npx jest src/components/order/steps/__tests__/SomeTest.test.tsx`
 
-`.github/workflows/ci.yml` runs `typecheck`, `lint`, `format:check`, `test:ci` and `build` on every push and PR to `main`. The build step is what gates static generation — 64 pages are prerendered, and a page that throws during prerender is a red deploy the other four gates all report green. It runs with a deliberately unreachable `MONGODB_URI`, because `src/lib/mongodb.ts` throws at import when the variable is absent while the one page that reads the database at build time catches the connection failure. `test:ci` deliberately does **not** pass `--passWithNoTests`, and `jest.config.js` carries `coverageThreshold`s set just under the measured coverage — raise them, do not lower them to get a build out. They had drifted to within 0.12 of a point of actual, which makes the next uncovered helper a red build for a reason unrelated to the change that tripped it; keep a point or two of headroom when you raise them.
+`.github/workflows/ci.yml` runs `typecheck`, `lint`, `format:check`, `test:ci` and `build` on every push and PR to `main`. The build step is what gates static generation — 64 pages are prerendered, and a page that throws during prerender is a red deploy the other four gates all report green. That figure is the **CI** count, with no database: `generateStaticParams` for `/blog/[slug]` and `/[...slug]` returns more against a reachable Mongo, so a local build against production data legitimately prerenders more than 64. It runs with a deliberately unreachable `MONGODB_URI`, because `src/lib/mongodb.ts` throws at import when the variable is absent while the one page that reads the database at build time catches the connection failure. `test:ci` deliberately does **not** pass `--passWithNoTests`, and `jest.config.js` carries `coverageThreshold`s set just under the measured coverage — raise them, do not lower them to get a build out. They had drifted to within 0.12 of a point of actual, which makes the next uncovered helper a red build for a reason unrelated to the change that tripped it; keep a point or two of headroom when you raise them.
 
 Two jest footguns in this repo: importing `jest` from `@jest/globals` defeats SWC's `jest.mock` hoisting, so a `jest.mock("next/navigation", ...)` in such a file silently does nothing — use the global `jest`. And `nanoid` is ESM-only, so `transformIgnorePatterns` must keep transforming it.
 
@@ -52,7 +52,7 @@ Next.js 16 (App Router) · React 19 · TypeScript 5 · MongoDB/Mongoose 9 · Nex
 
 ### Routing & Pages
 
-`src/app/` uses the Next.js App Router. Public pages live at the root (`/order`, `/pricing`, `/long-term-lease`, etc.), plus a `/service-area` hub. The hub exists because the bare path was a 404 and the city pages linked only within their own region, leaving four disconnected islands.
+`src/app/` uses the Next.js App Router. Public pages live at the root (`/order`, `/pricing`, `/long-term-lease`, etc.), plus a `/service-area` hub and the `/blog` index (see **Blog** below). The hub exists because the bare path was a 404 and the city pages linked only within their own region, leaving four disconnected islands.
 
 **`src/app/[...slug]/page.tsx` is a root catch-all serving every database-backed landing page**, including the 16 `/service-area/[city]` URLs, which are now `LandingPage` documents rather than a route file (see **Landing Pages** below). Admin pages are under `src/app/admin/` and are protected by the proxy (`src/proxy.ts` — Next 16's rename of the middleware file convention). API routes are split between `src/app/api/v1/` (public) and `src/app/api/admin/` (auth-required). `/api/save-booking` (the public checkout) and `/api/cron/release-holds` sit outside both namespaces at `src/app/api/`.
 
@@ -198,6 +198,72 @@ committed, and a cache-API throw must not turn a successful save into a 500.
 
 **A path rename does not redirect the old URL.** Same gap the blog has.
 
+### Blog
+
+Admin-authored posts at `/blog/<slug>`, the pattern the landing pages were
+later modelled on. One model, `BlogPost` (`src/models/blogPost.ts`), pinned to
+the **`blogposts`** collection explicitly. `createdAt`/`updatedAt` are declared
+by hand rather than by `timestamps: true`, so anything writing a document
+outside the routes must set both.
+
+`src/lib/blog.ts` is the **zod-free, mongoose-free** shared module — statuses,
+the length limits, `SLUG_PATTERN`, `slugify`, `isSafeCoverImagePath`,
+`hasDangerousHtml`, and the serialized `BlogPostRecord` shape — imported by the
+client editor _and_ the model _and_ `validation.ts`. `src/lib/blog-posts.ts` is
+the read side, every query filtered to `status: "published"`, with `…Safe`
+variants for prerender. Its `LIST_FIELDS` is `"-__v -body"`, which is why
+`/admin/blog` re-fetches a single post before editing it.
+
+**The `pre("save")` hook does not fire on the update path.** It throws
+`PUBLISHED_WITHOUT_DATE` when a post is published with no `publishedAt`, but
+`PUT` writes through `findOneAndUpdate`, where `runValidators` runs path
+validators only — the same trap documented on `settingsUpdateSchema` and the
+landing `sections` array. The route compensates by stamping `publishedAt`
+itself, and only on the **first** publish
+(`src/app/api/admin/blog/[slug]/route.ts:121`), so unpublishing and
+republishing keeps the original date. `MODEL_RULE_MESSAGES` exists to map the
+hook's plain `Error` to a 400 on the create path, and is effectively dead code
+on `PUT` for this reason.
+
+`PUT` treats an empty string as a clear, not a value: the six `CLEARABLE`
+fields (`excerpt`, `coverImagePath`, `coverImageAlt`, `seoTitle`,
+`seoDescription`, `focusKeyword`) become `$unset` rather than `$set`. The form
+always sends all eleven fields, which is what makes that work — and what makes
+`blogPostUpdateSchema`'s "no editable fields supplied" refine unreachable from
+the UI. Both write routes raise the body cap to `BLOG_BODY_LIMIT` (256 KB),
+over `guardAdminWrite`'s 64 KB default, because a long post exceeds it.
+
+**Post bodies are authored HTML rendered with `dangerouslySetInnerHTML`** —
+same trust model as the landing pages. `hasDangerousHtml` is defense-in-depth,
+not a sanitizer; the control that matters is the admin session. Typography
+comes from plain `.blog-body` rules in `src/app/globals.css`, not
+`@tailwindcss/typography`, so a new element in a post body may simply be
+unstyled rather than broken.
+
+`/blog` and `/blog/[slug]` are both `revalidate = 60`, with
+`generateStaticParams` over the published slugs and `dynamicParams` left at its
+default — a post published after a deploy renders on demand rather than 404ing.
+**No blog route calls `revalidatePath`**, so 60 seconds is the floor on how
+fast a publish goes live. `buildArticleJsonLd` emits `BlogPosting`.
+
+**A slug rename does not redirect the old URL.** Same gap the landing pages
+have.
+
+Two constraints live only in zod and not on the model: `tags` (max 10, each max
+40 chars) and every field's `.trim()`. A write that reaches the collection
+another way — a script, a shell — satisfies neither.
+
+**Seed content.** `src/lib/blog-seed.ts` holds the three launch posts as data,
+with **no runtime imports at all**, because it is read both through Jest's
+`@/*` alias and by a throwaway `node` script that strips types but cannot
+resolve that alias. `src/lib/__tests__/blog-seed.test.ts` is the gate: it runs
+`blogPostCreateSchema`, the real `BlogPost` validators, `auditPost` and the
+pairwise duplicate check offline, and asserts each post scores **100 with
+sixteen applicable checks** — the count as well as the score, since a rule that
+started reporting `skipped` would hold the score at 100 while measuring less.
+Those documents were inserted straight into the production collection with
+`$setOnInsert`, so re-running can never overwrite an admin's edit.
+
 ### SEO Audit
 
 Two advisory scorers, one shared core. Neither blocks a save, and neither is a
@@ -311,7 +377,7 @@ page you just wrote.
 
 MongoDB via Mongoose 9. Connection is cached in `src/lib/mongodb.ts` using a global variable to avoid creating new connections on every serverless invocation.
 
-Mongoose 9 middleware takes no `next` callback: a `pre` hook signals completion by returning and failure by **throwing**. Do not reintroduce `function (next)` — it type-errors, and the model's validation would silently never run. `src/models/__tests__/schemas.test.ts` exercises the real schemas offline (`doc.validate()` needs no connection) and is what catches a hook that stops firing. Models live in `src/models/`: `rental.ts`, `thumbprint.ts`, `contact.ts`, `blackout-date.ts`, `settings.ts`, `leaseInquiry.ts`. Every model uses the `mongoose.models.X || mongoose.model(...)` guard — keep that pattern or hot reload throws `OverwriteModelError`.
+Mongoose 9 middleware takes no `next` callback: a `pre` hook signals completion by returning and failure by **throwing**. Do not reintroduce `function (next)` — it type-errors, and the model's validation would silently never run. `src/models/__tests__/schemas.test.ts` exercises the real schemas offline (`doc.validate()` needs no connection) and is what catches a hook that stops firing. Models live in `src/models/`: `rental.ts`, `thumbprint.ts`, `contact.ts`, `blackout-date.ts`, `settings.ts`, `leaseInquiry.ts`, `blogPost.ts`, `landingPage.ts`, `sharedBlock.ts`. Every model uses the `mongoose.models.X || mongoose.model(...)` guard — keep that pattern or hot reload throws `OverwriteModelError`.
 
 ### Authentication (Admin)
 
@@ -461,6 +527,9 @@ Global shared types live in `src/types/index.ts` (`MachineType`, `MixerType`, `P
 - `src/lib/api-guard.ts` / `src/lib/rate-limit.ts` — `guardPublicWrite()` for public write routes, `guardAdminWrite()` for the body cap on authenticated admin writes. `identifierFromHeaders()` is the single definition of client identity: prefer `x-vercel-forwarded-for` (platform-set), fall back to `x-forwarded-for` only for local/self-hosted. **Never key a limiter on the leftmost `x-forwarded-for` entry** — a proxy appends rather than overwrites, so that value is client-written, and using it dissolved both the public-write caps and the admin login throttle
 - `src/lib/safe-error.ts` — `safeErrorSummary()`. Log this, never `error.message`/`error.stack`: Mongoose validation and duplicate-key messages embed the offending customer values, and `removeConsole` deliberately keeps `console.error` in production
 - `src/lib/public-settings.ts` — `getPublicSettings()`, and `getPublicSettingsSafe()` for any **prerendered** page. CI builds against an unreachable `MONGODB_URI`, so an uncaught settings read during prerender is a red build the other four gates report green
+- `src/lib/blog.ts` — blog statuses, length limits, `SLUG_PATTERN`, `slugify()`, `isSafeCoverImagePath()`, `hasDangerousHtml()`. **Zod-free and mongoose-free on purpose**
+- `src/lib/blog-posts.ts` — the blog read side, published-only, all with `…Safe` variants
+- `src/lib/blog-seed.ts` — the three launch posts as data. **No runtime imports**, so bare `node` can read it
 - `src/lib/landing.ts` — section types, path helpers, `isReservedPath()`, `resolveSections()`, `defaultSection()`. **Zod-free and mongoose-free on purpose**
 - `src/lib/landing-page-data.ts` — the landing-page read side, all `…Safe`
 - `src/lib/service-area-page.ts` — `serviceAreaPageDoc()` / `serviceAreaFallbackPage()`: one function behind both the seed and the outage fallback
