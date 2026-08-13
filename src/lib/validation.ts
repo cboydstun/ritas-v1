@@ -388,7 +388,13 @@ const coverImagePathSchema = z
   .string()
   .trim()
   .max(300)
-  .refine(isSafeCoverImagePath, {
+  // The empty case is explicit because `.optional()` alone does not cover it:
+  // `""` is *present*, so the refine runs and rejects, and the admin form
+  // sends `formData.coverImagePath.trim()` unconditionally. That combination
+  // made every save without a cover image a 400 and left the `$unset` branch
+  // in the PUT route unreachable, so a cover image could never be removed.
+  // Any optional field with a refine or a `.min(1)` needs this escape.
+  .refine((value) => value === "" || isSafeCoverImagePath(value), {
     message: "Cover image must be a site-relative path such as /images/foo.jpg",
   });
 
