@@ -18,6 +18,23 @@ const eslintConfig = [
     rules: { "@typescript-eslint/no-require-imports": "off" },
   },
   {
+    // A leading underscore marks a binding that is deliberately unused. Route
+    // handlers are the case that forces it: Next fixes the signature, so a
+    // POST that reads nothing from the request still has to declare the
+    // parameter, and its own test types the argument off `Parameters<typeof
+    // POST>[0]`. Dropping the parameter to satisfy the rule would break that.
+    rules: {
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        {
+          argsIgnorePattern: "^_",
+          varsIgnorePattern: "^_",
+          caughtErrorsIgnorePattern: "^_",
+        },
+      ],
+    },
+  },
+  {
     // eslint-config-next 16 pulls eslint-plugin-react-hooks 7, which adds the
     // React Compiler rule set. These three flag 24 pre-existing sites — the
     // sync-state-from-storage-on-mount pattern, `window.location.href = ...`

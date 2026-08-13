@@ -231,6 +231,32 @@ export function countOccurrences(haystack: string, needle: string): number {
   return count;
 }
 
+/**
+ * The score formula, shared by every audit in the codebase.
+ *
+ * Flat and unweighted: the percentage of *applicable* checks that pass.
+ * `skipped` is excluded from both the numerator and the denominator, so a
+ * check that did not apply neither helps nor hurts. Errors and warnings are
+ * identical to the score and differ only in the counters and the display.
+ *
+ * Extracted so `auditPost` and `auditLandingPage` cannot drift on it — two
+ * implementations would make the two panels' numbers incomparable.
+ */
+export function summariseChecks(checks: AuditCheck[]): AuditReport {
+  const applicable = checks.filter((check) => check.severity !== "skipped");
+  const passes = applicable.filter((check) => check.severity === "pass").length;
+
+  return {
+    checks,
+    score:
+      applicable.length === 0
+        ? 0
+        : Math.round((passes / applicable.length) * 100),
+    errors: checks.filter((check) => check.severity === "error").length,
+    warnings: checks.filter((check) => check.severity === "warning").length,
+  };
+}
+
 export function auditPost(input: AuditInput): AuditReport {
   const checks: AuditCheck[] = [];
   const add = (check: AuditCheck) => checks.push(check);
@@ -720,18 +746,5 @@ export function auditPost(input: AuditInput): AuditReport {
         : "Drafts are deliberately kept out of the sitemap. Publish to include it.",
   });
 
-  /* -------------------------------- Score --------------------------------- */
-
-  const applicable = checks.filter((check) => check.severity !== "skipped");
-  const passes = applicable.filter((check) => check.severity === "pass").length;
-
-  return {
-    checks,
-    score:
-      applicable.length === 0
-        ? 0
-        : Math.round((passes / applicable.length) * 100),
-    errors: checks.filter((check) => check.severity === "error").length,
-    warnings: checks.filter((check) => check.severity === "warning").length,
-  };
+  return summariseChecks(checks);
 }

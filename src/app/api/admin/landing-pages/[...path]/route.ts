@@ -29,6 +29,7 @@ const CLEARABLE = [
   "seoTitle",
   "seoDescription",
   "ogImagePath",
+  "focusKeyword",
   "serviceAreaName",
 ] as const;
 

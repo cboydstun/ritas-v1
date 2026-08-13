@@ -21,7 +21,7 @@ import { revalidateLandingPath } from "@/lib/landing-revalidate";
  * it would win route precedence over the `[...path]` catch-all and make a
  * landing page at `/seed` permanently unreachable through the admin API.
  */
-export async function POST(request: NextRequest) {
+export async function POST(_request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
     if (!session || session.user?.role !== "admin") {

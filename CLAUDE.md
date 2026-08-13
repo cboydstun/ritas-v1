@@ -20,7 +20,7 @@ npm run test:ci      # Jest in CI mode with coverage
 
 Run a single test file: `npx jest src/components/order/steps/__tests__/SomeTest.test.tsx`
 
-`.github/workflows/ci.yml` runs `typecheck`, `lint`, `format:check`, `test:ci` and `build` on every push and PR to `main`. The build step is what gates static generation — 62 pages are prerendered, and a page that throws during prerender is a red deploy the other four gates all report green. It runs with a deliberately unreachable `MONGODB_URI`, because `src/lib/mongodb.ts` throws at import when the variable is absent while the one page that reads the database at build time catches the connection failure. `test:ci` deliberately does **not** pass `--passWithNoTests`, and `jest.config.js` carries `coverageThreshold`s set just under the measured coverage — raise them, do not lower them to get a build out. They had drifted to within 0.12 of a point of actual, which makes the next uncovered helper a red build for a reason unrelated to the change that tripped it; keep a point or two of headroom when you raise them.
+`.github/workflows/ci.yml` runs `typecheck`, `lint`, `format:check`, `test:ci` and `build` on every push and PR to `main`. The build step is what gates static generation — 64 pages are prerendered, and a page that throws during prerender is a red deploy the other four gates all report green. It runs with a deliberately unreachable `MONGODB_URI`, because `src/lib/mongodb.ts` throws at import when the variable is absent while the one page that reads the database at build time catches the connection failure. `test:ci` deliberately does **not** pass `--passWithNoTests`, and `jest.config.js` carries `coverageThreshold`s set just under the measured coverage — raise them, do not lower them to get a build out. They had drifted to within 0.12 of a point of actual, which makes the next uncovered helper a red build for a reason unrelated to the change that tripped it; keep a point or two of headroom when you raise them.
 
 Two jest footguns in this repo: importing `jest` from `@jest/globals` defeats SWC's `jest.mock` hoisting, so a `jest.mock("next/navigation", ...)` in such a file silently does nothing — use the global `jest`. And `nanoid` is ESM-only, so `transformIgnorePatterns` must keep transforming it.
 
@@ -34,7 +34,11 @@ Jest 30 renamed `--testPathPattern` to `--testPathPatterns`. `test:machine` carr
 
 `react-hooks/set-state-in-effect`, `react-hooks/immutability` and `react-hooks/purity` (new in eslint-plugin-react-hooks 7) are set to **warn**. The triage is done: 24 warnings became 18, and the `purity` and `immutability` classes are gone. Four were genuine and were fixed (`OrderFormTracker` held two values in state that are never rendered; `DateSelectionStep` mirrored the parent's dates and synced them back with an effect; `CreateOrderModal` set `price` unconditionally). Six were an effect calling a `const` fetcher declared below it — the effects moved, they were not suppressed. The one true false positive, `ReviewStep`'s `window.location.href`, carries a targeted disable and the reason.
 
-The remaining 18 are all `set-state-in-effect` and all benign: canonical `mounted` hydration guards, `setCurrentPage(1)` on a filter change, and conditionally-mounted form initialisation. **None loops, and there is no in-place state mutation anywhere in the set.** Do not add blanket disables to make the number zero.
+The remaining warnings are all `set-state-in-effect` and all benign: canonical `mounted` hydration guards, a fetch-on-mount that populates an admin list, `setCurrentPage(1)` on a filter change, and conditionally-mounted form initialisation. **None loops, and there is no in-place state mutation anywhere in the set.** Do not add blanket disables to make the number zero.
+
+The count was 18 at triage and is **22** now — the blog and landing-page admin screens each added a fetch-on-mount list page of the same benign shape. Treat the number as a ratchet you check against, not a constant: `npm run lint` must stay at 0 errors, and a new warning outside that one pattern is worth reading before it is accepted.
+
+`@typescript-eslint/no-unused-vars` is configured with the underscore convention (`argsIgnorePattern: "^_"`). Next fixes a route handler's signature, so a `POST` that reads nothing from the request still has to declare the parameter — `service-area-seed` names it `_request`. Dropping the parameter instead would break its own test, which types the argument off `Parameters<typeof POST>[0]`.
 
 **Styling is Tailwind 4.** There is no `tailwind.config.ts` — the theme lives in an `@theme` block in `src/app/globals.css`, and `postcss.config.js` loads `@tailwindcss/postcss` (nesting and vendor prefixing are built in, so there is no `autoprefixer`). Add a colour or keyframe by adding a `--color-*` / `--animate-*` custom property there. The dark variant is `@custom-variant dark (&:where(.dark, .dark *))`, matching the class next-themes puts on `<html>`.
 
@@ -170,7 +174,8 @@ it would make taking a page down impossible. `src/lib/service-area-page.ts`
 builds both the seed and the fallback from one function, so they cannot drift.
 
 `sitemap.ts` lists the published paths plus any service-area path with no
-stored document, so it advertises exactly what returns 200.
+stored document, so it advertises exactly what returns 200. **It carries
+`export const revalidate = 3600` and must keep it** — see **Sitemap** below.
 
 **Draft preview** is `src/app/admin/preview/[...slug]/page.tsx`,
 `dynamic = "force-dynamic"`, rendering the same `SectionRenderer`. It is under
@@ -192,6 +197,111 @@ page into the error boundary. Admin writes call `revalidatePath` through
 committed, and a cache-API throw must not turn a successful save into a 500.
 
 **A path rename does not redirect the old URL.** Same gap the blog has.
+
+### SEO Audit
+
+Two advisory scorers, one shared core. Neither blocks a save, and neither is a
+security control — `hasDangerousHtml` remains the only thing that matters on
+authored rich text.
+
+- `src/lib/seo-audit.ts` — `auditPost()` for blog posts, plus the primitives
+  everything else reuses: the `AuditCheck` / `AuditReport` / `AuditGroup` /
+  `AuditSeverity` shapes, every named threshold (`TITLE_MAX`, `DESCRIPTION_MIN`,
+  `CONTENT_MIN_WORDS`, `DUPLICATE_SIMILARITY_MAX`, …), the regex HTML
+  extractors, `shingles`/`similarity`, and `summariseChecks()`.
+- `src/lib/landing-audit.ts` — `auditLandingPage()` and `sectionsToHtml()`.
+- `src/components/admin/SeoAuditPanel.tsx` renders either report. It is generic
+  over `AuditReport`; the only thing that varies is the optional `checkLabel`
+  on its server-check button.
+
+**Both are pure, synchronous, zod-free and mongoose-free**, the same discipline
+`blog.ts` and `landing.ts` keep, because the admin editor is a client component
+and the audit routes are server-side and both must run the _same_ code. Two
+implementations would let the live score and the saved score disagree, which is
+worse than having no score at all. For the same reason `summariseChecks()` was
+extracted: one score formula, shared — the percentage of non-`skipped` checks
+that pass, with `skipped` outside both numerator and denominator.
+
+Each editor derives its report with **`useMemo`, never an effect** — an effect
+is a `set-state-in-effect` warning and puts the score a render behind what the
+author just typed. Thresholds are exported constants, and the tests assert
+boundaries against those constants rather than literals, so a threshold and its
+message cannot drift apart. `auditPost({})` and `auditLandingPage({})` both
+return the _full_ check list; a check that does not apply reports `skipped` so
+the panel never reflows.
+
+**A landing page is sections, not a document.** `sectionsToHtml()` renders a
+synthetic approximation so the `seo-audit` extractors work unchanged: a hero
+heading becomes the `<h1>` `SectionRenderer` will actually render, every other
+section heading an `<h2>`, feature and FAQ items `<h3>`, and each CTA an
+anchor. `pricingCards` and `nearbyAreas` contribute their heading and nothing
+else — they store no content and resolve at render from `Settings` and
+`SERVICE_AREAS`, so counting what they _would_ render would make the score
+depend on data the editor does not have. `blockRef` contributes nothing.
+
+The checks that need the other documents live behind one button each:
+
+- `POST /api/admin/blog-audit` → the closest other post by similarity.
+- `POST /api/admin/landing-audit` → the closest other page, a `seoTitle` or
+  `seoDescription` another page already claims, the published landing paths
+  (so an internal link pointing at a 404 is visible), and the published shared
+  block slugs (so a `blockRef` to a missing _or draft_ block is caught — either
+  renders as nothing, with no error anywhere).
+
+Both are POST, because the compared text is unsaved draft content: too big for
+a query string and not something to put in a URL that ends up in logs. Both
+return **raw facts only** — every threshold stays in the audit module, so the
+editor and any future caller interpret them identically. Both are fired on
+demand, not per keystroke.
+
+**Neither route may be nested under the resource it audits.** A static segment
+outranks a dynamic one in Next's matcher, so `blog/audit` would shadow
+`blog/[slug]` for a post slugged "audit", and `landing-pages/audit` would
+shadow the `[...path]` catch-all outright. Hence `blog-audit` and
+`landing-audit` as siblings.
+
+Landing-page checks worth knowing about, because each encodes a real trap:
+
+- `meta-description-length` **errors** on empty. `generateMetadata` in
+  `src/app/[...slug]/page.tsx` has no excerpt to fall back on, so the page
+  silently ships a blank `<meta name="description">` and a blank
+  `og:description`.
+- `structured-data` **errors** on `schemaType: "FAQPage"` with no `faq`
+  section: `buildFaqJsonLd` returns null _and_ no WebPage node is emitted, so
+  the page gets no structured data at all. It warns on `Service` with no
+  `serviceAreaName` (no `areaServed`) or no `pricingCards` (no `offers`).
+- `heading-structure` errors on a second `hero` or an `<h1>` inside rich text —
+  both render a second H1.
+- `path-quality` errors on a reserved path, which would save and never render.
+
+`focusKeyword` is optional on both `BlogPost` and `LandingPage`, deliberately
+unindexed on each: nothing queries it, it is only read back with the document
+it belongs to. Blank means the keyword checks report `skipped` rather than
+failing.
+
+### Sitemap
+
+`src/app/sitemap.ts` reads blog slugs and landing paths from the database, so
+it carries **`export const revalidate = 3600`**. Without it Next classes the
+route as fully static, prerenders it once at build and freezes that list: every
+post or page published afterwards returns 200 and is simply never advertised.
+Nothing fails — no error, no red build, no 404 — the URLs are just absent from
+the XML, so the symptom is "Google never found it" weeks later. Three published
+blog posts sat unlisted exactly that way before the export was added.
+
+The general rule, and it is the same one the settings-reading pages already
+follow: **a route that reads the database at render time must export
+`revalidate` or `dynamic`.** `src/app/__tests__/sitemap-revalidate.test.ts`
+pins this for `sitemap.ts` and for every DB-backed page — add a new one to the
+`DB_BACKED_ROUTES` list there. `src/app/page.tsx` is deliberately exempt: it
+reads only `getReviewSummary`, whose `fetch` carries its own `revalidate`.
+
+**Publishing content does not refresh the sitemap immediately.** The blog admin
+routes call no `revalidatePath` at all, so a new post appears at `/blog/<slug>`
+on the next ISR pass (60s) and in the sitemap within the hour. That is the
+intended behaviour; do not add a `revalidatePath` to the sitemap route
+expecting it to help, because the path Next caches is `/sitemap.xml`, not the
+page you just wrote.
 
 ### Long-Term Lease Flow
 
@@ -354,6 +464,8 @@ Global shared types live in `src/types/index.ts` (`MachineType`, `MixerType`, `P
 - `src/lib/landing.ts` — section types, path helpers, `isReservedPath()`, `resolveSections()`, `defaultSection()`. **Zod-free and mongoose-free on purpose**
 - `src/lib/landing-page-data.ts` — the landing-page read side, all `…Safe`
 - `src/lib/service-area-page.ts` — `serviceAreaPageDoc()` / `serviceAreaFallbackPage()`: one function behind both the seed and the outage fallback
+- `src/lib/seo-audit.ts` — `auditPost()`, `summariseChecks()`, and the audit primitives both scorers share. **Zod-free and mongoose-free on purpose**
+- `src/lib/landing-audit.ts` — `auditLandingPage()`, `sectionsToHtml()`. Same contract
 - `src/lib/landing-jsonld.ts` — `buildServiceJsonLd()`, `buildWebPageJsonLd()`, `buildFaqJsonLd()`
 - `src/lib/analytics.ts` — `trackEvent()`, the only sanctioned path to `window.gtag`
 - `src/lib/site.ts` — `SITE_URL`, `BUSINESS_ID`, the business phone constants, and `breadcrumbJsonLd()`

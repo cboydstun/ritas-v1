@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { MAX_FOCUS_KEYWORD_LENGTH } from "@/lib/blog";
 import {
   LANDING_STATUSES,
   MAX_DESCRIPTION_LENGTH,
@@ -62,6 +63,13 @@ const landingPageSchema = new mongoose.Schema(
       maxlength: MAX_DESCRIPTION_LENGTH,
     },
     ogImagePath: { type: String, trim: true },
+    // Scored by src/lib/landing-audit.ts. Deliberately unindexed: nothing
+    // queries on it, it is only ever read back with the page it belongs to.
+    focusKeyword: {
+      type: String,
+      trim: true,
+      maxlength: MAX_FOCUS_KEYWORD_LENGTH,
+    },
     /**
      * Explicit rather than derived from the path. Deriving ancestor labels
      * would cost a database read per segment, and the seed can fill these in
@@ -147,6 +155,7 @@ export type LandingPageDocument = mongoose.Document & {
   seoTitle?: string;
   seoDescription?: string;
   ogImagePath?: string;
+  focusKeyword?: string;
   breadcrumbs: { name: string; path: string }[];
   sections: LandingSection[];
   schemaType: SchemaType;

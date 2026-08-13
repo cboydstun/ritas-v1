@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   LANDING_STATUSES,
   MAX_DESCRIPTION_LENGTH,
@@ -11,8 +11,15 @@ import {
   type LandingPageRecord,
   type LandingSection,
 } from "@/lib/landing";
+import { MAX_FOCUS_KEYWORD_LENGTH } from "@/lib/blog";
+import {
+  auditLandingPage,
+  sectionsToHtml,
+  type LandingCrossPageFacts,
+} from "@/lib/landing-audit";
 import { inputClass, labelClass } from "@/components/admin/form-styles";
 import SectionListEditor from "@/components/admin/SectionListEditor";
+import SeoAuditPanel from "@/components/admin/SeoAuditPanel";
 
 interface LandingPageFormProps {
   page?: LandingPageRecord | null;
@@ -26,6 +33,7 @@ interface FormState {
   seoTitle: string;
   seoDescription: string;
   ogImagePath: string;
+  focusKeyword: string;
   serviceAreaName: string;
   schemaType: string;
   status: string;
@@ -37,6 +45,7 @@ const EMPTY: FormState = {
   seoTitle: "",
   seoDescription: "",
   ogImagePath: "",
+  focusKeyword: "",
   serviceAreaName: "",
   schemaType: "WebPage",
   status: "draft",
@@ -50,6 +59,7 @@ function initialState(page?: LandingPageRecord | null): FormState {
     seoTitle: page.seoTitle ?? "",
     seoDescription: page.seoDescription ?? "",
     ogImagePath: page.ogImagePath ?? "",
+    focusKeyword: page.focusKeyword ?? "",
     serviceAreaName: page.serviceAreaName ?? "",
     schemaType: page.schemaType ?? "WebPage",
     status: page.status,
@@ -82,6 +92,65 @@ export default function LandingPageForm({
   // An existing page starts locked: deriving a rename from a title edit would
   // silently move a URL that is already indexed.
   const [pathLocked, setPathLocked] = useState(Boolean(page));
+  // `undefined` means "not checked yet" and renders the four cross-page rows
+  // as skipped. There is no `null` state to distinguish: the route always
+  // answers with a full set of facts, even when they are all empty.
+  const [crossPage, setCrossPage] = useState<LandingCrossPageFacts | undefined>(
+    undefined,
+  );
+  const [checkingCrossPage, setCheckingCrossPage] = useState(false);
+
+  /**
+   * Derived with useMemo rather than computed into state by an effect. An
+   * effect here would be a `set-state-in-effect` warning and, worse, a render
+   * behind whatever the admin just typed.
+   */
+  const report = useMemo(
+    () =>
+      auditLandingPage({
+        path: formData.path,
+        title: formData.title,
+        seoTitle: formData.seoTitle,
+        seoDescription: formData.seoDescription,
+        ogImagePath: formData.ogImagePath,
+        focusKeyword: formData.focusKeyword,
+        schemaType: formData.schemaType,
+        serviceAreaName: formData.serviceAreaName,
+        breadcrumbs: page?.breadcrumbs,
+        sections,
+        status: formData.status,
+        crossPage,
+      }),
+    [formData, sections, page?.breadcrumbs, crossPage],
+  );
+
+  // On demand, not per keystroke: this POSTs the whole page text and reads
+  // every other landing page, which is not something to do per character.
+  const handleCheckCrossPage = async () => {
+    setCheckingCrossPage(true);
+    setError(null);
+    try {
+      const response = await fetch("/api/admin/landing-audit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          path: page?.path,
+          text: sectionsToHtml(sections),
+          seoTitle: formData.seoTitle || formData.title,
+          seoDescription: formData.seoDescription,
+        }),
+      });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.message || "Failed to check the other pages");
+      }
+      setCrossPage((await response.json()) as LandingCrossPageFacts);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to check");
+    } finally {
+      setCheckingCrossPage(false);
+    }
+  };
 
   const setField = (patch: Partial<FormState>) =>
     setFormData((previous) => ({ ...previous, ...patch }));
@@ -110,6 +179,7 @@ export default function LandingPageForm({
         "seoTitle",
         "seoDescription",
         "ogImagePath",
+        "focusKeyword",
         "serviceAreaName",
       ] as const) {
         const value = formData[field].trim();
@@ -203,6 +273,13 @@ export default function LandingPageForm({
         <SectionListEditor sections={sections} onChange={setSections} />
       </div>
 
+      <SeoAuditPanel
+        report={report}
+        onCheckDuplicates={handleCheckCrossPage}
+        checkingDuplicates={checkingCrossPage}
+        checkLabel="Check against other pages"
+      />
+
       <details className="rounded-lg border border-gray-200 dark:border-gray-700 p-3">
         <summary className="cursor-pointer text-sm font-medium text-gray-700 dark:text-gray-300">
           Search engines and structured data
@@ -238,6 +315,18 @@ export default function LandingPageForm({
               value={formData.seoDescription}
               onChange={(e) => setField({ seoDescription: e.target.value })}
             />
+          </div>
+          <div>
+            <label className={labelClass}>Focus keyword</label>
+            <input
+              className={inputClass}
+              maxLength={MAX_FOCUS_KEYWORD_LENGTH}
+              value={formData.focusKeyword}
+              onChange={(e) => setField({ focusKeyword: e.target.value })}
+            />
+            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+              Leave blank to skip the keyword checks rather than fail them.
+            </p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>

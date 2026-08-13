@@ -184,6 +184,8 @@ export interface LandingPageRecord {
   seoTitle?: string;
   seoDescription?: string;
   ogImagePath?: string;
+  /** Advisory only — the landing audit's keyword checks skip without it. */
+  focusKeyword?: string;
   breadcrumbs?: Breadcrumb[];
   sections: LandingSection[];
   schemaType: SchemaType;

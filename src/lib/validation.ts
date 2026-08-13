@@ -668,6 +668,7 @@ const landingPageFields = {
       message: "OG image must be a site-relative path such as /og-image.jpg",
     }),
   ),
+  focusKeyword: z.string().trim().max(MAX_FOCUS_KEYWORD_LENGTH).optional(),
   // Breadcrumb targets are real routes — `/service-area` among them — so they
   // are checked as safe links, not as landing paths, which would reject every
   // reserved ancestor.

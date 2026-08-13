@@ -12,6 +12,12 @@ interface SeoAuditPanelProps {
   /** Absent while the duplicate check has not been run. */
   onCheckDuplicates?: () => void;
   checkingDuplicates?: boolean;
+  /**
+   * What the button offers to do. The landing audit's server round trip
+   * fetches more than duplicates, and a button that under-describes what it
+   * is about to check reads as a different, missing feature.
+   */
+  checkLabel?: string;
 }
 
 const GROUP_ORDER: AuditGroup[] = [
@@ -85,6 +91,7 @@ export default function SeoAuditPanel({
   report,
   onCheckDuplicates,
   checkingDuplicates = false,
+  checkLabel = "Check for duplicates",
 }: SeoAuditPanelProps) {
   return (
     <section
@@ -118,7 +125,7 @@ export default function SeoAuditPanel({
           disabled={checkingDuplicates}
           className="mb-4 text-sm text-teal hover:underline disabled:opacity-60"
         >
-          {checkingDuplicates ? "Checking…" : "Check for duplicates"}
+          {checkingDuplicates ? "Checking…" : checkLabel}
         </button>
       )}
 
