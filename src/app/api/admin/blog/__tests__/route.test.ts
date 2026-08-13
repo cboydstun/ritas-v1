@@ -187,6 +187,33 @@ describe("admin blog collection route", () => {
       expect(createdDocs).toHaveLength(0);
     });
 
+    // Regression for f4a2f3d. `coverImagePathSchema` was `.optional()` with a
+    // `.refine()`, and `.optional()` permits only `undefined` — an empty
+    // string is *present*, so the refine ran and rejected it. The form sends
+    // `formData.coverImagePath.trim()` unconditionally, so every save without
+    // a cover image was a 400. The original suite missed it by asserting only
+    // that a *remote* path is rejected and by omitting the field entirely
+    // rather than sending "".
+    it("accepts an empty cover image path from a blank form field", async () => {
+      const response = await POST(
+        asRequest(validBody({ coverImagePath: "", coverImageAlt: "" })),
+      );
+
+      expect(response.status).toBe(201);
+    });
+
+    it("accepts an empty focus keyword", async () => {
+      const response = await POST(asRequest(validBody({ focusKeyword: "" })));
+
+      expect(response.status).toBe(201);
+    });
+
+    it("stores a focus keyword when one is given", async () => {
+      await POST(asRequest(validBody({ focusKeyword: "margarita machine" })));
+
+      expect(createdDocs[0].focusKeyword).toBe("margarita machine");
+    });
+
     it("answers 409 when the slug is taken", async () => {
       (BlogPost as unknown as jest.Mock).mockImplementationOnce(function (
         this: Record<string, unknown>,

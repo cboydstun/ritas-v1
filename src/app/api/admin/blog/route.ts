@@ -82,6 +82,7 @@ export async function POST(request: NextRequest) {
       status,
       seoTitle,
       seoDescription,
+      focusKeyword,
     } = parsed.data;
 
     await dbConnect();
@@ -103,6 +104,7 @@ export async function POST(request: NextRequest) {
       author: session.user?.name || "SATX Ritas",
       seoTitle,
       seoDescription,
+      focusKeyword,
     });
 
     await post.save();

@@ -1,14 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   BLOG_STATUSES,
   MAX_BODY_LENGTH,
   MAX_EXCERPT_LENGTH,
+  MAX_FOCUS_KEYWORD_LENGTH,
   MAX_TITLE_LENGTH,
   slugify,
   type BlogPostRecord,
 } from "@/lib/blog";
+import { auditPost } from "@/lib/seo-audit";
+import SeoAuditPanel from "@/components/admin/SeoAuditPanel";
 
 interface BlogPostFormProps {
   post?: BlogPostRecord | null;
@@ -27,6 +30,7 @@ interface FormState {
   status: string;
   seoTitle: string;
   seoDescription: string;
+  focusKeyword: string;
 }
 
 const EMPTY: FormState = {
@@ -40,6 +44,7 @@ const EMPTY: FormState = {
   status: "draft",
   seoTitle: "",
   seoDescription: "",
+  focusKeyword: "",
 };
 
 const inputClass =
@@ -61,6 +66,58 @@ export default function BlogPostForm({
   // Editing an existing post counts as hand-authored from the outset — a
   // published slug is a URL other people may already have linked to.
   const [slugLocked, setSlugLocked] = useState(false);
+  // `undefined` means "not checked yet" and renders the duplicate row as
+  // skipped; `null` means checked and clean. The distinction is the whole
+  // reason this is not just a boolean.
+  const [duplicate, setDuplicate] = useState<
+    { slug: string; similarity: number } | null | undefined
+  >(undefined);
+  const [checkingDuplicates, setCheckingDuplicates] = useState(false);
+
+  /**
+   * Derived from state with useMemo rather than computed into state by an
+   * effect. An effect here would be a `set-state-in-effect` warning and, worse,
+   * a render behind whatever the author just typed.
+   */
+  const report = useMemo(
+    () =>
+      auditPost({
+        title: formData.title,
+        seoTitle: formData.seoTitle,
+        excerpt: formData.excerpt,
+        seoDescription: formData.seoDescription,
+        slug: formData.slug,
+        body: formData.body,
+        coverImagePath: formData.coverImagePath,
+        coverImageAlt: formData.coverImageAlt,
+        focusKeyword: formData.focusKeyword,
+        status: formData.status,
+        publishedAt: post?.publishedAt ?? null,
+        duplicate,
+      }),
+    [formData, post?.publishedAt, duplicate],
+  );
+
+  // On demand rather than per keystroke: this POSTs the whole body, and
+  // running it on every character would hammer the route for no benefit.
+  const handleCheckDuplicates = async () => {
+    setCheckingDuplicates(true);
+    try {
+      const response = await fetch("/api/admin/blog-audit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug: post?.slug, body: formData.body }),
+      });
+      if (!response.ok) throw new Error("Failed to check for duplicates");
+
+      const data = await response.json();
+      setDuplicate(data.duplicate ?? null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Duplicate check failed");
+    } finally {
+      setCheckingDuplicates(false);
+    }
+  };
 
   useEffect(() => {
     if (!post) {
@@ -80,6 +137,7 @@ export default function BlogPostForm({
       status: post.status,
       seoTitle: post.seoTitle ?? "",
       seoDescription: post.seoDescription ?? "",
+      focusKeyword: post.focusKeyword ?? "",
     });
     setSlugLocked(true);
   }, [post]);
@@ -125,6 +183,7 @@ export default function BlogPostForm({
       status: formData.status,
       seoTitle: formData.seoTitle.trim(),
       seoDescription: formData.seoDescription.trim(),
+      focusKeyword: formData.focusKeyword.trim(),
     };
 
     try {
@@ -204,6 +263,25 @@ export default function BlogPostForm({
       </div>
 
       <div>
+        <label className={labelClass} htmlFor="focusKeyword">
+          Focus keyword
+        </label>
+        <input
+          id="focusKeyword"
+          name="focusKeyword"
+          value={formData.focusKeyword}
+          onChange={handleInputChange}
+          maxLength={MAX_FOCUS_KEYWORD_LENGTH}
+          placeholder="margarita machine rental san antonio"
+          className={inputClass}
+        />
+        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+          The term this post should rank for. Leave blank to skip the keyword
+          checks rather than fail them.
+        </p>
+      </div>
+
+      <div>
         <label className={labelClass} htmlFor="excerpt">
           Excerpt
         </label>
@@ -252,6 +330,12 @@ export default function BlogPostForm({
           />
         )}
       </div>
+
+      <SeoAuditPanel
+        report={report}
+        onCheckDuplicates={handleCheckDuplicates}
+        checkingDuplicates={checkingDuplicates}
+      />
 
       <div className="grid gap-4 md:grid-cols-2">
         <div>

@@ -196,3 +196,33 @@ describe("Content-Security-Policy", () => {
     ).toBe(false);
   });
 });
+
+/**
+ * The "HTTPS usage" line on the blog SEO checklist.
+ *
+ * This is a property of the deployment, not of any individual post, so it is
+ * asserted once here rather than faked as a per-post check in
+ * `src/lib/seo-audit.ts` that could only ever return the same answer. Neither
+ * header was covered before.
+ */
+describe("HTTPS enforcement", () => {
+  it("sends HSTS with a meaningful max-age", () => {
+    const hsts = securityHeaders.find(
+      (h) => h.key === "Strict-Transport-Security",
+    );
+
+    expect(hsts).toBeDefined();
+    const maxAge = /max-age=(\d+)/.exec(hsts!.value);
+    expect(maxAge).not.toBeNull();
+    // Under a year and the preload lists will not take it.
+    expect(Number(maxAge![1])).toBeGreaterThanOrEqual(31536000);
+  });
+
+  it("tells the browser to upgrade any insecure subresource", () => {
+    expect(cspValue()).toContain("upgrade-insecure-requests");
+  });
+
+  it("does not permit a plain-http source anywhere in the CSP", () => {
+    expect(cspValue()).not.toMatch(/\bhttp:\/\//);
+  });
+});

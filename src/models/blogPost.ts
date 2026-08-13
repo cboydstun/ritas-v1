@@ -3,6 +3,7 @@ import {
   BLOG_STATUSES,
   MAX_BODY_LENGTH,
   MAX_EXCERPT_LENGTH,
+  MAX_FOCUS_KEYWORD_LENGTH,
   MAX_SLUG_LENGTH,
   MAX_TITLE_LENGTH,
   SLUG_PATTERN,
@@ -42,6 +43,13 @@ const blogPostSchema = new mongoose.Schema(
     author: { type: String, default: "SATX Ritas" },
     seoTitle: { type: String, trim: true, maxlength: MAX_TITLE_LENGTH },
     seoDescription: { type: String, trim: true, maxlength: MAX_EXCERPT_LENGTH },
+    // Scored by src/lib/seo-audit.ts. Deliberately unindexed: nothing queries
+    // on it, it is only ever read back with the document it belongs to.
+    focusKeyword: {
+      type: String,
+      trim: true,
+      maxlength: MAX_FOCUS_KEYWORD_LENGTH,
+    },
     createdAt: { type: Date, default: Date.now },
     updatedAt: { type: Date, default: Date.now },
   },
@@ -107,6 +115,7 @@ export type BlogPostDocument = mongoose.Document & {
   author: string;
   seoTitle?: string;
   seoDescription?: string;
+  focusKeyword?: string;
   createdAt: Date;
   updatedAt: Date;
 };

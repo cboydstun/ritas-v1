@@ -19,6 +19,7 @@ export const MAX_EXCERPT_LENGTH = 300;
 export const MAX_BODY_LENGTH = 100_000;
 export const MAX_TAGS = 10;
 export const MAX_TAG_LENGTH = 40;
+export const MAX_FOCUS_KEYWORD_LENGTH = 80;
 
 /**
  * Lowercase words joined by single hyphens. Anchored, and it rejects a
@@ -45,6 +46,8 @@ export interface BlogPostRecord {
   author?: string;
   seoTitle?: string;
   seoDescription?: string;
+  /** The term the SEO audit scores placement and density against. */
+  focusKeyword?: string;
   createdAt: Date | string;
   updatedAt: Date | string;
 }

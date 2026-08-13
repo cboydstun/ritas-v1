@@ -15,6 +15,7 @@ import {
   MAX_SLUG_LENGTH,
   MAX_TAGS,
   MAX_TAG_LENGTH,
+  MAX_FOCUS_KEYWORD_LENGTH,
   MAX_TITLE_LENGTH,
   SLUG_PATTERN,
   hasDangerousHtml,
@@ -429,6 +430,7 @@ const blogPostFields = {
   status: z.enum(BLOG_STATUSES).optional(),
   seoTitle: z.string().trim().max(MAX_TITLE_LENGTH).optional(),
   seoDescription: z.string().trim().max(MAX_EXCERPT_LENGTH).optional(),
+  focusKeyword: z.string().trim().max(MAX_FOCUS_KEYWORD_LENGTH).optional(),
 };
 
 export const blogPostCreateSchema = z.object(blogPostFields).strip();

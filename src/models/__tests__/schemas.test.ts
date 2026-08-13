@@ -210,6 +210,18 @@ describe("BlogPost schema", () => {
     ).rejects.toThrow();
   });
 
+  it("accepts a focus keyword", async () => {
+    await expect(
+      new BlogPost(validPost({ focusKeyword: "margarita machine" })).validate(),
+    ).resolves.toBeUndefined();
+  });
+
+  it("rejects a focus keyword over the length bound", async () => {
+    await expect(
+      new BlogPost(validPost({ focusKeyword: "x".repeat(81) })).validate(),
+    ).rejects.toThrow();
+  });
+
   it("defaults a new post to draft", () => {
     const post = validPost() as { status?: string };
     delete post.status;

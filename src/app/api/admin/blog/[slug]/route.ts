@@ -22,6 +22,7 @@ const CLEARABLE = [
   "coverImageAlt",
   "seoTitle",
   "seoDescription",
+  "focusKeyword",
 ] as const;
 
 async function requireAdmin() {
