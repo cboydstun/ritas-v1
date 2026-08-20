@@ -47,6 +47,18 @@ export const securityHeaders = [
     // appends fmt=4 — as JavaScript injected via a <script> element, so
     // doubleclick belongs in script-src as well as img-src.
     //
+    // googlesyndication.com is where a Display, remarketing or Performance Max
+    // tag loads from (pagead2.googlesyndication.com, and tpc. for its frames).
+    // It was absent from every directive, so the first non-Search campaign
+    // would have been refused outright with no error on our side — the exact
+    // shape of the two outages above, discovered only by a missing number in a
+    // Google report weeks later. Listed before it is needed, not after.
+    //
+    // googleadservices.com and google.com are listed as wildcard *and* bare
+    // host now, not just www.: Ads has already moved conversion.js between
+    // www. and pagead. subdomains, and a subdomain we do not enumerate is
+    // indistinguishable from a host that does not exist.
+    //
     // gstatic.com serves the Google Ads call-tracking loader
     // (www.gstatic.com/wcm/loader.js, Website Call Metrics — the phone-number
     // swap). Nothing in this repo requests it; the GTM container injects it at
@@ -55,12 +67,12 @@ export const securityHeaders = [
     // where that loader reports calls.
     value: `
       default-src 'self';
-      script-src 'self' 'unsafe-inline' https://*.google-analytics.com https://google-analytics.com https://*.googletagmanager.com https://*.analytics.google.com https://analytics.google.com https://www.googleadservices.com https://*.gstatic.com https://*.doubleclick.net https://doubleclick.net https://www.google.com;
+      script-src 'self' 'unsafe-inline' https://*.google-analytics.com https://google-analytics.com https://*.analytics.google.com https://analytics.google.com https://*.googletagmanager.com https://googletagmanager.com https://*.googleadservices.com https://googleadservices.com https://*.googlesyndication.com https://googlesyndication.com https://*.doubleclick.net https://doubleclick.net https://*.google.com https://google.com https://*.gstatic.com;
       style-src 'self' 'unsafe-inline';
-      img-src 'self' data: https://*.google-analytics.com https://google-analytics.com https://*.googletagmanager.com https://*.analytics.google.com https://analytics.google.com https://www.google.com https://*.doubleclick.net https://doubleclick.net https://www.googleadservices.com https://*.gstatic.com;
+      img-src 'self' data: https://*.google-analytics.com https://google-analytics.com https://*.analytics.google.com https://analytics.google.com https://*.googletagmanager.com https://googletagmanager.com https://*.googleadservices.com https://googleadservices.com https://*.googlesyndication.com https://googlesyndication.com https://*.doubleclick.net https://doubleclick.net https://*.google.com https://google.com https://*.gstatic.com;
       font-src 'self';
-      connect-src 'self' https://*.google-analytics.com https://google-analytics.com https://*.googletagmanager.com https://*.analytics.google.com https://analytics.google.com https://*.doubleclick.net https://doubleclick.net https://www.googleadservices.com https://www.google.com https://*.gstatic.com;
-      frame-src 'self' https://*.googletagmanager.com https://www.google.com https://*.doubleclick.net https://www.googleadservices.com https://*.gstatic.com;
+      connect-src 'self' https://*.google-analytics.com https://google-analytics.com https://*.analytics.google.com https://analytics.google.com https://*.googletagmanager.com https://googletagmanager.com https://*.googleadservices.com https://googleadservices.com https://*.googlesyndication.com https://googlesyndication.com https://*.doubleclick.net https://doubleclick.net https://*.google.com https://google.com https://*.gstatic.com;
+      frame-src 'self' https://*.googletagmanager.com https://googletagmanager.com https://*.googleadservices.com https://googleadservices.com https://*.googlesyndication.com https://googlesyndication.com https://*.doubleclick.net https://doubleclick.net https://*.google.com https://google.com https://*.gstatic.com;
       object-src 'none';
       base-uri 'self';
       form-action 'self';

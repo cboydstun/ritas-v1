@@ -148,6 +148,49 @@ describe("Content-Security-Policy", () => {
         ),
       ).toBe(true);
     });
+
+    // Search-only campaigns never touch this host, which is why it went
+    // unlisted. The first Display, remarketing or Performance Max campaign
+    // does, and a refused tag reports nothing anywhere — the campaign simply
+    // measures zero.
+    it("allows the Display/PMax tag to load", () => {
+      expect(
+        permits(
+          "script-src",
+          "https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js",
+        ),
+      ).toBe(true);
+      expect(
+        permits(
+          "img-src",
+          "https://pagead2.googlesyndication.com/pagead/1p-user-list/",
+        ),
+      ).toBe(true);
+    });
+
+    it("allows the Display/PMax frame", () => {
+      expect(
+        permits("frame-src", "https://tpc.googlesyndication.com/sadbundle/"),
+      ).toBe(true);
+    });
+
+    // Ads has already moved conversion.js between www. and pagead. once.
+    it("allows googleadservices on a subdomain other than www", () => {
+      expect(
+        permits(
+          "script-src",
+          "https://pagead.googleadservices.com/pagead/conversion.js",
+        ),
+      ).toBe(true);
+    });
+
+    // A *.googletagmanager.com wildcard does not match the registrable domain
+    // itself — the same trap that took GA4 collection down in July.
+    it("allows the bare googletagmanager.com host", () => {
+      expect(permits("script-src", "https://googletagmanager.com/gtm.js")).toBe(
+        true,
+      );
+    });
   });
 
   // The July outage was one host present in some directives and missing from
@@ -166,6 +209,12 @@ describe("Content-Security-Policy", () => {
       "https://www.gstatic.com/x",
       "https://googleads.g.doubleclick.net/x",
       "https://doubleclick.net/x",
+      "https://googletagmanager.com/x",
+      "https://pagead.googleadservices.com/x",
+      "https://googleadservices.com/x",
+      "https://pagead2.googlesyndication.com/x",
+      "https://googlesyndication.com/x",
+      "https://google.com/x",
     ];
 
     it.each(origins)(
