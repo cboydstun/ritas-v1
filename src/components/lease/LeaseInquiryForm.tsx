@@ -8,7 +8,12 @@ import {
   type LeaseTier,
   type LeaseTierId,
 } from "@/lib/lease-data";
-import { trackEvent, pushDataLayer } from "@/lib/analytics";
+import {
+  trackEvent,
+  pushDataLayer,
+  LEAD_VALUES,
+  ANALYTICS_CURRENCY,
+} from "@/lib/analytics";
 
 interface FormState {
   businessName: string;
@@ -73,6 +78,8 @@ export default function LeaseInquiryForm({ tiers }: LeaseInquiryFormProps) {
           lead_type: "lease_inquiry",
           business_type: formData.businessType,
           lease_term: formData.preferredTerm,
+          value: LEAD_VALUES.lease_inquiry,
+          currency: ANALYTICS_CURRENCY,
         });
 
         // The Google Ads lead conversion fires off this push. It used to fire
@@ -81,7 +88,11 @@ export default function LeaseInquiryForm({ tiers }: LeaseInquiryFormProps) {
         // so a submission whose POST then failed still counted as a lead.
         // Firing here puts the Ads conversion behind the same success check
         // GA4 already had.
-        pushDataLayer("lead_submitted", { lead_type: "lease_inquiry" });
+        pushDataLayer("lead_submitted", {
+          lead_type: "lease_inquiry",
+          value: LEAD_VALUES.lease_inquiry,
+          currency: ANALYTICS_CURRENCY,
+        });
 
         setSubmitStatus({
           type: "success",

@@ -9,7 +9,8 @@ import {
   buildAnalyticsItems,
 } from "../utils";
 import { buildExtrasCatalog } from "@/lib/extras-catalog";
-import { trackEvent, pushDataLayer } from "@/lib/analytics";
+import { trackEvent, pushDataLayerThen } from "@/lib/analytics";
+import { hashUserData } from "@/lib/enhanced-conversions";
 
 /**
  * The `message` from an error response, or a fallback.
@@ -142,34 +143,51 @@ export default function ReviewStep({
         ),
       });
 
+      // Clear the saved draft before redirecting so a future visit starts fresh
+      onSuccess?.();
+
       // The Google Ads conversion fires off this push, not off a `/success`
       // pageview. The pageview trigger could not see the order total — the
       // success URL carries only what `buildSuccessUrl` deems safe — so every
       // booking reported to Ads as a valueless conversion, which no
       // value-based bid strategy can use. `transaction_id` doubles as the Ads
       // `orderId`, which is what dedupes a resubmitted conversion.
-      pushDataLayer("purchase_complete", {
-        transaction_id: result.bookingId,
-        value: finalTotal,
-        currency: "USD",
-      });
-
-      // Clear the saved draft before redirecting so a future visit starts fresh
-      onSuccess?.();
-
-      // Redirect to success page immediately (no alert). buildSuccessUrl owns
-      // which params are safe to put in a URL GA4 will record — see its docs.
       //
-      // react-hooks/immutability reads this as mutating a value defined outside
-      // the component. It is a full-page navigation from an async submit
-      // handler, not render-phase state, and it deliberately leaves React's
-      // world behind — the draft has just been cleared and /success is a
-      // separate route.
-      // eslint-disable-next-line react-hooks/immutability
-      window.location.href = buildSuccessUrl(
-        result.bookingId,
-        formData.machineType,
-        formData.selectedMixers,
+      // The redirect happens from the callback, not after the push: the Ads
+      // tag is a request the container issues itself, and navigating in the
+      // same tick could cut it off before it left the browser. See
+      // `pushDataLayerThen` — it also guarantees the redirect still happens
+      // when no tag ever answers.
+      // Enhanced conversions. Hashed in the browser before it reaches the
+      // dataLayer, so no raw contact detail is ever readable by a container
+      // tag or a GTM preview session. Returns undefined on a consent denial or
+      // an insecure origin, and the key is then omitted rather than sent empty.
+      const userData = await hashUserData(formData.customer);
+
+      pushDataLayerThen(
+        "purchase_complete",
+        {
+          transaction_id: result.bookingId,
+          value: finalTotal,
+          currency: "USD",
+          ...(userData ? { user_data: userData } : {}),
+        },
+        () => {
+          // Redirect to success page (no alert). buildSuccessUrl owns which
+          // params are safe to put in a URL GA4 will record — see its docs.
+          //
+          // react-hooks/immutability reads this as mutating a value defined
+          // outside the component. It is a full-page navigation from an async
+          // submit handler, not render-phase state, and it deliberately leaves
+          // React's world behind — the draft has just been cleared and
+          // /success is a separate route.
+          // eslint-disable-next-line react-hooks/immutability
+          window.location.href = buildSuccessUrl(
+            result.bookingId,
+            formData.machineType,
+            formData.selectedMixers,
+          );
+        },
       );
     } catch (error) {
       console.error("Booking submission error:", error);

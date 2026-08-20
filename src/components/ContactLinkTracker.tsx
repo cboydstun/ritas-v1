@@ -1,7 +1,12 @@
 "use client";
 
 import { useEffect } from "react";
-import { trackEvent, pushDataLayer } from "@/lib/analytics";
+import {
+  trackEvent,
+  pushDataLayer,
+  LEAD_VALUES,
+  ANALYTICS_CURRENCY,
+} from "@/lib/analytics";
 
 /**
  * Tracks phone, email and PDF link clicks site-wide.
@@ -38,14 +43,25 @@ export default function ContactLinkTracker(): null {
           : null;
 
       if (method) {
-        trackEvent("contact_click", { method, link_url: href });
+        // Value only on a phone tap: that is the branch GTM converts, and a
+        // mailto: click carrying a lead value would inflate the Ads number
+        // the moment anyone widened the trigger.
+        const value = method === "phone" ? LEAD_VALUES.phone_call : undefined;
+        trackEvent("contact_click", {
+          method,
+          link_url: href,
+          ...(value ? { value, currency: ANALYTICS_CURRENCY } : {}),
+        });
         // Mirrored to the dataLayer so a Google Ads conversion tag can fire on
         // it. The Ads call tag only converts ad-click traffic, so without this
         // a tel: tap from organic search — most of the site's traffic — reached
         // Ads not at all. GTM filters this to `method === "phone"`; the email
         // case is pushed too so the trigger stays a filter rather than an
         // assumption about what the site emits.
-        pushDataLayer("contact_click", { method });
+        pushDataLayer("contact_click", {
+          method,
+          ...(value ? { value, currency: ANALYTICS_CURRENCY } : {}),
+        });
       } else if (
         anchor.dataset.trackDownload === "pdf" ||
         href.toLowerCase().split(/[?#]/)[0].endsWith(".pdf")

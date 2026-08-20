@@ -12,14 +12,21 @@ jest.mock("next/image", () => ({
   ),
 }));
 
-// Both must be stubbed. `pushDataLayer` left out of this mock resolved to
+// Both must be stubbed. `pushDataLayerThen` left out of this mock resolved to
 // `undefined`, and calling it threw inside the submit handler's try block —
 // which the catch turned into a generic "Failed to confirm booking" and the
 // draft was never cleared. A partial mock of this module is a booking outage
 // in the shape of a passing analytics test.
+//
+// The stub invokes its callback, because that callback is what performs the
+// redirect — a bare `jest.fn()` would leave the submit handler looking like it
+// succeeded while the customer never left the review step.
 jest.mock("@/lib/analytics", () => ({
   trackEvent: jest.fn(),
-  pushDataLayer: jest.fn(),
+  pushDataLayerThen: jest.fn(
+    (_event: string, _params: Record<string, unknown>, done: () => void) =>
+      done(),
+  ),
 }));
 
 const formData: OrderFormData = {

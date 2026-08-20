@@ -1,10 +1,20 @@
 import { render } from "@testing-library/react";
 import ContactLinkTracker from "../ContactLinkTracker";
-import { trackEvent, pushDataLayer } from "@/lib/analytics";
+import {
+  trackEvent,
+  pushDataLayer,
+  LEAD_VALUES,
+  ANALYTICS_CURRENCY,
+} from "@/lib/analytics";
 
-// Stub both. A mock that omits one makes the missing export `undefined`, and
-// the component throws on the call — see CLAUDE.md.
+// Stub the two senders. A mock that omits one makes the missing export
+// `undefined`, and the component throws on the call — see CLAUDE.md.
+//
+// The constants are spread in from the real module rather than restated: a
+// literal here would keep passing after someone changed the shipped lead value,
+// which is the one thing these assertions exist to notice.
 jest.mock("@/lib/analytics", () => ({
+  ...jest.requireActual("@/lib/analytics"),
   trackEvent: jest.fn(),
   pushDataLayer: jest.fn(),
 }));
@@ -34,6 +44,8 @@ describe("ContactLinkTracker", () => {
     expect(trackEventMock).toHaveBeenCalledWith("contact_click", {
       method: "phone",
       link_url: "tel:+15122100194",
+      value: LEAD_VALUES.phone_call,
+      currency: ANALYTICS_CURRENCY,
     });
   });
 
@@ -72,6 +84,8 @@ describe("ContactLinkTracker", () => {
 
     expect(pushDataLayerMock).toHaveBeenCalledWith("contact_click", {
       method: "phone",
+      value: LEAD_VALUES.phone_call,
+      currency: ANALYTICS_CURRENCY,
     });
   });
 

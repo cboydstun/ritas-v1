@@ -1,4 +1,9 @@
-import { trackEvent, pushDataLayer } from "../analytics";
+import {
+  trackEvent,
+  pushDataLayer,
+  pushDataLayerThen,
+  DATALAYER_CALLBACK_TIMEOUT_MS,
+} from "../analytics";
 
 describe("trackEvent", () => {
   afterEach(() => {
@@ -77,5 +82,84 @@ describe("pushDataLayer", () => {
     expect(() =>
       pushDataLayer("purchase_complete", { value: 10 }),
     ).not.toThrow();
+  });
+});
+
+// Every one of these guards the same failure: a Google Ads conversion tag is a
+// request the container issues itself, so the redirect in `ReviewStep` has to
+// wait for it — and has to happen anyway when it never fires.
+describe("pushDataLayerThen", () => {
+  afterEach(() => {
+    delete window.dataLayer;
+    jest.useRealTimers();
+  });
+
+  it("pushes eventCallback and eventTimeout alongside the params", () => {
+    window.dataLayer = [];
+
+    pushDataLayerThen("purchase_complete", { value: 249.5 }, jest.fn());
+
+    expect(window.dataLayer).toHaveLength(1);
+    const pushed = window.dataLayer[0] as Record<string, unknown>;
+    expect(pushed.event).toBe("purchase_complete");
+    expect(pushed.value).toBe(249.5);
+    expect(pushed.eventTimeout).toBe(DATALAYER_CALLBACK_TIMEOUT_MS);
+    expect(typeof pushed.eventCallback).toBe("function");
+  });
+
+  it("runs the callback once GTM reports the tags have fired", () => {
+    window.dataLayer = [];
+    const done = jest.fn();
+
+    pushDataLayerThen("purchase_complete", { value: 1 }, done);
+    expect(done).not.toHaveBeenCalled();
+
+    const pushed = window.dataLayer[0] as {
+      eventCallback: (containerId?: string) => void;
+    };
+    pushed.eventCallback("GTM-NRQ9HDL9");
+
+    expect(done).toHaveBeenCalledTimes(1);
+  });
+
+  // An ad blocker, a consent denial suppressing every tag on the push, or a
+  // container that simply never answers. The booking is already written at
+  // this point, so the customer must not be stranded on the review step.
+  it("runs the callback on timeout when GTM never answers", () => {
+    jest.useFakeTimers();
+    window.dataLayer = [];
+    const done = jest.fn();
+
+    pushDataLayerThen("purchase_complete", { value: 1 }, done);
+    expect(done).not.toHaveBeenCalled();
+
+    jest.advanceTimersByTime(DATALAYER_CALLBACK_TIMEOUT_MS);
+
+    expect(done).toHaveBeenCalledTimes(1);
+  });
+
+  it("runs the callback exactly once when both the tags and the timeout fire", () => {
+    jest.useFakeTimers();
+    window.dataLayer = [];
+    const done = jest.fn();
+
+    pushDataLayerThen("purchase_complete", { value: 1 }, done);
+    const pushed = window.dataLayer[0] as { eventCallback: () => void };
+    pushed.eventCallback();
+    jest.advanceTimersByTime(DATALAYER_CALLBACK_TIMEOUT_MS * 2);
+
+    expect(done).toHaveBeenCalledTimes(1);
+  });
+
+  // The GTM bootstrap is production-gated, so there is no array at all in
+  // development. Waiting out the timeout there would add two seconds to every
+  // local booking for nothing.
+  it("runs the callback synchronously when the dataLayer does not exist", () => {
+    expect(window.dataLayer).toBeUndefined();
+    const done = jest.fn();
+
+    pushDataLayerThen("purchase_complete", { value: 1 }, done);
+
+    expect(done).toHaveBeenCalledTimes(1);
   });
 });
