@@ -467,18 +467,29 @@ Every GA4 event goes through `trackEvent()` in `src/lib/analytics.ts` — one ty
 
 `purchase` and `begin_checkout` must build their `items` from **`buildAnalyticsItems()`** in `utils.ts`. They used to build it separately, which is how the two came to disagree about what was in the cart.
 
-Event params carry segmentation only (`step_id`, `step_index`, `lead_type`, `machine_type`) — **never contact details**. Those four are registered as event-scoped custom dimensions in the GA4 property; an unregistered param is dropped from reporting, and registration is not retroactive.
+Event params carry segmentation only (`step_id`, `step_index`, `lead_type`, `machine_type`, `method`) — **never contact details**. Those five are registered as event-scoped custom dimensions in the GA4 property, verified 2026-08-20; an unregistered param is dropped from reporting, and registration is not retroactive. `step_name`, `business_type`, `lease_term` and `file_download`'s `file_extension` are emitted but **not** registered, so they are collected and then discarded — register one before building a report on it.
 
-**`order_step` must not be a key event.** It fires up to five times per visitor and once more on every backwards step. While it is marked as one, 31 of the property's 35 key events over 90 days are wizard steps — the `conversions` metric measures nothing, and importing it into Ads teaches Smart Bidding to optimise for step two of a form. `purchase`, `generate_lead` and `contact_click` are the intended key events.
+**`order_step` must not be a key event.** It fires up to five times per visitor and once more on every backwards step. While it was marked as one, wizard steps were 31 of the property's 35 key events over 90 days — the `conversions` metric measured nothing, and importing it into Ads teaches Smart Bidding to optimise for step two of a form. `purchase`, `generate_lead` and `contact_click` are the intended key events.
 
-**Which events are key is GA4 property configuration, not code — nothing in this repo enforces it.** As of 2026-08-12 the live property had it exactly inverted: `order_step` was still marked (31 of 31 events in the trailing fortnight counted as key events) and `contact_click` was not marked at all (3 events, 0 key events). Do not read this section as a description of the property. Verify it, and never from the GA4 UI's own event list — query the `keyEvents` metric by `eventName` through the Analytics MCP:
+**This was fixed in the property on 2026-08-12.** `order_step` is unmarked and `contact_click` is marked. Do not re-propose either toggle.
+
+**Which events are key is GA4 property configuration, not code — nothing in this repo enforces it**, so verify rather than trust this paragraph. But verify it _correctly_, because the obvious query gives the wrong answer:
 
 ```
+# WRONG for "is it marked now" — this reports history, not configuration
 run_report(480725072, date_ranges=[{start_date:"28daysAgo", end_date:"today"}],
            dimensions=["eventName"], metrics=["eventCount","keyEvents"])
+
+# RIGHT — break it down by date and find where the count goes flat
+run_report(480725072, date_ranges=[{start_date:"28daysAgo", end_date:"today"}],
+           dimensions=["date","eventName"], metrics=["eventCount","keyEvents"])
 ```
 
-Marking and unmarking are not retroactive, so historical rows keep whatever flag they were collected under.
+**Marking and unmarking are not retroactive**, so every row keeps the flag it was _collected under_ and an aggregate blends both sides of a toggle. The 2026-08-12 change reads unmistakably in the daily series — `order_step` 21/21 on 08-11, **7/4 on 08-12** as the toggle landed mid-day, then 6/0 and 7/0 — while the 28-day total still said 51/35 and looked like nothing had happened. That total misled a reader of this very file into reporting the fix as outstanding eight days after it shipped. The historical key events are permanent; only the shape of the series tells you the current flag.
+
+An event with no traffic since the toggle shows nothing either way — `contact_click` had recorded none since 08-11, so its marking is unreadable from data until the next tap. Absence of key events is not evidence it is unmarked.
+
+Do not use the GA4 UI's event list as the verification either; it shows the toggle, not whether data is landing under it.
 
 ### GTM dataLayer events
 
