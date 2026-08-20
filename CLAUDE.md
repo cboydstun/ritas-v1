@@ -482,17 +482,67 @@ Marking and unmarking are not retroactive, so historical rows keep whatever flag
 
 ### GTM dataLayer events
 
-`pushDataLayer()` in `analytics.ts` is the only sanctioned path to `window.dataLayer`, and there are exactly three events. Both exist because the Google Ads conversion tags in `GTM-NRQ9HDL9` need to fire on a **confirmed outcome carrying real values**, which is not what they used to fire on:
+`pushDataLayer()` and `pushDataLayerThen()` in `analytics.ts` are the only sanctioned paths to `window.dataLayer`, and there are exactly three events. They exist because the Google Ads conversion tags in `GTM-NRQ9HDL9` need to fire on a **confirmed outcome carrying real values**, which is not what they used to fire on:
+
+**Use `pushDataLayerThen` whenever the page is about to navigate.** `gtag` beacons its own hits with `sendBeacon` and survives a navigation; a Google Ads conversion tag fired by the container is a separate request the container issues itself, and assigning `window.location` in the same tick can cut it off before it leaves. It passes GTM's `eventCallback`/`eventTimeout` and runs its callback exactly once — on the callback, or on the 2s timeout when no tag ever answers (no container in development, an ad blocker, a consent denial suppressing every tag on the push). The timeout is not optional: stranding a customer on the review step after their booking is already written is far worse than a lost conversion.
 
 - **`purchase_complete`** (`ReviewStep.tsx`) — carries `transaction_id`, `value`, `currency`. The Ads conversion previously fired on a `/success` pageview, which cannot see the order total, so every booking reported as a valueless conversion; `buildSuccessUrl` deliberately keeps money and PII out of the URL, so the value has to arrive out of band. `transaction_id` is the Ads `orderId` and is what dedupes a resubmission.
-- **`lead_submitted`** (`ContactForm.tsx`, `LeaseInquiryForm.tsx`) — carries `lead_type`. Replaces GTM's built-in Form Submission trigger, which listens for the browser's submit event and is **not** suppressed by `preventDefault()`, so a submission whose API POST then failed still counted as an Ads lead.
-- **`contact_click`** (`ContactLinkTracker.tsx`) — carries `method` (`phone` or `email`). The Google Ads call tag does dynamic number insertion, which only ever converts visitors who arrived from an ad; roughly 77% of sessions are organic (272 of 351 over the 90 days to 2026-08-11), so a `tel:` tap from them reached Ads not at all. The GTM consumer is the **`Contact Click - phone`** trigger (id `19`, workspace `9`), whose `{{DLV - method}} equals phone` condition lives in the _trigger_, not in the tag. Note that the push shipped in `e0aa248` on 2026-08-12 with no GTM counterpart at all, so for a time it fed nothing — a dataLayer push is only half of a conversion. Downloads deliberately do **not** push — the GTM filter must not be the only thing between a PDF click and a counted phone lead. The name is intentionally both an `AnalyticsEvent` and a `DataLayerEvent`: one visitor action, two transports.
+- **`lead_submitted`** (`ContactForm.tsx`, `LeaseInquiryForm.tsx`) — carries `lead_type`, `value`, `currency`. It exists to replace GTM's built-in Form Submission trigger, which listens for the browser's submit event and is **not** suppressed by `preventDefault()`, so a submission whose API POST then failed still counted as an Ads lead. **As verified on 2026-08-20, no tag is attached to its trigger (`17`), so this push currently feeds nothing.** Leads reach Ads through the GA4 `generate_lead` conversion import instead (Ads action `7706657699`, ENABLED and primary), which is the deliberate choice — wiring a GTM lead tag _as well_ would double-count every lead. The trigger is kept as a documented switch, not as a live path.
+- **`contact_click`** (`ContactLinkTracker.tsx`) — carries `method` (`phone` or `email`). The Google Ads call tag does dynamic number insertion, which only ever converts visitors who arrived from an ad; roughly 77% of sessions are organic (272 of 351 over the 90 days to 2026-08-11), so a `tel:` tap from them reached Ads not at all. A `value` (`LEAD_VALUES.phone_call`) and `currency` ride along on the **phone** branch only; a `mailto:` click carries none, so widening the trigger later cannot silently start counting email clicks at a lead's value. The GTM consumer is the **`Contact Click - phone`** trigger (id `19`), whose `{{DLV - method}} equals phone` condition lives in the _trigger_, not in the tag. **That trigger still has no tag attached as of 2026-08-20** — the push shipped in `e0aa248` on 2026-08-12 with no GTM counterpart, and only the trigger was ever added. A dataLayer push is half of a conversion; a trigger is three quarters. Until a tag hangs off it, and with the GA4 `contact_click` import (`7718716760`) HIDDEN and `contact_click` not marked a GA4 key event, an organic phone tap is measured **nowhere**. Downloads deliberately do **not** push — the GTM filter must not be the only thing between a PDF click and a counted phone lead. The name is intentionally both an `AnalyticsEvent` and a `DataLayerEvent`: one visitor action, two transports.
 
-A partial `jest.mock("@/lib/analytics", ...)` that stubs `trackEvent` but not `pushDataLayer` makes the missing export `undefined`, and calling it throws inside the booking submit handler's `try` — which the `catch` turns into "Failed to confirm booking" for the customer. Mock both.
+A partial `jest.mock("@/lib/analytics", ...)` that stubs `trackEvent` but not `pushDataLayerThen` makes the missing export `undefined`, and calling it throws inside the booking submit handler's `try` — which the `catch` turns into "Failed to confirm booking" for the customer. Mock both, and make the `pushDataLayerThen` stub **invoke its callback** — that callback performs the redirect, so a bare `jest.fn()` leaves the handler looking successful while the customer never leaves the review step.
+
+The module now also exports plain constants (`LEAD_VALUES`, `ANALYTICS_CURRENCY`) that components read at call time. Spread `jest.requireActual("@/lib/analytics")` into the mock rather than restating them, or the mock returns `undefined` for a value the component immediately dereferences.
+
+**Lead values live in one place, `LEAD_VALUES`.** Contact $25, lease inquiry $500, phone tap $50, against a measured $206 average order value. Both transports read from it; they previously sent no value at all, which left GA4 reporting every lead at $0 while Ads quietly substituted the conversion action's own default — two numbers for one event, neither chosen on purpose. What matters to Smart Bidding is the ratio between them, not the absolute figures.
 
 **Never put customer data in a URL.** GA4 records the whole query string as `page_location`. The success redirect is built by `buildSuccessUrl()` in `src/components/order/utils.ts`, which emits only the three params `/success` reads; it previously appended `customerName`, which shipped PII to Google and made every booking its own page path.
 
 Consent Mode v2 defaults to `granted` (inlined in `GoogleAnalytics.tsx` ahead of `config`), with `CookieConsent.tsx` offering an opt-out stored under `satx-ritas-consent`. The GTM tags carried `consentStatus: notSet` until 2026-08-12, meaning the Ads tags fired straight through an opt-out the banner had promised to honour; they now require `ad_storage`, `ad_user_data` and `ad_personalization`. Keep any new Ads tag consent-gated the same way — `notSet` is the GTM default, so this is a thing you have to remember to do, not a thing that happens. Texas TDPSA is an opt-out regime; serving EU traffic would mean flipping those defaults to `denied`.
+
+### Enhanced Conversions
+
+`src/lib/enhanced-conversions.ts` — `hashUserData()`. Google matches an ad click
+to a first-party identifier when the conversion cookie is missing, which is most
+of Safari and iOS. The identifier must be SHA-256 hashed, and this is the only
+place in the app that produces one.
+
+**Hashing happens in the browser, before the value reaches `window.dataLayer`.**
+A raw email or phone number therefore never enters the tag layer, is not visible
+in a GTM preview session, and cannot be read by any container tag. That keeps
+the rule the two lead forms already document — customer contact details do not
+go to analytics — intact: a digest is not a contact detail. It rides on
+`purchase_complete` only, where a real customer record exists.
+
+Normalisation follows Google's spec _exactly_, and this is the whole risk:
+Google hashes its own copy the same way and compares digests, so one stray
+capital letter is not a weaker match, it is no match, and nothing reports it.
+Email is trimmed and lowercased, nothing else. Phone is E.164 (`+1` + ten
+digits); anything that does not resolve to a plausible US number is dropped
+rather than guessed at. `src/lib/__tests__/enhanced-conversions.test.ts` asserts
+against digests computed independently with `node:crypto` — a helper that
+normalised the expectation the same way the implementation does would pass
+whatever either of them did.
+
+It returns `undefined` rather than throwing, always. It is called from the
+booking submit handler _after_ the booking is written, inside a `try` whose
+`catch` tells the customer their booking failed; `crypto.subtle` is simply
+absent on an insecure origin. A stored consent denial also returns `undefined`
+— Consent Mode would suppress the tag anyway, but not producing the digest is
+the honest version of the banner's promise.
+
+**jsdom has neither `TextEncoder` nor `crypto.subtle`**, so that test file
+installs Node's own WebCrypto in a `beforeAll`. Keep that local to the file.
+Installing it in `jest.setup.js` changes which branch _other_ libraries take:
+ThumbmarkJS switches to its WebCrypto path, which cannot complete under jsdom
+and returns `""`, breaking `fingerprint-contract.test.ts`. Worth knowing that
+that contract test therefore only ever exercises ThumbmarkJS's non-browser
+fallback — production was verified separately and is healthy (1,957 stored
+thumbprints, all valid 32-char hex).
+
+The GTM side is **not** wired yet: the `DLV - user_data` variable exists in
+workspace `10`, but the Ads purchase tag still has no user-provided-data
+configuration, so the digests are pushed and currently ignored.
 
 ### Reviews
 
@@ -506,6 +556,8 @@ Two rules, both learned from outages and both pinned by `__tests__/security-head
 
 1. **List the bare host alongside the wildcard.** A `*.example.com` source matches subdomains only, never the registrable domain itself. `connect-src` listed `https://*.analytics.google.com` but not `analytics.google.com`, which is where gtag actually beacons `/g/collect`, so every hit was refused and the property reported "data collection isn't active" with nothing failing server-side. gtag resolves that host from configuration Google serves at runtime, so collection died on 2026-07-14 under a frozen build, with no deploy on either side of the cliff.
 2. **Keep the Google origins symmetric across `script-src`, `img-src` and `connect-src`.** Google moves an endpoint between request types without warning — `googleads.g.doubleclick.net/pagead/viewthroughconversion` is fetched as a pixel and, with `fmt=4`, as a script. A host present in three directives and missing from the fourth is the shape of every outage so far, so the test suite requires all four.
+
+3. **List an origin before the campaign needs it, not after.** `googlesyndication.com` was absent from all four directives, because Search-only text ads never touch it. The first Display, remarketing or Performance Max tag loads `pagead2.googlesyndication.com` and would have been refused with no error on our side — the same shape as the two outages above. It is listed now, wildcard and bare, along with wildcard+bare `googleadservices.com` and `google.com`: Ads has already moved `conversion.js` between `www.` and `pagead.` once, and a subdomain we do not enumerate is indistinguishable from a host that does not exist.
 
 Violations now report to `/api/v1/csp-report` via both `report-uri` and `Reporting-Endpoints`; before that a refused request was invisible in production, which is how both collection outages above ran unnoticed. `script-src` still needs `'unsafe-inline'` for the GTM/GA bootstrap and JSON-LD blocks; moving those to a nonce is the outstanding hardening step. `compiler.removeConsole` strips `console.*` in production builds. Longer write-ups live in `docs/security.md` and `docs/auth-implementation.md`.
 
@@ -536,7 +588,8 @@ Global shared types live in `src/types/index.ts` (`MachineType`, `MixerType`, `P
 - `src/lib/seo-audit.ts` — `auditPost()`, `summariseChecks()`, and the audit primitives both scorers share. **Zod-free and mongoose-free on purpose**
 - `src/lib/landing-audit.ts` — `auditLandingPage()`, `sectionsToHtml()`. Same contract
 - `src/lib/landing-jsonld.ts` — `buildServiceJsonLd()`, `buildWebPageJsonLd()`, `buildFaqJsonLd()`
-- `src/lib/analytics.ts` — `trackEvent()`, the only sanctioned path to `window.gtag`
+- `src/lib/analytics.ts` — `trackEvent()`, the only sanctioned path to `window.gtag`; `pushDataLayer()` / `pushDataLayerThen()` for GTM, and `LEAD_VALUES` / `ANALYTICS_CURRENCY`
+- `src/lib/enhanced-conversions.ts` — `hashUserData()`. Browser-side SHA-256 of email/phone for Google Ads enhanced conversions. Never throws, returns `undefined` on consent denial or an insecure origin
 - `src/lib/site.ts` — `SITE_URL`, `BUSINESS_ID`, the business phone constants, and `breadcrumbJsonLd()`
 - `src/hooks/useModalFocus.ts` — focus entry, Tab containment, Escape and focus restore for anything carrying `aria-modal="true"`. Its visibility filter reads attributes rather than layout on purpose: `offsetParent`/`getClientRects` are always empty under jsdom, so a layout-based check matches nothing there and the hook looks inert in its own tests while working in a browser
 - `src/lib/consent.ts` — `getConsent()`, `setConsent()` (Consent Mode v2 state)
