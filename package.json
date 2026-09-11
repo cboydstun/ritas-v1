@@ -14,7 +14,8 @@
     "test:machine": "jest --testPathPatterns='MachineStep|machine'",
     "test:ci": "jest --ci --coverage",
     "typecheck": "tsc --noEmit",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "seed-zip-fees": "node scripts/delivery/seed-zip-fees.mjs"
   },
   "dependencies": {
     "@heroicons/react": "^2.2.0",
