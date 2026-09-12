@@ -1,10 +1,13 @@
 /**
- * Give every ZIP in the service area its own delivery fee.
+ * Apply `src/lib/delivery/zone-snapshot.json` to the settings document.
  *
- * One-time, idempotent, additive. Run it against production once before the
- * pricing path starts reading `deliveryZones` — that is the commit that begins
- * refusing an unpriced ZIP, and an empty fee map at that moment refuses every
- * booking there is.
+ * The snapshot is a point-in-time copy of bounce-v3's production delivery
+ * pricing — 94 ZIPs, each with its own fee. This script is how it reaches the
+ * database; the admin map is how it is edited afterwards.
+ *
+ *   node scripts/delivery/seed-zip-fees.mjs --dry-run
+ *   node scripts/delivery/seed-zip-fees.mjs --dry-run --force --prune-unlisted
+ *   node scripts/delivery/seed-zip-fees.mjs --force
  *
  * Uses the raw driver rather than Mongoose on purpose. Schema defaults are
  * applied on *hydration*, so a document holding no `deliveryZones` reads back
@@ -13,54 +16,44 @@
  * bounce-v3 shipped a self-migration built on that assumption, it did nothing,
  * and production ran with an empty field while the API served defaults.
  *
- *   node scripts/delivery/seed-zip-fees.mjs --dry-run
- *   node scripts/delivery/seed-zip-fees.mjs
- *
- * A second run must report zero writes. Fees are written only where the ZIP has
- * none, so a re-run cannot flatten a retuned price back to the flat fee.
+ * Flags:
+ *   --force           Overwrite a ZIP whose stored fee differs from the
+ *                     snapshot. Without it the script is insert-only, which for
+ *                     this rollout writes nothing: an earlier seed already
+ *                     priced every ZIP at a flat $20, so the real fees only land
+ *                     with --force. Insert-only stays the default so a routine
+ *                     re-run can never flatten a price retuned in the admin.
+ *   --prune-unlisted  $unset the fees of ZIPs the snapshot does not carry.
+ *                     Priced means serviced regardless of the lists, so without
+ *                     this the ZIPs dropped from the old generated list linger
+ *                     as bookable. Off by default: it is the only destructive
+ *                     thing here.
  */
 
 import { MongoClient } from "mongodb";
 import { readFileSync } from "node:fs";
 
 const DRY_RUN = process.argv.includes("--dry-run");
+const FORCE = process.argv.includes("--force");
+const PRUNE = process.argv.includes("--prune-unlisted");
 
 /**
- * Duplicated from `src/lib/delivery/defaultZones.ts` — a .mjs script cannot
- * import the TypeScript module. `src/lib/delivery/__tests__/defaultZones.test.ts`
- * pins the same numbers on the application side.
+ * Read as JSON rather than duplicated as constants. A `.mjs` script cannot
+ * import the TypeScript module, but it can read the same file the module reads,
+ * so the script and `src/lib/delivery/defaultZones.ts` cannot drift.
  */
-const INSIDE_ZIPS = Array.from(
-  { length: 99 },
-  (_, i) => `782${String(i + 1).padStart(2, "0")}`,
+const snapshot = JSON.parse(
+  readFileSync(
+    new URL("../../src/lib/delivery/zone-snapshot.json", import.meta.url),
+    "utf8",
+  ),
 );
 
-const OUTSIDE_ZIPS = [
-  "78002",
-  "78006",
-  "78009",
-  "78015",
-  "78023",
-  "78039",
-  "78052",
-  "78054",
-  "78056",
-  "78069",
-  "78073",
-  "78101",
-  "78108",
-  "78109",
-  "78112",
-  "78124",
-  "78148",
-  "78150",
-  "78152",
-  "78154",
-  "78163",
-];
-
-/** The flat fee this system replaces. Day one changes nobody's price. */
-const SEED_FLAT_FEE = 20;
+const {
+  customFees: FEES,
+  insideZips: INSIDE_ZIPS,
+  outsideZips: OUTSIDE_ZIPS,
+} = snapshot;
 
 /** All zeros: no floor until somebody measures one. */
 const TIER_MINIMUMS = { free: 0, low: 0, standard: 0, high: 0, premium: 0 };
@@ -86,8 +79,17 @@ function mongoUri() {
   throw new Error("MONGODB_URI is not set and .env.local does not carry it");
 }
 
+function sameList(stored, wanted) {
+  return (
+    Array.isArray(stored) &&
+    stored.length === wanted.length &&
+    stored.every((zip, i) => zip === wanted[i])
+  );
+}
+
 async function main() {
-  const client = new MongoClient(mongoUri());
+  const uri = mongoUri();
+  const client = new MongoClient(uri);
   await client.connect();
 
   const db = client.db(process.env.MONGODB_DB || undefined);
@@ -103,22 +105,45 @@ async function main() {
   const stored = doc.deliveryZones ?? {};
   const storedFees = stored.customFees ?? {};
 
-  const zips = [...INSIDE_ZIPS, ...OUTSIDE_ZIPS];
   const $set = {};
+  const $unset = {};
+  const inserts = [];
+  const overwrites = [];
+  const kept = [];
 
-  for (const zip of zips) {
+  for (const [zip, fee] of Object.entries(FEES)) {
+    const existing = storedFees[zip];
+
     // Dotted paths, one per ZIP. A whole-map `$set` would revert any fee an
     // admin has retuned since — the exact clobber the narrow PATCH verbs exist
     // to prevent, and a script is not exempt from it.
-    if (typeof storedFees[zip] !== "number") {
-      $set[`deliveryZones.customFees.${zip}`] = SEED_FLAT_FEE;
+    if (typeof existing !== "number") {
+      $set[`deliveryZones.customFees.${zip}`] = fee;
+      inserts.push(`  ${zip}  (none) -> $${fee}`);
+    } else if (existing === fee) {
+      kept.push(zip);
+    } else if (FORCE) {
+      $set[`deliveryZones.customFees.${zip}`] = fee;
+      overwrites.push(`  ${zip}  $${existing} -> $${fee}`);
+    } else {
+      overwrites.push(
+        `  ${zip}  $${existing} -> $${fee}   (skipped, needs --force)`,
+      );
     }
   }
 
-  if (!Array.isArray(stored.insideZips) || stored.insideZips.length === 0) {
+  const unlisted = Object.keys(storedFees)
+    .filter((zip) => typeof FEES[zip] !== "number")
+    .sort();
+
+  if (PRUNE) {
+    for (const zip of unlisted) $unset[`deliveryZones.customFees.${zip}`] = "";
+  }
+
+  if (!sameList(stored.insideZips, INSIDE_ZIPS)) {
     $set["deliveryZones.insideZips"] = INSIDE_ZIPS;
   }
-  if (!Array.isArray(stored.outsideZips) || stored.outsideZips.length === 0) {
+  if (!sameList(stored.outsideZips, OUTSIDE_ZIPS)) {
     $set["deliveryZones.outsideZips"] = OUTSIDE_ZIPS;
   }
   if (!stored.tierMinimums) {
@@ -128,32 +153,57 @@ async function main() {
     $set["fees.minOrderAmount"] = 0;
   }
 
-  const feeWrites = Object.keys($set).filter((k) =>
-    k.startsWith("deliveryZones.customFees."),
-  ).length;
-
-  console.log(`Settings document : ${doc._id}`);
-  console.log(`ZIPs already priced: ${Object.keys(storedFees).length}`);
-  console.log(`ZIPs to price      : ${feeWrites} at $${SEED_FLAT_FEE}`);
+  const isLocal = /(localhost|127\.0\.0\.1)/.test(uri);
   console.log(
-    `Other fields       : ${
-      Object.keys($set)
-        .filter((k) => !k.startsWith("deliveryZones.customFees."))
-        .join(", ") || "none"
-    }`,
+    `Target             : ${isLocal ? "LOCAL" : "REMOTE"} (${uri.replace(/\/\/[^@]*@/, "//<credentials>@")})`,
+  );
+  console.log(`Settings document  : ${doc._id}`);
+  console.log(`Snapshot           : ${snapshot.source}`);
+  console.log(
+    `Snapshot ZIPs      : ${Object.keys(FEES).length} priced, ${INSIDE_ZIPS.length} inside + ${OUTSIDE_ZIPS.length} outside`,
+  );
+  console.log(`Stored priced ZIPs : ${Object.keys(storedFees).length}`);
+  console.log(
+    `Unchanged          : ${kept.length}\n` +
+      `Inserts            : ${inserts.length}\n` +
+      `Fee changes        : ${overwrites.length}${FORCE ? "" : " (none applied without --force)"}`,
   );
 
-  if (Object.keys($set).length === 0) {
+  if (inserts.length) console.log(`\nnew fees:\n${inserts.join("\n")}`);
+  if (overwrites.length)
+    console.log(`\nchanged fees:\n${overwrites.join("\n")}`);
+
+  if (unlisted.length) {
+    console.log(
+      `\npriced but not in the snapshot (${unlisted.length})${PRUNE ? ", REMOVING" : ", left in place — pass --prune-unlisted to remove"}:`,
+    );
+    console.log(
+      unlisted.map((zip) => `  ${zip}  $${storedFees[zip]}`).join("\n"),
+    );
+  }
+
+  const listFields = Object.keys($set).filter(
+    (k) => !k.startsWith("deliveryZones.customFees."),
+  );
+  console.log(`\nOther fields       : ${listFields.join(", ") || "none"}`);
+
+  const update = {};
+  if (Object.keys($set).length) update.$set = $set;
+  if (Object.keys($unset).length) update.$unset = $unset;
+
+  if (!Object.keys(update).length) {
     console.log("\nNothing to do.");
   } else if (DRY_RUN) {
     console.log("\n--dry-run: nothing written.");
   } else {
-    const result = await settings.updateOne({ _id: doc._id }, { $set });
+    const result = await settings.updateOne({ _id: doc._id }, update);
     console.log(`\nModified ${result.modifiedCount} document(s).`);
 
     const after = await settings.findOne({ _id: doc._id });
+    const afterFees = after.deliveryZones?.customFees ?? {};
+    console.log(`Priced ZIPs now    : ${Object.keys(afterFees).length}`);
     console.log(
-      `Priced ZIPs now    : ${Object.keys(after.deliveryZones?.customFees ?? {}).length}`,
+      `Listed ZIPs now    : ${(after.deliveryZones?.insideZips ?? []).length} inside + ${(after.deliveryZones?.outsideZips ?? []).length} outside`,
     );
   }
 

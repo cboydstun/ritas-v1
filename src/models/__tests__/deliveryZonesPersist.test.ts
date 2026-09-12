@@ -27,6 +27,10 @@ import mongoose from "mongoose";
 import { MongoMemoryServer } from "mongodb-memory-server";
 import { Settings } from "@/models/settings";
 import { DEFAULT_TIER_MINIMUMS } from "@/lib/delivery/tierMinimums";
+import {
+  DEFAULT_INSIDE_ZIPS,
+  DEFAULT_OUTSIDE_ZIPS,
+} from "@/lib/delivery/defaultZones";
 
 let mongo: MongoMemoryServer;
 
@@ -55,8 +59,12 @@ describe("deliveryZones persistence", () => {
     await Settings.create({ key: "global" });
 
     const stored = await raw();
-    expect(stored?.deliveryZones?.insideZips).toHaveLength(99);
-    expect(stored?.deliveryZones?.outsideZips).toHaveLength(21);
+    expect(stored?.deliveryZones?.insideZips).toHaveLength(
+      DEFAULT_INSIDE_ZIPS.length,
+    );
+    expect(stored?.deliveryZones?.outsideZips).toHaveLength(
+      DEFAULT_OUTSIDE_ZIPS.length,
+    );
     expect(stored?.deliveryZones?.customFees).toEqual({});
     expect(stored?.deliveryZones?.tierMinimums).toEqual(DEFAULT_TIER_MINIMUMS);
     expect(stored?.fees?.minOrderAmount).toBe(0);
@@ -146,6 +154,8 @@ describe("deliveryZones persistence", () => {
 
     const stored = await raw();
     expect(stored?.deliveryZones?.insideZips).toEqual([]);
-    expect(stored?.deliveryZones?.outsideZips).toHaveLength(21);
+    expect(stored?.deliveryZones?.outsideZips).toHaveLength(
+      DEFAULT_OUTSIDE_ZIPS.length,
+    );
   });
 });

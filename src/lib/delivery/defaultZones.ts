@@ -1,53 +1,34 @@
 /**
- * The ZIP lists a brand-new settings document starts with.
+ * The service area a brand-new settings document starts with.
  *
  * **Seed-only.** Runtime always reads `Settings.deliveryZones` from Mongo; these
  * constants exist so a fresh database is not born with an empty service area,
  * and so the seed script has one list to copy.
  *
- * The membership is exactly what the old hardcoded `isBexarCountyZipCode`
- * accepted, split by geography: the 78201-78299 San Antonio block is "inside",
- * the outlying Bexar-and-adjacent ZIPs are "outside". Neither list implies a
- * price — `customFees` is the only price there is.
+ * The membership and the prices are a point-in-time copy of bounce-v3's
+ * production `Settings.deliveryZones` — the two businesses deliver out of the
+ * same depot, and bounce-v3's table is the one that has been tuned ZIP by ZIP
+ * against real routes. `zone-snapshot.json` carries the copy and its provenance;
+ * this module is only the typed view of it. Nothing syncs: a fee retuned in
+ * bounce-v3 does not reach here.
+ *
+ * Neither list implies a price — `customFees` is the only price there is, and a
+ * ZIP absent from it is refused at checkout however it is listed.
  */
+
+import snapshot from "./zone-snapshot.json";
 
 /**
- * 78201 through 78299.
+ * Inside Loop 1604. Geography, not a price.
  *
- * Generated rather than listed, but pinned by `__tests__/defaultZones.test.ts`
- * at both ends: the previous generator ran `i = 0` for 99 entries and produced
- * 78200-78298, which turned away the real ZIP 78299 and accepted the unassigned
- * 78200. An off-by-one here is invisible until a customer is refused.
+ * This used to be `78201`-`78299` generated in a loop, which listed 32 ZIPs that
+ * are PO-box or unassigned — no polygon, no residents, no route. The snapshot
+ * lists the ones actually delivered to.
  */
-export const DEFAULT_INSIDE_ZIPS: string[] = Array.from(
-  { length: 99 },
-  (_, i) => `782${String(i + 1).padStart(2, "0")}`,
-);
+export const DEFAULT_INSIDE_ZIPS: string[] = snapshot.insideZips;
 
-/** Outlying Bexar County and immediately adjacent ZIPs. */
-export const DEFAULT_OUTSIDE_ZIPS: string[] = [
-  "78002",
-  "78006",
-  "78009",
-  "78015",
-  "78023",
-  "78039",
-  "78052",
-  "78054",
-  "78056",
-  "78069",
-  "78073",
-  "78101",
-  "78108",
-  "78109",
-  "78112",
-  "78124",
-  "78148",
-  "78150",
-  "78152",
-  "78154",
-  "78163",
-];
+/** Outlying Bexar County and immediately adjacent ZIPs. Geography, not a price. */
+export const DEFAULT_OUTSIDE_ZIPS: string[] = snapshot.outsideZips;
 
 /** Every ZIP the seed prices, in one list. */
 export const DEFAULT_SERVICED_ZIPS: string[] = [
@@ -56,10 +37,11 @@ export const DEFAULT_SERVICED_ZIPS: string[] = [
 ];
 
 /**
- * What each seeded ZIP costs on day one.
+ * What each seeded ZIP costs, keyed by ZIP.
  *
- * The flat fee this system replaces. Seeding at the current figure means the
- * cutover changes no customer's price; retuning happens afterwards, in the
- * admin, one ZIP at a time.
+ * Every ZIP on either list carries an entry here and nothing else does, which is
+ * what `__tests__/defaultZones.test.ts` pins: a listed ZIP with no fee looks
+ * covered on the map and is refused at checkout, and a priced ZIP on no list is
+ * serviced without appearing in either zone's copy.
  */
-export const SEED_FLAT_FEE = 20;
+export const DEFAULT_ZIP_FEES: Record<string, number> = snapshot.customFees;
