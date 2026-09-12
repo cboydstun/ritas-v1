@@ -38,10 +38,15 @@ export function GoogleDeliveryZoneMap({
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
   const polygonsRef = useRef<Map<string, google.maps.Polygon>>(new Map());
+  // The constructors come from the imported library rather than from the
+  // `google.maps` namespace, so nothing here depends on the SDK back-filling
+  // that namespace for compatibility.
+  const libRef = useRef<google.maps.MapsLibrary | null>(null);
   const [boundaries, setBoundaries] = useState<Record<string, Boundary> | null>(
     null,
   );
   const [error, setError] = useState<string | null>(null);
+  const [mapReady, setMapReady] = useState(false);
 
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
@@ -68,18 +73,32 @@ export function GoogleDeliveryZoneMap({
     if (!apiKey || mapRef.current || !containerRef.current || !boundaries)
       return;
 
-    const start = () => {
+    // `loading=async` means the SDK no longer fills in `google.maps` by the
+    // time the script's load event fires — the constructors exist only after
+    // the library is imported. Calling `new google.maps.Map` on load threw
+    // "google.maps.Map is not a constructor" and left the pane blank.
+    const start = async () => {
       if (!containerRef.current || mapRef.current) return;
-      mapRef.current = new google.maps.Map(containerRef.current, {
+      const lib = (await google.maps.importLibrary(
+        "maps",
+      )) as google.maps.MapsLibrary;
+      // Re-check: the import is a suspension point, and the component may have
+      // unmounted or another pass may have built the map while it was pending.
+      if (!containerRef.current || mapRef.current) return;
+      libRef.current = lib;
+      mapRef.current = new lib.Map(containerRef.current, {
         center: CENTER,
         zoom: 10,
         mapTypeControl: false,
         streetViewControl: false,
       });
+      // State, not just the ref: the polygon effect below has to re-run once
+      // there is a map to draw on, and a ref assignment does not re-render.
+      setMapReady(true);
     };
 
-    if (window.google?.maps) {
-      start();
+    if (typeof window.google?.maps?.importLibrary === "function") {
+      void start();
       return;
     }
 
@@ -87,8 +106,9 @@ export function GoogleDeliveryZoneMap({
       "gmaps-sdk",
     ) as HTMLScriptElement | null;
     if (existing) {
-      existing.addEventListener("load", start);
-      return () => existing.removeEventListener("load", start);
+      const onLoad = () => void start();
+      existing.addEventListener("load", onLoad);
+      return () => existing.removeEventListener("load", onLoad);
     }
 
     const script = document.createElement("script");
@@ -97,7 +117,7 @@ export function GoogleDeliveryZoneMap({
     // load that the import pattern is suboptimal.
     script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&v=weekly&loading=async`;
     script.async = true;
-    script.onload = start;
+    script.onload = () => void start();
     script.onerror = () => setError("Could not load Google Maps.");
     document.head.appendChild(script);
   }, [apiKey, boundaries]);
@@ -107,7 +127,11 @@ export function GoogleDeliveryZoneMap({
   // tear down every polygon.
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !boundaries) return;
+    const lib = libRef.current;
+    if (!map || !lib || !boundaries) return;
+    // `mapReady` is read only to make the dependency real: the map lives in a
+    // ref, so this effect needs a rendered value to re-run on once it exists.
+    void mapReady;
 
     const feeByZip = new Map(rows.map((r) => [r.zipCode, r.fee]));
     const drawn = polygonsRef.current;
@@ -130,7 +154,7 @@ export function GoogleDeliveryZoneMap({
         continue;
       }
 
-      const polygon = new google.maps.Polygon({
+      const polygon = new lib.Polygon({
         paths: boundary.coordinates.map(([lng, lat]) => ({ lat, lng })),
         ...style,
         map,
@@ -138,7 +162,7 @@ export function GoogleDeliveryZoneMap({
       polygon.addListener("click", () => onZipClick(zipCode));
       drawn.set(zipCode, polygon);
     }
-  }, [rows, boundaries, selectedZip, onZipClick]);
+  }, [rows, boundaries, selectedZip, onZipClick, mapReady]);
 
   if (!apiKey) {
     return (
