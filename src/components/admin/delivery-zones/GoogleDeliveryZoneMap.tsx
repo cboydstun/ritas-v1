@@ -16,6 +16,50 @@ interface Props {
   onZipClick: (zipCode: string) => void;
 }
 
+/**
+ * Load the Maps SDK, resolving only once its constructors actually exist.
+ *
+ * **The script's `load` event is too early.** Measured against the live SDK:
+ * at `onload`, both `google.maps.Map` and `google.maps.importLibrary` are
+ * `undefined`; only after the `callback` parameter fires are they functions.
+ * Two attempts at this shipped blank maps — one calling `new google.maps.Map`
+ * on load ("Map is not a constructor"), one calling `importLibrary` on load
+ * ("importLibrary is not a function"). The callback is the documented signal
+ * and the only one that holds.
+ *
+ * Module-level, so a remount reuses the in-flight load instead of appending a
+ * second copy of the script.
+ */
+let sdkPromise: Promise<void> | null = null;
+
+function loadMapsSdk(apiKey: string): Promise<void> {
+  if (typeof window.google?.maps?.importLibrary === "function") {
+    return Promise.resolve();
+  }
+  if (sdkPromise) return sdkPromise;
+
+  sdkPromise = new Promise<void>((resolve, reject) => {
+    const callbackName = "__ritasMapsReady";
+    (window as unknown as Record<string, () => void>)[callbackName] = () => {
+      delete (window as unknown as Record<string, unknown>)[callbackName];
+      resolve();
+    };
+
+    const script = document.createElement("script");
+    script.id = "gmaps-sdk";
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&v=weekly&loading=async&callback=${callbackName}`;
+    script.async = true;
+    script.onerror = () => {
+      // Cleared so a later mount can retry rather than awaiting a dead promise.
+      sdkPromise = null;
+      reject(new Error("Google Maps SDK failed to load"));
+    };
+    document.head.appendChild(script);
+  });
+
+  return sdkPromise;
+}
+
 /** Downtown San Antonio, near enough for an initial fit. */
 const CENTER = { lat: 29.4241, lng: -98.4936 };
 
@@ -67,59 +111,43 @@ export function GoogleDeliveryZoneMap({
     };
   }, []);
 
-  // Load the Maps SDK once, by hand: the page has one map and adding a loader
-  // dependency for it is not worth the bundle.
+  // Load the Maps SDK once, by hand: the page has one map and a loader
+  // dependency is not worth the bundle for it.
   useEffect(() => {
     if (!apiKey || mapRef.current || !containerRef.current || !boundaries)
       return;
 
-    // `loading=async` means the SDK no longer fills in `google.maps` by the
-    // time the script's load event fires — the constructors exist only after
-    // the library is imported. Calling `new google.maps.Map` on load threw
-    // "google.maps.Map is not a constructor" and left the pane blank.
-    const start = async () => {
-      if (!containerRef.current || mapRef.current) return;
-      const lib = (await google.maps.importLibrary(
-        "maps",
-      )) as google.maps.MapsLibrary;
-      // Re-check: the import is a suspension point, and the component may have
-      // unmounted or another pass may have built the map while it was pending.
-      if (!containerRef.current || mapRef.current) return;
-      libRef.current = lib;
-      mapRef.current = new lib.Map(containerRef.current, {
-        center: CENTER,
-        zoom: 10,
-        mapTypeControl: false,
-        streetViewControl: false,
+    let cancelled = false;
+
+    loadMapsSdk(apiKey)
+      .then(async () => {
+        if (cancelled || !containerRef.current || mapRef.current) return;
+        const lib = (await google.maps.importLibrary(
+          "maps",
+        )) as google.maps.MapsLibrary;
+        // The import is a suspension point: the component may have unmounted,
+        // or another pass may have built the map, while it was pending.
+        if (cancelled || !containerRef.current || mapRef.current) return;
+
+        libRef.current = lib;
+        mapRef.current = new lib.Map(containerRef.current, {
+          center: CENTER,
+          zoom: 10,
+          mapTypeControl: false,
+          streetViewControl: false,
+        });
+        // State, not just the ref: the polygon effect draws onto a map held in
+        // a ref, and a ref assignment does not re-render, so without this the
+        // polygons are skipped depending on which effect wins the race.
+        setMapReady(true);
+      })
+      .catch(() => {
+        if (!cancelled) setError("Could not load Google Maps.");
       });
-      // State, not just the ref: the polygon effect below has to re-run once
-      // there is a map to draw on, and a ref assignment does not re-render.
-      setMapReady(true);
+
+    return () => {
+      cancelled = true;
     };
-
-    if (typeof window.google?.maps?.importLibrary === "function") {
-      void start();
-      return;
-    }
-
-    const existing = document.getElementById(
-      "gmaps-sdk",
-    ) as HTMLScriptElement | null;
-    if (existing) {
-      const onLoad = () => void start();
-      existing.addEventListener("load", onLoad);
-      return () => existing.removeEventListener("load", onLoad);
-    }
-
-    const script = document.createElement("script");
-    script.id = "gmaps-sdk";
-    // `loading=async` is what the SDK asks for; without it it warns on every
-    // load that the import pattern is suboptimal.
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&v=weekly&loading=async`;
-    script.async = true;
-    script.onload = () => void start();
-    script.onerror = () => setError("Could not load Google Maps.");
-    document.head.appendChild(script);
   }, [apiKey, boundaries]);
 
   // Repaint polygons whenever the fees change. Keyed on `rows`, which the page
