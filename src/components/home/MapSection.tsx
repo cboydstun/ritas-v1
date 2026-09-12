@@ -1,4 +1,5 @@
 import Link from "next/link";
+import DeliveryFeeChecker from "@/components/DeliveryFeeChecker";
 import {
   SERVICE_AREA_REGIONS,
   serviceAreasByRegion,
@@ -61,12 +62,12 @@ export default function MapSection() {
               ))}
             </div>
 
-            <div className="mt-8 p-4 bg-light dark:bg-charcoal/50 rounded-lg">
-              <p className="text-charcoal/80 dark:text-white/80">
-                <span className="font-semibold text-teal">Note:</span> We serve
-                additional areas within 30 miles of downtown San Antonio.
-                Contact us to confirm service availability for your location.
-              </p>
+            {/* This replaced three service-area claims that disagreed with
+                each other and with the checkout: a county, a metro area and a
+                mileage radius. The ZIP checker reads the same resolver the
+                checkout prices from, so it cannot drift from it. */}
+            <div className="mt-8">
+              <DeliveryFeeChecker />
             </div>
           </div>
         </div>

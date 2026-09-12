@@ -23,12 +23,12 @@ import {
 export const metadata: Metadata = {
   title: "Service Areas | Margarita Machine Delivery Across San Antonio",
   description:
-    "Frozen drink and margarita machine rental delivered across San Antonio and Bexar County — downtown, Alamo Heights, Stone Oak, Helotes, Schertz and more.",
+    "Frozen drink and margarita machine rental delivered across San Antonio and the surrounding area — downtown, Alamo Heights, Stone Oak, Helotes, Schertz and more.",
   alternates: { canonical: "/service-area" },
   openGraph: {
     title: "Where We Deliver | SATX Ritas Rentals",
     description:
-      "Margarita machine delivery, setup and pickup across San Antonio and Bexar County.",
+      "Margarita machine delivery, setup and pickup across San Antonio and the surrounding area.",
     url: `${SITE_URL}/service-area`,
     images: [`${SITE_URL}/og-image.jpg`],
     type: "website",
@@ -75,8 +75,9 @@ export default function ServiceAreaIndexPage() {
         </h1>
         <p className="text-lg text-charcoal/70 dark:text-white/70 max-w-3xl mb-12">
           We deliver, set up and collect frozen drink machines across San
-          Antonio and Bexar County. Pick your area below for delivery notes and
-          pricing, or{" "}
+          Antonio and the surrounding area. Every ZIP we serve has its own
+          distance surcharge, quoted at checkout before you book. Pick your area
+          below for delivery notes and pricing, or{" "}
           <a href={BUSINESS_PHONE_HREF} className="text-margarita underline">
             call {BUSINESS_PHONE_DISPLAY}
           </a>{" "}

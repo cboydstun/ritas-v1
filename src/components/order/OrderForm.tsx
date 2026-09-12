@@ -599,7 +599,7 @@ export default function OrderForm() {
         )
       ) {
         setError(
-          "We only deliver within Bexar County, TX. Please enter a valid Bexar County ZIP code, or contact us for special delivery requests.",
+          "We don't have a delivery price set for that ZIP code yet. Try another, or call us and we'll see what we can do.",
         );
         return;
       }

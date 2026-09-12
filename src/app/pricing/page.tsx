@@ -345,8 +345,9 @@ export default async function PricingPage() {
                   📅 Machine and mixer rates are{" "}
                   <span className="font-bold text-orange">per day</span> — your
                   total is calculated as rate × number of rental days. The
-                  delivery fee is a flat one-time charge. Party extras are also
-                  priced per day.
+                  distance surcharge is a one-time charge set by your ZIP code
+                  and quoted before you book. Party extras are also priced per
+                  day.
                 </p>
               </div>
 
@@ -482,9 +483,13 @@ export default async function PricingPage() {
                   </h4>
                   <div className="grid grid-cols-3 gap-4 mb-8">
                     <p>
+                      {/* Delivery and setup are included everywhere we go; what
+                          varies is how far the truck drives, and that is priced
+                          per ZIP. Quoting one figure here is what made this page
+                          disagree with checkout. */}
                       <span className="font-medium">Delivery & Setup:</span>
                       <br />
-                      $20.00 flat fee
+                      Included — distance surcharge by ZIP
                     </p>
                     <p>
                       <span className="font-medium">Sales Tax:</span>

@@ -29,7 +29,7 @@ export const DELIVERY_INCLUDES: FeaturesSection = {
   items: [
     {
       icon: "🚚",
-      body: "Delivery and pickup — a flat fee, no per-mile charge.",
+      body: "Delivery, setup and pickup — the distance surcharge is set by your ZIP code and quoted before you book.",
     },
     {
       icon: "🔧",

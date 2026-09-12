@@ -15,7 +15,8 @@
     "test:ci": "jest --ci --coverage",
     "typecheck": "tsc --noEmit",
     "format:check": "prettier --check .",
-    "seed-zip-fees": "node scripts/delivery/seed-zip-fees.mjs"
+    "seed-zip-fees": "node scripts/delivery/seed-zip-fees.mjs",
+    "fix-delivery-copy": "node scripts/delivery/fix-delivery-copy.mjs"
   },
   "dependencies": {
     "@heroicons/react": "^2.2.0",

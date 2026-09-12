@@ -209,10 +209,13 @@ export default function DateSelectionStep({
                 <p className="text-sm text-charcoal/70 dark:text-white/70 text-center">
                   ✨ 24-hour rental period included
                 </p>
-                {/* Not "free": computeOrderTotal adds a flat delivery fee to
-                    every order, and PricingSummary shows it two screens later. */}
+                {/* Setup and pickup really are included everywhere we go —
+                    what varies is how far the truck drives. The surcharge for
+                    this order's ZIP appears under the address field on the next
+                    step and again in PricingSummary. */}
                 <p className="text-sm text-charcoal/70 dark:text-white/70 text-center">
-                  🚚 Flat-rate delivery &amp; setup throughout Bexar County
+                  🚚 Delivery, setup and pickup included — surcharge quoted by
+                  ZIP
                 </p>
               </div>
             </div>
