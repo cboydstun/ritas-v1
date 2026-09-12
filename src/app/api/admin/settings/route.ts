@@ -38,7 +38,13 @@ export async function GET() {
       settings = new Settings({});
     }
 
-    return NextResponse.json(settings.toObject());
+    // `flattenMaps`, for the same reason `getPublicSettings` needs it:
+    // `deliveryZones.customFees` is a Mongoose `Map`, and `JSON.stringify`
+    // renders a Map as `{}`. Without it the delivery-zone admin loads an empty
+    // fee map and reports every ZIP as "not serviced" over a database where all
+    // 120 are priced — then offers to "fix" it by re-pricing them. The public
+    // read was fixed when it was written; this one was not, and it shipped.
+    return NextResponse.json(settings.toObject({ flattenMaps: true }));
   } catch (error) {
     console.error("Error fetching settings:", error);
     return NextResponse.json(
