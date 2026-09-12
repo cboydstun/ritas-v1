@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { StepProps, inputClassName, labelClassName } from "../types";
-import { validateZipCode, isBexarCountyZipCode } from "../utils";
+import { validateZipCode, isServicedZipCode } from "../utils";
 
 export default function DetailsStep({
   formData,
   onInputChange,
   error,
+  settings,
 }: StepProps) {
   const [zipCodeError, setZipCodeError] = useState<string | null>(null);
   const [showZipCodeWarning, setShowZipCodeWarning] = useState(false);
@@ -129,10 +130,15 @@ export default function DetailsStep({
         "Please enter a valid ZIP code format (e.g., 78201 or 78201-1234)",
       );
     }
-    // Validate if ZIP is in Bexar County
-    else if (value && validateZipCode(value) && !isBexarCountyZipCode(value)) {
+    // Priced is serviced: a ZIP with no distance surcharge is one nobody has
+    // set a price for, and checkout refuses it.
+    else if (
+      value &&
+      validateZipCode(value) &&
+      !isServicedZipCode(value, settings?.deliveryZones)
+    ) {
       setZipCodeError(
-        "We only deliver within Bexar County, TX. This ZIP code is outside our delivery area.",
+        "We don't have a delivery price for this ZIP code yet. Try another, or call us and we'll see what we can do.",
       );
       if (value.length === 5 || value.length > 6) {
         setShowZipCodeWarning(true);
@@ -314,7 +320,10 @@ export default function DetailsStep({
                   ? "border-red-500 pr-10"
                   : formData.customer.address.zipCode &&
                       validateZipCode(formData.customer.address.zipCode) &&
-                      isBexarCountyZipCode(formData.customer.address.zipCode)
+                      isServicedZipCode(
+                        formData.customer.address.zipCode,
+                        settings?.deliveryZones,
+                      )
                     ? "border-green-500 pr-10"
                     : ""
               }`}
@@ -325,7 +334,10 @@ export default function DetailsStep({
             {formData.customer.address.zipCode &&
               validateZipCode(formData.customer.address.zipCode) && (
                 <span className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                  {!isBexarCountyZipCode(formData.customer.address.zipCode) ? (
+                  {!isServicedZipCode(
+                    formData.customer.address.zipCode,
+                    settings?.deliveryZones,
+                  ) ? (
                     <svg
                       className="h-5 w-5 text-red-500"
                       fill="currentColor"

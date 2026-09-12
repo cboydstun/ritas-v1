@@ -112,8 +112,27 @@ const existingOrder = (overrides: Record<string, unknown> = {}) => ({
   rentalDate: futureDate(10),
   returnDate: futureDate(11),
   status: "pending_payment",
+  customer: {
+    name: "Sam Rivera",
+    email: "sam@example.com",
+    phone: "(210) 555-0134",
+    address: {
+      street: "1 Alamo Plaza",
+      city: "San Antonio",
+      state: "TX",
+      zipCode: "78205",
+    },
+  },
   ...overrides,
 });
+
+/** Per-ZIP surcharges, as the routes read them through `.lean()`. */
+const ZONES = {
+  customFees: { "78205": 0, "78015": 75 },
+  insideZips: ["78205"],
+  outsideZips: ["78015"],
+  tierMinimums: { free: 0, low: 0, standard: 0, high: 0, premium: 0 },
+};
 
 const lastCreated = () => createdDocs[createdDocs.length - 1];
 
@@ -203,6 +222,105 @@ describe("admin order routes", () => {
       );
 
       expect(response.status).toBe(400);
+    });
+  });
+
+  describe("the delivery surcharge", () => {
+    beforeEach(() => {
+      (Settings.findOne as jest.Mock).mockReturnValue({
+        lean: jest.fn().mockResolvedValue({ deliveryZones: ZONES }),
+      });
+    });
+
+    it("prices an admin order from the ZIP, like any other order", async () => {
+      await post(validOrder());
+      const free = createdDocs[createdDocs.length - 1].price as number;
+
+      createdDocs.length = 0;
+      await post(
+        validOrder({
+          customer: {
+            name: "Sam Rivera",
+            email: "sam@example.com",
+            phone: "(210) 555-0134",
+            address: {
+              street: "1 Ranch Rd",
+              city: "Boerne",
+              state: "TX",
+              zipCode: "78015",
+            },
+          },
+        }),
+      );
+      const priced = createdDocs[createdDocs.length - 1].price as number;
+
+      // $75 of surcharge, grossed up by the 3% fee and 8.25% tax. Compared to
+      // within a cent because each total rounds as it accumulates.
+      expect(priced - free).toBeCloseTo(75 * 1.03 * 1.0825, 1);
+    });
+
+    it("lets the office book a ZIP nobody has priced", async () => {
+      // The exemption is from the *refusal* and the order minimum, not from
+      // correct pricing: the office quotes an unusual trip by phone. The public
+      // route refuses the same ZIP outright.
+      const response = await post(
+        validOrder({
+          customer: {
+            name: "Sam Rivera",
+            email: "sam@example.com",
+            phone: "(210) 555-0134",
+            address: {
+              street: "1 Congress Ave",
+              city: "Austin",
+              state: "TX",
+              zipCode: "78701",
+            },
+          },
+        }),
+      );
+
+      expect(response.status).toBe(201);
+    });
+
+    it("reprices when an edit moves the order to a different ZIP", async () => {
+      await put({
+        customer: {
+          name: "Sam Rivera",
+          email: "sam@example.com",
+          phone: "(210) 555-0134",
+          address: {
+            street: "1 Ranch Rd",
+            city: "Boerne",
+            state: "TX",
+            zipCode: "78015",
+          },
+        },
+      });
+
+      const [, update] = (Rental.findByIdAndUpdate as jest.Mock).mock.calls[0];
+      expect(update.price).toBeGreaterThan(0);
+    });
+
+    it("does not reprice when an edit only fixes the customer's name", async () => {
+      // Adding `customer` to PRICING_FIELDS would reprice a months-old order at
+      // today's Settings because somebody corrected a typo — the exact bug that
+      // list exists to prevent.
+      await put({
+        customer: {
+          name: "Samantha Rivera",
+          email: "sam@example.com",
+          phone: "(210) 555-0134",
+          address: {
+            street: "1 Alamo Plaza",
+            city: "San Antonio",
+            state: "TX",
+            zipCode: "78205",
+          },
+        },
+      });
+
+      const [, update] = (Rental.findByIdAndUpdate as jest.Mock).mock.calls[0];
+      expect(update.price).toBeUndefined();
     });
   });
 

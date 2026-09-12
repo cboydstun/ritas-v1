@@ -12,9 +12,11 @@ import { formatPrice } from "@/lib/pricing";
 import {
   computeOrderTotal,
   validateDeliveryTime,
-  isBexarCountyZipCode,
   type SettingsOverrides,
 } from "@/components/order/utils";
+import { resolveDeliveryFee } from "@/lib/delivery/resolveDeliveryFee";
+import { minimumForZip, minimumOrderError } from "@/lib/delivery/tierMinimums";
+import type { DeliverySettings } from "@/lib/delivery/zones";
 import type { OrderFormData } from "@/components/order/types";
 import {
   resolveSelectedExtras,
@@ -112,6 +114,7 @@ export async function POST(request: Request) {
         salesTaxRate?: number;
         processingFeeRate?: number;
         serviceDiscountRate?: number;
+        minOrderAmount?: number;
       };
       machines?: {
         single?: { basePrice: number };
@@ -127,13 +130,17 @@ export async function POST(request: Request) {
         deliveryWindowStartHour?: number;
         deliveryWindowEndHour?: number;
       };
+      // `.lean()` skips hydration, so `customFees` arrives as a plain object
+      // rather than a Mongoose Map. `customFeeFor` reads either.
+      deliveryZones?: DeliverySettings;
     } | null;
 
-    // The delivery window and the Bexar-County service area were enforced only
-    // in the browser (OrderForm/DetailsStep), so a direct POST could book a
-    // 03:00 delivery to any ZIP in the country. Money was never at risk —
-    // pricing is fully server-derived — but the operational rules were not
-    // enforced anywhere the customer could not reach.
+    // The delivery window and the service area were enforced only in the
+    // browser (OrderForm/DetailsStep), so a direct POST could book a 03:00
+    // delivery to any ZIP in the country. Both are re-checked below. The
+    // service area is now the set of priced ZIPs rather than a hardcoded list,
+    // and the surcharge rides on the same fact, so money IS at risk here in a
+    // way it was not when delivery was one flat figure.
     const startHour = settingsDoc?.operations?.deliveryWindowStartHour ?? 8;
     const endHour = settingsDoc?.operations?.deliveryWindowEndHour ?? 18;
     for (const [label, time] of [
@@ -150,12 +157,20 @@ export async function POST(request: Request) {
       }
     }
 
-    if (!isBexarCountyZipCode(rentalData.customer.address.zipCode)) {
+    // The service-area gate and the surcharge are the same fact: `customFees`
+    // is both the price list and the definition of the area. A ZIP nobody has
+    // priced is REFUSED here rather than priced through `getDeliveryFee`'s
+    // `?? 0`, which would hand out free delivery to an address no one agreed to
+    // drive to. The browser refuses it first; this is the side of the wire that
+    // is authoritative.
+    const deliveryZones = settingsDoc?.deliveryZones;
+    const feeResolution = resolveDeliveryFee(
+      rentalData.customer.address.zipCode,
+      deliveryZones,
+    );
+    if (!feeResolution.ok) {
       return NextResponse.json(
-        {
-          message:
-            "We currently deliver only within Bexar County. Please call us to arrange delivery outside the area.",
-        },
+        { message: feeResolution.error },
         { status: 400 },
       );
     }
@@ -170,6 +185,11 @@ export async function POST(request: Request) {
       machines: settingsDoc?.machines,
       mixers: settingsDoc?.mixers,
       extras: settingsDoc?.extras,
+      // Passing the zones rather than the resolved number keeps this call and
+      // the browser's on one code path. `rentalSubtotalMirror.test.ts` is what
+      // holds them equal; a cent of drift would refuse at the API what the
+      // review screen had already approved, identically on every retry.
+      deliveryZones,
     };
 
     // Add-ons are re-resolved against the server catalog, so name, price and
@@ -213,6 +233,10 @@ export async function POST(request: Request) {
         selectedExtras,
         rentalDate: rentalData.rentalDate,
         returnDate: rentalData.returnDate,
+        // The surcharge is resolved from this ZIP inside `computeOrderTotal`.
+        // Omitting the customer here would leave it with no ZIP to price and
+        // silently deliver for $0.
+        customer: rentalData.customer,
         // The service discount was retired from the product. It is applied by
         // hand at invoicing time for legacy cases and is never client-settable.
         isServiceDiscount: false,
@@ -233,6 +257,28 @@ export async function POST(request: Request) {
       cashPrice: emailCashPrice,
       finalTotal: emailTotal,
     } = totals;
+
+    // The floor is measured on rentals alone, never on `finalTotal`. The
+    // surcharge is the cost the minimum exists to cover, so it must not be what
+    // clears it — otherwise a $92 cart qualifies for a $100 floor by being
+    // delivered somewhere expensive.
+    const minimumOrderAmount = minimumForZip(
+      rentalData.customer.address.zipCode,
+      deliveryZones,
+      settingsDoc?.fees?.minOrderAmount ?? 0,
+    );
+    if (minimumOrderAmount > 0 && totals.rentalSubtotal < minimumOrderAmount) {
+      return NextResponse.json(
+        {
+          message: minimumOrderError(
+            minimumOrderAmount,
+            rentalData.customer.address.zipCode,
+            totals.rentalSubtotal,
+          ),
+        },
+        { status: 400 },
+      );
+    }
 
     const taxRate = settingsDoc?.fees?.salesTaxRate ?? 0.0825;
     const processingRate = settingsDoc?.fees?.processingFeeRate ?? 0.03;
