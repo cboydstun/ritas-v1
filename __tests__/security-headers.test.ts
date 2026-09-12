@@ -231,6 +231,34 @@ describe("Content-Security-Policy", () => {
     });
   });
 
+  describe("Google Maps JavaScript API (admin delivery-zone map)", () => {
+    it.each(["script-src", "img-src", "connect-src"])(
+      "permits maps.googleapis.com in %s",
+      (directive) => {
+        // `*.google.com` and `*.gstatic.com` do NOT cover this: a CSP wildcard
+        // matches subdomains of the host it names, and googleapis.com is a
+        // different registrable domain. Without these the map renders blank
+        // with no error on our side.
+        expect(
+          permits(directive, "https://maps.googleapis.com/maps/api/js"),
+        ).toBe(true);
+      },
+    );
+
+    it("permits the map tiles gstatic serves", () => {
+      expect(permits("img-src", "https://maps.gstatic.com/tile.png")).toBe(
+        true,
+      );
+    });
+
+    it("lists the bare googleapis.com host as well as the wildcard", () => {
+      // Google has moved endpoints between the apex and a subdomain before.
+      for (const directive of ["script-src", "img-src", "connect-src"]) {
+        expect(permits(directive, "https://googleapis.com/x")).toBe(true);
+      }
+    });
+  });
+
   it("still refuses an unrelated third-party origin", () => {
     expect(permits("connect-src", "https://evil.example.com/collect")).toBe(
       false,

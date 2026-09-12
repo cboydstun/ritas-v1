@@ -80,6 +80,12 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             Lease Inquiries
           </Link>
           <Link
+            href="/admin/delivery-zones"
+            className="block px-6 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+          >
+            Delivery Zones
+          </Link>
+          <Link
             href="/admin/blackout-dates"
             className="block px-6 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
           >
