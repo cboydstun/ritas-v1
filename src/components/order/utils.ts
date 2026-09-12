@@ -4,6 +4,12 @@ import {
   ZIP_PATTERN,
   EMAIL_PATTERN,
 } from "@/lib/dates";
+import {
+  getDeliveryFee,
+  customFeeFor,
+  fiveDigitZip,
+  type DeliverySettings,
+} from "@/lib/delivery/zones";
 import { buildExtrasCatalog, MAX_EXTRA_QUANTITY } from "@/lib/extras-catalog";
 
 /**
@@ -62,48 +68,27 @@ export const validatePhone = (phone: string): boolean =>
 export const validateZipCode = (zipCode: string): boolean =>
   ZIP_PATTERN.test(zipCode);
 
-export const isBexarCountyZipCode = (zipCode: string): boolean => {
-  // Strip non-digits (the dash in a ZIP+4) and keep only the 5-digit prefix.
-  // `ZIP_PATTERN` admits `\d{5}-\d{4}`, so stripping alone left a 9-digit
-  // string that never matched an entry below: every valid ZIP+4 in Bexar
-  // County was turned away as "outside our service area".
-  const cleanZip = zipCode.replace(/\D/g, "").slice(0, 5);
-
-  // Main San Antonio/Bexar County ZIP codes
-  const bexarZips = [
-    // Main San Antonio ZIP ranges (78201-78299). The generator used to start
-    // at i=0 for 99 entries, which produced 78200-78298: it turned away the
-    // real ZIP 78299 and accepted the unassigned 78200.
-    ...Array.from(
-      { length: 99 },
-      (_, i) => `782${String(i + 1).padStart(2, "0")}`,
-    ),
-
-    // Additional Bexar County ZIPs
-    "78002",
-    "78006",
-    "78009",
-    "78015",
-    "78023",
-    "78039",
-    "78052",
-    "78054",
-    "78056",
-    "78069",
-    "78073",
-    "78101",
-    "78108",
-    "78109",
-    "78112",
-    "78124",
-    "78148",
-    "78150",
-    "78152",
-    "78154",
-    "78163",
-  ];
-
-  return bexarZips.includes(cleanZip);
+/**
+ * Is this ZIP in the service area?
+ *
+ * **Priced is serviced — that is the whole rule.** `customFees` is both the
+ * price list and the definition of the area, so a ZIP with a fee is deliverable
+ * and a ZIP without one is not. This replaced a hardcoded 120-entry array named
+ * `isBexarCountyZipCode`, which meant the area could only change with a deploy
+ * and which named a county we no longer claim in customer copy.
+ *
+ * Goes through `customFeeFor` rather than `customFees[zip]` so a server-side
+ * caller holding a Mongoose `Map` is not silently told "not serviced".
+ *
+ * The five-digit strip is load-bearing: `ZIP_PATTERN` admits `\d{5}-\d{4}`, and
+ * comparing the full nine digits turned away every valid ZIP+4 in the county.
+ */
+export const isServicedZipCode = (
+  zipCode: string,
+  settings?: DeliverySettings,
+): boolean => {
+  if (!zipCode) return false;
+  return customFeeFor(settings, fiveDigitZip(zipCode)) !== null;
 };
 
 export const validateDeliveryTime = (
@@ -134,8 +119,17 @@ export interface SettingsOverrides {
     salesTaxRate?: number;
     processingFeeRate?: number;
     serviceDiscountRate?: number;
+    /**
+     * The old flat fee. Still read, but only as the last fallback for an order
+     * whose ZIP has no price of its own — which the service-area gate refuses
+     * before it can reach pricing.
+     */
     deliveryFee?: number;
+    /** What a ZIP with no fee band falls back to. See `minimumForZip`. */
+    minOrderAmount?: number;
   };
+  /** Per-ZIP surcharges and the zone geography. The only price there is. */
+  deliveryZones?: DeliverySettings;
   extras?: Record<string, { price: number }>;
   machines?: {
     single?: { basePrice: number };
@@ -159,6 +153,15 @@ export interface OrderTotals {
   perDayRate: number;
   rentalDays: number;
   extrasTotal: number;
+  /**
+   * Machine rate x days, plus extras. **Excludes the distance surcharge.**
+   *
+   * This is what an order minimum is measured against. The surcharge is the
+   * cost the minimum exists to cover, so it must not be what clears it — a $92
+   * cart must not qualify for a $100 floor by being delivered somewhere
+   * expensive.
+   */
+  rentalSubtotal: number;
   subtotal: number;
   serviceDiscountAmount: number;
   discountedSubtotal: number;
@@ -174,11 +177,21 @@ export function computeOrderTotal(
   formData: OrderFormData,
   settings?: SettingsOverrides,
 ): OrderTotals {
+  // The surcharge comes from the order's own ZIP, never from a settings
+  // default and never from a request body. `getDeliveryFee` answers 0 for a
+  // ZIP nobody priced; that is not the gate — `isServicedZipCode` in the
+  // browser and `resolveDeliveryFee` on the server are — it is only what keeps
+  // a NaN out of a total if the gate is ever bypassed.
+  const zipCode = formData.customer?.address?.zipCode ?? "";
+  const zonedFee = settings?.deliveryZones
+    ? getDeliveryFee(zipCode, settings.deliveryZones)
+    : undefined;
+
   const priceBreakdown = calculatePrice(
     formData.machineType,
     formData.selectedMixers,
     {
-      deliveryFee: settings?.fees?.deliveryFee,
+      deliveryFee: zonedFee ?? settings?.fees?.deliveryFee,
       salesTaxRate: settings?.fees?.salesTaxRate,
       processingFeeRate: settings?.fees?.processingFeeRate,
       machines: settings?.machines,
@@ -220,6 +233,9 @@ export function computeOrderTotal(
     }, 0),
   );
 
+  // What the order minimum is measured against: rentals only, no surcharge.
+  const rentalSubtotal = roundCurrency(perDayRate * rentalDays + extrasTotal);
+
   // Subtotal = machine rate × days + delivery + extras
   const subtotal = roundCurrency(
     perDayRate * rentalDays + priceBreakdown.deliveryFee + extrasTotal,
@@ -258,6 +274,7 @@ export function computeOrderTotal(
     perDayRate,
     rentalDays,
     extrasTotal,
+    rentalSubtotal,
     subtotal,
     serviceDiscountAmount,
     discountedSubtotal,

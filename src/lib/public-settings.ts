@@ -1,5 +1,6 @@
 import dbConnect from "@/lib/mongodb";
 import { Settings } from "@/models/settings";
+import type { DeliverySettings } from "@/lib/delivery/zones";
 
 /**
  * The public, whitelisted view of the admin settings singleton.
@@ -12,6 +13,7 @@ import { Settings } from "@/models/settings";
  */
 export interface PublicSettings {
   fees?: Record<string, number | undefined>;
+  deliveryZones?: DeliverySettings;
   machines?: Record<string, { basePrice?: number } | undefined>;
   mixers?: Record<string, unknown>;
   extras?: Record<string, unknown>;
@@ -27,7 +29,11 @@ export async function getPublicSettings(): Promise<PublicSettings> {
   // non-persisted instance gives callers the same shape either way.
   const settings =
     (await Settings.findOne({ key: "global" })) ?? new Settings({});
-  const doc = settings.toObject();
+  // `flattenMaps` is not cosmetic. `deliveryZones.customFees` is a Mongoose
+  // `Map`, and `JSON.stringify` renders a Map as `{}` — so without this the
+  // public fee map reaches the browser empty and every ZIP reads as unserviced
+  // while the server prices them correctly.
+  const doc = settings.toObject({ flattenMaps: true });
 
   // `machines` carries per-type `inventory` alongside `basePrice`; only the
   // price is any of the browser's business.
@@ -40,6 +46,7 @@ export async function getPublicSettings(): Promise<PublicSettings> {
 
   return {
     fees: doc.fees,
+    deliveryZones: doc.deliveryZones,
     machines,
     mixers: doc.mixers,
     extras: doc.extras,

@@ -264,6 +264,71 @@ const machineSettingsSchema = z
   })
   .partial();
 
+/**
+ * Per-ZIP delivery pricing.
+ *
+ * `runValidators` on a `findOneAndUpdate` runs path validators only, so — as
+ * with the Mixed maps above — this schema is the only thing standing between a
+ * request body and `deliveryZones`. A non-numeric fee produces a NaN order
+ * total; an unknown tier key silently does nothing.
+ */
+const zipCodeSchema = z.string().regex(/^\d{5}$/, "must be a 5-digit ZIP code");
+
+const zipListSchema = z.array(zipCodeSchema).max(2000);
+
+/**
+ * Partial on purpose — the admin edits one band at a time and the route merges
+ * — but `strict`, so `unserviced` (which is the absence of a price, not a band)
+ * and any typo are a 400 rather than a write that appears to work.
+ */
+const tierMinimumsSchema = z
+  .object({
+    free: moneySchema,
+    low: moneySchema,
+    standard: moneySchema,
+    high: moneySchema,
+    premium: moneySchema,
+  })
+  .partial()
+  .strict();
+
+export const deliveryZonesSchema = z
+  .object({
+    customFees: z.record(zipCodeSchema, moneySchema),
+    insideZips: zipListSchema,
+    outsideZips: zipListSchema,
+    tierMinimums: tierMinimumsSchema,
+  })
+  .partial();
+
+/**
+ * The narrow write verbs, one per PATCH.
+ *
+ * `customFees` is a wholesale assignment, so an admin page that priced one ZIP
+ * by resending the map had to rebuild every entry from whatever the browser had
+ * loaded — and reverted every fee written since that page load. bounce-v3 lost
+ * a verified production seed that way. Each verb sends only its own slice and
+ * mutates the stored document in place.
+ */
+export const deliveryZonesPatchSchema = z.union([
+  z
+    .object({
+      setCustomZipFee: z.object({ zipCode: zipCodeSchema, fee: moneySchema }),
+    })
+    .strict(),
+  z.object({ removeCustomZipFee: zipCodeSchema }).strict(),
+  z
+    .object({
+      updateZipLists: z
+        .object({ insideZips: zipListSchema, outsideZips: zipListSchema })
+        .partial(),
+    })
+    .strict(),
+  z.object({ updateTierMinimums: tierMinimumsSchema }).strict(),
+]);
+
+export type DeliveryZonesPatch = z.infer<typeof deliveryZonesPatchSchema>;
+
 export const settingsUpdateSchema = z
   .object({
     fees: z
@@ -290,6 +355,7 @@ export const settingsUpdateSchema = z
         deliveryWindowEndHour: z.number().int().min(0).max(23),
       })
       .partial(),
+    deliveryZones: deliveryZonesSchema,
     documentation: z
       .object({
         // Rendered straight into an href on the public /long-term-lease

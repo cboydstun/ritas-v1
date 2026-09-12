@@ -3,8 +3,14 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import dbConnect from "@/lib/mongodb";
 import { Settings } from "@/models/settings";
-import { settingsUpdateSchema, firstIssueMessage } from "@/lib/validation";
+import {
+  settingsUpdateSchema,
+  deliveryZonesPatchSchema,
+  firstIssueMessage,
+} from "@/lib/validation";
+import { DEFAULT_TIER_MINIMUMS } from "@/lib/delivery/tierMinimums";
 import { guardAdminWrite } from "@/lib/api-guard";
+import { safeErrorSummary } from "@/lib/safe-error";
 
 /** The only settings an admin may write through this route. */
 const EDITABLE_SETTINGS_FIELDS = [
@@ -90,6 +96,17 @@ export async function PUT(request: Request) {
       if (data[field] !== undefined) update[field] = data[field];
     }
 
+    // `deliveryZones` is written one dotted path at a time, never as a subtree.
+    // `$set: { deliveryZones: {...} }` replaces the whole thing, so a body
+    // carrying only `insideZips` would delete every ZIP's fee — and the fee map
+    // is the service area, so that is the whole business, silently. This branch
+    // exists for seeders and imports; the admin page uses PATCH below.
+    if (data.deliveryZones) {
+      for (const [key, value] of Object.entries(data.deliveryZones)) {
+        update[`deliveryZones.${key}`] = value;
+      }
+    }
+
     // A body that moves only one end of the delivery window is still able to
     // invert it against the value already stored, which the schema cannot see.
     const ops = data.operations;
@@ -144,6 +161,92 @@ export async function PUT(request: Request) {
 
     return NextResponse.json(
       { message: "Failed to update settings" },
+      { status: 500 },
+    );
+  }
+}
+
+/**
+ * The narrow delivery-zone write verbs.
+ *
+ * Separate from `PUT` because `customFees` is a wholesale assignment: an admin
+ * page that priced one ZIP by resending the map had to rebuild every entry from
+ * whatever the browser had loaded, so pricing one ZIP reverted every fee written
+ * since that page load. Each verb here sends only its own slice and mutates the
+ * stored document in place.
+ *
+ * `findOne` + `save()` rather than `findOneAndUpdate`, because a Map has to be
+ * mutated through the hydrated document — and because `save()` is the one write
+ * path where the schema's own validators actually run.
+ */
+export async function PATCH(request: Request) {
+  const session = await getServerSession(authOptions);
+  if (!session || session.user.role !== "admin") {
+    return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+  }
+
+  try {
+    const guard = await guardAdminWrite(request);
+    if (!guard.ok) return guard.response;
+
+    const parsed = deliveryZonesPatchSchema.safeParse(guard.data);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { message: firstIssueMessage(parsed.error) },
+        { status: 400 },
+      );
+    }
+    const patch = parsed.data;
+
+    await dbConnect();
+    const settings =
+      (await Settings.findOne({ key: "global" })) ??
+      new Settings({ key: "global" });
+
+    if ("setCustomZipFee" in patch) {
+      const { zipCode, fee } = patch.setCustomZipFee;
+      settings.deliveryZones.customFees.set(zipCode, fee);
+      settings.markModified("deliveryZones.customFees");
+    } else if ("removeCustomZipFee" in patch) {
+      // Deletes the key. Writing 0 would say "we deliver here for free", which
+      // is the opposite of what removing a fee means.
+      settings.deliveryZones.customFees.delete(patch.removeCustomZipFee);
+      settings.markModified("deliveryZones.customFees");
+    } else if ("updateZipLists" in patch) {
+      // Each list assigned independently: a body naming one must not clear the
+      // other. An emptied list is a state the admin is entitled to save —
+      // membership is geography and grants no price, so an empty zone is
+      // survivable in a way an empty fee map is not.
+      const { insideZips, outsideZips } = patch.updateZipLists;
+      if (insideZips) settings.deliveryZones.insideZips = insideZips;
+      if (outsideZips) settings.deliveryZones.outsideZips = outsideZips;
+    } else {
+      // Merged, not replaced: the legend saves the band the admin touched and
+      // omits the rest, and an omitted band must keep its stored figure.
+      settings.deliveryZones.tierMinimums = {
+        ...DEFAULT_TIER_MINIMUMS,
+        ...(settings.deliveryZones.tierMinimums ?? {}),
+        ...patch.updateTierMinimums,
+      };
+    }
+
+    settings.updatedAt = new Date();
+    settings.updatedBy = session.user?.name ?? "admin";
+    await settings.save();
+
+    return NextResponse.json(settings.toObject({ flattenMaps: true }));
+  } catch (error) {
+    console.error("Error updating delivery zones:", safeErrorSummary(error));
+
+    if (error instanceof Error && error.name === "ValidationError") {
+      return NextResponse.json(
+        { message: "Invalid delivery zone data" },
+        { status: 400 },
+      );
+    }
+
+    return NextResponse.json(
+      { message: "Failed to update delivery zones" },
       { status: 500 },
     );
   }

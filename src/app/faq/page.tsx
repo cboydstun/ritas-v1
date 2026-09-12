@@ -90,7 +90,7 @@ const faqSections: Array<{
       {
         question: "Do you provide delivery?",
         answer:
-          "Yes! We handle everything for you - delivery, professional setup, and next-day pickup throughout the San Antonio metropolitan area. Our team will handle all the heavy lifting and ensure everything is working perfectly.",
+          "Yes! We handle everything for you - delivery, professional setup, and next-day pickup across San Antonio and the surrounding area. Setup and pickup are included everywhere we go; what varies is how far the truck drives, so each ZIP code has its own distance surcharge, quoted at checkout before you book.",
       },
       {
         question: "What space requirements are needed?",

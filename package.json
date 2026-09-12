@@ -14,7 +14,9 @@
     "test:machine": "jest --testPathPatterns='MachineStep|machine'",
     "test:ci": "jest --ci --coverage",
     "typecheck": "tsc --noEmit",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "seed-zip-fees": "node scripts/delivery/seed-zip-fees.mjs",
+    "fix-delivery-copy": "node scripts/delivery/fix-delivery-copy.mjs"
   },
   "dependencies": {
     "@heroicons/react": "^2.2.0",
@@ -41,6 +43,7 @@
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.2",
     "@types/bcrypt": "^6.0.0",
+    "@types/google.maps": "^3.66.2",
     "@types/jest": "^30.0.0",
     "@types/node": "^24.13.3",
     "@types/react": "^19.2.18",
@@ -49,6 +52,7 @@
     "eslint-config-next": "^16.3.0",
     "jest": "^30.4.2",
     "jest-environment-jsdom": "^30.4.1",
+    "mongodb-memory-server": "^11.2.0",
     "postcss": "^8.5.26",
     "prettier": "^3.9.6",
     "tailwindcss": "^4.3.3",

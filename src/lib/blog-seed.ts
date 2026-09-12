@@ -60,7 +60,7 @@ const PLAN_A_PARTY: BlogSeedPost = {
 <p>Buy your spirits the day before. One 750ml bottle per tank is the usual starting point, adjusted up or down to taste. Keep cups, ice, limes and salt on a table away from the machine so the line never stalls.</p>
 <h2>What it costs, and where the money goes</h2>
 <p>Our <a href="/pricing">pricing page</a> lists the current rate for each machine size alongside delivery. The rate is charged per day, so a Friday-to-Sunday weekend costs far less per hour than a single afternoon. Extras such as tables, chairs and a cotton candy cart are priced per day next to it.</p>
-<p>Delivery is a flat fee inside Bexar County. If you sit outside the county line, check the <a href="/service-area">service area pages</a> first. A margarita machine rental to a surrounding town may need a different delivery window.</p>
+<p>Setup and pickup are included everywhere we go. What varies is how far the truck drives, so each ZIP code carries its own distance surcharge — enter yours at checkout and you will see it before you book. Check the <a href="/service-area">service area pages</a> for local notes; a margarita machine rental to a surrounding town may need a different delivery window.</p>
 <h2>Two mistakes that cost people a good party</h2>
 <p>The first is filling the tank with warm mix an hour before guests arrive. Cold mix freezes faster, so chill the jugs overnight in the refrigerator. It is the single cheapest thing you can do to protect your timeline.</p>
 <p>The second is treating the machine as a garnish station. Cups stacked on the lid and a bowl of limes wedged against the vent both slow the compressor down. Give the unit its own small table and put everything else on another one.</p>

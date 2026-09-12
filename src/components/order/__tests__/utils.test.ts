@@ -6,7 +6,7 @@ import {
   computeOrderTotal,
   calculateRentalDays,
   buildSuccessUrl,
-  isBexarCountyZipCode,
+  isServicedZipCode,
 } from "@/components/order/utils";
 import { OrderFormData } from "@/components/order/types";
 
@@ -298,32 +298,41 @@ describe("buildSuccessUrl", () => {
   });
 });
 
-describe("isBexarCountyZipCode", () => {
-  it("accepts both ends of the 782xx San Antonio range", () => {
-    expect(isBexarCountyZipCode("78201")).toBe(true);
-    // The generator started at 78200 and stopped at 78298, so this real ZIP
-    // was turned away at the address step.
-    expect(isBexarCountyZipCode("78299")).toBe(true);
+describe("isServicedZipCode", () => {
+  const settings = {
+    customFees: { "78201": 20, "78299": 0, "78006": 75 },
+    insideZips: ["78201", "78200"],
+  };
+
+  it("accepts a ZIP that carries a price", () => {
+    expect(isServicedZipCode("78201", settings)).toBe(true);
   });
 
-  it("rejects the unassigned 78200", () => {
-    expect(isBexarCountyZipCode("78200")).toBe(false);
+  it("accepts a ZIP priced at $0 — that is a price, not an absence", () => {
+    expect(isServicedZipCode("78299", settings)).toBe(true);
   });
 
-  it("rejects a ZIP outside Bexar County", () => {
-    expect(isBexarCountyZipCode("75201")).toBe(false);
+  it("refuses a ZIP nobody priced", () => {
+    expect(isServicedZipCode("75201", settings)).toBe(false);
+  });
+
+  it("refuses a listed-but-unpriced ZIP", () => {
+    // Zone membership is geography. It grants no price, so it cannot qualify a
+    // ZIP for delivery — otherwise a listed ZIP would pass the gate and then
+    // price at `getDeliveryFee`'s `?? 0`: free delivery, granted silently.
+    expect(isServicedZipCode("78200", settings)).toBe(false);
   });
 
   // ZIP_PATTERN admits \d{5}-\d{4}, so validateZipCode passed a ZIP+4 and the
   // address step then rejected it as out-of-area: stripping the dash without
   // truncating left the 9-digit "782011234", which matches no entry.
   it("accepts a ZIP+4 by its five-digit prefix", () => {
-    expect(isBexarCountyZipCode("78201-1234")).toBe(true);
-    expect(isBexarCountyZipCode("78299-0001")).toBe(true);
+    expect(isServicedZipCode("78201-1234", settings)).toBe(true);
   });
 
-  it("still rejects an out-of-area ZIP+4", () => {
-    expect(isBexarCountyZipCode("75201-1234")).toBe(false);
+  it("refuses an empty ZIP, and refuses everything with no settings", () => {
+    expect(isServicedZipCode("", settings)).toBe(false);
+    expect(isServicedZipCode("78201", undefined)).toBe(false);
   });
 });
 

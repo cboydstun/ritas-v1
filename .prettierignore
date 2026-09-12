@@ -2,3 +2,7 @@
 node_modules/
 coverage/
 package-lock.json
+
+# Generated ZCTA boundary geometry, served as-is from public/. Prettier would
+# expand 129KB of minified coordinate arrays into several megabytes.
+public/data/zip-boundaries.json

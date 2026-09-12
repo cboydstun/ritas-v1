@@ -170,6 +170,7 @@ export async function POST(request: Request) {
       machines?: SettingsOverrides["machines"];
       mixers?: SettingsOverrides["mixers"];
       extras?: SettingsOverrides["extras"];
+      deliveryZones?: SettingsOverrides["deliveryZones"];
     } | null;
 
     const { extras: resolvedExtras, unknownIds } = resolveSelectedExtras(
@@ -207,8 +208,19 @@ export async function POST(request: Request) {
         rentalDate: rentalDate.data,
         returnDate: returnDate.data,
         isServiceDiscount: false,
+        // The surcharge is resolved from this ZIP. Omitting the customer would
+        // leave `computeOrderTotal` with nothing to price against and silently
+        // deliver for $0.
+        customer: (doc as unknown as { customer?: OrderFormData["customer"] })
+          .customer,
       } as OrderFormData,
       {
+        // An admin order is priced per ZIP like any other. The office is exempt
+        // from the *refusal* of an unpriced ZIP and from the order minimum — it
+        // quotes those by phone — not from charging the right surcharge. An
+        // unpriced ZIP falls through to $0 here, which is the deliberate
+        // "booking outside the priced area on purpose" case.
+        deliveryZones: settingsDoc?.deliveryZones,
         fees: settingsDoc?.fees,
         machines: settingsDoc?.machines,
         mixers: settingsDoc?.mixers,

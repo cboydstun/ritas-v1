@@ -1,4 +1,12 @@
 import mongoose from "mongoose";
+import {
+  DEFAULT_INSIDE_ZIPS,
+  DEFAULT_OUTSIDE_ZIPS,
+} from "@/lib/delivery/defaultZones";
+import {
+  DEFAULT_TIER_MINIMUMS,
+  type TierMinimums,
+} from "@/lib/delivery/tierMinimums";
 
 const settingsSchema = new mongoose.Schema(
   {
@@ -31,6 +39,14 @@ const settingsSchema = new mongoose.Schema(
         default: 0.1,
         min: [0, "serviceDiscountRate cannot be negative"],
         max: [1, "serviceDiscountRate cannot exceed 1"],
+      },
+      // The floor a ZIP falls back to when its fee band carries no minimum of
+      // its own. Defaults to 0 — "no floor" — because a minimum nobody has
+      // measured refuses real bookings the day it ships.
+      minOrderAmount: {
+        type: Number,
+        default: 0,
+        min: [0, "minOrderAmount cannot be negative"],
       },
     },
     machines: {
@@ -187,6 +203,39 @@ const settingsSchema = new mongoose.Schema(
         },
       }),
     },
+    // Per-ZIP delivery pricing. `customFees` is the only price and the only
+    // definition of the service area: a ZIP absent from it is not delivered to,
+    // which is a different state from a fee of $0. The two zip lists are
+    // geography — a label and a colour on the admin map — and imply no price.
+    deliveryZones: {
+      customFees: {
+        type: Map,
+        // `of: Number` alone applies no validator to the values, so a negative
+        // fee saved cleanly. The PATCH verbs write through `save()`, so this
+        // does fire for them — the zod schema is what guards the `PUT` path.
+        of: { type: Number, min: [0, "a delivery fee cannot be negative"] },
+        default: () => ({}),
+      },
+      insideZips: { type: [String], default: () => [...DEFAULT_INSIDE_ZIPS] },
+      outsideZips: { type: [String], default: () => [...DEFAULT_OUTSIDE_ZIPS] },
+      // Five explicit Number fields rather than a Map, so the schema validates
+      // the key set the way `satisfies TierMinimums` does in TypeScript.
+      tierMinimums: {
+        free: { type: Number, default: DEFAULT_TIER_MINIMUMS.free, min: 0 },
+        low: { type: Number, default: DEFAULT_TIER_MINIMUMS.low, min: 0 },
+        standard: {
+          type: Number,
+          default: DEFAULT_TIER_MINIMUMS.standard,
+          min: 0,
+        },
+        high: { type: Number, default: DEFAULT_TIER_MINIMUMS.high, min: 0 },
+        premium: {
+          type: Number,
+          default: DEFAULT_TIER_MINIMUMS.premium,
+          min: 0,
+        },
+      },
+    },
     updatedAt: { type: Date, default: Date.now },
     updatedBy: { type: String, default: "" },
   },
@@ -213,6 +262,7 @@ export type SettingsDocument = mongoose.Document & {
     salesTaxRate: number;
     processingFeeRate: number;
     serviceDiscountRate: number;
+    minOrderAmount: number;
   };
   machines: {
     single: { basePrice: number; inventory: number };
@@ -241,6 +291,13 @@ export type SettingsDocument = mongoose.Document & {
       spaceRequirements: string;
     }
   >;
+  deliveryZones: {
+    /** Mongoose hands a server caller a Map here; the browser gets an object. */
+    customFees: Map<string, number> | Record<string, number>;
+    insideZips: string[];
+    outsideZips: string[];
+    tierMinimums: TierMinimums;
+  };
   updatedAt: Date;
   updatedBy: string;
 };

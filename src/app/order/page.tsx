@@ -63,7 +63,7 @@ function buildJsonLd(overrides: PricingOverrides, priceValidUntil: string) {
       "Professional frozen drink machine rental service including delivery, setup, and pickup. Available for parties, weddings, corporate events, and more.",
     serviceType: "Equipment Rental",
     termsOfService:
-      "Machine and mixer rates are charged per day for the length of the rental, with a flat one-time delivery fee. Multi-day rentals and flexible delivery and pickup scheduling are available.",
+      "Machine and mixer rates are charged per day for the length of the rental, plus a one-time distance surcharge set by your ZIP code. Multi-day rentals and flexible delivery and pickup scheduling are available.",
     areaServed: {
       "@type": "City",
       name: "San Antonio",

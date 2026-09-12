@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { StepProps, inputClassName, labelClassName } from "../types";
-import { validateZipCode, isBexarCountyZipCode } from "../utils";
+import { validateZipCode, isServicedZipCode } from "../utils";
+import DeliveryFeeNotice from "../DeliveryFeeNotice";
 
 export default function DetailsStep({
   formData,
   onInputChange,
   error,
+  settings,
 }: StepProps) {
   const [zipCodeError, setZipCodeError] = useState<string | null>(null);
   const [showZipCodeWarning, setShowZipCodeWarning] = useState(false);
@@ -129,10 +131,15 @@ export default function DetailsStep({
         "Please enter a valid ZIP code format (e.g., 78201 or 78201-1234)",
       );
     }
-    // Validate if ZIP is in Bexar County
-    else if (value && validateZipCode(value) && !isBexarCountyZipCode(value)) {
+    // Priced is serviced: a ZIP with no distance surcharge is one nobody has
+    // set a price for, and checkout refuses it.
+    else if (
+      value &&
+      validateZipCode(value) &&
+      !isServicedZipCode(value, settings?.deliveryZones)
+    ) {
       setZipCodeError(
-        "We only deliver within Bexar County, TX. This ZIP code is outside our delivery area.",
+        "We don't have a delivery price for this ZIP code yet. Try another, or call us and we'll see what we can do.",
       );
       if (value.length === 5 || value.length > 6) {
         setShowZipCodeWarning(true);
@@ -180,11 +187,12 @@ export default function DetailsStep({
           </svg>
           <div>
             <p className="font-medium text-charcoal dark:text-white">
-              Delivery Area Restriction
+              Delivery Area
             </p>
             <p className="text-charcoal/80 dark:text-white/80">
-              We only deliver within Bexar County, TX. Orders with delivery
-              addresses outside this area cannot be processed.
+              Every ZIP we deliver to has its own distance surcharge, quoted
+              here before you book. If we don&rsquo;t have a price set for yours
+              yet, call us and we&rsquo;ll see what we can do.
             </p>
           </div>
         </div>
@@ -314,7 +322,10 @@ export default function DetailsStep({
                   ? "border-red-500 pr-10"
                   : formData.customer.address.zipCode &&
                       validateZipCode(formData.customer.address.zipCode) &&
-                      isBexarCountyZipCode(formData.customer.address.zipCode)
+                      isServicedZipCode(
+                        formData.customer.address.zipCode,
+                        settings?.deliveryZones,
+                      )
                     ? "border-green-500 pr-10"
                     : ""
               }`}
@@ -325,7 +336,10 @@ export default function DetailsStep({
             {formData.customer.address.zipCode &&
               validateZipCode(formData.customer.address.zipCode) && (
                 <span className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                  {!isBexarCountyZipCode(formData.customer.address.zipCode) ? (
+                  {!isServicedZipCode(
+                    formData.customer.address.zipCode,
+                    settings?.deliveryZones,
+                  ) ? (
                     <svg
                       className="h-5 w-5 text-red-500"
                       fill="currentColor"
@@ -353,6 +367,17 @@ export default function DetailsStep({
                 </span>
               )}
           </div>
+
+          {/* What this ZIP costs, shown as soon as it is known rather than as a
+              surprise line on the review screen. Suppressed while the field is
+              in an error state, which already says more. */}
+          {!zipCodeError && (
+            <DeliveryFeeNotice
+              zipCode={formData.customer.address.zipCode}
+              zones={settings?.deliveryZones}
+              fallbackMinimum={settings?.fees?.minOrderAmount}
+            />
+          )}
 
           {zipCodeError && (
             <div
@@ -395,7 +420,9 @@ export default function DetailsStep({
           />
         </div>
 
-        {/* Add Bexar County visual reference */}
+        {/* The area graphic. Decorative: the real answer is the surcharge
+            shown under the ZIP field, which reads the same resolver the server
+            prices from. */}
         <div className="md:col-span-2 mt-4 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
           <div className="flex items-center justify-between">
             <div>
@@ -403,12 +430,11 @@ export default function DetailsStep({
                 Delivery Area
               </h3>
               <p className="text-sm text-charcoal/70 dark:text-white/70">
-                We currently only deliver to addresses within Bexar County, TX
-                (highlighted area).
+                We deliver across San Antonio and the surrounding area, with the
+                distance surcharge set by your ZIP code.
               </p>
               <p className="text-sm text-charcoal/70 dark:text-white/70 mt-1">
-                This includes San Antonio and surrounding areas with ZIP codes:
-                78201-78299 and select others.
+                Enter your ZIP above and we&rsquo;ll quote it straight away.
               </p>
             </div>
             <div className="hidden md:block">
@@ -471,17 +497,17 @@ export default function DetailsStep({
                 />
               </svg>
               <h3 id="zip-warning-title" className="text-xl font-bold">
-                Delivery Not Available
+                No Price Set For That ZIP
               </h3>
             </div>
             <p className="mb-4">
-              Sorry but we can only deliver to addresses within Bexar County,
-              TX. The ZIP code you entered ({formData.customer.address.zipCode})
-              is outside our delivery area.
+              We don&rsquo;t have a delivery price set for{" "}
+              {formData.customer.address.zipCode} yet, so we can&rsquo;t quote
+              it here.
             </p>
             <p className="mb-6">
-              Please update your address with a valid Bexar County ZIP code to
-              continue.
+              Try another ZIP, or call us — plenty of addresses just outside the
+              priced area are still worth a trip.
             </p>
             <button
               ref={zipWarningCloseRef}

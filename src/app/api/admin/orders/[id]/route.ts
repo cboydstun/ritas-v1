@@ -221,6 +221,7 @@ export async function PUT(request: Request, context: RouteParams) {
       machines?: SettingsOverrides["machines"];
       mixers?: SettingsOverrides["mixers"];
       extras?: SettingsOverrides["extras"];
+      deliveryZones?: SettingsOverrides["deliveryZones"];
     } | null;
 
     const overrides: SettingsOverrides = {
@@ -228,6 +229,10 @@ export async function PUT(request: Request, context: RouteParams) {
       machines: settingsDoc?.machines,
       mixers: settingsDoc?.mixers,
       extras: settingsDoc?.extras,
+      // An admin order is priced per ZIP like any other. What the office is
+      // exempt from is the *refusal* of an unpriced ZIP and the order minimum —
+      // it quotes those by phone — not from charging the right surcharge.
+      deliveryZones: settingsDoc?.deliveryZones,
     };
 
     // Whether this edit touches anything the total is derived from. It used
@@ -244,9 +249,20 @@ export async function PUT(request: Request, context: RouteParams) {
       "rentalDate",
       "returnDate",
     ] as const;
-    const changesPricing = PRICING_FIELDS.some(
-      (field) => update[field] !== undefined,
-    );
+    // The surcharge now rides on the delivery ZIP, so moving an order to a
+    // different one is a pricing change. Checked as "the ZIP actually differs"
+    // rather than by adding `customer` to PRICING_FIELDS: that would reprice a
+    // months-old order at today's Settings because somebody fixed a typo in the
+    // customer's name, which is the exact bug this list exists to prevent.
+    const zipChanged =
+      update.customer !== undefined &&
+      (merged as { customer?: { address?: { zipCode?: string } } }).customer
+        ?.address?.zipCode !==
+        (existing as { customer?: { address?: { zipCode?: string } } }).customer
+          ?.address?.zipCode;
+
+    const changesPricing =
+      PRICING_FIELDS.some((field) => update[field] !== undefined) || zipChanged;
 
     const { extras: resolvedExtras, unknownIds } = resolveSelectedExtras(
       merged.selectedExtras,
@@ -290,6 +306,12 @@ export async function PUT(request: Request, context: RouteParams) {
           rentalDate: rentalDate.data,
           returnDate: returnDate.data,
           isServiceDiscount: false,
+          // The surcharge is resolved from this ZIP. Omitting the customer
+          // would leave `computeOrderTotal` with nothing to price against and
+          // silently deliver for $0.
+          customer: (
+            merged as unknown as { customer?: OrderFormData["customer"] }
+          ).customer,
         } as OrderFormData,
         overrides,
       );

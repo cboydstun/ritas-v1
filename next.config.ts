@@ -25,6 +25,15 @@ export const securityHeaders = [
   },
   {
     key: "Content-Security-Policy",
+    // maps.googleapis.com serves the Maps JavaScript API used by the admin
+    // delivery-zone map: the loader script, its lazily-fetched chunks, and the
+    // tile requests. `*.google.com` and `*.gstatic.com` do not cover it — a CSP
+    // wildcard matches subdomains of the host it names, and googleapis.com is a
+    // different registrable domain. It is listed bare and wildcard for the same
+    // reason every other origin here is. Absent, the map renders blank with no
+    // error on our side, which is exactly the shape of the two collection
+    // outages described above.
+    //
     // 'unsafe-inline' is still required by the GTM/GA bootstrap snippets and
     // the JSON-LD blocks; moving those to a nonce is the remaining hardening
     // step. 'unsafe-eval' is gone — only the (now deleted) PayPal SDK wanted it.
@@ -67,11 +76,11 @@ export const securityHeaders = [
     // where that loader reports calls.
     value: `
       default-src 'self';
-      script-src 'self' 'unsafe-inline' https://*.google-analytics.com https://google-analytics.com https://*.analytics.google.com https://analytics.google.com https://*.googletagmanager.com https://googletagmanager.com https://*.googleadservices.com https://googleadservices.com https://*.googlesyndication.com https://googlesyndication.com https://*.doubleclick.net https://doubleclick.net https://*.google.com https://google.com https://*.gstatic.com;
+      script-src 'self' 'unsafe-inline' https://*.google-analytics.com https://google-analytics.com https://*.analytics.google.com https://analytics.google.com https://*.googletagmanager.com https://googletagmanager.com https://*.googleadservices.com https://googleadservices.com https://*.googlesyndication.com https://googlesyndication.com https://*.doubleclick.net https://doubleclick.net https://*.google.com https://google.com https://*.gstatic.com https://*.googleapis.com https://googleapis.com;
       style-src 'self' 'unsafe-inline';
-      img-src 'self' data: https://*.google-analytics.com https://google-analytics.com https://*.analytics.google.com https://analytics.google.com https://*.googletagmanager.com https://googletagmanager.com https://*.googleadservices.com https://googleadservices.com https://*.googlesyndication.com https://googlesyndication.com https://*.doubleclick.net https://doubleclick.net https://*.google.com https://google.com https://*.gstatic.com;
+      img-src 'self' data: https://*.google-analytics.com https://google-analytics.com https://*.analytics.google.com https://analytics.google.com https://*.googletagmanager.com https://googletagmanager.com https://*.googleadservices.com https://googleadservices.com https://*.googlesyndication.com https://googlesyndication.com https://*.doubleclick.net https://doubleclick.net https://*.google.com https://google.com https://*.gstatic.com https://*.googleapis.com https://googleapis.com;
       font-src 'self';
-      connect-src 'self' https://*.google-analytics.com https://google-analytics.com https://*.analytics.google.com https://analytics.google.com https://*.googletagmanager.com https://googletagmanager.com https://*.googleadservices.com https://googleadservices.com https://*.googlesyndication.com https://googlesyndication.com https://*.doubleclick.net https://doubleclick.net https://*.google.com https://google.com https://*.gstatic.com;
+      connect-src 'self' https://*.google-analytics.com https://google-analytics.com https://*.analytics.google.com https://analytics.google.com https://*.googletagmanager.com https://googletagmanager.com https://*.googleadservices.com https://googleadservices.com https://*.googlesyndication.com https://googlesyndication.com https://*.doubleclick.net https://doubleclick.net https://*.google.com https://google.com https://*.gstatic.com https://*.googleapis.com https://googleapis.com;
       frame-src 'self' https://*.googletagmanager.com https://googletagmanager.com https://*.googleadservices.com https://googleadservices.com https://*.googlesyndication.com https://googlesyndication.com https://*.doubleclick.net https://doubleclick.net https://*.google.com https://google.com https://*.gstatic.com;
       object-src 'none';
       base-uri 'self';

@@ -115,6 +115,26 @@ const post = (rentalData: Record<string, unknown>) =>
   );
 
 /** The document handed to `new Rental(...)` by the most recent request. */
+/**
+ * Settings as the route reads them, through `.lean()`.
+ *
+ * **`deliveryZones` is not optional decoration.** `customFees` is both the
+ * price list and the service area, so a fixture without it makes every ZIP
+ * unserviced and the whole suite 400s — which is the correct production
+ * behaviour and a useless test bed. 78205 is the address `validRental` uses.
+ */
+const settingsFixture = (overrides: Record<string, unknown> = {}) => ({
+  lean: jest.fn().mockResolvedValue({
+    deliveryZones: {
+      customFees: { "78205": 20, "78015": 75 },
+      insideZips: ["78205"],
+      outsideZips: ["78015"],
+      tierMinimums: { free: 0, low: 0, standard: 0, high: 0, premium: 0 },
+    },
+    ...overrides,
+  }),
+});
+
 const lastSaved = () => savedDocs[savedDocs.length - 1];
 
 describe("POST /api/save-booking", () => {
@@ -122,9 +142,7 @@ describe("POST /api/save-booking", () => {
     jest.clearAllMocks();
     savedDocs.length = 0;
     mockAvailable.mockResolvedValue({ available: true });
-    (Settings.findOne as jest.Mock).mockReturnValue({
-      lean: jest.fn().mockResolvedValue(null),
-    });
+    (Settings.findOne as jest.Mock).mockReturnValue(settingsFixture());
   });
 
   describe("money", () => {
@@ -187,13 +205,13 @@ describe("POST /api/save-booking", () => {
     // The order form renders a card for every flavour in Settings.mixers, so
     // pinning the request schema to the static four rejected real bookings.
     it("accepts a flavour an admin added in settings", async () => {
-      (Settings.findOne as jest.Mock).mockReturnValue({
-        lean: jest.fn().mockResolvedValue({
+      (Settings.findOne as jest.Mock).mockReturnValue(
+        settingsFixture({
           mixers: {
             "mango-habanero": { label: "Mango Habanero", price: 22.5 },
           },
         }),
-      });
+      );
 
       const response = await post(
         validRental({ selectedMixers: ["mango-habanero"] }),
@@ -322,7 +340,7 @@ describe("POST /api/save-booking", () => {
       expect(response.status).toBe(200);
     });
 
-    it("rejects a delivery address outside Bexar County", async () => {
+    it("rejects a delivery address in a ZIP nobody has priced", async () => {
       const response = await post(
         validRental({
           customer: {
@@ -340,7 +358,9 @@ describe("POST /api/save-booking", () => {
       );
 
       expect(response.status).toBe(400);
-      expect((await response.json()).message).toMatch(/Bexar County/);
+      expect((await response.json()).message).toMatch(
+        /don't have a delivery price/,
+      );
     });
   });
 });

@@ -8,7 +8,7 @@ interface BookingCTAProps {
 
 export default function BookingCTA({
   headline = "Ready to Book?",
-  subtext = "Reserve your frozen drink machine today. Professional delivery, setup, and pickup — all included. Serving Bexar County with no hidden fees.",
+  subtext = "Reserve your frozen drink machine today. Professional delivery, setup, and pickup — all included. Your distance surcharge is quoted by ZIP code before you book.",
   className = "",
 }: BookingCTAProps) {
   return (
