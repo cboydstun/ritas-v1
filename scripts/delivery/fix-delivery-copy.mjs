@@ -15,8 +15,13 @@
  *   node scripts/delivery/fix-delivery-copy.mjs
  *
  * Idempotent: it matches the old sentence and does nothing once it is gone. A
- * second run must report zero writes. Seeding cannot bust ISR — the deploy
- * does — so expect up to an hour of stale HTML unless one follows.
+ * second run must report zero writes.
+ *
+ * No redeploy needed afterwards: `src/app/[...slug]/page.tsx` and
+ * `src/app/blog/[slug]/page.tsx` both export `revalidate = 60`, so the pages
+ * pick this up within a minute. (bounce-v3's equivalent seeder carries a
+ * "re-deploy to bust ISR" warning because its landing pages sit on a one-hour
+ * window; ours do not.)
  */
 
 import { MongoClient } from "mongodb";
@@ -112,7 +117,7 @@ async function main() {
   console.log(`Blog posts to fix   : ${posts.length}`);
   if (DRY_RUN) console.log("\n--dry-run: nothing written.");
   else if (pagesChanged + posts.length === 0) console.log("\nNothing to do.");
-  else console.log("\nDone. Redeploy to bust ISR.");
+  else console.log("\nDone. Live within ~60s (revalidate = 60).");
 
   await client.close();
 }
