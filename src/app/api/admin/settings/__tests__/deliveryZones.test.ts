@@ -1,7 +1,7 @@
 /**
  * @jest-environment node
  */
-import { PATCH } from "../route";
+import { GET, PATCH } from "../route";
 import { Settings } from "@/models/settings";
 import { getServerSession } from "next-auth";
 
@@ -65,6 +65,36 @@ beforeEach(() => {
   jest.clearAllMocks();
   (getServerSession as jest.Mock).mockResolvedValue({
     user: { role: "admin", name: "Chris" },
+  });
+});
+
+describe("GET serialises the fee map", () => {
+  it("serves customFees as an object, not as an empty one", async () => {
+    // The bug this pins shipped to production. `deliveryZones.customFees` is a
+    // Mongoose `Map` and `JSON.stringify` renders a Map as `{}`, so the admin
+    // page loaded an empty fee map and reported "0 serviced · 120 configured"
+    // over a database where all 120 ZIPs were priced. Asserting the parsed
+    // response body is the only place that difference is visible — asserting
+    // what `toObject` returned would have passed either way.
+    const fees = new Map<string, number>([
+      ["78205", 0],
+      ["78015", 75],
+    ]);
+    (Settings.findOne as jest.Mock).mockResolvedValue({
+      toObject: (options?: { flattenMaps?: boolean }) => ({
+        key: "global",
+        deliveryZones: {
+          customFees: options?.flattenMaps
+            ? Object.fromEntries(fees)
+            : (fees as unknown),
+        },
+      }),
+    });
+
+    const response = await GET();
+    const body = await response.json();
+
+    expect(body.deliveryZones.customFees).toEqual({ "78205": 0, "78015": 75 });
   });
 });
 

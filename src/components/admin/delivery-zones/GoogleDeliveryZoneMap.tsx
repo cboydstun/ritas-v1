@@ -93,7 +93,9 @@ export function GoogleDeliveryZoneMap({
 
     const script = document.createElement("script");
     script.id = "gmaps-sdk";
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&v=weekly`;
+    // `loading=async` is what the SDK asks for; without it it warns on every
+    // load that the import pattern is suboptimal.
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&v=weekly&loading=async`;
     script.async = true;
     script.onload = start;
     script.onerror = () => setError("Could not load Google Maps.");
