@@ -17,8 +17,11 @@ interface Props {
   storedTierMinimums: TierMinimums;
   /** What an unbanded ZIP falls back to — `Settings.fees.minOrderAmount`. */
   fallbackMinimum: number;
+  /** `Settings.deliveryZones.baseFee` as stored. */
+  storedBaseFee: number;
   isSaving: boolean;
   onSave: (tiers: Partial<TierMinimums>) => Promise<boolean>;
+  onSaveBaseFee: (baseFee: number) => Promise<boolean>;
 }
 
 /**
@@ -34,6 +37,11 @@ export function tierMinimumsKey(stored: TierMinimums): string {
   return TIER_MINIMUM_ORDER.map((id) => stored[id]).join("|");
 }
 
+// The base fee is deliberately NOT part of that key. Saving it would otherwise
+// remount the panel and throw away an in-progress ladder edit, which is the
+// exact failure the key was introduced to prevent; it keeps its own draft
+// instead.
+
 /**
  * The fee legend, and the order-minimum ladder that hangs off it.
  *
@@ -45,14 +53,18 @@ export function ZoneLegendPanel({
   countByBucket,
   storedTierMinimums,
   fallbackMinimum,
+  storedBaseFee,
   isSaving,
   onSave,
+  onSaveBaseFee,
 }: Props) {
   const [draft, setDraft] = useState<TierMinimums>(storedTierMinimums);
+  const [baseDraft, setBaseDraft] = useState<number>(storedBaseFee);
 
   const dirty = TIER_MINIMUM_ORDER.some(
     (id) => draft[id] !== storedTierMinimums[id],
   );
+  const baseDirty = baseDraft !== storedBaseFee;
 
   return (
     <section className="rounded-lg bg-white p-4 shadow-sm dark:bg-gray-800">
@@ -63,6 +75,43 @@ export function ZoneLegendPanel({
         A ZIP&rsquo;s band comes from its own surcharge, and its minimum order
         comes from the band. Set a band to $0 for no minimum.
       </p>
+
+      <div className="mb-4 rounded-lg bg-gray-50 p-3 dark:bg-gray-900">
+        <label
+          htmlFor="delivery-base-fee"
+          className="block text-sm font-medium text-gray-900 dark:text-white"
+        >
+          Base delivery fee
+        </label>
+        <p className="mb-2 text-xs text-gray-600 dark:text-gray-400">
+          Charged on every order, on top of its ZIP&rsquo;s surcharge. This is
+          what pays for the truck and the trip; the surcharge only prices the
+          distance. Set it to $0 to charge distance alone.
+        </p>
+        <div className="flex items-center gap-2">
+          <input
+            id="delivery-base-fee"
+            type="number"
+            min={0}
+            step={5}
+            className={`${inputClass} max-w-28`}
+            value={baseDraft}
+            onChange={(e) =>
+              setBaseDraft(Math.max(0, Number(e.target.value) || 0))
+            }
+          />
+          {baseDirty && (
+            <button
+              type="button"
+              disabled={isSaving}
+              onClick={() => onSaveBaseFee(baseDraft)}
+              className="rounded-lg bg-teal px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+            >
+              {isSaving ? "Saving…" : "Save base fee"}
+            </button>
+          )}
+        </div>
+      </div>
 
       <table className="w-full text-sm">
         <thead>

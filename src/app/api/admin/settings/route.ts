@@ -226,7 +226,7 @@ export async function PATCH(request: Request) {
       const { insideZips, outsideZips } = patch.updateZipLists;
       if (insideZips) settings.deliveryZones.insideZips = insideZips;
       if (outsideZips) settings.deliveryZones.outsideZips = outsideZips;
-    } else {
+    } else if ("updateTierMinimums" in patch) {
       // Merged, not replaced: the legend saves the band the admin touched and
       // omits the rest, and an omitted band must keep its stored figure.
       settings.deliveryZones.tierMinimums = {
@@ -234,6 +234,11 @@ export async function PATCH(request: Request) {
         ...(settings.deliveryZones.tierMinimums ?? {}),
         ...patch.updateTierMinimums,
       };
+    } else {
+      // One scalar, so there is nothing to merge. Zero is a legal value — an
+      // admin who wants distance to be the only charge is entitled to say so —
+      // and is stored, not treated as "unset" and re-defaulted on the next read.
+      settings.deliveryZones.baseFee = patch.updateBaseFee;
     }
 
     settings.updatedAt = new Date();

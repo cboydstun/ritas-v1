@@ -9,10 +9,11 @@
  *
  * There is only one implementation (`computeOrderTotal`), which is the point;
  * this suite pins the property that keeps it safe to have only one — that the
- * subtotal excludes the distance surcharge, so the two sides cannot diverge by
- * resolving a ZIP differently.
+ * subtotal excludes delivery entirely, both the distance surcharge and the flat
+ * base fee, so the two sides cannot diverge by resolving a ZIP differently.
  */
 import { computeOrderTotal, type SettingsOverrides } from "../utils";
+import { DEFAULT_BASE_DELIVERY_FEE } from "@/lib/delivery/deliveryCharge";
 import type { OrderFormData } from "../types";
 
 const settings: SettingsOverrides = {
@@ -20,6 +21,9 @@ const settings: SettingsOverrides = {
     customFees: { "78205": 0, "78015": 75, "78006": 25 },
     insideZips: ["78205"],
     outsideZips: ["78015", "78006"],
+    // Stated rather than left to the schema default, so a change to that
+    // default cannot quietly move what these cases assert.
+    baseFee: 20,
   },
 };
 
@@ -103,7 +107,7 @@ describe("rentalSubtotal excludes the distance surcharge", () => {
   );
 
   it.each(CARTS)(
-    "%s: subtotal is exactly rentalSubtotal plus the surcharge",
+    "%s: subtotal is exactly rentalSubtotal plus the whole delivery charge",
     (_label, base) => {
       const far = computeOrderTotal(
         {
@@ -116,8 +120,11 @@ describe("rentalSubtotal excludes the distance surcharge", () => {
         settings,
       );
 
-      expect(far.deliveryFee).toBe(75);
-      expect(far.subtotal).toBeCloseTo(far.rentalSubtotal + 75, 2);
+      // Both terms: the ZIP's $75 surcharge and the $20 base every order pays.
+      expect(far.distanceSurcharge).toBe(75);
+      expect(far.deliveryBaseFee).toBe(20);
+      expect(far.deliveryFee).toBe(95);
+      expect(far.subtotal).toBeCloseTo(far.rentalSubtotal + 95, 2);
     },
   );
 });
@@ -128,19 +135,46 @@ describe("the surcharge is resolved from the cart's own ZIP", () => {
       ...settings,
       fees: { deliveryFee: 20 },
     });
-    expect(totals.deliveryFee).toBe(75);
+    expect(totals.distanceSurcharge).toBe(75);
+    expect(totals.deliveryFee).toBe(95);
   });
 
   it("falls back to the flat figure only when no zones are configured", () => {
     // The gate refuses an unserviced ZIP long before this, so the fallback is
     // reachable only for a settings document with no `deliveryZones` at all.
+    // It must be the flat figure ALONE — adding a base term on top of it would
+    // bill $40 for a trip nobody repriced.
     const totals = computeOrderTotal(cart({}, "78015"), {
       fees: { deliveryFee: 20 },
     });
     expect(totals.deliveryFee).toBe(20);
+    expect(totals.deliveryBaseFee).toBe(20);
+    expect(totals.distanceSurcharge).toBe(0);
   });
 
-  it("charges nothing for a ZIP priced at $0", () => {
-    expect(computeOrderTotal(cart({}, "78205"), settings).deliveryFee).toBe(0);
+  it("charges the base fee for a ZIP priced at $0", () => {
+    // The whole reason the base term exists. 25 of the seeded ZIPs carry no
+    // surcharge; before it, each of them bought a truck, two people and a
+    // round trip for nothing.
+    const totals = computeOrderTotal(cart({}, "78205"), settings);
+    expect(totals.distanceSurcharge).toBe(0);
+    expect(totals.deliveryFee).toBe(20);
+  });
+
+  it("charges the surcharge alone when an admin sets the base fee to zero", () => {
+    const totals = computeOrderTotal(cart({}, "78015"), {
+      deliveryZones: { ...settings.deliveryZones, baseFee: 0 },
+    });
+    expect(totals.deliveryFee).toBe(75);
+  });
+
+  it("reads the current default when the document carries no base fee", () => {
+    // A settings document written before the field existed must read the
+    // current price, not free delivery.
+    const { baseFee: _omitted, ...zonesWithoutBase } = settings.deliveryZones!;
+    const totals = computeOrderTotal(cart({}, "78205"), {
+      deliveryZones: zonesWithoutBase,
+    });
+    expect(totals.deliveryFee).toBe(DEFAULT_BASE_DELIVERY_FEE);
   });
 });

@@ -142,11 +142,17 @@ beforeEach(() => {
  * Hardcoding two totals would pass just as well if the surcharge were being
  * taxed twice.
  */
-const priceAt = async (zipCode: string): Promise<number> => {
+const priceAt = async (
+  zipCode: string,
+  zones?: Record<string, unknown>,
+): Promise<number> => {
+  if (zones) settings(zones);
   savedDocs.length = 0;
   const response = await post(booking(zipCode));
   expect(response.status).toBe(200);
-  return lastSaved().price as number;
+  const price = lastSaved().price as number;
+  if (zones) settings();
+  return price;
 };
 
 /**
@@ -159,6 +165,34 @@ const priceAt = async (zipCode: string): Promise<number> => {
  * as happily if the surcharge were taxed twice.
  */
 const surchargeCost = (fee: number) => fee * 1.03 * 1.0825;
+
+describe("the base delivery fee is charged on top of the surcharge", () => {
+  it("bills a ZIP priced at $0 for the base fee, not for nothing", async () => {
+    // The failure this exists to close: 25 seeded ZIPs carry no surcharge, and
+    // without the base term each of them bought a truck, two people and a
+    // round trip for nothing — having charged a flat $20 the day before.
+    const free = await priceAt("78205"); // $0 surcharge
+    const noDelivery = await priceAt("78205", { baseFee: 0 });
+
+    expect(free - noDelivery).toBeCloseTo(surchargeCost(20), 1);
+  });
+
+  it("adds the base fee to a ZIP that also carries a surcharge", async () => {
+    const priced = await priceAt("78015", { baseFee: 20 }); // $75 + $20
+    const surchargeOnly = await priceAt("78015", { baseFee: 0 });
+
+    expect(priced - surchargeOnly).toBeCloseTo(surchargeCost(20), 1);
+  });
+
+  it("never reads the base fee from the request body", async () => {
+    const honest = await priceAt("78205");
+
+    savedDocs.length = 0;
+    await post(booking("78205", { deliveryFee: 0, price: 1 }));
+
+    expect(lastSaved().price).toBeCloseTo(honest, 2);
+  });
+});
 
 describe("the surcharge comes from the ZIP", () => {
   it("charges the ZIP's own figure, and nothing for a $0 ZIP", async () => {

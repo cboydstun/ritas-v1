@@ -46,6 +46,8 @@ export default function ReviewStep({
     basePrice,
     mixerPrice,
     deliveryFee,
+    deliveryBaseFee,
+    distanceSurcharge,
     perDayRate,
     rentalDays,
     extrasTotal,
@@ -525,6 +527,16 @@ export default function ReviewStep({
           <p className="text-charcoal/70 dark:text-white/70">
             Delivery Fee: ${formatPrice(deliveryFee)}
           </p>
+          {/* The split, named. `deliveryFee` is the total charged; showing only
+              it leaves a customer in a $0-surcharge ZIP unable to tell why they
+              are billed anything, and one in a $100 ZIP unable to tell why they
+              are billed more than the surcharge they were quoted. */}
+          {distanceSurcharge > 0 && (
+            <p className="pl-4 text-xs text-charcoal/60 dark:text-white/60">
+              ${formatPrice(deliveryBaseFee)} delivery &amp; setup + $
+              {formatPrice(distanceSurcharge)} distance surcharge
+            </p>
+          )}
           <p className="text-charcoal/70 dark:text-white/70">
             Subtotal: $
             {formatPrice(perDayRate * rentalDays + deliveryFee + extrasTotal)}

@@ -38,6 +38,12 @@ export interface DeliverySettings {
    * the resolver falls back to the global minimum rather than inventing a ladder.
    */
   tierMinimums?: Partial<TierMinimums>;
+  /**
+   * The flat fee every order pays on top of its ZIP's surcharge. See
+   * `./deliveryCharge`. Absent on a document written before the field existed,
+   * which reads as `DEFAULT_BASE_DELIVERY_FEE` rather than as free.
+   */
+  baseFee?: number;
 }
 
 /**

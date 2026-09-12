@@ -8,6 +8,7 @@ import {
   DEFAULT_OUTSIDE_ZIPS,
 } from "@/lib/delivery/defaultZones";
 import { DEFAULT_TIER_MINIMUMS } from "@/lib/delivery/tierMinimums";
+import { DEFAULT_BASE_DELIVERY_FEE } from "@/lib/delivery/deliveryCharge";
 
 describe("deliveryZones schema", () => {
   it("starts a fresh document with the seeded geography and an empty fee map", () => {
@@ -28,6 +29,21 @@ describe("deliveryZones schema", () => {
     expect(doc.fees.minOrderAmount).toBe(0);
   });
 
+  it("starts with the base delivery fee, so a $0 ZIP is not free delivery", () => {
+    // Unlike `tierMinimums` this is not seeded and not self-migrated: one
+    // scalar whose default *is* the policy. A document that has never carried
+    // it reads the current price.
+    expect(new Settings({}).deliveryZones.baseFee).toBe(
+      DEFAULT_BASE_DELIVERY_FEE,
+    );
+  });
+
+  it("stores a base fee of 0, which is a choice and not an absence", async () => {
+    const doc = new Settings({ deliveryZones: { baseFee: 0 } });
+    await doc.validate();
+    expect(doc.deliveryZones.baseFee).toBe(0);
+  });
+
   it("stores customFees as a Map keyed by ZIP", () => {
     const doc = new Settings({
       deliveryZones: { customFees: { "78209": 0, "78006": 75 } },
@@ -46,6 +62,9 @@ describe("deliveryZones schema", () => {
       deliveryZones: { tierMinimums: { high: -1 } },
     });
     await expect(negativeTier.validate()).rejects.toThrow();
+
+    const negativeBase = new Settings({ deliveryZones: { baseFee: -1 } });
+    await expect(negativeBase.validate()).rejects.toThrow();
   });
 
   it("survives JSON serialisation with its fees intact", () => {

@@ -7,6 +7,7 @@ import {
   DEFAULT_TIER_MINIMUMS,
   type TierMinimums,
 } from "@/lib/delivery/tierMinimums";
+import { DEFAULT_BASE_DELIVERY_FEE } from "@/lib/delivery/deliveryCharge";
 
 const settingsSchema = new mongoose.Schema(
   {
@@ -235,6 +236,13 @@ const settingsSchema = new mongoose.Schema(
           min: 0,
         },
       },
+      // The flat fee every order pays on top of its ZIP's surcharge. Unlike
+      // `tierMinimums` there is deliberately nothing to seed and no
+      // self-migration to write: that ladder is a per-band policy decision and
+      // had to exist in the stored document, while this is one scalar whose
+      // default *is* the policy. A document that has never carried it reads
+      // the current price. See `src/lib/delivery/deliveryCharge.ts`.
+      baseFee: { type: Number, default: DEFAULT_BASE_DELIVERY_FEE, min: 0 },
     },
     updatedAt: { type: Date, default: Date.now },
     updatedBy: { type: String, default: "" },
@@ -297,6 +305,7 @@ export type SettingsDocument = mongoose.Document & {
     insideZips: string[];
     outsideZips: string[];
     tierMinimums: TierMinimums;
+    baseFee: number;
   };
   updatedAt: Date;
   updatedBy: string;

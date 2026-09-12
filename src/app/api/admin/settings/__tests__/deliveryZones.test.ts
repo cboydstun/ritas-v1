@@ -23,6 +23,7 @@ type StoredDoc = {
     insideZips: string[];
     outsideZips: string[];
     tierMinimums: Record<string, number> | undefined;
+    baseFee?: number;
   };
   updatedAt?: Date;
   updatedBy?: string;
@@ -43,6 +44,7 @@ function storedDoc(
       insideZips: ["78209"],
       outsideZips: ["78006"],
       tierMinimums: { free: 100, low: 150, standard: 0, high: 0, premium: 0 },
+      baseFee: 20,
       ...overrides,
     },
     markModified: jest.fn(),
@@ -249,6 +251,55 @@ describe("updateTierMinimums", () => {
     (Settings.findOne as jest.Mock).mockResolvedValue(doc);
 
     const response = await patch({ updateTierMinimums: tiers });
+
+    expect(response.status).toBe(400);
+    expect(doc.save).not.toHaveBeenCalled();
+  });
+});
+
+describe("updateBaseFee", () => {
+  it("stores the flat fee every order pays", async () => {
+    const doc = storedDoc();
+    (Settings.findOne as jest.Mock).mockResolvedValue(doc);
+
+    await patch({ updateBaseFee: 30 });
+
+    expect(doc.deliveryZones.baseFee).toBe(30);
+    expect(doc.save).toHaveBeenCalled();
+  });
+
+  it("stores a base fee set to 0 rather than treating it as unset", async () => {
+    // An admin who wants distance to be the only charge is entitled to say so,
+    // and the next read must not re-default it back to $20.
+    const doc = storedDoc();
+    (Settings.findOne as jest.Mock).mockResolvedValue(doc);
+
+    await patch({ updateBaseFee: 0 });
+
+    expect(doc.deliveryZones.baseFee).toBe(0);
+  });
+
+  it("leaves every other slice of the document alone", async () => {
+    // Each verb writes only its own field. `customFees` is the service area;
+    // a verb that resent it would take ZIPs out of it.
+    const doc = storedDoc();
+    (Settings.findOne as jest.Mock).mockResolvedValue(doc);
+
+    await patch({ updateBaseFee: 30 });
+
+    expect(doc.deliveryZones.customFees.get("78006")).toBe(75);
+    expect(doc.deliveryZones.insideZips).toEqual(["78209"]);
+    expect(doc.deliveryZones.tierMinimums?.free).toBe(100);
+  });
+
+  it.each([
+    ["a negative fee", -1],
+    ["a non-number", "twenty"],
+  ])("refuses %s", async (_label, baseFee) => {
+    const doc = storedDoc();
+    (Settings.findOne as jest.Mock).mockResolvedValue(doc);
+
+    const response = await patch({ updateBaseFee: baseFee });
 
     expect(response.status).toBe(400);
     expect(doc.save).not.toHaveBeenCalled();

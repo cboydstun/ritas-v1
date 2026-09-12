@@ -70,7 +70,7 @@ The single source of truth for all order totals is `computeOrderTotal()` in `src
 
 - `perDayRate = basePrice + mixerPrice`
 - `rentalDays = calculateRentalDays(rentalDate, returnDate)` — a `Math.max(1, …)` clamp over `spanInDays()` from `src/lib/dates.ts`, which diffs **UTC** calendar dates. Do not reintroduce a millisecond diff of local-midnight `Date`s: a DST fall-back day is 25 hours, which billed one night as two. There is one implementation now; it used to exist twice, with the comment recording that bug on only one copy.
-- `subtotal = perDayRate × rentalDays + deliveryFee + extrasTotal` (machine rate is per-day; delivery is flat; each extra is per-day unless its catalog entry says `pricingType: "flat"`)
+- `subtotal = perDayRate × rentalDays + deliveryFee + extrasTotal` (machine rate is per-day; `deliveryFee` is a **flat base fee plus the destination ZIP's distance surcharge**, resolved once by `deliveryChargeFor()` — see **Delivery Zones** below; each extra is per-day unless its catalog entry says `pricingType: "flat"`)
 - `serviceDiscountAmount = subtotal × discountRate` — **retired**. No UI sets it and no server route accepts it from a request body; the field survives only for legacy bookings.
 - `discountedSubtotal = subtotal − serviceDiscountAmount`
 
@@ -78,11 +78,11 @@ The single source of truth for all order totals is `computeOrderTotal()` in `src
 - `salesTax = (discountedSubtotal + processingFee) × salesTaxRate` — the processing fee is a taxable line item, matching the QuickBooks invoice
 - `finalTotal = discountedSubtotal + processingFee + salesTax`
 
-Every money figure goes through `roundCurrency()` in `utils.ts`, not `Number(x.toFixed(2))`. `toFixed` rounds the _binary_ double, so a value that is an exact half-cent in decimal rounds down: a 489.50 subtotal produced a 14.68 processing fee against the invoice's 14.69, and the error cascaded into `salesTax` and `finalTotal`. QuickBooks rounds decimal half-up; so does this.
+Every money figure goes through `roundCurrency()` — defined in `src/lib/money.ts` and re-exported from `utils.ts` — not `Number(x.toFixed(2))`. It lives in its own module because `lib/delivery/deliveryCharge.ts` needs it and cannot import `utils.ts` without a cycle; a second copy of a money function is the shape `calculateRentalDays` was in when one of its two copies carried the DST bug and the other did not. `toFixed` rounds the _binary_ double, so a value that is an exact half-cent in decimal rounds down: a 489.50 subtotal produced a 14.68 processing fee against the invoice's 14.69, and the error cascaded into `salesTax` and `finalTotal`. QuickBooks rounds decimal half-up; so does this.
 
 Extras prices always come from `buildExtrasCatalog()` in `src/lib/extras-catalog.ts` (the static items in `types.ts` plus one `mixer-*` entry per flavour). Mixer entries are enumerated from `Settings.mixers` when overrides are passed, so a flavour an admin adds in `/admin/settings` is a real, purchasable add-on; enumerating only the static four made those cards price at $0 and then fail checkout with a 400. Tank mixers work the same way: `buildMixerCatalog()`/`resolveSelectedMixers()` resolve `selectedMixers` against `mixerDetails` ∪ `Settings.mixers`, and `mixerIdSchema` in `validation.ts` only checks that an id is well-formed. Pinning the schema to the original four flavours meant a flavour an admin added rendered a selectable tank card and then 400'd at checkout. `computeOrderTotal` looks each `selectedExtras[].id` up in the catalog and **ignores any `price`/`pricingType` on the item itself** — those may have arrived in a request body. Any UI that renders extras line items must use the same catalog, or the lines will not sum to the total.
 
-Default constants: delivery $20, sales tax 8.25%, processing 3%. Base machine prices come from `src/lib/rental-data.ts`. The `PricingOverrides` type in `src/lib/pricing.ts` and `SettingsOverrides` in `utils.ts` allow the admin `Settings` document to override any of these at runtime.
+Default constants: base delivery fee $20 (`DEFAULT_BASE_DELIVERY_FEE`, and the legacy flat `fees.deliveryFee` that answers when no `deliveryZones` exist at all), sales tax 8.25%, processing 3%. Base machine prices come from `src/lib/rental-data.ts`. The `PricingOverrides` type in `src/lib/pricing.ts` and `SettingsOverrides` in `utils.ts` allow the admin `Settings` document to override any of these at runtime.
 
 ### Availability & Inventory
 
@@ -104,6 +104,88 @@ A third option, `tieBreakId`, settles the same-millisecond case. `createdAt` com
 `MachineStep.tsx` checks all three machine types **in parallel** on mount so every card shows live availability, greys out unavailable ones, and auto-switches the selection to another available type (priority `triple > double > single`) when the current pick is unavailable. `useAvailabilityCheck` (`src/hooks/useAvailabilityCheck.ts`) wraps the single-type fetch.
 
 Admins manage blackout date ranges via `/admin/blackout-dates` → `GET/POST /api/admin/blackout-dates` and `DELETE /api/admin/blackout-dates/[id]`.
+
+### Delivery Zones
+
+**`Settings.deliveryZones.customFees` is the only price and the only definition
+of the service area.** A ZIP absent from that map is not delivered to — a
+different state from a fee of `$0`, and collapsing the two is how a ZIP nobody
+priced reads as free delivery. `insideZips`/`outsideZips` are **geography only**
+— a label and a colour on the admin map — and imply no price. The order minimum
+is **derived** from the ZIP's fee band (`tierMinimums`), never stored per ZIP.
+
+The model, the admin map and most of `src/lib/delivery/` were ported from
+bounce-v3, which delivers out of the same depot; `docs/delivery-zones-port.md`
+is the full write-up, including the two deliberate departures.
+
+**Delivery is two terms, summed in exactly one place**, `deliveryChargeFor()` in
+`src/lib/delivery/deliveryCharge.ts`:
+
+- the **distance surcharge** — the ZIP's own `customFees` figure. Prices how far
+  the truck drives;
+- the **base delivery fee** — `Settings.deliveryZones.baseFee`, `$20`. Prices
+  the truck, the two people and the round trip, which every order buys.
+
+The second term exists because the fee table was copied wholesale from
+bounce-v3's production document (`src/lib/delivery/zone-snapshot.json`), and
+**25 of its 94 ZIPs are priced at `$0`** — all of central San Antonio. There a
+`$0` is the absence of a _surcharge_, survivable because bounce-v3 charges its
+own flat fee, waived only when the cart holds an inflatable. Copied here without
+that term it meant a machine to Alamo Heights bought a truck, two people and a
+round trip for nothing, having charged a flat `$20` for the same trip the day
+before. bounce-v3 reached the same conclusion about its own table and added the
+field in `72fcdb813` — 28 minutes after this snapshot was taken.
+
+**There is no waiver, deliberately.** This business rents frozen drink machines
+and nothing else, so in bounce-v3's terms every order it takes is the
+no-inflatable case that always pays. Do not port `cartWaivesBaseFee`; nothing
+could ever satisfy it.
+
+`baseFee` is a schema default and is **not seeded and not self-migrated**,
+unlike `tierMinimums`: that ladder is a per-band policy decision and had to
+exist in the stored document, while this is one scalar whose default _is_ the
+policy. A document that has never carried it reads the current price. `0` is a
+legal, stored value and means "charge distance alone" — distinct from absent.
+
+With **no `deliveryZones` at all** there is no ZIP table and no stored base fee,
+so the legacy flat `fees.deliveryFee` answers alone. Adding a base term on top of
+it there would bill `$40` for a trip nobody repriced.
+
+Read paths all funnel through `resolveZipFee()` (`src/lib/delivery/zones.ts`).
+`getDeliveryFee()` answers `0` for an unpriced ZIP and **is not the gate** — it
+only keeps a `NaN` out of a total. The gates are `isServicedZipCode()`
+(`src/components/order/utils.ts`, the browser) and `resolveDeliveryFee()`
+(`src/lib/delivery/resolveDeliveryFee.ts`, the server, a 400). The admin order
+routes are exempt — the office quotes by phone — and that exemption is the
+route's identity, never a body field. `isBexarCountyZipCode` is **gone**: priced
+is serviced, and the old name claimed a county the copy no longer claims.
+
+**Writes go through `PATCH /api/admin/settings`, five narrow verbs**, never a
+resent subtree: `setCustomZipFee`, `removeCustomZipFee` (which **deletes the
+key rather than writing 0**), `updateZipLists`, `updateTierMinimums` (merged)
+and `updateBaseFee`. An admin page that priced one ZIP by resending the whole
+map had to rebuild every entry from whatever the browser had loaded, and
+reverted every fee written since that page load — bounce-v3 lost a verified
+production seed that way. `PUT` writes `deliveryZones` one **dotted path** at a
+time for the same reason and excludes it from `EDITABLE_SETTINGS_FIELDS`;
+`$set: { deliveryZones: {...} }` would replace the whole subtree, and the fee
+map is the service area, so that is the whole business, silently.
+
+`getPublicSettings()` returns `deliveryZones` **whole**, so a term added to the
+charge reaches every browser consumer without a second edit. Do not start
+picking fields out of it: bounce-v3 did, and its `baseFee` reaches the server
+but not the review screen, where the price guard cannot catch the difference.
+`toObject({ flattenMaps: true })` is load-bearing — `JSON.stringify` renders a
+Mongoose `Map` as `{}`, which would make every ZIP read as unserviced in the
+browser while the server prices them correctly.
+
+**Seeding** is `scripts/delivery/seed-zip-fees.mjs` (`npm run seed-zip-fees`),
+raw driver on purpose — Mongoose applies defaults on _hydration_, so a hydrated
+read reports a complete document over an empty stored field. It is insert-only
+by default, so a routine re-run cannot flatten a price retuned in the admin;
+`--force` is what applies a changed fee and `--prune-unlisted` is the only
+destructive path. **Nothing syncs with bounce-v3** — a fee retuned there does
+not reach here, and the snapshot records the date it was read.
 
 ### Landing Pages
 
@@ -416,7 +498,7 @@ Server-side "is this date in the past" checks go through `todayLocalIso()` in `s
 
 `src/lib/dates.ts` is the **zod-free** module both the browser and the server import: `todayLocalIso`, `spanInDays`, and the `EMAIL_PATTERN` / `PHONE_PATTERN` / `ZIP_PATTERN` field regexes. Do not import zod into it — that is what would put every request schema into the order-form bundle. The client's `validateEmail` / `validatePhone` / `validateZipCode` in `components/order/utils.ts` and the zod schemas in `validation.ts` share these constants, so a value cannot clear all five wizard steps and then 400 at checkout. It could: the client's old email regex was looser than zod's `.email()`.
 
-`/api/save-booking` also re-runs `validateDeliveryTime` and `isBexarCountyZipCode` server-side. Both rules were browser-only, so a direct POST could book a 03:00 delivery to any ZIP in the country.
+`/api/save-booking` also re-runs `validateDeliveryTime` and the service-area gate — `resolveDeliveryFee()`, which replaced `isBexarCountyZipCode` — server-side. Both rules were browser-only, so a direct POST could book a 03:00 delivery to any ZIP in the country.
 
 ### Public API Hardening
 
@@ -432,11 +514,12 @@ Triggered after a booking, contact submission, or lease inquiry: SMS via Twilio 
 
 The `Settings` model (`src/models/settings.ts`) stores **one singleton document keyed `{ key: "global" }`** — always query it with that filter. It holds runtime overrides for:
 
-- `fees` — `deliveryFee`, `salesTaxRate`, `processingFeeRate`, `serviceDiscountRate`
+- `fees` — `deliveryFee` (legacy flat, the answer only when no `deliveryZones` exist), `salesTaxRate`, `processingFeeRate`, `serviceDiscountRate`, `minOrderAmount`
 - `machines.{single,double,triple}` — `basePrice` **and** `inventory` (drives availability, see above)
 - `mixers` / `extras` / `leaseTiers` — `Schema.Types.Mixed` maps with schema-level defaults
 - `operations` — `deliveryWindowStartHour` / `EndHour`, guarded by a `pre("validate")` hook requiring end > start
 - `documentation` — lease PDF URL/label
+- `deliveryZones` — `customFees`, `insideZips`, `outsideZips`, `tierMinimums`, `baseFee`. **Written only through `PATCH`'s five narrow verbs**, never as a subtree, and excluded from `EDITABLE_SETTINGS_FIELDS` on `PUT` — see **Delivery Zones** above
 
 `GET /api/v1/settings` is public and returns only these whitelisted fields; if no document exists it instantiates a non-persisted `new Settings({})` so callers always get the schema defaults. Both the route and any server component read it through `getPublicSettings()` (`src/lib/public-settings.ts`) — a server component must call that directly rather than HTTP-fetching the app's own route. **A page that calls it must also export `revalidate` (or `dynamic`)**, or Next prerenders it and freezes the settings into the build — `/long-term-lease` shipped that way, so lease-tier edits stayed invisible until the next deploy. `/long-term-lease`, `/pricing`, `/order` and `/service-area/[city]` are all `revalidate = 60` now, and all four read through `getPublicSettingsSafe()` so an unreachable database during prerender degrades to the `rental-data` defaults instead of failing the build. Admin edits go through `/admin/settings` → `PUT /api/admin/settings`, which parses the body with `settingsUpdateSchema` (`src/lib/validation.ts`) and then writes an explicit field whitelist rather than spreading the body.
 
@@ -591,6 +674,12 @@ Global shared types live in `src/types/index.ts` (`MachineType`, `MixerType`, `P
 - `src/lib/extras-catalog.ts` — `buildExtrasCatalog()`, `resolveSelectedExtras()` (authoritative add-on pricing)
 - `src/lib/validation.ts` — zod request schemas, `MACHINE_CAPACITY`, `escapeHtml()`
 - `src/lib/dates.ts` — `todayLocalIso()`, `spanInDays()`, the shared field regexes. **Zod-free on purpose**
+- `src/lib/money.ts` — `roundCurrency()`, decimal half-up. The one rounding rule for money; re-exported from `components/order/utils.ts`, which cannot own it without a cycle through `lib/delivery`
+- `src/lib/delivery/zones.ts` — `resolveZipFee()`, `customFeeFor()`, `getDeliveryFee()`, `getDeliveryZoneInfo()`. The ZIP → fee ladder
+- `src/lib/delivery/deliveryCharge.ts` — `deliveryChargeFor()`, `DEFAULT_BASE_DELIVERY_FEE`. **The only place the base-fee-plus-surcharge rule lives**; nothing downstream would catch the browser and the server disagreeing about it
+- `src/lib/delivery/resolveDeliveryFee.ts` — the server-side service-area refusal. An unpriced ZIP is a 400, never free delivery
+- `src/lib/delivery/tierMinimums.ts` — `minimumForZip()`, `minimumForFee()`. All zeros by default, deliberately: bounce-v3's ladder refused 30% of its orders
+- `src/lib/delivery/defaultZones.ts` / `zone-snapshot.json` — the seeded service area, a dated point-in-time copy of bounce-v3 production. **Nothing syncs**
 - `src/lib/admin-list.ts` — `adminListLimit()`, `adminListHeaders()`: bounds the three admin list routes, which returned whole collections with no index behind the sort. The cap is reported in `X-Total-Count` / `X-Result-Truncated` rather than silently dropping rows
 - `src/lib/with-timeout.ts` — bounds Twilio and Resend calls, which are awaited inline after the booking is committed
 - `src/lib/api-guard.ts` / `src/lib/rate-limit.ts` — `guardPublicWrite()` for public write routes, `guardAdminWrite()` for the body cap on authenticated admin writes. `identifierFromHeaders()` is the single definition of client identity: prefer `x-vercel-forwarded-for` (platform-set), fall back to `x-forwarded-for` only for local/self-hosted. **Never key a limiter on the leftmost `x-forwarded-for` entry** — a proxy appends rather than overwrites, so that value is client-written, and using it dissolved both the public-write caps and the admin login throttle

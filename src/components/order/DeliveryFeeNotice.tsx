@@ -5,6 +5,8 @@ import {
   type DeliverySettings,
 } from "@/lib/delivery/zones";
 import { minimumForZip, minimumOrderNotice } from "@/lib/delivery/tierMinimums";
+import { deliveryChargeFor } from "@/lib/delivery/deliveryCharge";
+import { formatPrice } from "@/lib/pricing";
 
 interface Props {
   zipCode: string;
@@ -17,8 +19,10 @@ interface Props {
  * What this ZIP costs to deliver to, shown under the ZIP field as soon as it is
  * known — rather than as a surprise line on the review screen.
  *
- * Reads the same `getDeliveryZoneInfo` the server prices from, so the notice
- * and the invoice cannot disagree.
+ * Reads the same `getDeliveryZoneInfo` and the same `deliveryChargeFor` the
+ * server prices from, so the notice and the invoice cannot disagree. It names
+ * **both** terms, because naming only the surcharge is how a ZIP priced at $0
+ * came to read as free delivery — the failure this notice exists to prevent.
  */
 export default function DeliveryFeeNotice({
   zipCode,
@@ -38,28 +42,31 @@ export default function DeliveryFeeNotice({
     );
   }
 
-  // Keyed on the fee, not on the zone: a ZIP on the outside list can be free
-  // and one on the inside list can carry a surcharge. Membership is geography.
-  const free = info.fee === 0;
+  // Keyed on the fee, not on the zone: a ZIP on the outside list can carry no
+  // surcharge and one on the inside list can carry one. Membership is geography.
+  const charge = deliveryChargeFor({
+    distanceSurcharge: info.fee,
+    baseFee: zones?.baseFee,
+  });
+  const noSurcharge = charge.distanceSurcharge === 0;
 
   return (
     <div
       className={`mt-2 rounded-lg p-3 text-sm ${
-        free
+        noSurcharge
           ? "bg-green-50 text-green-900 dark:bg-green-950 dark:text-green-200"
           : "bg-amber-50 text-amber-900 dark:bg-amber-950 dark:text-amber-200"
       }`}
     >
       <p className="font-medium">
-        {free
-          ? "No distance surcharge for your ZIP"
-          : `$${info.fee} distance surcharge for your ZIP`}
+        Delivery to your ZIP: ${formatPrice(charge.total)}
       </p>
-      {!free && (
-        <p className="mt-1">
-          Added to your total, and itemised on the review step before you book.
-        </p>
-      )}
+      <p className="mt-1">
+        {noSurcharge
+          ? `$${formatPrice(charge.baseFee)} delivery and setup, with no distance surcharge for your ZIP.`
+          : `$${formatPrice(charge.baseFee)} delivery and setup, plus a $${formatPrice(charge.distanceSurcharge)} distance surcharge for your ZIP.`}
+      </p>
+      <p className="mt-1">Itemised on the review step before you book.</p>
       {minimum > 0 && <p className="mt-1">{minimumOrderNotice(minimum)}</p>}
     </div>
   );

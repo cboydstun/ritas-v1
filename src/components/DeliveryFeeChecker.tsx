@@ -7,6 +7,11 @@ import {
   type DeliverySettings,
 } from "@/lib/delivery/zones";
 import { minimumForZip, minimumOrderNotice } from "@/lib/delivery/tierMinimums";
+import {
+  deliveryChargeFor,
+  NO_DELIVERY_CHARGE,
+} from "@/lib/delivery/deliveryCharge";
+import { formatPrice } from "@/lib/pricing";
 import { validateZipCode } from "@/components/order/utils";
 import { BUSINESS_PHONE_DISPLAY, BUSINESS_PHONE_HREF } from "@/lib/site";
 
@@ -14,9 +19,11 @@ import { BUSINESS_PHONE_DISPLAY, BUSINESS_PHONE_HREF } from "@/lib/site";
  * "What does delivery cost to my address?", answered before anyone starts a
  * booking.
  *
- * Reads the same `getDeliveryZoneInfo` the checkout reads, so the two cannot
- * drift — the failure this replaces is a site that advertises one delivery
- * price while checkout charges another.
+ * Reads the same `getDeliveryZoneInfo` and `deliveryChargeFor` the checkout
+ * reads, so the two cannot drift — the failure this replaces is a site that
+ * advertises one delivery price while checkout charges another. It takes
+ * `deliveryZones` from `/api/v1/settings` whole rather than picking fields out
+ * of it, so a term added to the charge reaches this page without a second edit.
  */
 export default function DeliveryFeeChecker() {
   const [zones, setZones] = useState<DeliverySettings | undefined>();
@@ -47,6 +54,12 @@ export default function DeliveryFeeChecker() {
   // Fallback 0, deliberately: a ZIP with no band has no fee either, so it lands
   // in "not serviced" and this number is never displayed.
   const minimum = checked ? minimumForZip(checked, zones, fallbackMinimum) : 0;
+  const charge = info
+    ? deliveryChargeFor({
+        distanceSurcharge: info.fee,
+        baseFee: zones?.baseFee,
+      })
+    : NO_DELIVERY_CHARGE;
 
   return (
     <div className="rounded-lg bg-light p-4 dark:bg-charcoal/50">
@@ -109,9 +122,12 @@ export default function DeliveryFeeChecker() {
           ) : (
             <>
               <p className="font-semibold text-charcoal dark:text-white">
-                {info.fee === 0
-                  ? `No distance surcharge for ${checked!.slice(0, 5)}`
-                  : `$${info.fee} distance surcharge for ${checked!.slice(0, 5)}`}
+                Delivery to {checked!.slice(0, 5)}: ${formatPrice(charge.total)}
+              </p>
+              <p className="mt-1 text-charcoal/80 dark:text-white/80">
+                {charge.distanceSurcharge === 0
+                  ? `$${formatPrice(charge.baseFee)} delivery and setup, with no distance surcharge for this ZIP.`
+                  : `$${formatPrice(charge.baseFee)} delivery and setup, plus a $${formatPrice(charge.distanceSurcharge)} distance surcharge for this ZIP.`}
               </p>
               {minimum > 0 && (
                 <p className="mt-1 text-charcoal/80 dark:text-white/80">

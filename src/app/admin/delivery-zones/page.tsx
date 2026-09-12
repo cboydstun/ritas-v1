@@ -6,6 +6,7 @@ import AdminAuthCheck from "@/components/admin/AdminAuthCheck";
 import { useDeliveryZones } from "@/hooks/useDeliveryZones";
 import { buildZipFeeRows, countByBucket } from "@/lib/delivery/zipFeeRows";
 import { customFeeFor } from "@/lib/delivery/zones";
+import { DEFAULT_BASE_DELIVERY_FEE } from "@/lib/delivery/deliveryCharge";
 import {
   DEFAULT_TIER_MINIMUMS,
   type TierMinimums,
@@ -33,6 +34,7 @@ export default function DeliveryZonesPage() {
     removeCustomFee,
     saveZipLists,
     saveTierMinimums,
+    saveBaseFee,
   } = useDeliveryZones();
 
   const [selectedZip, setSelectedZip] = useState<string | null>(null);
@@ -51,6 +53,10 @@ export default function DeliveryZonesPage() {
     [zones],
   );
   const fallbackMinimum = settings?.fees?.minOrderAmount ?? 0;
+  // Absent on a document written before the field existed, which reads as the
+  // current price rather than as free — the same rule the schema default and
+  // `deliveryChargeFor` apply.
+  const storedBaseFee = zones?.baseFee ?? DEFAULT_BASE_DELIVERY_FEE;
 
   const handleSetZone = useCallback(
     (zipCode: string, zone: ZipZone) => {
@@ -161,8 +167,10 @@ export default function DeliveryZonesPage() {
                 countByBucket={counts}
                 storedTierMinimums={storedTierMinimums}
                 fallbackMinimum={fallbackMinimum}
+                storedBaseFee={storedBaseFee}
                 isSaving={isSaving}
                 onSave={saveTierMinimums}
+                onSaveBaseFee={saveBaseFee}
               />
 
               <ZipInventoryPanel

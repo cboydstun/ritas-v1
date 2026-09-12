@@ -10,21 +10,17 @@ import {
   fiveDigitZip,
   type DeliverySettings,
 } from "@/lib/delivery/zones";
+import { deliveryChargeFor } from "@/lib/delivery/deliveryCharge";
 import { buildExtrasCatalog, MAX_EXTRA_QUANTITY } from "@/lib/extras-catalog";
 
 /**
- * Round a currency amount to cents, decimal half-up.
- *
- * `Number(x.toFixed(2))` rounds the *binary* double, so a value that is an
- * exact half-cent in decimal can round down: 489.50 * 0.03 is 14.685 in
- * decimal but 14.684999999999999 as a double, and toFixed(2) yields 14.68
- * rather than 14.69. That underbilled the processing fee by a cent and
- * cascaded into salesTax and finalTotal, leaving the stored price, the
- * confirmation email and the QuickBooks invoice (which rounds decimal
- * half-up) disagreeing. Adding one ULP before scaling restores half-up.
+ * Re-exported so the many existing importers keep their path. The definition
+ * lives in `@/lib/money` because `lib/delivery/deliveryCharge.ts` needs it and
+ * cannot import this module without forming a cycle.
  */
-export const roundCurrency = (amount: number): number =>
-  Math.round(Number((amount * 100).toPrecision(12))) / 100;
+import { roundCurrency } from "@/lib/money";
+
+export { roundCurrency };
 
 export const getNextDay = (dateStr: string): string => {
   // Append T00:00:00 so the date is parsed as local midnight, not UTC midnight
@@ -149,7 +145,12 @@ export interface SettingsOverrides {
 export interface OrderTotals {
   basePrice: number;
   mixerPrice: number;
+  /** Base fee plus distance surcharge — what the order is actually billed. */
   deliveryFee: number;
+  /** The flat portion of `deliveryFee`. See `@/lib/delivery/deliveryCharge`. */
+  deliveryBaseFee: number;
+  /** The ZIP's own portion of `deliveryFee`. Zero is a real answer. */
+  distanceSurcharge: number;
   perDayRate: number;
   rentalDays: number;
   extrasTotal: number;
@@ -177,21 +178,31 @@ export function computeOrderTotal(
   formData: OrderFormData,
   settings?: SettingsOverrides,
 ): OrderTotals {
+  // Delivery is two terms, summed in exactly one place (`deliveryChargeFor`):
+  // the ZIP's own distance surcharge, and the flat base fee every order pays.
+  //
   // The surcharge comes from the order's own ZIP, never from a settings
   // default and never from a request body. `getDeliveryFee` answers 0 for a
   // ZIP nobody priced; that is not the gate — `isServicedZipCode` in the
   // browser and `resolveDeliveryFee` on the server are — it is only what keeps
   // a NaN out of a total if the gate is ever bypassed.
+  //
+  // With no `deliveryZones` at all there is no ZIP table to read and no base
+  // fee stored, so the legacy flat `fees.deliveryFee` answers alone. Adding a
+  // base term on top of it there would bill $40 for a trip nobody repriced.
   const zipCode = formData.customer?.address?.zipCode ?? "";
-  const zonedFee = settings?.deliveryZones
-    ? getDeliveryFee(zipCode, settings.deliveryZones)
+  const deliveryCharge = settings?.deliveryZones
+    ? deliveryChargeFor({
+        distanceSurcharge: getDeliveryFee(zipCode, settings.deliveryZones),
+        baseFee: settings.deliveryZones.baseFee,
+      })
     : undefined;
 
   const priceBreakdown = calculatePrice(
     formData.machineType,
     formData.selectedMixers,
     {
-      deliveryFee: zonedFee ?? settings?.fees?.deliveryFee,
+      deliveryFee: deliveryCharge?.total ?? settings?.fees?.deliveryFee,
       salesTaxRate: settings?.fees?.salesTaxRate,
       processingFeeRate: settings?.fees?.processingFeeRate,
       machines: settings?.machines,
@@ -271,6 +282,11 @@ export function computeOrderTotal(
     basePrice: priceBreakdown.basePrice,
     mixerPrice: priceBreakdown.mixerPrice,
     deliveryFee: priceBreakdown.deliveryFee,
+    // Reported from the resolved charge, not re-derived: with no
+    // `deliveryZones` configured the legacy flat fee is the whole of it and
+    // none of it is a distance surcharge.
+    deliveryBaseFee: deliveryCharge?.baseFee ?? priceBreakdown.deliveryFee,
+    distanceSurcharge: deliveryCharge?.distanceSurcharge ?? 0,
     perDayRate,
     rentalDays,
     extrasTotal,

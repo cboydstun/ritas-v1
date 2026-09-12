@@ -298,6 +298,7 @@ export const deliveryZonesSchema = z
     insideZips: zipListSchema,
     outsideZips: zipListSchema,
     tierMinimums: tierMinimumsSchema,
+    baseFee: moneySchema,
   })
   .partial();
 
@@ -325,6 +326,10 @@ export const deliveryZonesPatchSchema = z.union([
     })
     .strict(),
   z.object({ updateTierMinimums: tierMinimumsSchema }).strict(),
+  // One scalar, so it needs no merge — but it gets its own verb rather than
+  // riding on `updateTierMinimums`, for the same reason every other slice does:
+  // a body naming one field must not be able to rewrite another.
+  z.object({ updateBaseFee: moneySchema }).strict(),
 ]);
 
 export type DeliveryZonesPatch = z.infer<typeof deliveryZonesPatchSchema>;

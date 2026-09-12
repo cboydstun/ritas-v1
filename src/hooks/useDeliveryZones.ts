@@ -113,5 +113,9 @@ export function useDeliveryZones() {
       (tiers: Partial<TierMinimums>) => patch({ updateTierMinimums: tiers }),
       [patch],
     ),
+    saveBaseFee: useCallback(
+      (baseFee: number) => patch({ updateBaseFee: baseFee }),
+      [patch],
+    ),
   };
 }
