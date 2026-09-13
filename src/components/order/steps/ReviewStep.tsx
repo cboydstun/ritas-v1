@@ -232,8 +232,11 @@ export default function ReviewStep({
               <p className="text-sm font-semibold text-charcoal dark:text-white">
                 Fully Serviced
               </p>
+              {/* "included" beside an itemised Delivery Fee is the worst
+                  place in the app to say it. We do handle all three; the
+                  delivery charge is a line above this one. */}
               <p className="text-xs text-charcoal/70 dark:text-white/70">
-                Delivery, setup &amp; cleanup included
+                We handle delivery, setup &amp; cleanup
               </p>
             </div>
           </div>

@@ -75,9 +75,10 @@ export default function ServiceAreaIndexPage() {
         </h1>
         <p className="text-lg text-charcoal/70 dark:text-white/70 max-w-3xl mb-12">
           We deliver, set up and collect frozen drink machines across San
-          Antonio and the surrounding area. Every ZIP we serve has its own
-          distance surcharge, quoted at checkout before you book. Pick your area
-          below for delivery notes and pricing, or{" "}
+          Antonio and the surrounding area. Delivery is a delivery and setup fee
+          every order pays plus a distance surcharge that every ZIP we serve
+          sets for itself, both quoted at checkout before you book. Pick your
+          area below for delivery notes and pricing, or{" "}
           <a href={BUSINESS_PHONE_HREF} className="text-margarita underline">
             call {BUSINESS_PHONE_DISPLAY}
           </a>{" "}

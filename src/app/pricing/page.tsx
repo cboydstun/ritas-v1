@@ -8,6 +8,7 @@ import {
   type PricingOverrides,
 } from "@/lib/pricing";
 import { getPublicSettingsSafe } from "@/lib/public-settings";
+import { DEFAULT_BASE_DELIVERY_FEE } from "@/lib/delivery/deliveryCharge";
 import type { MachineType } from "@/types";
 import type { MixerType } from "@/lib/rental-data";
 import { Metadata } from "next";
@@ -216,11 +217,11 @@ export const metadata: Metadata = {
   alternates: { canonical: "/pricing" },
   title: "Pricing | SATX Ritas Rentals - Frozen Drink Machine Rentals",
   description:
-    "Transparent pricing for frozen drink machine rentals in San Antonio. Professional delivery, setup, and pickup included. Single, double, and triple tank machines available with various mixer options.",
+    "Transparent pricing for frozen drink machine rentals in San Antonio. Professional delivery, setup and pickup, priced by your ZIP code. Single, double, and triple tank machines available with various mixer options.",
   openGraph: {
     title: "Pricing | SATX Ritas Rentals - Frozen Drink Machine Rentals",
     description:
-      "Transparent pricing for frozen drink machine rentals in San Antonio. Professional delivery, setup, and pickup included. Single, double, and triple tank machines available with various mixer options.",
+      "Transparent pricing for frozen drink machine rentals in San Antonio. Professional delivery, setup and pickup, priced by your ZIP code. Single, double, and triple tank machines available with various mixer options.",
     url: `${SITE_URL}/pricing`,
     images: [`${SITE_URL}/og-image.jpg`],
     type: "website",
@@ -234,8 +235,19 @@ export const revalidate = 60;
 
 export default async function PricingPage() {
   const settings = await getPublicSettingsSafe("Pricing page");
+  // The flat term of the delivery charge. Every order pays it; only the
+  // distance surcharge on top varies, and that needs a ZIP this page has not
+  // been given. So the Offer prices below are the cheapest an order can be.
+  //
+  // Read from `deliveryZones.baseFee`, never from `fees.deliveryFee` — the
+  // latter is the retired flat charge and still defaults to the same $20, so
+  // the two agree until the first time an admin moves the base fee and then
+  // disagree silently.
+  const baseDeliveryFee =
+    settings.deliveryZones?.baseFee ?? DEFAULT_BASE_DELIVERY_FEE;
   const overrides: PricingOverrides = {
     ...settings.fees,
+    deliveryFee: baseDeliveryFee,
     machines: settings.machines as PricingOverrides["machines"],
     mixers: settings.mixers as PricingOverrides["mixers"],
   };
@@ -344,10 +356,11 @@ export default async function PricingPage() {
                 <p className="text-charcoal dark:text-white font-medium">
                   📅 Machine and mixer rates are{" "}
                   <span className="font-bold text-orange">per day</span> — your
-                  total is calculated as rate × number of rental days. The
-                  distance surcharge is a one-time charge set by your ZIP code
-                  and quoted before you book. Party extras are also priced per
-                  day.
+                  total is calculated as rate × number of rental days. Delivery
+                  is two one-time charges: a ${formatPrice(baseDeliveryFee)}{" "}
+                  delivery and setup fee every order pays, plus a distance
+                  surcharge set by your ZIP code. Both are quoted before you
+                  book. Party extras are also priced per day.
                 </p>
               </div>
 
@@ -483,13 +496,16 @@ export default async function PricingPage() {
                   </h4>
                   <div className="grid grid-cols-3 gap-4 mb-8">
                     <p>
-                      {/* Delivery and setup are included everywhere we go; what
-                          varies is how far the truck drives, and that is priced
-                          per ZIP. Quoting one figure here is what made this page
-                          disagree with checkout. */}
+                      {/* Two terms, and both have to be named. "Included" was
+                          true of the setup and false of the delivery: every
+                          order pays the flat fee, so a $0 ZIP read as free
+                          delivery here and was billed $20 at checkout. The
+                          figure is read from Settings rather than typed,
+                          because quoting a hardcoded one is what made this page
+                          disagree with checkout the first time. */}
                       <span className="font-medium">Delivery & Setup:</span>
-                      <br />
-                      Included — distance surcharge by ZIP
+                      <br />${formatPrice(baseDeliveryFee)} + distance surcharge
+                      by ZIP
                     </p>
                     <p>
                       <span className="font-medium">Sales Tax:</span>
@@ -718,8 +734,9 @@ export default async function PricingPage() {
                         No Hidden Fees
                       </h3>
                       <p className="text-charcoal/70 dark:text-white/70">
-                        All-inclusive pricing with delivery, setup, and pickup
-                        included
+                        Delivery, setup and pickup all priced up front — the
+                        delivery fee and your ZIP&rsquo;s surcharge are both
+                        quoted before you book
                       </p>
                     </div>
                   </div>

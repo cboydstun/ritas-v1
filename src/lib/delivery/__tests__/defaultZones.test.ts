@@ -53,11 +53,12 @@ describe("the seeded service area", () => {
   });
 });
 
-describe("the ZIPs ritas serves and bounce-v3 does not", () => {
-  // The snapshot is bounce-v3's table, and these seven are outside it. Dropping
-  // one starts refusing a customer who was being served yesterday, which no
-  // other test in this suite would notice.
-  const RITAS_ONLY = [
+describe("the ZIPs that reached bounce-v3's table late", () => {
+  // These seven were on neither of bounce-v3's zone lists when this snapshot was
+  // read, so they are the ones a re-copy would quietly drop — which starts
+  // refusing a customer who was being served yesterday, and no other test in
+  // this suite would notice.
+  const LATE_ARRIVALS = [
     "78039",
     "78052",
     "78054",
@@ -67,17 +68,34 @@ describe("the ZIPs ritas serves and bounce-v3 does not", () => {
     "78150",
   ];
 
-  it.each(RITAS_ONLY)("still serves %s", (zip) => {
+  it.each(LATE_ARRIVALS)("still serves %s", (zip) => {
     expect(DEFAULT_OUTSIDE_ZIPS).toContain(zip);
     expect(typeof DEFAULT_ZIP_FEES[zip]).toBe("number");
   });
 
-  it("keeps the previous flat fee for the four bounce-v3 never priced", () => {
-    // 78039, 78056 and 78112 carry a real bounce-v3 fee — they were priced there
-    // without being listed. The rest had no figure to copy, so they hold the
-    // flat $20 ritas charged before this import.
-    for (const zip of ["78052", "78054", "78069", "78150"])
-      expect(DEFAULT_ZIP_FEES[zip]).toBe(20);
+  it("charges bounce-v3's own price for all seven", () => {
+    // 78039, 78056 and 78112 were priced in bounce-v3 without being listed, so
+    // they carried a real figure from the first copy. The other four had none:
+    // this snapshot was read 37 minutes before bounce-v3 priced them by nearest
+    // neighbour, and they held ritas' previous flat $20 until the 2026-09-12
+    // reconcile. Same depot, same drive, same price.
+    expect({
+      "78039": DEFAULT_ZIP_FEES["78039"],
+      "78052": DEFAULT_ZIP_FEES["78052"],
+      "78054": DEFAULT_ZIP_FEES["78054"],
+      "78056": DEFAULT_ZIP_FEES["78056"],
+      "78069": DEFAULT_ZIP_FEES["78069"],
+      "78112": DEFAULT_ZIP_FEES["78112"],
+      "78150": DEFAULT_ZIP_FEES["78150"],
+    }).toEqual({
+      "78039": 100,
+      "78052": 100,
+      "78054": 50,
+      "78056": 100,
+      "78069": 100,
+      "78112": 100,
+      "78150": 25,
+    });
   });
 });
 

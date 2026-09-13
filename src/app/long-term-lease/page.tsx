@@ -293,7 +293,7 @@ export default async function LongTermLeasePage() {
 
             <BookingCTA
               headline="Need a machine for a one-time event instead?"
-              subtext="If you're hosting a private party or special event, our day rentals come with delivery, setup, and pickup included. Book online in minutes."
+              subtext="If you're hosting a private party or special event, our day rentals come with delivery, setup and pickup, priced by your ZIP code. Book online in minutes."
             />
           </div>
         </div>

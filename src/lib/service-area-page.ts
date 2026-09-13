@@ -29,7 +29,7 @@ export const DELIVERY_INCLUDES: FeaturesSection = {
   items: [
     {
       icon: "🚚",
-      body: "Delivery, setup and pickup — the distance surcharge is set by your ZIP code and quoted before you book.",
+      body: "Delivery, setup and pickup — a delivery and setup fee every order pays, plus a distance surcharge set by your ZIP code, both quoted before you book.",
     },
     {
       icon: "🔧",

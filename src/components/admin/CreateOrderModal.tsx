@@ -93,6 +93,14 @@ export default function CreateOrderModal({ onClose }: CreateOrderModalProps) {
         selectedExtras: formData.selectedExtras ?? [],
         rentalDate: formData.rentalDate ?? "",
         returnDate: formData.returnDate ?? "",
+        // The customer, and therefore the ZIP, has to be handed over.
+        // `computeOrderTotal` resolves the distance surcharge from
+        // `formData.customer.address.zipCode`; omitting it left this preview
+        // quoting the delivery and setup fee alone while
+        // `POST /api/v1/admin/orders` — which does pass the customer — stored
+        // the surcharge on top. The office quoted $20 for a $100 ZIP and
+        // billed $120.
+        customer: formData.customer,
         isServiceDiscount: false,
       } as OrderFormData,
       settings ?? undefined,
@@ -117,6 +125,10 @@ export default function CreateOrderModal({ onClose }: CreateOrderModalProps) {
     formData.selectedExtras,
     formData.rentalDate,
     formData.returnDate,
+    // Only the ZIP moves the price, but the whole object is what is passed —
+    // depending on the field rather than the object is how a preview goes
+    // stale against the value it was computed from.
+    formData.customer,
     settings,
   ]);
 

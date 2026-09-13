@@ -13,7 +13,7 @@ import { BUSINESS_ID, SITE_URL, breadcrumbJsonLd } from "@/lib/site";
 const PAGE_TITLE =
   "Book Now | SATX Ritas Rentals - Frozen Drink Machine Rentals";
 const PAGE_DESCRIPTION =
-  "Book your frozen drink machine rental in San Antonio. Easy online booking with flexible scheduling, delivery, and setup included. Perfect for parties and events of any size.";
+  "Book your frozen drink machine rental in San Antonio. Easy online booking with flexible scheduling, plus delivery and setup priced by your ZIP code. Perfect for parties and events of any size.";
 
 // JSON-LD structured data for service booking.
 //
@@ -63,7 +63,7 @@ function buildJsonLd(overrides: PricingOverrides, priceValidUntil: string) {
       "Professional frozen drink machine rental service including delivery, setup, and pickup. Available for parties, weddings, corporate events, and more.",
     serviceType: "Equipment Rental",
     termsOfService:
-      "Machine and mixer rates are charged per day for the length of the rental, plus a one-time distance surcharge set by your ZIP code. Multi-day rentals and flexible delivery and pickup scheduling are available.",
+      "Machine and mixer rates are charged per day for the length of the rental, plus a one-time delivery and setup fee and a one-time distance surcharge set by your ZIP code. Multi-day rentals and flexible delivery and pickup scheduling are available.",
     areaServed: {
       "@type": "City",
       name: "San Antonio",
