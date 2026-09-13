@@ -207,6 +207,20 @@ async function paypalFetch<T>(
 /** PayPal's name for "you already captured this order". Not an error to us. */
 export const ORDER_ALREADY_CAPTURED = "ORDER_ALREADY_CAPTURED";
 
+/**
+ * The issues PayPal returns when a capture fails because the *funding source*
+ * said no, rather than because anything is wrong with the request.
+ *
+ * They arrive as a `422`, not as a `201` carrying a `DECLINED` capture — both
+ * shapes are real and the capture route handles both. Left unnamed, a declined
+ * card fell through to the generic failure path and told the buyer to phone us
+ * while their money was untouched and a second card was in their hand.
+ */
+export const INSTRUMENT_DECLINED = "INSTRUMENT_DECLINED";
+export const TRANSACTION_REFUSED = "TRANSACTION_REFUSED";
+/** The buyer must go back to PayPal and confirm; retrying alone cannot fix it. */
+export const PAYER_ACTION_REQUIRED = "PAYER_ACTION_REQUIRED";
+
 export interface CreateOrderInput {
   /** Already rounded by `computeOrderTotal`; `toFixed` here only formats. */
   amountUsd: number;

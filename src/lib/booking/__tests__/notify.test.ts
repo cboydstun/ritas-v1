@@ -118,7 +118,7 @@ describe("sendBookingNotifications", () => {
     jest.restoreAllMocks();
   });
 
-  describe("paid vs unpaid copy", () => {
+  describe("paid, clearing and unpaid copy", () => {
     // Telling a customer who has just paid that an invoice is coming is the
     // one thing this email must not do, and telling the operator to invoice
     // them is how a paid booking gets billed twice.
@@ -134,7 +134,12 @@ describe("sendBookingNotifications", () => {
     it("confirms payment and names the transaction when it was paid", async () => {
       await sendBookingNotifications(
         input({
-          payment: { paid: true, transactionId: "CAP123", method: "paypal" },
+          payment: {
+            paid: true,
+            settled: true,
+            transactionId: "CAP123",
+            method: "paypal",
+          },
         }),
       );
 
@@ -147,6 +152,51 @@ describe("sendBookingNotifications", () => {
       expect(lastSmsBody()).toContain("PAID IN FULL VIA PAYPAL");
       expect(lastSmsBody()).toContain("CAP123");
       expect(lastSmsBody()).not.toContain("INVOICE CUSTOMER");
+    });
+
+    // The money has moved but PayPal has not finished clearing it. Saying
+    // nothing at all is what this used to do, and the customer was told on the
+    // success page that they were paid in full regardless.
+    it("tells the customer a captured payment is still clearing", async () => {
+      await sendBookingNotifications(
+        input({
+          payment: {
+            paid: true,
+            settled: false,
+            transactionId: "CAP999",
+            method: "paypal",
+          },
+        }),
+      );
+
+      expect(lastEmailHtml()).toContain("still clearing it");
+      expect(lastEmailHtml()).not.toContain("Paid in Full");
+      expect(lastEmailHtml()).not.toContain("we will send you an invoice");
+      expect(lastEmailHtml()).not.toContain("No deposit is required");
+
+      expect(lastSmsBody()).toContain("PAYMENT NEEDS REVIEW");
+      expect(lastSmsBody()).toContain("CHECK BEFORE DISPATCH");
+      expect(lastSmsBody()).toContain("CAP999");
+      expect(lastSmsBody()).not.toContain("PAID IN FULL");
+    });
+
+    // A mismatch is the case an operator has to reconcile by hand, so both
+    // figures ride on the message rather than only in a log line.
+    it("prints both figures when the captured amount disagrees", async () => {
+      await sendBookingNotifications(
+        input({
+          payment: {
+            paid: true,
+            settled: false,
+            transactionId: "CAP999",
+            method: "paypal",
+            capturedAmount: 1,
+          },
+        }),
+      );
+
+      expect(lastSmsBody()).toContain("Took $1.00 against $");
+      expect(lastEmailHtml()).toContain("payment of $1.00");
     });
   });
 

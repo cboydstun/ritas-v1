@@ -7,7 +7,10 @@ import { Settings } from "@/models/settings";
 import { isMachineAvailable } from "@/lib/inventory";
 import { sendBookingNotifications } from "@/lib/booking/notify";
 import {
+  INSTRUMENT_DECLINED,
   ORDER_ALREADY_CAPTURED,
+  PAYER_ACTION_REQUIRED,
+  TRANSACTION_REFUSED,
   PayPalError,
   capturePayPalOrder,
   getPayPalOrder,
@@ -145,6 +148,8 @@ describe("POST /api/v1/paypal/capture-order", () => {
       expect(response.status).toBe(200);
       await expect(response.json()).resolves.toEqual({
         bookingId: "BOOKID1234",
+        settled: true,
+        amount: 183.9,
       });
 
       const update = (Rental.findOneAndUpdate as jest.Mock).mock.calls[0][1];
@@ -163,7 +168,12 @@ describe("POST /api/v1/paypal/capture-order", () => {
       expect(sendBookingNotifications).toHaveBeenCalledWith(
         expect.objectContaining({
           bookingId: "BOOKID1234",
-          payment: { paid: true, transactionId: "CAP1", method: "paypal" },
+          payment: {
+            paid: true,
+            settled: true,
+            transactionId: "CAP1",
+            method: "paypal",
+          },
         }),
       );
     });
@@ -205,6 +215,8 @@ describe("POST /api/v1/paypal/capture-order", () => {
       expect(response.status).toBe(200);
       await expect(response.json()).resolves.toEqual({
         bookingId: "BOOKID1234",
+        settled: true,
+        amount: 183.9,
       });
       expect(mockCapture).not.toHaveBeenCalled();
       expect(sendBookingNotifications).not.toHaveBeenCalled();
@@ -220,6 +232,8 @@ describe("POST /api/v1/paypal/capture-order", () => {
       expect(response.status).toBe(200);
       await expect(response.json()).resolves.toEqual({
         bookingId: "BOOKID1234",
+        settled: true,
+        amount: 183.9,
       });
       expect(sendBookingNotifications).not.toHaveBeenCalled();
     });
@@ -364,7 +378,7 @@ describe("POST /api/v1/paypal/capture-order", () => {
   describe("captures that are not a settled payment", () => {
     // Money is committed, so the hold must stop being reapable — but it is
     // not confirmed either.
-    it("parks a PENDING capture as pending_payment and sends nothing", async () => {
+    it("parks a PENDING capture as pending_payment", async () => {
       mockCapture.mockResolvedValue(orderWithCapture({ status: "PENDING" }));
 
       const response = await post({ orderId: "ORDER-1" });
@@ -376,7 +390,21 @@ describe("POST /api/v1/paypal/capture-order", () => {
         "payment.status": "pending",
         "payment.paypalTransactionId": "CAP1",
       });
-      expect(sendBookingNotifications).not.toHaveBeenCalled();
+      await expect(response.json()).resolves.toMatchObject({ settled: false });
+    });
+
+    // The money moved. Notifying nobody left the buyer paid, unconfirmed and
+    // told on the success page that they were paid in full.
+    it("still notifies on a PENDING capture, marked unsettled", async () => {
+      mockCapture.mockResolvedValue(orderWithCapture({ status: "PENDING" }));
+
+      await post({ orderId: "ORDER-1" });
+
+      expect(sendBookingNotifications).toHaveBeenCalledWith(
+        expect.objectContaining({
+          payment: expect.objectContaining({ paid: true, settled: false }),
+        }),
+      );
     });
 
     // The hold stays `pending` so the buyer can pick another funding source.
@@ -402,6 +430,62 @@ describe("POST /api/v1/paypal/capture-order", () => {
     });
   });
 
+  describe("a funding source that says no", () => {
+    // PayPal reports these as a 422, not as a 201 carrying a DECLINED capture.
+    // They used to reach the generic catch, so a buyer whose card bounced was
+    // told to phone us while nothing had been charged.
+    it.each([INSTRUMENT_DECLINED, TRANSACTION_REFUSED])(
+      "answers 402 and leaves the hold alone on %s",
+      async (issue) => {
+        mockCapture.mockRejectedValue(
+          new PayPalError("declined", { status: 422, issue }),
+        );
+
+        const response = await post({ orderId: "ORDER-1" });
+
+        expect(response.status).toBe(402);
+        await expect(response.json()).resolves.toMatchObject({
+          message: expect.stringContaining("another method"),
+        });
+        expect(Rental.findOneAndUpdate).not.toHaveBeenCalled();
+        expect(sendBookingNotifications).not.toHaveBeenCalled();
+      },
+    );
+
+    // Retrying alone cannot fix this one, so it gets its own copy.
+    it("asks the buyer to confirm on PAYER_ACTION_REQUIRED", async () => {
+      mockCapture.mockRejectedValue(
+        new PayPalError("action required", {
+          status: 422,
+          issue: PAYER_ACTION_REQUIRED,
+        }),
+      );
+
+      const response = await post({ orderId: "ORDER-1" });
+
+      expect(response.status).toBe(402);
+      await expect(response.json()).resolves.toMatchObject({
+        message: expect.stringContaining("confirm this payment"),
+      });
+      expect(Rental.findOneAndUpdate).not.toHaveBeenCalled();
+    });
+
+    // A decline is not an unknown. Reading the order back would be a wasted
+    // call, and treating it as recoverable would hide a real failure.
+    it("does not read the order back on a decline", async () => {
+      mockCapture.mockRejectedValue(
+        new PayPalError("declined", {
+          status: 422,
+          issue: INSTRUMENT_DECLINED,
+        }),
+      );
+
+      await post({ orderId: "ORDER-1" });
+
+      expect(mockGetOrder).not.toHaveBeenCalled();
+    });
+  });
+
   describe("amount verification", () => {
     // Refusing the customer after their money has moved is worse than an
     // admin reconciling it, so this answers 200 — but never confirms.
@@ -414,7 +498,17 @@ describe("POST /api/v1/paypal/capture-order", () => {
       const update = (Rental.findOneAndUpdate as jest.Mock).mock.calls[0][1];
       expect(update.$set.status).toBe("pending_payment");
       expect(update.$set["payment.status"]).toBe("pending");
-      expect(sendBookingNotifications).not.toHaveBeenCalled();
+      // What PayPal took, not what we asked for — the record is what
+      // QuickBooks reconciles against.
+      expect(update.$set["payment.amount"]).toBe(1);
+      expect(sendBookingNotifications).toHaveBeenCalledWith(
+        expect.objectContaining({
+          payment: expect.objectContaining({
+            settled: false,
+            capturedAmount: 1,
+          }),
+        }),
+      );
     });
 
     it("does not confirm when the currency differs", async () => {

@@ -363,7 +363,7 @@ export function buildSuccessUrl(
   bookingId: string,
   machineType: string,
   selectedMixers: string[] = [],
-  options: { paid?: boolean } = {},
+  options: { paid?: boolean; clearing?: boolean } = {},
 ): string {
   const params = new URLSearchParams();
   params.append("bookingId", bookingId);
@@ -373,11 +373,18 @@ export function buildSuccessUrl(
     params.append("mixers", selectedMixers.join(","));
   }
 
-  // A flag, not an amount. `/success` has to know whether to promise an
-  // invoice, and telling a customer who has just paid that one is coming is
-  // the one thing that page must not do. It carries no money and no PII, so
-  // the rule above still holds.
-  if (options.paid) {
+  // Flags, not amounts. `/success` has to know whether to promise an invoice,
+  // and telling a customer who has just paid that one is coming is the one
+  // thing that page must not do. They carry no money and no PII, so the rule
+  // above still holds.
+  //
+  // `clearing` is the third state and is mutually exclusive with `paid`:
+  // PayPal took the money but has not settled it (an eCheck, a risk review, or
+  // a captured figure that disagreed with the booking). Sending `paid` there
+  // would promise "no balance on delivery" for a payment that may yet fail.
+  if (options.clearing) {
+    params.append("clearing", "1");
+  } else if (options.paid) {
     params.append("paid", "1");
   }
 

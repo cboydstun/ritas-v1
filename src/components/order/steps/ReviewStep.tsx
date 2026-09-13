@@ -117,13 +117,24 @@ export default function ReviewStep({
   const finishBooking = async (
     bookingId: string,
     method: "paypal" | "invoice",
+    /**
+     * How the payment landed, for the PayPal path only.
+     *
+     * `settled: false` is a capture PayPal has not finished clearing, or one
+     * whose figure disagreed with the booking. The money moved, so this is a
+     * purchase — but the customer must not be told it is done, and the
+     * conversion must carry what was actually taken rather than what the cart
+     * said.
+     */
+    payment: { settled: boolean; amount?: number } = { settled: true },
   ) => {
+    const reportedValue = payment.amount ?? finalTotal;
     // The only place a booking's id and total exist together on the client,
     // so it is the only place `purchase` can be emitted. gtag sends via
     // sendBeacon, so the hit survives the navigation below.
     trackEvent("purchase", {
       transaction_id: bookingId,
-      value: finalTotal,
+      value: reportedValue,
       currency: "USD",
       tax: salesTax + processingFee,
       shipping: deliveryFee,
@@ -161,7 +172,7 @@ export default function ReviewStep({
       "purchase_complete",
       {
         transaction_id: bookingId,
-        value: finalTotal,
+        value: reportedValue,
         currency: "USD",
         ...(userData ? { user_data: userData } : {}),
       },
@@ -176,7 +187,10 @@ export default function ReviewStep({
           bookingId,
           formData.machineType,
           formData.selectedMixers,
-          { paid: method === "paypal" },
+          {
+            paid: method === "paypal" && payment.settled,
+            clearing: method === "paypal" && !payment.settled,
+          },
         );
       },
     );
@@ -316,7 +330,12 @@ export default function ReviewStep({
       // left to release and nothing left to reuse.
       heldOrderId.current = null;
       heldBookingId.current = null;
-      await finishBooking(result.bookingId, "paypal");
+      // `settled` defaults true only for an older response shape; the route
+      // sends it on every 200.
+      await finishBooking(result.bookingId, "paypal", {
+        settled: result.settled !== false,
+        amount: typeof result.amount === "number" ? result.amount : undefined,
+      });
     } catch (error) {
       // The money may well have moved, so this deliberately does not release
       // the hold or invite a second attempt.

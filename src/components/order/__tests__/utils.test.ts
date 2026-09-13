@@ -296,6 +296,30 @@ describe("buildSuccessUrl", () => {
 
     expect(keys.sort()).toEqual(["bookingId", "machineType", "mixers"]);
   });
+
+  // A capture PayPal has not settled is neither of the other two states.
+  // Flagging it `paid` would promise "no balance on delivery" for money that
+  // may yet fail to clear.
+  it("flags a clearing payment instead of a paid one", () => {
+    const url = buildSuccessUrl("bk_1", "double", [], {
+      paid: true,
+      clearing: true,
+    });
+
+    expect(url).toContain("clearing=1");
+    expect(url).not.toContain("paid=1");
+  });
+
+  it("still carries no money and no PII on the clearing branch", () => {
+    const keys = Array.from(
+      new URL(
+        buildSuccessUrl("bk_1", "double", [], { clearing: true }),
+        "https://www.satxritas.com",
+      ).searchParams.keys(),
+    );
+
+    expect(keys.sort()).toEqual(["bookingId", "clearing", "machineType"]);
+  });
 });
 
 describe("isServicedZipCode", () => {

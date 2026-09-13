@@ -521,8 +521,8 @@ in the route, because three routes now need it: the zod parse, derived
 `capacity`, the settings read, the delivery-window and service-area re-checks,
 catalog-resolved extras and mixers, `computeOrderTotal`, the order minimum, the
 write, and the asymmetric oversell recheck with its compensating delete.
-`src/lib/booking/notify.ts` is the Twilio + Resend half, with one paid/unpaid
-copy branch. `src/app/api/save-booking/__tests__/route.test.ts` passing
+`src/lib/booking/notify.ts` is the Twilio + Resend half, with a three-way
+paid / clearing / unpaid copy branch. `src/app/api/save-booking/__tests__/route.test.ts` passing
 **unchanged** is what proves that extraction was inert — treat any edit it needs
 as evidence the behaviour moved, not as a test to fix.
 
@@ -542,6 +542,31 @@ The three PayPal routes, all under `src/app/api/v1/paypal/`:
   the booking with a conditional `findOneAndUpdate` so two concurrent approvals
   send one email. `ORDER_ALREADY_CAPTURED` and a timeout are both resolved by
   reading the order back, never by re-POSTing a capture.
+
+  **A funding source that says no is a 402, not a failure.** PayPal reports a
+  decline two ways — a `201` whose capture status is `DECLINED`/`FAILED`, and a
+  `422` carrying `INSTRUMENT_DECLINED`, `TRANSACTION_REFUSED` or
+  `PAYER_ACTION_REQUIRED`. Only the first was handled, so the second fell to
+  the generic 502 and told a buyer whose card had bounced to phone us while
+  nothing had been charged and a second card was in their hand. Both shapes are
+  handled now, neither writes anything, and the hold stays `pending` so a retry
+  reprices it through `reuseBookingId` rather than taking another unit.
+
+  **A capture is not automatically a settled one.** `settled` is
+  `COMPLETED && amountMatches`; a `PENDING` capture (eCheck, risk review) or a
+  figure that disagrees with the stored price parks the booking at
+  `pending_payment`. That branch used to notify **nobody** — no email, no
+  operator SMS, only a `console.error` — while the browser read the bare 200 as
+  a win, fired the GA4 `purchase` and Ads conversion at the full cart total and
+  sent the customer to `/success?paid=1`, which promises "no balance on
+  delivery". The route now notifies on **both** branches (`settled` picks the
+  copy), stores what PayPal actually took rather than `rental.price`, and
+  returns `{ bookingId, settled, amount }`. `ReviewStep` passes those through
+  to `buildSuccessUrl`, which flags the third state as `clearing=1`, and
+  reports the captured amount as the conversion value. **Nothing promotes a
+  `PENDING` capture to `confirmed`** — that still needs the webhook below, but
+  the customer and the operator now both know to expect it.
+
 - **`release-hold`** hands the machine back on cancel. Keyed on the unguessable
   `paypalOrderId` and filtered to an unpaid `pending` row, so it can never
   delete someone else's booking.
@@ -564,7 +589,8 @@ scope with a 60s skew and a clear-and-retry-once on 401. Orders carry
 can echo payer identifiers.
 
 **Known gap, deliberate:** a browser that dies between PayPal approval and our
-capture call. No money moves, the hold is reaped, the buyer sees a limbo entry
+capture call, and an eCheck capture PayPal later settles, which nothing
+promotes. No money moves, the hold is reaped, the buyer sees a limbo entry
 in PayPal. Closing it needs a `CHECKOUT.ORDER.APPROVED` webhook with signature
 verification, which is its own piece of work. Refunds are done in the PayPal
 dashboard; the admin UI is not involved.
@@ -801,7 +827,7 @@ Global shared types live in `src/types/index.ts` (`MachineType`, `MixerType`, `P
 - `src/lib/landing-audit.ts` — `auditLandingPage()`, `sectionsToHtml()`. Same contract
 - `src/lib/landing-jsonld.ts` — `buildServiceJsonLd()`, `buildWebPageJsonLd()`, `buildFaqJsonLd()`
 - `src/lib/booking/createBooking.ts` — the whole customer booking pipeline, shared by `/api/save-booking` and the PayPal create-order route. Owns the zod parse; returns a discriminated result and never a `NextResponse`
-- `src/lib/booking/notify.ts` — `sendBookingNotifications()`. Twilio + Resend, one paid/unpaid copy branch. **Never throws** — the rental is already committed when it runs
+- `src/lib/booking/notify.ts` — `sendBookingNotifications()`. Twilio + Resend, a three-way paid / clearing / unpaid copy branch. **Never throws** — the rental is already committed when it runs
 - `src/lib/paypal/client.ts` — `createPayPalOrder()`, `capturePayPalOrder()`, `getPayPalOrder()`, `firstCapture()`, `paypalConfigured()`. No SDK; `PAYPAL_API_BASE` is live and hard-coded
 - `src/lib/analytics.ts` — `trackEvent()`, the only sanctioned path to `window.gtag`; `pushDataLayer()` / `pushDataLayerThen()` for GTM, and `LEAD_VALUES` / `ANALYTICS_CURRENCY`
 - `src/lib/enhanced-conversions.ts` — `hashUserData()`. Browser-side SHA-256 of email/phone for Google Ads enhanced conversions. Never throws, returns `undefined` on consent denial or an insecure origin

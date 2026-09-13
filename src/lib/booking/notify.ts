@@ -37,11 +37,27 @@ export interface RentalLike {
 
 /**
  * How the booking was paid for, which is the only thing that differs between
- * the two sends. A booking is either paid in full at checkout or invoiced out
- * of band; there is no third state that reaches a customer.
+ * the sends.
+ *
+ * `paid: false` is the invoice path. `paid: true` is a PayPal capture — but a
+ * capture is not automatically a settled one: PayPal holds eCheck and
+ * risk-reviewed funds as `PENDING`, and a captured figure can disagree with the
+ * price the booking was sold at. Both of those moved the buyer's money, so
+ * neither may be reported as an invoice; neither may be reported as done
+ * either. `settled` is that distinction, and it reaches the customer — a
+ * booking they have paid for and heard nothing about is the worst of the three.
  */
 export type BookingPayment =
-  { paid: false } | { paid: true; transactionId: string; method: "paypal" };
+  | { paid: false }
+  | {
+      paid: true;
+      /** False while PayPal is clearing, or when the captured figure differs. */
+      settled: boolean;
+      transactionId: string;
+      method: "paypal";
+      /** What PayPal actually took, when it is not the booking total. */
+      capturedAmount?: number;
+    };
 
 export interface BookingNotificationInput {
   rental: RentalLike;
@@ -159,12 +175,19 @@ export async function sendBookingNotifications(
 
       // The operator acts on this message. Telling them to invoice a customer
       // who has already paid is how a paid booking gets billed twice.
-      const headline = payment.paid
-        ? "🎉 NEW BOOKING - PAID"
-        : "🎉 NEW BOOKING - PAYMENT PENDING";
-      const footer = payment.paid
-        ? `✅ PAID IN FULL VIA PAYPAL\nTxn: ${payment.transactionId}`
-        : "⚠️ INVOICE CUSTOMER FOR PAYMENT";
+      const headline = !payment.paid
+        ? "🎉 NEW BOOKING - PAYMENT PENDING"
+        : payment.settled
+          ? "🎉 NEW BOOKING - PAID"
+          : "⚠️ NEW BOOKING - PAYMENT NEEDS REVIEW";
+      const footer = !payment.paid
+        ? "⚠️ INVOICE CUSTOMER FOR PAYMENT"
+        : payment.settled
+          ? `✅ PAID IN FULL VIA PAYPAL\nTxn: ${payment.transactionId}`
+          : `⚠️ PAYPAL CAPTURE NOT SETTLED - CHECK BEFORE DISPATCH\nTxn: ${payment.transactionId}` +
+            (payment.capturedAmount === undefined
+              ? ""
+              : `\nTook $${formatPrice(payment.capturedAmount)} against $${formatPrice(emailTotal)}`);
 
       // Started, not awaited. Both notifications are fire-and-log — the
       // booking is already committed and stands either way — but awaiting
@@ -311,21 +334,31 @@ export async function sendBookingNotifications(
       </div>`;
   // ─────────────────────────────────────────────────────────────────────
 
-  // The one block that differs. A customer who has already paid must not be
-  // told an invoice is coming, and must not be told no deposit is required.
-  const paymentInfoHtml = payment.paid
+  // The one block that differs, and it has three states. A customer who has
+  // already paid must not be told an invoice is coming or that no deposit is
+  // required — and one whose payment PayPal has not finished clearing must not
+  // be told it is done, which is the thing they would act on.
+  const paymentInfoHtml = !payment.paid
     ? `
-          <div style="background-color: #f0fdf4; border: 1px solid #86efac; padding: 15px; border-radius: 6px; margin: 20px 0;">
-            <h3 style="margin: 0 0 10px 0; color: #166534;">✅ Paid in Full</h3>
-            <p style="margin: 0; color: #166534; font-weight: 500;">
-              We received your payment of $${formatPrice(emailTotal)} via PayPal. No invoice will follow and nothing is due on delivery. We will contact you the day before your event to confirm the details. All sales are final — no refunds.
-            </p>
-          </div>`
-    : `
           <div style="background-color: #fef3c7; border: 1px solid #fcd34d; padding: 15px; border-radius: 6px; margin: 20px 0;">
             <h3 style="margin: 0 0 10px 0; color: #92400e;">💳 Payment Information</h3>
             <p style="margin: 0; color: #92400e; font-weight: 500;">
               We will contact you the day before your event to confirm your booking details. Once confirmed, we will send you an invoice that can be paid online. Cash on delivery is also accepted. No deposit is required. All sales are final — no refunds.
+            </p>
+          </div>`
+    : !payment.settled
+      ? `
+          <div style="background-color: #eff6ff; border: 1px solid #93c5fd; padding: 15px; border-radius: 6px; margin: 20px 0;">
+            <h3 style="margin: 0 0 10px 0; color: #1e40af;">💳 Payment Received — Clearing</h3>
+            <p style="margin: 0; color: #1e40af; font-weight: 500;">
+              PayPal has your payment of $${formatPrice(payment.capturedAmount ?? emailTotal)} and is still clearing it, which can take a few business days. There is nothing for you to do — we will email you the moment it confirms, and we will contact you the day before your event either way. All sales are final — no refunds.
+            </p>
+          </div>`
+      : `
+          <div style="background-color: #f0fdf4; border: 1px solid #86efac; padding: 15px; border-radius: 6px; margin: 20px 0;">
+            <h3 style="margin: 0 0 10px 0; color: #166534;">✅ Paid in Full</h3>
+            <p style="margin: 0; color: #166534; font-weight: 500;">
+              We received your payment of $${formatPrice(emailTotal)} via PayPal. No invoice will follow and nothing is due on delivery. We will contact you the day before your event to confirm the details. All sales are final — no refunds.
             </p>
           </div>`;
 

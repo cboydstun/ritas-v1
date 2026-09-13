@@ -14,13 +14,22 @@ function OrderDetails() {
   const bookingId = searchParams?.get("bookingId") ?? null;
   const displayId = bookingId || "Unknown";
 
-  // Paying is optional, so this page has to know which of two things happened.
-  // `isManualInvoicing` used to be `Boolean(bookingId)`, which is true either
-  // way — a customer who had just paid was told an invoice was coming and that
-  // no deposit was required today. `buildSuccessUrl` sets the flag; it carries
-  // no money and no PII, which is the rule that page's query string keeps.
-  const paidOnline = searchParams?.get("paid") === "1";
-  const isManualInvoicing = Boolean(bookingId) && !paidOnline;
+  // Paying is optional, so this page has to know which of three things
+  // happened. `isManualInvoicing` used to be `Boolean(bookingId)`, which is
+  // true whichever way — a customer who had just paid was told an invoice was
+  // coming and that no deposit was required today.
+  //
+  // `clearing` is PayPal having taken the money without settling it (an
+  // eCheck, a risk review, or a captured figure that disagreed with the
+  // booking). It is neither of the other two: promising "no balance on
+  // delivery" for a payment that may yet fail is exactly the mistake the
+  // `paid` flag was added to stop. `buildSuccessUrl` sets both flags; they
+  // carry no money and no PII, which is the rule this page's query string
+  // keeps.
+  const paymentClearing = searchParams?.get("clearing") === "1";
+  const paidOnline = searchParams?.get("paid") === "1" && !paymentClearing;
+  const isManualInvoicing =
+    Boolean(bookingId) && !paidOnline && !paymentClearing;
 
   const machineType = searchParams?.get("machineType") || "single";
   const mixersParam = searchParams?.get("mixers") || "";
@@ -85,6 +94,19 @@ function OrderDetails() {
                 <p className="mt-1 text-green-700 dark:text-green-300">
                   Your payment went through and nothing is due on delivery. A
                   receipt is on its way to your email.
+                </p>
+              </div>
+            )}
+
+            {paymentClearing && (
+              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-xl p-6">
+                <h3 className="text-lg font-medium text-blue-800 dark:text-blue-200">
+                  💳 Payment Received — Clearing
+                </h3>
+                <p className="mt-1 text-blue-700 dark:text-blue-300">
+                  PayPal has your payment and is still clearing it, which can
+                  take a few business days. There is nothing for you to do — we
+                  will email you as soon as it confirms.
                 </p>
               </div>
             )}
@@ -260,6 +282,11 @@ function OrderDetails() {
                   <li>
                     <strong>Nothing further to pay</strong> — your rental is
                     paid in full and there is no balance on delivery.
+                  </li>
+                ) : paymentClearing ? (
+                  <li>
+                    <strong>Nothing further to pay right now</strong> — we will
+                    email you once PayPal finishes clearing your payment.
                   </li>
                 ) : (
                   <>

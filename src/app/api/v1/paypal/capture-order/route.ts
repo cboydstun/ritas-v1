@@ -7,7 +7,10 @@ import { safeErrorSummary } from "@/lib/safe-error";
 import { guardPublicWrite } from "@/lib/api-guard";
 import { sendBookingNotifications } from "@/lib/booking/notify";
 import {
+  INSTRUMENT_DECLINED,
   ORDER_ALREADY_CAPTURED,
+  PAYER_ACTION_REQUIRED,
+  TRANSACTION_REFUSED,
   PayPalError,
   capturePayPalOrder,
   firstCapture,
@@ -93,7 +96,11 @@ export async function POST(request: Request) {
 
     // Already paid. Idempotent: no second capture, no second email.
     if (rental.payment?.status === "completed") {
-      return NextResponse.json({ bookingId: rental.bookingId });
+      return NextResponse.json({
+        bookingId: rental.bookingId,
+        settled: rental.status === "confirmed",
+        amount: rental.payment?.amount ?? (rental.price as number),
+      });
     }
 
     // The reaper cancels abandoned holds. Capturing against one would take
@@ -138,6 +145,35 @@ export async function POST(request: Request) {
     try {
       capture = firstCapture(await capturePayPalOrder(orderId));
     } catch (error) {
+      // A funding source saying no is not a failure of ours, and nothing has
+      // been charged. PayPal reports it as a 422 here rather than as a `201`
+      // carrying a DECLINED capture — both shapes are real, and this one used
+      // to fall through to the generic 502 that tells the buyer to phone us
+      // while a good second card is in their hand. The hold stays `pending`,
+      // so a retry reprices it rather than taking another unit.
+      if (error instanceof PayPalError) {
+        if (
+          error.issue === INSTRUMENT_DECLINED ||
+          error.issue === TRANSACTION_REFUSED
+        ) {
+          return NextResponse.json(
+            {
+              message: "That payment was declined. Please try another method.",
+            },
+            { status: 402 },
+          );
+        }
+        if (error.issue === PAYER_ACTION_REQUIRED) {
+          return NextResponse.json(
+            {
+              message:
+                "PayPal needs you to confirm this payment. Please try again.",
+            },
+            { status: 402 },
+          );
+        }
+      }
+
       // `ORDER_ALREADY_CAPTURED` is the expected answer to a retry, and a
       // timeout is an unknown rather than a failure. Both are resolved by
       // reading the order back — never by re-POSTing a capture blind.
@@ -192,6 +228,16 @@ export async function POST(request: Request) {
     // leave `pending` for `pending_payment`, which is never reaped.
     const settled = capture.status === "COMPLETED" && amountMatches;
 
+    // What PayPal actually took. On the settled path this is `rental.price` by
+    // construction — `amountMatches` is what `settled` is partly made of — so
+    // the happy path is unchanged. On a mismatch it stops the record claiming
+    // we collected a figure nobody paid, which is what QuickBooks reconciles
+    // against.
+    const capturedAmount = Number(capture.amount?.value);
+    const recordedAmount = Number.isFinite(capturedAmount)
+      ? capturedAmount
+      : (rental.price as number);
+
     // The write **is** the claim. Two concurrent approvals both read
     // `payment.status: "pending"` above, so only the update that actually
     // matched may send the confirmation.
@@ -206,7 +252,7 @@ export async function POST(request: Request) {
           status: settled ? "confirmed" : "pending_payment",
           "payment.paypalTransactionId": capture.id,
           "payment.status": settled ? "completed" : "pending",
-          "payment.amount": rental.price,
+          "payment.amount": recordedAmount,
           "payment.date": new Date(),
           updatedAt: new Date(),
         },
@@ -214,32 +260,52 @@ export async function POST(request: Request) {
       { new: true },
     );
     if (!won) {
-      return NextResponse.json({ bookingId: rental.bookingId });
-    }
-
-    if (settled) {
-      const settings = (await Settings.findOne({
-        key: "global",
-      }).lean()) as SettingsShape;
-
-      await sendBookingNotifications({
-        rental: won,
-        bookingId: won.bookingId,
-        totals: rebuildTotals(won, settings),
-        rates: {
-          taxRate: settings?.fees?.salesTaxRate ?? 0.0825,
-          processingRate: settings?.fees?.processingFeeRate ?? 0.03,
-        },
-        mixerLabel: (id: string) =>
-          settings?.mixers?.[id]?.label ??
-          mixerDetails[id as keyof typeof mixerDetails]?.label ??
-          id,
-        resolvedMixers: won.selectedMixers ?? [],
-        payment: { paid: true, transactionId: capture.id, method: "paypal" },
+      return NextResponse.json({
+        bookingId: rental.bookingId,
+        settled,
+        amount: recordedAmount,
       });
     }
 
-    return NextResponse.json({ bookingId: won.bookingId });
+    // Sent on **both** branches. A capture that has not settled has still
+    // moved the buyer's money, and it used to notify nobody at all: no
+    // confirmation, no operator SMS, only a console line — while the browser
+    // read the bare 200 as a win and told the customer they were paid in full.
+    const settings = (await Settings.findOne({
+      key: "global",
+    }).lean()) as SettingsShape;
+
+    await sendBookingNotifications({
+      rental: won,
+      bookingId: won.bookingId,
+      totals: rebuildTotals(won, settings),
+      rates: {
+        taxRate: settings?.fees?.salesTaxRate ?? 0.0825,
+        processingRate: settings?.fees?.processingFeeRate ?? 0.03,
+      },
+      mixerLabel: (id: string) =>
+        settings?.mixers?.[id]?.label ??
+        mixerDetails[id as keyof typeof mixerDetails]?.label ??
+        id,
+      resolvedMixers: won.selectedMixers ?? [],
+      payment: {
+        paid: true,
+        settled,
+        transactionId: capture.id,
+        method: "paypal",
+        // Only when it differs: the operator SMS prints it as a discrepancy,
+        // and there is no discrepancy on the settled path.
+        ...(amountMatches ? {} : { capturedAmount: recordedAmount }),
+      },
+    });
+
+    // `settled` and `amount` are what let the browser tell the customer the
+    // truth rather than reading every 200 as "paid in full".
+    return NextResponse.json({
+      bookingId: won.bookingId,
+      settled,
+      amount: recordedAmount,
+    });
   } catch (error) {
     if (capturedId) {
       // PayPal took the money and our write then threw. The route is

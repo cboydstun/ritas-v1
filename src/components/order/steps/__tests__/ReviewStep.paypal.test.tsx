@@ -3,6 +3,7 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import ReviewStep from "../ReviewStep";
 import { trackEvent } from "@/lib/analytics";
+import { buildSuccessUrl } from "@/components/order/utils";
 import { OrderFormData } from "@/components/order/types";
 
 jest.mock("next/image", () => ({
@@ -30,6 +31,14 @@ jest.mock("@/lib/analytics", () => ({
 jest.mock("@/lib/enhanced-conversions", () => ({
   hashUserData: jest.fn().mockResolvedValue(undefined),
 }));
+
+// jsdom cannot navigate and `window.location` is not redefinable, so the URL
+// the handler builds is observed at its source. Spread from the real module:
+// `computeOrderTotal` renders the whole summary from this same file.
+jest.mock("@/components/order/utils", () => {
+  const actual = jest.requireActual("@/components/order/utils");
+  return { ...actual, buildSuccessUrl: jest.fn(actual.buildSuccessUrl) };
+});
 
 /**
  * Stands in for the PayPal SDK, exposing the callbacks the real buttons would
@@ -224,6 +233,84 @@ describe("ReviewStep — PayPal", () => {
           expect.objectContaining({ method: "invoice" }),
         ),
       );
+    });
+
+    // The route answers 200 for a capture PayPal has not settled — an eCheck,
+    // a risk review, or a captured figure that disagreed with the booking.
+    // Reading that as a win told the customer they were paid in full and
+    // reported an Ads conversion at a figure nobody was charged.
+    describe("a capture that has not settled", () => {
+      const captureReturns = (payload: Record<string, unknown>) => {
+        (global.fetch as jest.Mock).mockImplementation(async (url: string) => {
+          if (String(url).includes("create-order")) {
+            return {
+              ok: true,
+              json: async () => ({ id: "ORDER-1", bookingId: "BOOKID1234" }),
+            };
+          }
+          if (String(url).includes("capture-order")) {
+            return { ok: true, json: async () => payload };
+          }
+          return { ok: true, json: async () => ({ released: true }) };
+        });
+      };
+
+      it("sends the customer to the clearing state, not the paid one", async () => {
+        captureReturns({
+          bookingId: "BOOKID1234",
+          settled: false,
+          amount: 183.9,
+        });
+        await renderConfigured();
+
+        await paypalHandlers.createOrder!();
+        await paypalHandlers.onApprove!("ORDER-1");
+
+        await waitFor(() =>
+          expect(buildSuccessUrl).toHaveBeenCalledWith(
+            "BOOKID1234",
+            expect.anything(),
+            expect.anything(),
+            { paid: false, clearing: true },
+          ),
+        );
+      });
+
+      it("reports the amount PayPal actually took", async () => {
+        captureReturns({ bookingId: "BOOKID1234", settled: false, amount: 1 });
+        await renderConfigured();
+
+        await paypalHandlers.createOrder!();
+        await paypalHandlers.onApprove!("ORDER-1");
+
+        await waitFor(() =>
+          expect(trackEvent).toHaveBeenCalledWith(
+            "purchase",
+            expect.objectContaining({ value: 1 }),
+          ),
+        );
+      });
+
+      it("still flags a settled capture as paid", async () => {
+        captureReturns({
+          bookingId: "BOOKID1234",
+          settled: true,
+          amount: 183.9,
+        });
+        await renderConfigured();
+
+        await paypalHandlers.createOrder!();
+        await paypalHandlers.onApprove!("ORDER-1");
+
+        await waitFor(() =>
+          expect(buildSuccessUrl).toHaveBeenCalledWith(
+            "BOOKID1234",
+            expect.anything(),
+            expect.anything(),
+            { paid: true, clearing: false },
+          ),
+        );
+      });
     });
 
     describe("one cart, one hold", () => {

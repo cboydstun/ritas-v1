@@ -21,6 +21,11 @@ const paidParams = new URLSearchParams(
   "bookingId=test-order-123&machineType=double&paid=1",
 );
 
+/** PayPal took the money and has not settled it — `clearing=1`. */
+const clearingParams = new URLSearchParams(
+  "bookingId=test-order-123&machineType=double&clearing=1",
+);
+
 function renderWithSearchParams(ui: React.ReactElement) {
   return render(
     <SearchParamsContext.Provider value={mockParams}>
@@ -61,6 +66,23 @@ describe("Success Page", () => {
     expect(screen.getAllByText(/Paid in Full/i).length).toBeGreaterThan(0);
     expect(screen.queryAllByText(/send you an invoice/i)).toHaveLength(0);
     expect(screen.queryAllByText(/no deposit required today/i)).toHaveLength(0);
+  });
+
+  // The money moved, so an invoice must not be promised — but PayPal has not
+  // settled it, so "no balance on delivery" must not be promised either. This
+  // page used to say exactly that, because the route returned a bare 200 the
+  // browser could not tell from a settled capture.
+  it("neither invoices nor claims paid in full while a payment is clearing", () => {
+    render(
+      <SearchParamsContext.Provider value={clearingParams}>
+        <SuccessPage />
+      </SearchParamsContext.Provider>,
+    );
+
+    expect(screen.getAllByText(/still clearing it/i).length).toBeGreaterThan(0);
+    expect(screen.queryAllByText(/Paid in Full/i)).toHaveLength(0);
+    expect(screen.queryAllByText(/no balance on delivery/i)).toHaveLength(0);
+    expect(screen.queryAllByText(/send you an invoice/i)).toHaveLength(0);
   });
 
   it("displays the order ID", () => {
