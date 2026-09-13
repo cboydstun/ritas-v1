@@ -4,7 +4,11 @@
 import { POST } from "../route";
 import { Rental } from "@/models/rental";
 import { createBooking } from "@/lib/booking/createBooking";
-import { createPayPalOrder } from "@/lib/paypal/client";
+import {
+  PayPalError,
+  createPayPalOrder,
+  resetPayPalClientIdWarning,
+} from "@/lib/paypal/client";
 import { sendBookingNotifications } from "@/lib/booking/notify";
 
 jest.mock("@/lib/mongodb", () => ({
@@ -109,14 +113,33 @@ const bookingSuccess = (over: Record<string, unknown> = {}) => {
 };
 
 describe("POST /api/v1/paypal/create-order", () => {
+  // The mismatch warning fires once per process, so the latch has to come
+  // back between cases the way the token cache does.
+  const clientIdEnv = {
+    server: process.env.PAYPAL_CLIENT_ID,
+    public: process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID,
+  };
+
   beforeEach(() => {
     jest.clearAllMocks();
     paypalConfigured.mockReturnValue(true);
     mockCreateOrder.mockResolvedValue({ id: "ORDER-1", status: "CREATED" });
     jest.spyOn(console, "error").mockImplementation(() => {});
+    resetPayPalClientIdWarning();
   });
 
-  afterEach(() => jest.restoreAllMocks());
+  // Assigning `undefined` writes the string "undefined", which would leave a
+  // truthy client id behind for every later case.
+  const restoreEnv = (key: string, value: string | undefined) => {
+    if (value === undefined) delete process.env[key];
+    else process.env[key] = value;
+  };
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+    restoreEnv("PAYPAL_CLIENT_ID", clientIdEnv.server);
+    restoreEnv("NEXT_PUBLIC_PAYPAL_CLIENT_ID", clientIdEnv.public);
+  });
 
   it("opens an order for the server-side price and returns both ids", async () => {
     const booking = bookingSuccess();
@@ -263,6 +286,132 @@ describe("POST /api/v1/paypal/create-order", () => {
       expect(response.status).toBe(400);
       expect(mockCreateBooking).not.toHaveBeenCalled();
       expect(mockCreateOrder).not.toHaveBeenCalled();
+    });
+  });
+  // A PayPal failure used to log as `{ name: 'PayPalError' }` and nothing
+  // else, so a plain 401 could only be identified by pulling the production
+  // credentials and calling PayPal by hand.
+  describe("diagnosing a PayPal failure", () => {
+    it("logs the issue and debug id PayPal returned", async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      mockCreateBooking.mockResolvedValue(bookingSuccess() as any);
+      mockCreateOrder.mockRejectedValue(
+        new PayPalError("PayPal POST /v2/checkout/orders failed", {
+          status: 422,
+          issue: "AMOUNT_MISMATCH",
+          debugId: "d3b07384d113edec",
+        }),
+      );
+
+      await post({ rentalData: validRental() });
+
+      expect(console.error).toHaveBeenCalledWith(
+        "Error creating PayPal order:",
+        expect.objectContaining({
+          issue: "AMOUNT_MISMATCH",
+          debugId: "d3b07384d113edec",
+          status: 422,
+        }),
+      );
+    });
+
+    it("names a client id the browser and the server disagree about", async () => {
+      process.env.PAYPAL_CLIENT_ID = "short";
+      process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID = "a-real-eighty-character-id";
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      mockCreateBooking.mockResolvedValue(bookingSuccess() as any);
+
+      await post({ rentalData: validRental() });
+
+      expect(console.error).toHaveBeenCalledWith(
+        "PAYPAL_CLIENT_ID_MISMATCH",
+        expect.objectContaining({ serverIdLength: 5, publicIdLength: 26 }),
+      );
+    });
+
+    it("stays quiet when the two client ids agree", async () => {
+      process.env.PAYPAL_CLIENT_ID = "same-id";
+      process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID = "same-id";
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      mockCreateBooking.mockResolvedValue(bookingSuccess() as any);
+
+      await post({ rentalData: validRental() });
+
+      expect(console.error).not.toHaveBeenCalledWith(
+        "PAYPAL_CLIENT_ID_MISMATCH",
+        expect.anything(),
+      );
+    });
+  });
+
+  // A credential PayPal refuses fails identically on every retry, so the
+  // generic "please try again" was advice that could never come true. The
+  // customer has a working invoice button; send them to it.
+  describe("when PayPal refuses our credentials", () => {
+    const authFailure = () =>
+      new PayPalError("PayPal authentication failed", {
+        status: 401,
+        issue: "invalid_client",
+        debugId: "deadbeefcafe",
+      });
+
+    it("degrades to the invoice path rather than asking for a retry", async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      mockCreateBooking.mockResolvedValue(bookingSuccess() as any);
+      mockCreateOrder.mockRejectedValue(authFailure());
+
+      const response = await post({ rentalData: validRental() });
+
+      expect(response.status).toBe(503);
+      const { message } = await response.json();
+      expect(message).toMatch(/still book/i);
+      expect(message).not.toMatch(/try again/i);
+    });
+
+    it("gives the operator a marker carrying the debug id", async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      mockCreateBooking.mockResolvedValue(bookingSuccess() as any);
+      mockCreateOrder.mockRejectedValue(authFailure());
+
+      await post({ rentalData: validRental() });
+
+      expect(console.error).toHaveBeenCalledWith(
+        "PAYPAL_AUTH_FAILED",
+        expect.objectContaining({
+          status: 401,
+          issue: "invalid_client",
+          debugId: "deadbeefcafe",
+        }),
+      );
+    });
+
+    // The hold is written before PayPal is called either way, so the unit has
+    // to come back whichever branch answers.
+    it("still rolls back the hold it just inserted", async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      mockCreateBooking.mockResolvedValue(bookingSuccess() as any);
+      mockCreateOrder.mockRejectedValue(authFailure());
+
+      await post({ rentalData: validRental() });
+
+      expect(Rental.deleteOne).toHaveBeenCalled();
+    });
+
+    // Narrow on purpose: a PayPal outage is transient and retrying is the
+    // right advice for it.
+    it("leaves a PayPal server error as a 502", async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      mockCreateBooking.mockResolvedValue(bookingSuccess() as any);
+      mockCreateOrder.mockRejectedValue(
+        new PayPalError("PayPal POST /v2/checkout/orders failed", {
+          status: 500,
+        }),
+      );
+
+      const response = await post({ rentalData: validRental() });
+
+      expect(response.status).toBe(502);
+      expect((await response.json()).message).toMatch(/try again/i);
     });
   });
 });

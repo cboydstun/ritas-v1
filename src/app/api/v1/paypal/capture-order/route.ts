@@ -16,6 +16,7 @@ import {
   firstCapture,
   getPayPalOrder,
   paypalConfigured,
+  payPalErrorDetail,
   type PayPalCapture,
 } from "@/lib/paypal/client";
 import { mixerDetails } from "@/lib/rental-data";
@@ -316,9 +317,11 @@ export async function POST(request: Request) {
         reason: safeErrorSummary(error),
       });
     } else {
+      const detail = payPalErrorDetail(error);
       console.error("Error capturing PayPal order:", {
-        issue: error instanceof PayPalError ? error.issue : undefined,
-        debugId: error instanceof PayPalError ? error.debugId : undefined,
+        issue: detail?.issue,
+        debugId: detail?.debugId,
+        status: detail?.status,
         reason: safeErrorSummary(error),
       });
     }

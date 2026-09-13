@@ -9,8 +9,12 @@ import {
   createPayPalOrder,
   firstCapture,
   getPayPalOrder,
+  isPayPalAuthFailure,
   paypalConfigured,
+  payPalErrorDetail,
+  resetPayPalClientIdWarning,
   resetPayPalTokenCache,
+  warnOnClientIdMismatch,
 } from "../client";
 
 const ORIGINAL_ENV = process.env;
@@ -361,5 +365,121 @@ describe("PayPal client", () => {
     ])("returns null for %s", (_label, order) => {
       expect(firstCapture(order)).toBeNull();
     });
+  });
+});
+
+describe("payPalErrorDetail", () => {
+  it("carries the status, issue and debug id PayPal returned", () => {
+    expect(
+      payPalErrorDetail(
+        new PayPalError("PayPal POST /v2/checkout/orders failed", {
+          status: 422,
+          issue: "AMOUNT_MISMATCH",
+          debugId: "d3b07384d113edec",
+        }),
+      ),
+    ).toEqual({
+      status: 422,
+      issue: "AMOUNT_MISMATCH",
+      debugId: "d3b07384d113edec",
+    });
+  });
+
+  // It is the log side of the rule the class itself keeps: a PayPal response
+  // body can echo payer identifiers, so it is never carried anywhere.
+  it("exposes no response body", () => {
+    const error = new PayPalError("failed", { status: 400 });
+    (error as unknown as { body: unknown }).body = {
+      payer: { email_address: "buyer@example.com" },
+    };
+
+    expect(JSON.stringify(payPalErrorDetail(error))).not.toMatch(/buyer@/);
+  });
+
+  it.each([
+    ["a plain Error", new Error("boom")],
+    ["a thrown string", "boom"],
+    ["undefined", undefined],
+  ])("returns undefined for %s", (_label, thrown) => {
+    expect(payPalErrorDetail(thrown)).toBeUndefined();
+  });
+});
+
+describe("isPayPalAuthFailure", () => {
+  it.each([
+    [401, true],
+    [403, true],
+    [422, false],
+    [500, false],
+  ])("is %s → %s", (status, expected) => {
+    expect(isPayPalAuthFailure(new PayPalError("x", { status }))).toBe(
+      expected,
+    );
+  });
+
+  it("is false for anything that is not a PayPalError", () => {
+    expect(isPayPalAuthFailure(new Error("401"))).toBe(false);
+  });
+});
+
+describe("warnOnClientIdMismatch", () => {
+  const saved = {
+    server: process.env.PAYPAL_CLIENT_ID,
+    public: process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID,
+  };
+  const restore = (key: string, value: string | undefined) => {
+    if (value === undefined) delete process.env[key];
+    else process.env[key] = value;
+  };
+
+  beforeEach(() => {
+    resetPayPalClientIdWarning();
+    jest.spyOn(console, "error").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+    restore("PAYPAL_CLIENT_ID", saved.server);
+    restore("NEXT_PUBLIC_PAYPAL_CLIENT_ID", saved.public);
+  });
+
+  it("reports lengths, never the ids themselves", () => {
+    process.env.PAYPAL_CLIENT_ID = "eleven-char";
+    process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID = "a-much-longer-client-id";
+
+    warnOnClientIdMismatch();
+
+    expect(console.error).toHaveBeenCalledWith("PAYPAL_CLIENT_ID_MISMATCH", {
+      serverIdLength: 11,
+      publicIdLength: 23,
+    });
+    expect(JSON.stringify((console.error as jest.Mock).mock.calls)).not.toMatch(
+      /eleven-char|longer-client-id/,
+    );
+  });
+
+  it("warns once, not on every request", () => {
+    process.env.PAYPAL_CLIENT_ID = "a";
+    process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID = "bb";
+
+    warnOnClientIdMismatch();
+    warnOnClientIdMismatch();
+
+    expect(console.error).toHaveBeenCalledTimes(1);
+  });
+
+  // A deployment that only supplies the public id at build time must not
+  // start logging a mismatch it cannot act on.
+  it.each([
+    ["they agree", "same", "same"],
+    ["the public id is absent", "only-server", undefined],
+    ["the server id is absent", undefined, "only-public"],
+  ])("stays quiet when %s", (_label, server, publicId) => {
+    restore("PAYPAL_CLIENT_ID", server);
+    restore("NEXT_PUBLIC_PAYPAL_CLIENT_ID", publicId);
+
+    warnOnClientIdMismatch();
+
+    expect(console.error).not.toHaveBeenCalled();
   });
 });

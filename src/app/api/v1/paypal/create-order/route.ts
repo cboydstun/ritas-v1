@@ -3,8 +3,25 @@ import { Rental } from "@/models/rental";
 import { safeErrorSummary } from "@/lib/safe-error";
 import { guardPublicWrite } from "@/lib/api-guard";
 import { createBooking } from "@/lib/booking/createBooking";
-import { createPayPalOrder, paypalConfigured } from "@/lib/paypal/client";
+import {
+  createPayPalOrder,
+  isPayPalAuthFailure,
+  paypalConfigured,
+  payPalErrorDetail,
+  warnOnClientIdMismatch,
+} from "@/lib/paypal/client";
 import { firstIssueMessage, paypalCreateOrderSchema } from "@/lib/validation";
+
+/**
+ * The one thing to tell a customer when online payment cannot happen at all.
+ *
+ * Shared by the two branches that mean it — no credentials in the environment,
+ * and credentials PayPal refuses — because they are the same fact discovered a
+ * layer apart, and a customer reading two different sentences for one state is
+ * how the retry advice below came to be wrong.
+ */
+const PAYMENT_UNAVAILABLE =
+  "Online payment is temporarily unavailable. You can still book now and we will invoice you.";
 
 /**
  * Open a PayPal order for a cart, holding the machine while the buyer pays.
@@ -30,13 +47,11 @@ export async function POST(request: Request) {
     // divergence must degrade into the invoice path, not a dead end.
     if (!paypalConfigured()) {
       return NextResponse.json(
-        {
-          message:
-            "Online payment is temporarily unavailable. You can still book now and we will invoice you.",
-        },
+        { message: PAYMENT_UNAVAILABLE },
         { status: 503 },
       );
     }
+    warnOnClientIdMismatch();
 
     const parsed = paypalCreateOrderSchema.safeParse(guard.data);
     if (!parsed.success) {
@@ -94,7 +109,34 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ id: order.id, bookingId: result.bookingId });
   } catch (error) {
-    console.error("Error creating PayPal order:", safeErrorSummary(error));
+    // `safeErrorSummary` alone reduces every PayPal failure to
+    // `{ name: 'PayPalError' }`, which says only that PayPal said no. The
+    // `issue` and `debug_id` are what make it diagnosable, and `capture-order`
+    // has always logged them — this route had not, which is why a plain 401
+    // took a credential probe to find.
+    const detail = payPalErrorDetail(error);
+
+    // A credential PayPal refuses fails identically on every retry, so
+    // "please try again" is advice that can never come true. Send the customer
+    // to the invoice button, which works, and give the operator a marker to
+    // alert on rather than another line of the generic failure.
+    if (isPayPalAuthFailure(error)) {
+      console.error("PAYPAL_AUTH_FAILED", {
+        ...detail,
+        reason: safeErrorSummary(error),
+      });
+      return NextResponse.json(
+        { message: PAYMENT_UNAVAILABLE },
+        { status: 503 },
+      );
+    }
+
+    console.error("Error creating PayPal order:", {
+      issue: detail?.issue,
+      debugId: detail?.debugId,
+      status: detail?.status,
+      reason: safeErrorSummary(error),
+    });
     return NextResponse.json(
       { message: "We could not start the payment. Please try again." },
       { status: 502 },

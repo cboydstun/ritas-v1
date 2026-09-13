@@ -294,3 +294,75 @@ export async function getPayPalOrder(orderId: string): Promise<PayPalOrder> {
 export function firstCapture(order: PayPalOrder): PayPalCapture | null {
   return order.purchase_units?.[0]?.payments?.captures?.[0] ?? null;
 }
+
+/**
+ * The loggable half of a PayPal failure.
+ *
+ * `safeErrorSummary` is deliberately blind to everything but a name, a code
+ * and a set of field paths, so a `PayPalError` logs as `{ name: 'PayPalError' }`
+ * — which says only that PayPal said no. The `issue` is what separates a
+ * rejected credential from a rejected payload, and `debug_id` is the only
+ * thing PayPal support will ask for. The response **body** is still never
+ * included: it can echo payer identifiers.
+ */
+export interface PayPalErrorDetail {
+  status: number;
+  issue?: string;
+  debugId?: string;
+}
+
+export function payPalErrorDetail(
+  error: unknown,
+): PayPalErrorDetail | undefined {
+  if (!(error instanceof PayPalError)) return undefined;
+  return { status: error.status, issue: error.issue, debugId: error.debugId };
+}
+
+/**
+ * PayPal rejected *us*, not the request.
+ *
+ * A wrong or revoked credential fails every call identically and forever, so
+ * telling the customer to try again is advice that cannot work. The caller
+ * degrades to the invoice path instead.
+ */
+export function isPayPalAuthFailure(error: unknown): boolean {
+  return (
+    error instanceof PayPalError &&
+    (error.status === 401 || error.status === 403)
+  );
+}
+
+let clientIdMismatchWarned = false;
+
+/** Test seam, for the same reason `resetPayPalTokenCache` is one. */
+export function resetPayPalClientIdWarning(): void {
+  clientIdMismatchWarned = false;
+}
+
+/**
+ * One PayPal app has one client id, so the value inlined into the browser
+ * bundle and the value this server authenticates with must be the same string.
+ *
+ * They were not: production carried an 80-character public id and an
+ * 11-character server id, and every `create-order` died on a PayPal 401 that
+ * logged as `{ name: 'PayPalError' }`. This line names that in the log on the
+ * first request instead.
+ *
+ * A warning and never a gate — a deployment that supplies the public id only
+ * at build time must not lose checkout over a log line.
+ */
+export function warnOnClientIdMismatch(): void {
+  if (clientIdMismatchWarned) return;
+
+  const server = process.env.PAYPAL_CLIENT_ID;
+  const publicId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID;
+  if (!server || !publicId || server === publicId) return;
+
+  clientIdMismatchWarned = true;
+  // Lengths, never the values: a client id is not a secret, but its partner
+  // in the environment is, and this log is preserved in production builds.
+  console.error("PAYPAL_CLIENT_ID_MISMATCH", {
+    serverIdLength: server.length,
+    publicIdLength: publicId.length,
+  });
+}

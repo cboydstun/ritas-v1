@@ -533,6 +533,25 @@ The three PayPal routes, all under `src/app/api/v1/paypal/`:
   It sends **no notification** — nothing has been paid yet. If PayPal throws
   after the write, it deletes the booking it just inserted; a hold PayPal never
   learned about is unreachable by capture and sits on a unit for two hours.
+
+  **A credential PayPal refuses is a 503, not a 502.** A PayPal `401`/`403`
+  fails identically on every retry, so the generic "We could not start the
+  payment. Please try again." was advice that could never come true; that
+  branch now answers the same 503 and the same "book now and we will invoice
+  you" copy as the unconfigured case, which is the same fact found one layer
+  later. Both use the `PAYMENT_UNAVAILABLE` constant so they cannot diverge,
+  and the auth branch logs a `PAYPAL_AUTH_FAILED` marker.
+
+  Both PayPal routes log a failure through **`payPalErrorDetail()`**
+  (`status`, `issue`, `debug_id`, never the response body). `safeErrorSummary`
+  alone reduces a `PayPalError` to `{ name: 'PayPalError' }`: production ran
+  with an 11-character `PAYPAL_CLIENT_ID` against an 80-character
+  `NEXT_PUBLIC_PAYPAL_CLIENT_ID`, and identifying that plain `invalid_client`
+  401 took pulling the production secrets and calling PayPal by hand.
+  `warnOnClientIdMismatch()` now names it on the first request — one PayPal app
+  has one client id, so the two variables must hold the same string. It logs
+  lengths, never values, and is a **warning and never a gate**.
+
 - **`capture-order`** takes `{ orderId }` and **never an amount**. Before any
   PayPal call it refuses an already-paid booking (idempotent, returns the same
   `bookingId`), a `cancelled` one, and an expired hold whose machine has since
