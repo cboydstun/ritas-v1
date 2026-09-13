@@ -224,6 +224,9 @@ rentalSchema.index({
   returnDate: 1,
 });
 rentalSchema.index({ bookingId: 1 }, { sparse: true });
+// The PayPal capture route looks a booking up by this on every payment, and a
+// capture is the one request in the app that must not time out.
+rentalSchema.index({ paypalOrderId: 1 }, { sparse: true });
 // Drives the stale-hold reaper.
 rentalSchema.index({ status: 1, createdAt: 1 });
 // Drives the admin order list, which sorts the whole collection by recency.
@@ -259,7 +262,8 @@ export type RentalDocument = mongoose.Document & {
   status: RentalStatus;
   paypalOrderId?: string;
   payment?: {
-    paypalTransactionId: string;
+    /** Null until a payment is captured; both writers have always stored it. */
+    paypalTransactionId: string | null;
     amount: number;
     status: PaymentStatus;
     date: Date;

@@ -20,7 +20,7 @@ npm run test:ci      # Jest in CI mode with coverage
 
 Run a single test file: `npx jest src/components/order/steps/__tests__/SomeTest.test.tsx`
 
-`.github/workflows/ci.yml` runs `typecheck`, `lint`, `format:check`, `test:ci` and `build` on every push and PR to `main`. The build step is what gates static generation — 65 pages are prerendered, and a page that throws during prerender is a red deploy the other four gates all report green. That figure is the **CI** count, with no database: `generateStaticParams` for `/blog/[slug]` and `/[...slug]` returns more against a reachable Mongo, so a local build against production data legitimately prerenders more than 64. It runs with a deliberately unreachable `MONGODB_URI`, because `src/lib/mongodb.ts` throws at import when the variable is absent while the one page that reads the database at build time catches the connection failure. `test:ci` deliberately does **not** pass `--passWithNoTests`, and `jest.config.js` carries `coverageThreshold`s set just under the measured coverage — raise them, do not lower them to get a build out. They had drifted to within 0.12 of a point of actual, which makes the next uncovered helper a red build for a reason unrelated to the change that tripped it; keep a point or two of headroom when you raise them.
+`.github/workflows/ci.yml` runs `typecheck`, `lint`, `format:check`, `test:ci` and `build` on every push and PR to `main`. The build step is what gates static generation — 68 pages are prerendered, and a page that throws during prerender is a red deploy the other four gates all report green. That figure is the **CI** count, with no database: `generateStaticParams` for `/blog/[slug]` and `/[...slug]` returns more against a reachable Mongo, so a local build against production data legitimately prerenders more than 67. It runs with a deliberately unreachable `MONGODB_URI`, because `src/lib/mongodb.ts` throws at import when the variable is absent while the one page that reads the database at build time catches the connection failure. `test:ci` deliberately does **not** pass `--passWithNoTests`, and `jest.config.js` carries `coverageThreshold`s set just under the measured coverage — raise them, do not lower them to get a build out. They had drifted to within 0.12 of a point of actual, which makes the next uncovered helper a red build for a reason unrelated to the change that tripped it; keep a point or two of headroom when you raise them.
 
 Two jest footguns in this repo: importing `jest` from `@jest/globals` defeats SWC's `jest.mock` hoisting, so a `jest.mock("next/navigation", ...)` in such a file silently does nothing — use the global `jest`. And `nanoid` is ESM-only, so `transformIgnorePatterns` must keep transforming it.
 
@@ -100,6 +100,18 @@ So a machine type is bookable while units remain, not simply because one rental 
 A third option, `tieBreakId`, settles the same-millisecond case. `createdAt` comes from `default: Date.now`, so two requests constructed in the same tick each fell outside the other's `$lt` cutoff and both survived, putting inventory one over. The id comparison decides which of the two counts as having been there first.
 
 **Only `pending` expires.** `releaseStaleHolds()` cancels `pending` holds older than `STALE_HOLD_MINUTES` (120); it runs from the `/api/cron/release-holds` Vercel cron (see `vercel.json`, guarded by `CRON_SECRET`) and again at the top of `/api/save-booking` as a safety net. `pending_payment` is the status a _submitted_ booking carries — the customer has a confirmation email and is invoiced out of band — and nothing promotes it to `confirmed` except a manual admin edit. Reaping it cancelled every real booking two hours after it was placed and put the machine back on sale. Do not add it back to either the reaper or the query-time cutoff.
+
+**`pending` now means exactly one thing: a PayPal window is open.** It is
+written only by `POST /api/v1/paypal/create-order`, so `STALE_HOLD_MINUTES` has
+stopped being a generic knob and _is_ the payment window — a buyer who opens
+PayPal and walks away holds a unit for two hours. That is deliberate, and it is
+why the PayPal hold is not written as `pending_payment`: that status is never
+reaped, so an abandoned checkout would park a unit forever. The cron is
+`0 9 * * *` — **daily**, not hourly — but availability is correct regardless,
+because the cutoff is applied inside `isMachineAvailable`'s own query. What
+lingers is the _stored_ status, so `OrdersTable` hides expired unpaid `pending`
+rows by default rather than filling the admin list with abandoned carts and
+their customer PII.
 
 `MachineStep.tsx` checks all three machine types **in parallel** on mount so every card shows live availability, greys out unavailable ones, and auto-switches the selection to another available type (priority `triple > double > single`) when the current pick is unavailable. `useAvailabilityCheck` (`src/hooks/useAvailabilityCheck.ts`) wraps the single-type fetch.
 
@@ -491,9 +503,71 @@ The username comes from `ADMIN_USERNAME`; the password is checked against the bc
 
 ### Checkout Flow
 
-There is **no online payment**. `ReviewStep.tsx` posts to `POST /api/save-booking`, which is the public customer checkout endpoint (unauthenticated by design). It generates a `bookingId` via nanoid, persists a `Rental` with status `pending_payment`, and sends confirmation via Resend email + Twilio SMS. The customer is invoiced afterwards out-of-band.
+**Paying online is optional, and there are two paths.** Both end in the same
+`Rental` and the same one confirmation email.
 
-The PayPal integration was removed — the component had no importers and its routes charged nobody. Only `Rental.paypalOrderId` and the `pending` status value remain, for historical documents.
+- **Invoice me.** `ReviewStep.tsx` posts to `POST /api/save-booking`, the public
+  customer checkout (unauthenticated by design). It persists a `Rental` with
+  status `pending_payment` and a nanoid `bookingId`, then notifies. The customer
+  is invoiced out of band. Unchanged.
+- **Pay now.** PayPal, card (guest checkout) or Pay Later, via
+  `@paypal/react-paypal-js` v10 — which targets the PayPal JS SDK **v6**, so
+  `PayPalScriptProvider`/`PayPalButtons` do not exist in it and `environment` is
+  a required prop. Venmo is disabled by omitting it from `components`, which is
+  why no venmo.com origin is in the CSP.
+
+**The whole booking pipeline lives in `src/lib/booking/createBooking.ts`**, not
+in the route, because three routes now need it: the zod parse, derived
+`capacity`, the settings read, the delivery-window and service-area re-checks,
+catalog-resolved extras and mixers, `computeOrderTotal`, the order minimum, the
+write, and the asymmetric oversell recheck with its compensating delete.
+`src/lib/booking/notify.ts` is the Twilio + Resend half, with one paid/unpaid
+copy branch. `src/app/api/save-booking/__tests__/route.test.ts` passing
+**unchanged** is what proves that extraction was inert — treat any edit it needs
+as evidence the behaviour moved, not as a test to fix.
+
+The three PayPal routes, all under `src/app/api/v1/paypal/`:
+
+- **`create-order`** writes the hold as **`status: "pending"`** (see
+  **Availability** above) and opens a PayPal order for the server-side total.
+  It sends **no notification** — nothing has been paid yet. If PayPal throws
+  after the write, it deletes the booking it just inserted; a hold PayPal never
+  learned about is unreachable by capture and sits on a unit for two hours.
+- **`capture-order`** takes `{ orderId }` and **never an amount**. Before any
+  PayPal call it refuses an already-paid booking (idempotent, returns the same
+  `bookingId`), a `cancelled` one, and an expired hold whose machine has since
+  gone — refusing beforehand is far better than capturing and owing a refund
+  against "all sales are final". It then verifies the captured value _and_
+  currency against the **stored** `rental.price`, never a recompute, and claims
+  the booking with a conditional `findOneAndUpdate` so two concurrent approvals
+  send one email. `ORDER_ALREADY_CAPTURED` and a timeout are both resolved by
+  reading the order back, never by re-POSTing a capture.
+- **`release-hold`** hands the machine back on cancel. Keyed on the unguessable
+  `paypalOrderId` and filtered to an unpaid `pending` row, so it can never
+  delete someone else's booking.
+
+**One cart, one hold.** `createOrder` fires on every button click and there are
+three buttons, so the browser keeps the `bookingId` and sends it as
+`reuseBookingId`; the server reprices that document instead of inserting a
+second. The booking id deliberately outlives a successful release, so a release
+that did not land still cannot cost the buyer a second unit. Without this, two
+abandons lock a customer out of their own date — there are only two triples.
+
+`src/lib/paypal/client.ts` is four endpoints over `fetch`, no SDK
+(`@paypal/checkout-server-sdk` is deprecated). `PAYPAL_API_BASE` is **live and
+hard-coded**, exported so a developer can point one line at sandbox locally;
+there is no env switch that could reach production. Token cached in module
+scope with a 60s skew and a clear-and-retry-once on 401. Orders carry
+`custom_id` and **not** `invoice_id` — a reused hold would hit
+`DUPLICATE_INVOICE_ID` — plus `shipping_preference: "NO_SHIPPING"` and
+`user_action: "PAY_NOW"`. Log the `debug_id`, never the response body, which
+can echo payer identifiers.
+
+**Known gap, deliberate:** a browser that dies between PayPal approval and our
+capture call. No money moves, the hold is reaped, the buyer sees a limbo entry
+in PayPal. Closing it needs a `CHECKOUT.ORDER.APPROVED` webhook with signature
+verification, which is its own piece of work. Refunds are done in the PayPal
+dashboard; the admin UI is not involved.
 
 `/api/save-booking` never trusts the request body for money:
 
@@ -558,18 +632,22 @@ Both trackers check `getConsent()` and do nothing when the visitor has opted out
 
 Every GA4 event goes through `trackEvent()` in `src/lib/analytics.ts` — one typed name union, and an optional `window.gtag?.` call so a missing tag (dev, ad blocker, pre-load) is a no-op rather than a throw. Do not call `gtag` directly.
 
-| Event                             | Emitted from                                          | Notes                                                                                                  |
-| --------------------------------- | ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| `purchase`                        | `ReviewStep.tsx`, after `/api/save-booking` returns   | `transaction_id` = `bookingId`, `value` = server-side `finalTotal`; items from `buildAnalyticsItems()` |
-| `order_step`                      | `OrderFormTracker.tsx`                                | The wizard never changes the URL, so this is the only GA4 funnel signal                                |
-| `begin_checkout`                  | `OrderFormTracker.tsx`, on reaching `review`          | `value` from `computeOrderTotal`, plus the same `items` array `purchase` sends                         |
-| `view_item_list`                  | `MachineStep.tsx`, `ViewItemListTracker` (`/pricing`) | `item_list_name` is `machine_types` or `pricing_page`. One impression per mount, latched by a ref      |
-| `select_item`                     | `MachineStep.tsx`, on choosing a machine              |                                                                                                        |
-| `add_to_cart`, `remove_from_cart` | `ExtrasStep.tsx`, on toggling an extra                | Priced from the catalog entry the card was built from                                                  |
-| `generate_lead`                   | `ContactForm.tsx`, `LeaseInquiryForm.tsx`             | Both submit inline with no navigation                                                                  |
-| `contact_click`, `file_download`  | `ContactLinkTracker.tsx`                              | One delegated `click`+`auxclick` listener matching `tel:` / `mailto:` / `.pdf` / `data-track-download` |
+| Event                             | Emitted from                                          | Notes                                                                                                                                     |
+| --------------------------------- | ----------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `purchase`                        | `ReviewStep.tsx`, after either checkout path succeeds | `transaction_id` = `bookingId`, `value` = server-side `finalTotal`; items from `buildAnalyticsItems()`; `method` is `paypal` or `invoice` |
+| `order_step`                      | `OrderFormTracker.tsx`                                | The wizard never changes the URL, so this is the only GA4 funnel signal                                                                   |
+| `begin_checkout`                  | `OrderFormTracker.tsx`, on reaching `review`          | `value` from `computeOrderTotal`, plus the same `items` array `purchase` sends                                                            |
+| `view_item_list`                  | `MachineStep.tsx`, `ViewItemListTracker` (`/pricing`) | `item_list_name` is `machine_types` or `pricing_page`. One impression per mount, latched by a ref                                         |
+| `select_item`                     | `MachineStep.tsx`, on choosing a machine              |                                                                                                                                           |
+| `add_to_cart`, `remove_from_cart` | `ExtrasStep.tsx`, on toggling an extra                | Priced from the catalog entry the card was built from                                                                                     |
+| `generate_lead`                   | `ContactForm.tsx`, `LeaseInquiryForm.tsx`             | Both submit inline with no navigation                                                                                                     |
+| `contact_click`, `file_download`  | `ContactLinkTracker.tsx`                              | One delegated `click`+`auxclick` listener matching `tel:` / `mailto:` / `.pdf` / `data-track-download`                                    |
 
 `purchase` and `begin_checkout` must build their `items` from **`buildAnalyticsItems()`** in `utils.ts`. They used to build it separately, which is how the two came to disagree about what was in the cart.
+
+`method` is shared with `contact_click`, whose values are `phone`/`email`. The
+dimension is event-scoped, so `paypal`/`invoice` on `purchase` does not collide
+with it in reporting.
 
 Event params carry segmentation only (`step_id`, `step_index`, `lead_type`, `machine_type`, `method`) — **never contact details**. Those five are registered as event-scoped custom dimensions in the GA4 property, verified 2026-08-20; an unregistered param is dropped from reporting, and registration is not retroactive. `step_name`, `business_type`, `lease_term` and `file_download`'s `file_extension` are emitted but **not** registered, so they are collected and then discarded — register one before building a report on it.
 
@@ -678,6 +756,15 @@ Two rules, both learned from outages and both pinned by `__tests__/security-head
 
 3. **List an origin before the campaign needs it, not after.** `googlesyndication.com` was absent from all four directives, because Search-only text ads never touch it. The first Display, remarketing or Performance Max tag loads `pagead2.googlesyndication.com` and would have been refused with no error on our side — the same shape as the two outages above. It is listed now, wildcard and bare, along with wildcard+bare `googleadservices.com` and `google.com`: Ads has already moved `conversion.js` between `www.` and `pagead.` once, and a subdomain we do not enumerate is indistinguishable from a host that does not exist.
 
+4. **PayPal needs `paypal.com` and `paypalobjects.com`, wildcard and bare, in
+   all four fetch directives.** `'unsafe-eval'` is **not** among its
+   requirements, and the comment in `next.config.ts` that blamed the PayPal SDK
+   for wanting it was wrong — the widely-cited reports trace to the WooCommerce
+   plugin shipping webpack's `eval-source-map` in a production build. Do not
+   re-add it. Venmo is deliberately absent from both the SDK's `components`
+   array and the CSP; enabling one without the other is a button that silently
+   cannot load.
+
 Violations now report to `/api/v1/csp-report` via both `report-uri` and `Reporting-Endpoints`; before that a refused request was invisible in production, which is how both collection outages above ran unnoticed. `script-src` still needs `'unsafe-inline'` for the GTM/GA bootstrap and JSON-LD blocks; moving those to a nonce is the outstanding hardening step. `compiler.removeConsole` strips `console.*` in production builds. Longer write-ups live in `docs/security.md` and `docs/auth-implementation.md`.
 
 ### Types
@@ -713,6 +800,9 @@ Global shared types live in `src/types/index.ts` (`MachineType`, `MixerType`, `P
 - `src/lib/seo-audit.ts` — `auditPost()`, `summariseChecks()`, and the audit primitives both scorers share. **Zod-free and mongoose-free on purpose**
 - `src/lib/landing-audit.ts` — `auditLandingPage()`, `sectionsToHtml()`. Same contract
 - `src/lib/landing-jsonld.ts` — `buildServiceJsonLd()`, `buildWebPageJsonLd()`, `buildFaqJsonLd()`
+- `src/lib/booking/createBooking.ts` — the whole customer booking pipeline, shared by `/api/save-booking` and the PayPal create-order route. Owns the zod parse; returns a discriminated result and never a `NextResponse`
+- `src/lib/booking/notify.ts` — `sendBookingNotifications()`. Twilio + Resend, one paid/unpaid copy branch. **Never throws** — the rental is already committed when it runs
+- `src/lib/paypal/client.ts` — `createPayPalOrder()`, `capturePayPalOrder()`, `getPayPalOrder()`, `firstCapture()`, `paypalConfigured()`. No SDK; `PAYPAL_API_BASE` is live and hard-coded
 - `src/lib/analytics.ts` — `trackEvent()`, the only sanctioned path to `window.gtag`; `pushDataLayer()` / `pushDataLayerThen()` for GTM, and `LEAD_VALUES` / `ANALYTICS_CURRENCY`
 - `src/lib/enhanced-conversions.ts` — `hashUserData()`. Browser-side SHA-256 of email/phone for Google Ads enhanced conversions. Never throws, returns `undefined` on consent denial or an insecure origin
 - `src/lib/site.ts` — `SITE_URL`, `BUSINESS_ID`, the business phone constants, and `breadcrumbJsonLd()`
@@ -731,6 +821,15 @@ ADMIN_USERNAME, ADMIN_PASSWORD_HASH   (no plaintext fallback)
 NEXTAUTH_SECRET, NEXTAUTH_URL
 TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER, USER_PHONE_NUMBER
 RESEND_API_KEY
+PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET,
+NEXT_PUBLIC_PAYPAL_CLIENT_ID                       (optional online payment. All three
+                                                    unset ships the feature dark and
+                                                    checkout behaves as it did before.
+                                                    The public one is inlined at BUILD
+                                                    time, so it needs a redeploy and can
+                                                    diverge from the server pair — the
+                                                    create-order route 503s readably for
+                                                    exactly that case.)
 NEXT_PUBLIC_GTM_ID, NEXT_PUBLIC_GA_MEASUREMENT_ID   (production only; unset means no GA4 data)
 CRON_SECRET
 KV_REST_API_URL, KV_REST_API_TOKEN                 (shared rate-limit store; set by the

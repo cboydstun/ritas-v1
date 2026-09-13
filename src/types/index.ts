@@ -25,7 +25,7 @@ export interface Customer {
 }
 
 export interface Payment {
-  paypalTransactionId: string;
+  paypalTransactionId: string | null;
   amount: number;
   status: PaymentStatus;
   date: Date;

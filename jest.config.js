@@ -43,11 +43,16 @@ const customJestConfig = {
     // drifted to within 0.12 of a point of the actual coverage, so the next
     // uncovered helper added here would have turned CI red for a reason
     // unrelated to the change that tripped it.
+    //
+    // Raised again when the booking pipeline moved out of
+    // src/app/api/save-booking/route.ts into src/lib/booking/ — roughly 500
+    // lines crossing from the lax global bucket into this one. Measured
+    // 94.69 / 91.37 / 96.35 / 96.13 with that move and its tests in place.
     "./src/lib/": {
-      statements: 90,
-      branches: 85,
-      functions: 92,
-      lines: 91,
+      statements: 92,
+      branches: 89,
+      functions: 94,
+      lines: 94,
     },
   },
   collectCoverageFrom: [

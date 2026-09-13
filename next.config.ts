@@ -36,7 +36,16 @@ export const securityHeaders = [
     //
     // 'unsafe-inline' is still required by the GTM/GA bootstrap snippets and
     // the JSON-LD blocks; moving those to a nonce is the remaining hardening
-    // step. 'unsafe-eval' is gone — only the (now deleted) PayPal SDK wanted it.
+    // step. 'unsafe-eval' is gone and the PayPal checkout does NOT need it
+    // back: this comment used to blame the PayPal SDK for it, which is wrong.
+    // PayPal's own published policy contains no 'unsafe-eval'; the reports
+    // that say otherwise trace to the WooCommerce plugin shipping webpack's
+    // eval-source-map in a production build. Do not re-add it — if the SDK
+    // ever genuinely needs something, /api/v1/csp-report is where it says so.
+    //
+    // PayPal needs paypal.com and paypalobjects.com, wildcard and bare, in
+    // all four fetch directives. Venmo is deliberately absent: it is not in
+    // the SDK's `components` array, so no venmo.com origin is listed.
     //
     // The analytics allowlists below must cover where GA4 actually sends
     // beacons (region1./analytics.google.com) and the GTM noscript iframe;
@@ -76,12 +85,12 @@ export const securityHeaders = [
     // where that loader reports calls.
     value: `
       default-src 'self';
-      script-src 'self' 'unsafe-inline' https://*.google-analytics.com https://google-analytics.com https://*.analytics.google.com https://analytics.google.com https://*.googletagmanager.com https://googletagmanager.com https://*.googleadservices.com https://googleadservices.com https://*.googlesyndication.com https://googlesyndication.com https://*.doubleclick.net https://doubleclick.net https://*.google.com https://google.com https://*.gstatic.com https://*.googleapis.com https://googleapis.com;
+      script-src 'self' 'unsafe-inline' https://*.google-analytics.com https://google-analytics.com https://*.analytics.google.com https://analytics.google.com https://*.googletagmanager.com https://googletagmanager.com https://*.googleadservices.com https://googleadservices.com https://*.googlesyndication.com https://googlesyndication.com https://*.doubleclick.net https://doubleclick.net https://*.google.com https://google.com https://*.gstatic.com https://*.googleapis.com https://googleapis.com https://*.paypal.com https://paypal.com https://*.paypalobjects.com https://paypalobjects.com;
       style-src 'self' 'unsafe-inline';
-      img-src 'self' data: https://*.google-analytics.com https://google-analytics.com https://*.analytics.google.com https://analytics.google.com https://*.googletagmanager.com https://googletagmanager.com https://*.googleadservices.com https://googleadservices.com https://*.googlesyndication.com https://googlesyndication.com https://*.doubleclick.net https://doubleclick.net https://*.google.com https://google.com https://*.gstatic.com https://*.googleapis.com https://googleapis.com;
+      img-src 'self' data: https://*.google-analytics.com https://google-analytics.com https://*.analytics.google.com https://analytics.google.com https://*.googletagmanager.com https://googletagmanager.com https://*.googleadservices.com https://googleadservices.com https://*.googlesyndication.com https://googlesyndication.com https://*.doubleclick.net https://doubleclick.net https://*.google.com https://google.com https://*.gstatic.com https://*.googleapis.com https://googleapis.com https://*.paypal.com https://paypal.com https://*.paypalobjects.com https://paypalobjects.com;
       font-src 'self';
-      connect-src 'self' https://*.google-analytics.com https://google-analytics.com https://*.analytics.google.com https://analytics.google.com https://*.googletagmanager.com https://googletagmanager.com https://*.googleadservices.com https://googleadservices.com https://*.googlesyndication.com https://googlesyndication.com https://*.doubleclick.net https://doubleclick.net https://*.google.com https://google.com https://*.gstatic.com https://*.googleapis.com https://googleapis.com;
-      frame-src 'self' https://*.googletagmanager.com https://googletagmanager.com https://*.googleadservices.com https://googleadservices.com https://*.googlesyndication.com https://googlesyndication.com https://*.doubleclick.net https://doubleclick.net https://*.google.com https://google.com https://*.gstatic.com;
+      connect-src 'self' https://*.google-analytics.com https://google-analytics.com https://*.analytics.google.com https://analytics.google.com https://*.googletagmanager.com https://googletagmanager.com https://*.googleadservices.com https://googleadservices.com https://*.googlesyndication.com https://googlesyndication.com https://*.doubleclick.net https://doubleclick.net https://*.google.com https://google.com https://*.gstatic.com https://*.googleapis.com https://googleapis.com https://*.paypal.com https://paypal.com https://*.paypalobjects.com https://paypalobjects.com;
+      frame-src 'self' https://*.googletagmanager.com https://googletagmanager.com https://*.googleadservices.com https://googleadservices.com https://*.googlesyndication.com https://googlesyndication.com https://*.doubleclick.net https://doubleclick.net https://*.google.com https://google.com https://*.gstatic.com https://*.paypal.com https://paypal.com https://*.paypalobjects.com https://paypalobjects.com;
       object-src 'none';
       base-uri 'self';
       form-action 'self';

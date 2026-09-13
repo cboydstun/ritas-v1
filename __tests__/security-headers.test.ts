@@ -215,6 +215,10 @@ describe("Content-Security-Policy", () => {
       "https://pagead2.googlesyndication.com/x",
       "https://googlesyndication.com/x",
       "https://google.com/x",
+      "https://www.paypal.com/x",
+      "https://paypal.com/x",
+      "https://www.paypalobjects.com/x",
+      "https://paypalobjects.com/x",
     ];
 
     it.each(origins)(
@@ -228,6 +232,48 @@ describe("Content-Security-Policy", () => {
 
     it("permits gstatic in frame-src", () => {
       expect(permits("frame-src", "https://www.gstatic.com/x")).toBe(true);
+    });
+  });
+
+  describe("PayPal checkout", () => {
+    // The SDK v6 loader, the popup it opens, and the image/beacon hosts it
+    // uses. A refused request here is a customer who cannot pay, with nothing
+    // failing on our side — the same shape as the two collection outages.
+    it("allows the SDK v6 loader", () => {
+      expect(
+        permits("script-src", "https://www.paypal.com/web-sdk/v6/core"),
+      ).toBe(true);
+    });
+
+    it("allows the checkout popup and its frames", () => {
+      expect(permits("frame-src", "https://www.paypal.com/smart/buttons")).toBe(
+        true,
+      );
+    });
+
+    it("allows the SDK's static assets", () => {
+      expect(
+        permits("img-src", "https://www.paypalobjects.com/images/checkout.png"),
+      ).toBe(true);
+      expect(
+        permits("script-src", "https://www.paypalobjects.com/web/x.js"),
+      ).toBe(true);
+    });
+
+    // A *.paypal.com wildcard does not match the registrable domain itself.
+    it.each(["script-src", "img-src", "connect-src", "frame-src"])(
+      "lists the bare paypal.com host in %s",
+      (directive) => {
+        expect(permits(directive, "https://paypal.com/x")).toBe(true);
+        expect(permits(directive, "https://paypalobjects.com/x")).toBe(true);
+      },
+    );
+
+    // Venmo is disabled by omitting it from the SDK's `components` array, so
+    // its origin must NOT be here. If a Venmo button is ever added, this test
+    // is the thing that says the CSP has to change with it.
+    it("does not carry a Venmo origin, because Venmo is not enabled", () => {
+      expect(permits("script-src", "https://www.venmo.com/x")).toBe(false);
     });
   });
 

@@ -4,10 +4,12 @@ A Next.js application for renting frozen drink machines in San Antonio, TX. It
 covers two verticals: event rentals booked through a five-step wizard, and
 long-term commercial leases captured as inquiries.
 
-**There is no online payment.** The checkout persists a booking and sends
-confirmations; the customer is invoiced out of band afterwards. An earlier
-PayPal integration was removed — only `Rental.paypalOrderId` survives, for
-historical documents.
+**Paying online is optional.** The checkout can take the full amount by PayPal,
+card or Pay Later, in which case the booking lands `confirmed` and paid; or it
+can just persist the booking and send confirmations, and the customer is
+invoiced out of band afterwards. Both paths end in the same `Rental` and the
+same single confirmation email. With no PayPal credentials configured the
+payment buttons do not render and checkout behaves exactly as the second path.
 
 ## Features
 

@@ -11,11 +11,16 @@ import SuccessNextActions from "@/components/success/SuccessNextActions";
 function OrderDetails() {
   const searchParams = useSearchParams();
 
-  // Get order details from URL parameters - handle both old PayPal flow and new booking flow
-  const orderId = searchParams?.get("orderId") ?? null;
   const bookingId = searchParams?.get("bookingId") ?? null;
-  const displayId = bookingId || orderId || "Unknown";
-  const isManualInvoicing = Boolean(bookingId); // New booking flow uses bookingId
+  const displayId = bookingId || "Unknown";
+
+  // Paying is optional, so this page has to know which of two things happened.
+  // `isManualInvoicing` used to be `Boolean(bookingId)`, which is true either
+  // way — a customer who had just paid was told an invoice was coming and that
+  // no deposit was required today. `buildSuccessUrl` sets the flag; it carries
+  // no money and no PII, which is the rule that page's query string keeps.
+  const paidOnline = searchParams?.get("paid") === "1";
+  const isManualInvoicing = Boolean(bookingId) && !paidOnline;
 
   const machineType = searchParams?.get("machineType") || "single";
   const mixersParam = searchParams?.get("mixers") || "";
@@ -65,15 +70,24 @@ function OrderDetails() {
                 Order Information
               </h3>
               <p className="text-charcoal/70 dark:text-white/70">
-                <span className="font-medium">
-                  {isManualInvoicing ? "Booking ID:" : "Order ID:"}
-                </span>{" "}
-                {displayId}
+                <span className="font-medium">Booking ID:</span> {displayId}
               </p>
               <p className="text-charcoal/70 dark:text-white/70">
                 <span className="font-medium">Status:</span> Confirmed
               </p>
             </div>
+
+            {paidOnline && (
+              <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded-xl p-6">
+                <h3 className="text-lg font-medium text-green-800 dark:text-green-200">
+                  ✅ Paid in Full
+                </h3>
+                <p className="mt-1 text-green-700 dark:text-green-300">
+                  Your payment went through and nothing is due on delivery. A
+                  receipt is on its way to your email.
+                </p>
+              </div>
+            )}
 
             {isManualInvoicing && (
               <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-xl p-6">
@@ -242,14 +256,23 @@ function OrderDetails() {
                   <strong>Day before your event</strong> — we will call or text
                   you to confirm all booking details (date, time, address).
                 </li>
-                <li>
-                  <strong>After confirmation</strong> — we will send you an
-                  invoice you can pay online (card, PayPal, etc.).
-                </li>
-                <li>
-                  <strong>Cash on delivery</strong> is also accepted — no
-                  deposit required today.
-                </li>
+                {paidOnline ? (
+                  <li>
+                    <strong>Nothing further to pay</strong> — your rental is
+                    paid in full and there is no balance on delivery.
+                  </li>
+                ) : (
+                  <>
+                    <li>
+                      <strong>After confirmation</strong> — we will send you an
+                      invoice you can pay online (card, PayPal, etc.).
+                    </li>
+                    <li>
+                      <strong>Cash on delivery</strong> is also accepted — no
+                      deposit required today.
+                    </li>
+                  </>
+                )}
               </ol>
               <p className="mt-3 text-xs text-charcoal/70 dark:text-white/60 italic">
                 All sales are final — no refunds. Please reference your Booking

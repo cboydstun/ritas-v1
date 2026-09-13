@@ -1,4 +1,5 @@
-import { useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import Image from "next/image";
 import { StepProps } from "../types";
 import { mixerDetails, MixerType } from "@/lib/rental-data";
@@ -11,6 +12,12 @@ import {
 import { buildExtrasCatalog } from "@/lib/extras-catalog";
 import { trackEvent, pushDataLayerThen } from "@/lib/analytics";
 import { hashUserData } from "@/lib/enhanced-conversions";
+
+// Kept out of the /order entry bundle: the PayPal SDK is large and only
+// matters once a visitor reaches the last step.
+const PayPalCheckout = dynamic(() => import("../PayPalCheckout"), {
+  ssr: false,
+});
 
 /**
  * The `message` from an error response, or a fallback.
@@ -38,9 +45,42 @@ export default function ReviewStep({
   onSuccess,
   settings,
 }: StepProps) {
+  // Read here rather than at module scope so the value is observable in a
+  // test without re-importing the module — which loads a second copy of React
+  // and breaks every hook. Next still inlines the literal at build time.
+  const paypalEnabled = Boolean(process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID);
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const submitLatch = useRef(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+
+  // Three latches, not one, because the PayPal flow spans two callbacks with
+  // the buyer's attention in a popup in between:
+  //
+  //  - `submitLatch` guards the invoice path, as it always has. It is set and
+  //    released inside one handler.
+  //  - `paypalFlowActive` is set when the popup opens and cleared only on
+  //    cancel or error — never on approve, which runs later and would be
+  //    blocked by a latch the same handler had taken.
+  //  - `captureLatch` guards the capture itself, which a double tap can fire
+  //    twice.
+  const paypalFlowActive = useRef(false);
+  const [paypalBusy, setPaypalBusy] = useState(false);
+  const captureLatch = useRef(false);
+
+  // Two halves of the same defence, and they are deliberately separate.
+  //
+  // `heldOrderId` is the PayPal order currently open; cancelling releases it.
+  // `heldBookingId` outlives that release and is sent as `reuseBookingId` on
+  // the next attempt — so if the release did not land (offline, a dropped
+  // keepalive, a crash) the buyer reprices the hold they already own instead
+  // of taking a second unit. With two triples in stock, two abandons would
+  // otherwise lock them out of their own date.
+  //
+  // Clearing both on cancel would make the reuse path dead code on the one
+  // path it exists for.
+  const heldBookingId = useRef<string | null>(null);
+  const heldOrderId = useRef<string | null>(null);
 
   const {
     basePrice,
@@ -67,6 +107,250 @@ export default function ReviewStep({
     mixers: settings?.mixers,
   });
 
+  /**
+   * Everything that happens once a booking exists, shared by both paths.
+   *
+   * Extracted so the PayPal and invoice flows cannot drift on what they
+   * report: they are one purchase either way, distinguished only by `method`
+   * — a GA4 custom dimension that is already registered on the property.
+   */
+  const finishBooking = async (
+    bookingId: string,
+    method: "paypal" | "invoice",
+  ) => {
+    // The only place a booking's id and total exist together on the client,
+    // so it is the only place `purchase` can be emitted. gtag sends via
+    // sendBeacon, so the hit survives the navigation below.
+    trackEvent("purchase", {
+      transaction_id: bookingId,
+      value: finalTotal,
+      currency: "USD",
+      tax: salesTax + processingFee,
+      shipping: deliveryFee,
+      machine_type: formData.machineType,
+      method,
+      items: buildAnalyticsItems(
+        formData,
+        { perDayRate, rentalDays },
+        extrasCatalog,
+      ),
+    });
+
+    // Clear the saved draft before redirecting so a future visit starts fresh
+    onSuccess?.();
+
+    // The Google Ads conversion fires off this push, not off a `/success`
+    // pageview. The pageview trigger could not see the order total — the
+    // success URL carries only what `buildSuccessUrl` deems safe — so every
+    // booking reported to Ads as a valueless conversion, which no
+    // value-based bid strategy can use. `transaction_id` doubles as the Ads
+    // `orderId`, which is what dedupes a resubmitted conversion.
+    //
+    // The redirect happens from the callback, not after the push: the Ads
+    // tag is a request the container issues itself, and navigating in the
+    // same tick could cut it off before it left the browser. See
+    // `pushDataLayerThen` — it also guarantees the redirect still happens
+    // when no tag ever answers.
+    // Enhanced conversions. Hashed in the browser before it reaches the
+    // dataLayer, so no raw contact detail is ever readable by a container
+    // tag or a GTM preview session. Returns undefined on a consent denial or
+    // an insecure origin, and the key is then omitted rather than sent empty.
+    const userData = await hashUserData(formData.customer);
+
+    pushDataLayerThen(
+      "purchase_complete",
+      {
+        transaction_id: bookingId,
+        value: finalTotal,
+        currency: "USD",
+        ...(userData ? { user_data: userData } : {}),
+      },
+      () => {
+        // Redirect to success page (no alert). buildSuccessUrl owns which
+        // params are safe to put in a URL GA4 will record — see its docs.
+        //
+        // A full-page navigation from an async handler, not render-phase
+        // state: it deliberately leaves React's world behind, the draft has
+        // just been cleared and /success is a separate route.
+        window.location.href = buildSuccessUrl(
+          bookingId,
+          formData.machineType,
+          formData.selectedMixers,
+          { paid: method === "paypal" },
+        );
+      },
+    );
+  };
+
+  /** The cart, in the shape both server routes accept. */
+  const rentalDataPayload = () => ({
+    machineType: formData.machineType,
+    selectedMixers: formData.selectedMixers,
+    selectedExtras: formData.selectedExtras.map((extra) => ({
+      id: extra.id,
+      quantity: extra.quantity ?? 1,
+    })),
+    rentalDate: formData.rentalDate,
+    rentalTime: formData.rentalTime,
+    returnDate: formData.returnDate,
+    returnTime: formData.returnTime,
+    customer: formData.customer,
+    notes: formData.notes,
+  });
+
+  /**
+   * Hand the machine back when the buyer closes the PayPal window.
+   *
+   * Best-effort and never awaited for its result: the stale-hold reaper is
+   * the real guarantee. What this buys is the buyer who cancels and then
+   * books through the invoice button — without it, on the last unit, they are
+   * refused by their own abandoned hold.
+   */
+  const releaseHold = useCallback(async () => {
+    const orderId = heldOrderId.current;
+    heldOrderId.current = null;
+    if (!orderId) return;
+
+    try {
+      await fetch("/api/v1/paypal/release-hold", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderId }),
+        keepalive: true,
+      });
+    } catch {
+      // The reaper will get it, and `heldBookingId` still points at the hold
+      // so the next attempt reprices it rather than taking another unit.
+    }
+  }, []);
+
+  const handleCreatePayPalOrder = async (): Promise<string> => {
+    // The `disabled` prop is advisory — the SDK will still open a session on
+    // a programmatic click — and this checkbox is the only consent artefact
+    // the booking has.
+    if (!agreedToTerms) {
+      setSubmitError("Please agree to the terms and conditions");
+      throw new Error("Terms not accepted");
+    }
+
+    paypalFlowActive.current = true;
+    setPaypalBusy(true);
+    setSubmitError(null);
+
+    try {
+      const response = await fetch("/api/v1/paypal/create-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          rentalData: rentalDataPayload(),
+          // Reprices the hold this browser already owns rather than taking a
+          // second unit for the same cart. Harmless when the hold was
+          // successfully released — the server finds nothing and inserts.
+          ...(heldBookingId.current
+            ? { reuseBookingId: heldBookingId.current }
+            : {}),
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(
+          await errorMessageFrom(
+            response,
+            "We could not start the payment. Please try again, or book now and we will invoice you.",
+          ),
+        );
+      }
+
+      const result = await response.json();
+      if (!result?.id || !result?.bookingId) {
+        throw new Error("PayPal did not return an order. Please try again.");
+      }
+
+      heldBookingId.current = result.bookingId;
+      heldOrderId.current = result.id;
+      return result.id;
+    } catch (error) {
+      // Clearing the flag here rather than relying on the SDK to route this
+      // throw to `onError`: if it does not, the invoice button stays disabled
+      // and the customer has no way to book at all. `onError` clearing it a
+      // second time is harmless.
+      paypalFlowActive.current = false;
+      setPaypalBusy(false);
+      setSubmitError(
+        error instanceof Error
+          ? error.message
+          : "We could not start the payment. Please try again.",
+      );
+      throw error;
+    }
+  };
+
+  const handleApprovePayPalOrder = async (orderId: string) => {
+    if (captureLatch.current) return;
+    captureLatch.current = true;
+
+    try {
+      const response = await fetch("/api/v1/paypal/capture-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderId }),
+      });
+
+      if (!response.ok) {
+        throw new Error(
+          await errorMessageFrom(
+            response,
+            "We could not confirm your payment. Please call us before trying again.",
+          ),
+        );
+      }
+
+      const result = await response.json();
+      if (!result?.bookingId) {
+        throw new Error(
+          "We could not confirm your booking reference. Please call us and we will take it over the phone.",
+        );
+      }
+
+      // Paid and confirmed — the hold is now a booking, so there is nothing
+      // left to release and nothing left to reuse.
+      heldOrderId.current = null;
+      heldBookingId.current = null;
+      await finishBooking(result.bookingId, "paypal");
+    } catch (error) {
+      // The money may well have moved, so this deliberately does not release
+      // the hold or invite a second attempt.
+      console.error("PayPal capture error:", error);
+      setSubmitError(
+        error instanceof Error
+          ? error.message
+          : "We could not confirm your payment. Please call us before trying again.",
+      );
+      captureLatch.current = false;
+      paypalFlowActive.current = false;
+      setPaypalBusy(false);
+    }
+  };
+
+  const handleCancelPayPal = () => {
+    paypalFlowActive.current = false;
+    setPaypalBusy(false);
+    void releaseHold();
+  };
+
+  const handlePayPalError = (error: Error) => {
+    console.error("PayPal error:", error);
+    paypalFlowActive.current = false;
+    setPaypalBusy(false);
+    // "Terms not accepted" already has its own message on screen.
+    if (error.message !== "Terms not accepted") {
+      setSubmitError(
+        "Something went wrong with PayPal. You can book now and we will invoice you instead.",
+      );
+    }
+    void releaseHold();
+  };
+
   const handleConfirmBooking = async () => {
     if (!agreedToTerms) {
       setSubmitError("Please agree to the terms and conditions");
@@ -76,37 +360,26 @@ export default function ReviewStep({
     // A ref, not the `isSubmitting` state: the button's disabled attribute
     // only takes effect on the next render, so two clicks dispatched in the
     // same tick both reached the fetch and booked the machine twice.
-    if (submitLatch.current) return;
+    if (submitLatch.current || paypalFlowActive.current) return;
     submitLatch.current = true;
 
     setIsSubmitting(true);
     setSubmitError(null);
 
     try {
+      // Give back any PayPal hold first. Otherwise this booking competes with
+      // the abandoned one for the same unit and, on the last one, loses to it.
+      await releaseHold();
+
       const response = await fetch("/api/save-booking", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          // `price` and `isServiceDiscount` are deliberately not sent: the
-          // server computes the total itself and strips both anyway. Extras
-          // are sent as id + quantity only, for the same reason.
-          rentalData: {
-            machineType: formData.machineType,
-            selectedMixers: formData.selectedMixers,
-            selectedExtras: formData.selectedExtras.map((extra) => ({
-              id: extra.id,
-              quantity: extra.quantity ?? 1,
-            })),
-            rentalDate: formData.rentalDate,
-            rentalTime: formData.rentalTime,
-            returnDate: formData.returnDate,
-            returnTime: formData.returnTime,
-            customer: formData.customer,
-            notes: formData.notes,
-          },
-        }),
+        // `price` and `isServiceDiscount` are deliberately not sent: the
+        // server computes the total itself and strips both anyway. Extras
+        // are sent as id + quantity only, for the same reason.
+        body: JSON.stringify({ rentalData: rentalDataPayload() }),
       });
 
       if (!response.ok) {
@@ -128,69 +401,7 @@ export default function ReviewStep({
         );
       }
 
-      // The only place a booking's id and total exist together on the client,
-      // so it is the only place `purchase` can be emitted. gtag sends via
-      // sendBeacon, so the hit survives the navigation below.
-      trackEvent("purchase", {
-        transaction_id: result.bookingId,
-        value: finalTotal,
-        currency: "USD",
-        tax: salesTax + processingFee,
-        shipping: deliveryFee,
-        machine_type: formData.machineType,
-        items: buildAnalyticsItems(
-          formData,
-          { perDayRate, rentalDays },
-          extrasCatalog,
-        ),
-      });
-
-      // Clear the saved draft before redirecting so a future visit starts fresh
-      onSuccess?.();
-
-      // The Google Ads conversion fires off this push, not off a `/success`
-      // pageview. The pageview trigger could not see the order total — the
-      // success URL carries only what `buildSuccessUrl` deems safe — so every
-      // booking reported to Ads as a valueless conversion, which no
-      // value-based bid strategy can use. `transaction_id` doubles as the Ads
-      // `orderId`, which is what dedupes a resubmitted conversion.
-      //
-      // The redirect happens from the callback, not after the push: the Ads
-      // tag is a request the container issues itself, and navigating in the
-      // same tick could cut it off before it left the browser. See
-      // `pushDataLayerThen` — it also guarantees the redirect still happens
-      // when no tag ever answers.
-      // Enhanced conversions. Hashed in the browser before it reaches the
-      // dataLayer, so no raw contact detail is ever readable by a container
-      // tag or a GTM preview session. Returns undefined on a consent denial or
-      // an insecure origin, and the key is then omitted rather than sent empty.
-      const userData = await hashUserData(formData.customer);
-
-      pushDataLayerThen(
-        "purchase_complete",
-        {
-          transaction_id: result.bookingId,
-          value: finalTotal,
-          currency: "USD",
-          ...(userData ? { user_data: userData } : {}),
-        },
-        () => {
-          // Redirect to success page (no alert). buildSuccessUrl owns which
-          // params are safe to put in a URL GA4 will record — see its docs.
-          //
-          // react-hooks/immutability reads this as mutating a value defined
-          // outside the component. It is a full-page navigation from an async
-          // submit handler, not render-phase state, and it deliberately leaves
-          // React's world behind — the draft has just been cleared and
-          // /success is a separate route.
-          // eslint-disable-next-line react-hooks/immutability
-          window.location.href = buildSuccessUrl(
-            result.bookingId,
-            formData.machineType,
-            formData.selectedMixers,
-          );
-        },
-      );
+      await finishBooking(result.bookingId, "invoice");
     } catch (error) {
       console.error("Booking submission error:", error);
       setSubmitError(
@@ -580,10 +791,9 @@ export default function ReviewStep({
                   Payment Information
                 </h3>
                 <p className="mt-1 text-sm text-blue-700 dark:text-blue-300">
-                  We will contact you the day before your event to confirm your
-                  booking details. Once confirmed, we will send you an invoice
-                  that can be paid online. Cash on delivery is also accepted. No
-                  deposit is required. All sales are final — no refunds.
+                  {paypalEnabled
+                    ? "Pay the full amount now with PayPal, a card or Pay Later, or book now and we will invoice you before your event. Cash on delivery is also accepted. All sales are final — no refunds."
+                    : "We will contact you the day before your event to confirm your booking details. Once confirmed, we will send you an invoice that can be paid online. Cash on delivery is also accepted. No deposit is required. All sales are final — no refunds."}
                 </p>
               </div>
             </div>
@@ -618,12 +828,37 @@ export default function ReviewStep({
             </div>
           )}
 
+          {/* Pay now — the primary path when PayPal is configured. */}
+          {paypalEnabled && (
+            <div className="mt-6">
+              <PayPalCheckout
+                amountUsd={finalTotal}
+                disabled={!agreedToTerms || isSubmitting}
+                createOrder={handleCreatePayPalOrder}
+                onApprove={handleApprovePayPalOrder}
+                onCancel={handleCancelPayPal}
+                onError={handlePayPalError}
+              />
+              <div className="flex items-center gap-3 mt-6" aria-hidden="true">
+                <span className="h-px flex-1 bg-charcoal/15 dark:bg-white/15" />
+                <span className="text-xs uppercase tracking-wide text-charcoal/70 dark:text-white/60">
+                  or
+                </span>
+                <span className="h-px flex-1 bg-charcoal/15 dark:bg-white/15" />
+              </div>
+            </div>
+          )}
+
           {/* Submit Button */}
           <div className="mt-6">
             <button
               onClick={handleConfirmBooking}
-              disabled={!agreedToTerms || isSubmitting}
-              className="w-full bg-linear-to-r from-orange to-pink hover:from-orange/90 hover:to-pink/90 disabled:from-gray-400 disabled:to-gray-500 text-white font-bold py-4 px-8 rounded-xl transition-all duration-200 transform hover:scale-[1.02] hover:shadow-lg disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none"
+              disabled={!agreedToTerms || isSubmitting || paypalBusy}
+              className={
+                paypalEnabled
+                  ? "w-full border-2 border-charcoal/20 dark:border-white/25 text-charcoal dark:text-white font-semibold py-4 px-8 rounded-xl transition-all duration-200 hover:border-charcoal/40 dark:hover:border-white/40 disabled:opacity-50 disabled:cursor-not-allowed"
+                  : "w-full bg-linear-to-r from-orange to-pink hover:from-orange/90 hover:to-pink/90 disabled:from-gray-400 disabled:to-gray-500 text-white font-bold py-4 px-8 rounded-xl transition-all duration-200 transform hover:scale-[1.02] hover:shadow-lg disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none"
+              }
             >
               {isSubmitting ? (
                 <div className="flex items-center justify-center space-x-2">
@@ -664,15 +899,19 @@ export default function ReviewStep({
                       d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
                     />
                   </svg>
-                  <span>Confirm Booking</span>
+                  <span>
+                    {paypalEnabled
+                      ? "Book now, invoice me later"
+                      : "Confirm Booking"}
+                  </span>
                 </span>
               )}
             </button>
 
             <p className="mt-3 text-xs text-charcoal/70 dark:text-white/60 text-center">
-              🔒 No payment required now. We will contact you the day before
-              your event to confirm, then send an invoice. Cash on delivery also
-              accepted. All sales are final.
+              {paypalEnabled
+                ? "🔒 Paying is optional. Book now and we will contact you the day before your event, then send an invoice. Cash on delivery also accepted. All sales are final."
+                : "🔒 No payment required now. We will contact you the day before your event to confirm, then send an invoice. Cash on delivery also accepted. All sales are final."}
             </p>
           </div>
         </div>

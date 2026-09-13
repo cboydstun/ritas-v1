@@ -172,6 +172,44 @@ export const rentalDataSchema = z
 
 export type ValidatedRentalData = z.infer<typeof rentalDataSchema>;
 
+/**
+ * A PayPal order id. Opaque to us — the shape is only here to keep a hostile
+ * string out of a URL path segment and out of a Mongo query.
+ */
+const paypalOrderIdSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(64)
+  .regex(/^[A-Za-z0-9-]+$/, "Invalid PayPal order id");
+
+/**
+ * The nanoid(10) booking id, uppercased. Sent back by the browser so a buyer
+ * who re-enters the PayPal flow reprices the hold they already own instead of
+ * taking a second unit.
+ */
+const bookingIdSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(32)
+  .regex(/^[A-Za-z0-9_-]+$/, "Invalid booking id");
+
+export const paypalCreateOrderSchema = z
+  .object({
+    rentalData: rentalDataSchema,
+    reuseBookingId: bookingIdSchema.optional(),
+  })
+  .strip();
+
+export const paypalCaptureSchema = z
+  .object({ orderId: paypalOrderIdSchema })
+  .strip();
+
+export const paypalReleaseHoldSchema = z
+  .object({ orderId: paypalOrderIdSchema })
+  .strip();
+
 function maxMixersFor(machineType: MachineType): number {
   return machineType === "single" ? 1 : machineType === "double" ? 2 : 3;
 }

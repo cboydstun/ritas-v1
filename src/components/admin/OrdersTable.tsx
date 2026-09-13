@@ -28,6 +28,14 @@ const STATUS_OPTIONS: RentalStatus[] = [
   "cancelled",
 ];
 
+/**
+ * How long a `pending` hold counts for, mirroring `STALE_HOLD_MINUTES` in
+ * `src/lib/inventory.ts`. Imported rather than redeclared would pull a
+ * server module into the admin bundle; the value is a display threshold here,
+ * not a decision, so a copy is safe.
+ */
+const HOLD_WINDOW_MS = 120 * 60 * 1000;
+
 const PAYMENT_STATUS_OPTIONS: PaymentStatus[] = [
   "pending",
   "completed",
@@ -48,6 +56,17 @@ export default function OrdersTable() {
   const [dateFilter, setDateFilter] = useState<DateFilter>("all");
   const [machineFilter, setMachineFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<"all" | RentalStatus>("all");
+  // Abandoned PayPal checkouts land as `pending` and are only swept by the
+  // daily cron, so without this the list fills with rows for carts nobody
+  // bought — each one carrying a customer's name, phone and address.
+  // Availability is unaffected either way: `isMachineAvailable` applies the
+  // hold cutoff in its own query.
+  const [showAbandoned, setShowAbandoned] = useState(false);
+  // When the list was fetched. The abandoned-hold cutoff is measured from
+  // here rather than from `Date.now()` inside the memo: reading the clock
+  // during render is impure, and the answer it gives is "expired as of the
+  // data you are looking at" either way.
+  const [loadedAt, setLoadedAt] = useState(0);
   const [paymentStatusFilter, setPaymentStatusFilter] = useState<
     "all" | PaymentStatus
   >("all");
@@ -169,8 +188,30 @@ export default function OrdersTable() {
       );
     }
 
+    // Hide expired, unpaid holds unless they are asked for. Asking for
+    // `pending` explicitly is treated as asking for them.
+    if (!showAbandoned && statusFilter !== "pending" && loadedAt > 0) {
+      const cutoff = loadedAt - HOLD_WINDOW_MS;
+      filtered = filtered.filter((order) => {
+        if (order.status !== "pending") return true;
+        if (order.payment?.status === "completed") return true;
+        const created = order.createdAt
+          ? new Date(order.createdAt).getTime()
+          : 0;
+        return !(created > 0 && created < cutoff);
+      });
+    }
+
     return filtered;
-  }, [orders, dateFilter, machineFilter, statusFilter, paymentStatusFilter]);
+  }, [
+    orders,
+    dateFilter,
+    machineFilter,
+    statusFilter,
+    paymentStatusFilter,
+    showAbandoned,
+    loadedAt,
+  ]);
 
   const sortedOrders = useMemo(() => {
     if (!sortConfig) return filteredOrders;
@@ -245,6 +286,7 @@ export default function OrdersTable() {
       if (!response.ok) throw new Error("Failed to fetch orders");
       const data = await response.json();
       setOrders(data);
+      setLoadedAt(Date.now());
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
@@ -444,6 +486,16 @@ export default function OrdersTable() {
               </option>
             ))}
           </select>
+
+          <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+            <input
+              type="checkbox"
+              checked={showAbandoned}
+              onChange={(e) => setShowAbandoned(e.target.checked)}
+              className="rounded-sm border-gray-300 dark:border-gray-600"
+            />
+            Show abandoned checkouts
+          </label>
         </div>
 
         <div className="flex items-center space-x-2">

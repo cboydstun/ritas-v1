@@ -363,6 +363,7 @@ export function buildSuccessUrl(
   bookingId: string,
   machineType: string,
   selectedMixers: string[] = [],
+  options: { paid?: boolean } = {},
 ): string {
   const params = new URLSearchParams();
   params.append("bookingId", bookingId);
@@ -370,6 +371,14 @@ export function buildSuccessUrl(
 
   if (selectedMixers.length > 0) {
     params.append("mixers", selectedMixers.join(","));
+  }
+
+  // A flag, not an amount. `/success` has to know whether to promise an
+  // invoice, and telling a customer who has just paid that one is coming is
+  // the one thing that page must not do. It carries no money and no PII, so
+  // the rule above still holds.
+  if (options.paid) {
+    params.append("paid", "1");
   }
 
   return `/success?${params.toString()}`;
