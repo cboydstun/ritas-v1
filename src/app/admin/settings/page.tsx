@@ -29,6 +29,7 @@ interface SettingsData {
     salesTaxRate: number;
     processingFeeRate: number;
     serviceDiscountRate: number;
+    minOrderAmount: number;
   };
   machines: {
     single: { basePrice: number; inventory: number };
@@ -62,6 +63,7 @@ const defaultSettings: SettingsData = {
     salesTaxRate: 0.0825,
     processingFeeRate: 0.03,
     serviceDiscountRate: 0.1,
+    minOrderAmount: 0,
   },
   machines: {
     single: { basePrice: 124.95, inventory: 3 },
@@ -519,6 +521,22 @@ export default function SettingsPage() {
               }))
             }
             step="0.01"
+          />
+          {/* The floor a ZIP falls back to when its fee band carries no
+              minimum of its own. The per-band ladder lives in the fee legend
+              on /admin/delivery-zones and starts at zero, so today this is the
+              only floor there is — and until now it could not be set from
+              anywhere. 0 means no minimum. */}
+          <NumberInput
+            label="Minimum Order ($, 0 = no minimum)"
+            value={settings.fees.minOrderAmount}
+            onChange={(v) =>
+              setSettings((s) => ({
+                ...s,
+                fees: { ...s.fees, minOrderAmount: v },
+              }))
+            }
+            step="5"
           />
         </SectionCard>
 

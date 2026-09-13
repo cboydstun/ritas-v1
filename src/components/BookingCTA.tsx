@@ -8,7 +8,7 @@ interface BookingCTAProps {
 
 export default function BookingCTA({
   headline = "Ready to Book?",
-  subtext = "Reserve your frozen drink machine today. Professional delivery, setup, and pickup — all included. Your distance surcharge is quoted by ZIP code before you book.",
+  subtext = "Reserve your frozen drink machine today. Professional delivery, setup and next-day pickup. Delivery is a delivery and setup fee plus a distance surcharge set by your ZIP code, both quoted before you book.",
   className = "",
 }: BookingCTAProps) {
   return (

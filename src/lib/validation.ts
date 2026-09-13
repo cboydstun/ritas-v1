@@ -342,6 +342,12 @@ export const settingsUpdateSchema = z
         salesTaxRate: rateSchema,
         processingFeeRate: rateSchema,
         serviceDiscountRate: rateSchema,
+        // `minimumForZip` falls back to this for a ZIP whose fee band carries
+        // no minimum, and three call sites pass it — but it was missing here,
+        // so Zod stripped it from every PUT and there was no PATCH verb and no
+        // admin field either. The documented fallback could only be changed by
+        // writing Mongo by hand. `0` stays the default and means "no floor".
+        minOrderAmount: moneySchema,
       })
       .partial(),
     machines: z

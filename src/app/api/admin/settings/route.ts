@@ -154,7 +154,12 @@ export async function PUT(request: Request) {
       runValidators: true,
     });
 
-    return NextResponse.json(updated.toObject());
+    // `flattenMaps`, for the same reason GET and PATCH need it: without it
+    // `deliveryZones.customFees` is a Mongoose Map and serialises as `{}`, so
+    // this response would tell its caller that no ZIP is priced. Nothing reads
+    // it today — the zone admin writes through PATCH — which is exactly how
+    // the GET shipped without it (#14) and reported all 120 ZIPs unserviced.
+    return NextResponse.json(updated.toObject({ flattenMaps: true }));
   } catch (error) {
     console.error("Error updating settings:", error);
 

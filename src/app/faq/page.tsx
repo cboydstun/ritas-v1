@@ -90,7 +90,7 @@ const faqSections: Array<{
       {
         question: "Do you provide delivery?",
         answer:
-          "Yes! We handle everything for you - delivery, professional setup, and next-day pickup across San Antonio and the surrounding area. Setup and pickup are included everywhere we go; what varies is how far the truck drives, so each ZIP code has its own distance surcharge, quoted at checkout before you book.",
+          "Yes! We handle everything for you - delivery, professional setup, and next-day pickup across San Antonio and the surrounding area. Delivery is two charges: a delivery and setup fee every order pays, plus a distance surcharge for how far the truck drives, so each ZIP code has its own. Both are quoted at checkout before you book.",
       },
       {
         question: "What space requirements are needed?",

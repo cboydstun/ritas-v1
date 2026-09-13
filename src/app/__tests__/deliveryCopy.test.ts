@@ -85,6 +85,19 @@ const BANS: Ban[] = [
     label: "a mileage-shaped service area",
     pattern: /within \d+ miles/i,
   },
+  // Added when `deliveryZones.baseFee` shipped. Delivery used to be the ZIP's
+  // surcharge alone, so "delivery included" was merely generous-sounding on a
+  // $0 ZIP; now every order pays a delivery and setup fee and the sentence is
+  // simply false. Seven surfaces said it, including the review step directly
+  // above the itemised Delivery Fee.
+  {
+    label: "delivery described as included",
+    pattern: /\bdeliver\w*\b[^.!?]{0,60}\bincluded\b/i,
+  },
+  {
+    label: "setup or pickup described as included",
+    pattern: /\b(set[- ]?up|pick[- ]?up)\b[^.!?]{0,60}\bincluded\b/i,
+  },
 ];
 
 /**
@@ -140,6 +153,11 @@ describe("the detector itself", () => {
     "We serve additional areas within 30 miles of downtown San Antonio.",
     "Free delivery for your area!",
     "We only deliver within Bexar County, TX.",
+    "Professional delivery, setup, and pickup included.",
+    "Delivery & Setup: Included — distance surcharge by ZIP",
+    "Delivery, setup and pickup included — surcharge quoted by ZIP",
+    "Setup and pickup are included everywhere we go.",
+    "All-inclusive pricing with delivery, setup, and pickup included",
   ])("flags %s", (claim) => {
     expect(flags(claim).length).toBeGreaterThan(0);
   });
@@ -149,6 +167,16 @@ describe("the detector itself", () => {
     "The distance surcharge is set by your ZIP code and quoted before you book.",
     "Delivery, setup and pickup — the surcharge is set by your ZIP code.",
     "No distance surcharge for 78205",
+    // The replacement wording. It has to survive both new detectors, or the
+    // ban is unsatisfiable and the next person suppresses it.
+    "Delivery is a delivery and setup fee every order pays, plus a distance surcharge set by your ZIP code.",
+    "$20 delivery and setup, plus a $50 distance surcharge for your ZIP.",
+    "We handle delivery, setup & cleanup",
+    // A rental period, a mixer and a table really are included. The ban is
+    // about the three things the truck does, not the word.
+    "Each rental includes free overnight use by default.",
+    "24-hour rental period included",
+    "Alcohol not included — Texas TABC prohibits us from providing it.",
   ])("leaves %s alone", (claim) => {
     expect(flags(claim)).toEqual([]);
   });

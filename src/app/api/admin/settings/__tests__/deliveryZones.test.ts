@@ -1,7 +1,7 @@
 /**
  * @jest-environment node
  */
-import { GET, PATCH } from "../route";
+import { GET, PATCH, PUT } from "../route";
 import { Settings } from "@/models/settings";
 import { getServerSession } from "next-auth";
 
@@ -11,7 +11,10 @@ jest.mock("@/lib/mongodb", () => ({
 }));
 
 jest.mock("@/models/settings", () => ({
-  Settings: Object.assign(jest.fn(), { findOne: jest.fn() }),
+  Settings: Object.assign(jest.fn(), {
+    findOne: jest.fn(),
+    findOneAndUpdate: jest.fn(),
+  }),
 }));
 
 jest.mock("next-auth", () => ({ getServerSession: jest.fn() }));
@@ -315,5 +318,64 @@ describe("audit", () => {
 
     expect(doc.updatedBy).toBe("Chris");
     expect(doc.updatedAt).toBeInstanceOf(Date);
+  });
+});
+
+describe("PUT serialises the fee map", () => {
+  const put = (body: unknown) =>
+    PUT(
+      new Request("http://localhost/api/admin/settings", {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
+      }),
+    );
+
+  it("echoes customFees as an object, not as an empty one", async () => {
+    // The same gap #14 closed on GET, left open on this verb. Nothing reads
+    // this body today — the zone admin writes through PATCH — which is exactly
+    // the reason the GET shipped broken: an unread response is not a checked
+    // one.
+    const fees = new Map<string, number>([["78205", 0]]);
+    (Settings.findOneAndUpdate as jest.Mock).mockResolvedValue({
+      toObject: (options?: { flattenMaps?: boolean }) => ({
+        key: "global",
+        deliveryZones: {
+          customFees: options?.flattenMaps
+            ? Object.fromEntries(fees)
+            : (fees as unknown),
+        },
+      }),
+    });
+
+    const body = await (await put({ fees: { deliveryFee: 30 } })).json();
+
+    expect(body.deliveryZones.customFees).toEqual({ "78205": 0 });
+  });
+
+  it("accepts a minimum order amount", async () => {
+    // `minimumForZip` has always documented `fees.minOrderAmount` as the
+    // fallback for a ZIP whose band carries no floor, and three call sites
+    // pass it — but it was absent from `settingsUpdateSchema.fees`, so Zod
+    // stripped it from every body and no PATCH verb or admin field covered it
+    // either. The documented fallback could not be set from anywhere.
+    (Settings.findOneAndUpdate as jest.Mock).mockResolvedValue({
+      toObject: () => ({ key: "global", fees: { minOrderAmount: 125 } }),
+    });
+
+    const response = await put({ fees: { minOrderAmount: 125 } });
+
+    expect(response.status).toBe(200);
+    // `fees` is written as a subtree by this verb, so the assertion is on the
+    // field surviving Zod rather than on a dotted path.
+    const [, update] = (Settings.findOneAndUpdate as jest.Mock).mock.calls[0];
+    expect(update.fees).toEqual({ minOrderAmount: 125 });
+  });
+
+  it("refuses a negative minimum order amount", async () => {
+    const response = await put({ fees: { minOrderAmount: -1 } });
+
+    expect(response.status).toBe(400);
+    expect(Settings.findOneAndUpdate).not.toHaveBeenCalled();
   });
 });

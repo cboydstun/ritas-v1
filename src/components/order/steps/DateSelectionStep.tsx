@@ -209,13 +209,15 @@ export default function DateSelectionStep({
                 <p className="text-sm text-charcoal/70 dark:text-white/70 text-center">
                   ✨ 24-hour rental period included
                 </p>
-                {/* Setup and pickup really are included everywhere we go —
-                    what varies is how far the truck drives. The surcharge for
-                    this order's ZIP appears under the address field on the next
-                    step and again in PricingSummary. */}
+                {/* Two terms, and this line used to name neither. Every order
+                    pays the delivery and setup fee, and the distance surcharge
+                    on top varies with how far the truck drives. Both appear
+                    under the address field on the next step and again in
+                    PricingSummary; no figure is quoted here because this step
+                    has no ZIP yet. */}
                 <p className="text-sm text-charcoal/70 dark:text-white/70 text-center">
-                  🚚 Delivery, setup and pickup included — surcharge quoted by
-                  ZIP
+                  🚚 Delivery, setup and pickup — fee and ZIP surcharge quoted
+                  on the next step
                 </p>
               </div>
             </div>

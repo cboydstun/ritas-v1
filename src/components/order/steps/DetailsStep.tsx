@@ -190,9 +190,10 @@ export default function DetailsStep({
               Delivery Area
             </p>
             <p className="text-charcoal/80 dark:text-white/80">
-              Every ZIP we deliver to has its own distance surcharge, quoted
-              here before you book. If we don&rsquo;t have a price set for yours
-              yet, call us and we&rsquo;ll see what we can do.
+              Delivery is a delivery and setup fee every order pays plus a
+              distance surcharge every ZIP sets for itself, both quoted here
+              before you book. If we don&rsquo;t have a price set for yours yet,
+              call us and we&rsquo;ll see what we can do.
             </p>
           </div>
         </div>
@@ -430,8 +431,9 @@ export default function DetailsStep({
                 Delivery Area
               </h3>
               <p className="text-sm text-charcoal/70 dark:text-white/70">
-                We deliver across San Antonio and the surrounding area, with the
-                distance surcharge set by your ZIP code.
+                We deliver across San Antonio and the surrounding area. Every
+                order pays a delivery and setup fee, and the distance surcharge
+                on top is set by your ZIP code.
               </p>
               <p className="text-sm text-charcoal/70 dark:text-white/70 mt-1">
                 Enter your ZIP above and we&rsquo;ll quote it straight away.

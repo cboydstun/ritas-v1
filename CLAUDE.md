@@ -187,6 +187,25 @@ by default, so a routine re-run cannot flatten a price retuned in the admin;
 destructive path. **Nothing syncs with bounce-v3** — a fee retuned there does
 not reach here, and the snapshot records the date it was read.
 
+That has already cost one reconcile. The snapshot was taken at 17:11 on
+2026-09-12; bounce-v3 priced 78052 Lytle, 78054 Macdona, 78069 Somerset and
+78150 Randolph AFB by nearest neighbour 37 minutes later, so those four sat at
+ritas' previous flat $20 against $100/$50/$100/$25 there — the same depot and
+the same drive, quoted two ways. The tables were reconciled on 2026-09-12 and
+`defaultZones.test.ts` now pins all seven late arrivals by value. **There is
+deliberately no drift guard**: comparing the two tables automatically would
+mean reading bounce-v3's production database from this repo. A retune there
+reaches here only by hand.
+
+The **order minimum is inert and that is the current state, not a gap.** Every
+band in `tierMinimums` ships at `0` and the global fallback
+`Settings.fees.minOrderAmount` also defaults to `0`, so no cart is refused for
+being too small. The fallback is editable in Fees & Rates on `/admin/settings`
+(it was not, until 2026-09-12 — Zod stripped it from every body). Enforcement
+lives only in `POST /api/save-booking`; `ReviewStep` has no check, so the first
+floor anybody sets will be discovered at submit rather than on the review
+screen. Add the browser-side block then, not before — it is dead UI at zero.
+
 ### Landing Pages
 
 Admin-authored pages at arbitrary paths, served by the root catch-all
