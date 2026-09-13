@@ -40,7 +40,7 @@ export default function Navigation() {
               className="flex items-center"
               onClick={closeMobileMenu}
             >
-              <span className="text-2xl font-bold text-margarita dark:text-margarita-dark hover:text-teal transition-colors">
+              <span className="text-2xl font-bold text-margarita dark:text-margarita-dark hover:text-teal dark:hover:text-teal-dark transition-colors">
                 🍹SATX Ritas
               </span>
             </Link>
@@ -89,7 +89,7 @@ export default function Navigation() {
                 shortest path from "interested" to "booked". */}
             <a
               href={BUSINESS_PHONE_HREF}
-              className="ml-2 px-3 py-2 flex items-center gap-1.5 font-semibold text-margarita dark:text-margarita-dark hover:text-teal transition-colors"
+              className="ml-2 px-3 py-2 flex items-center gap-1.5 font-semibold text-margarita dark:text-margarita-dark hover:text-teal dark:hover:text-teal-dark transition-colors"
             >
               <PhoneIcon className="h-4 w-4" />
               {BUSINESS_PHONE_DISPLAY}
@@ -107,7 +107,7 @@ export default function Navigation() {
           <div className="sm:hidden flex items-center">
             <a
               href={BUSINESS_PHONE_HREF}
-              className="p-2 text-margarita dark:text-margarita-dark hover:text-teal transition-colors"
+              className="p-2 text-margarita dark:text-margarita-dark hover:text-teal dark:hover:text-teal-dark transition-colors"
             >
               <span className="sr-only">Call {BUSINESS_PHONE_DISPLAY}</span>
               <PhoneIcon className="h-6 w-6" />

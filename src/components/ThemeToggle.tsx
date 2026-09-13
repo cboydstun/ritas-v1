@@ -5,7 +5,11 @@ import { useTheme } from "next-themes";
 
 export default function ThemeToggle() {
   const [mounted, setMounted] = useState(false);
-  const { theme, setTheme } = useTheme();
+  // resolvedTheme, not theme: with defaultTheme="system" (ThemeWrapper) the
+  // latter is the literal string "system" on a first visit, so a visitor on a
+  // dark OS was shown the moon over an already-dark page and the first click
+  // set "dark" — a control that appeared to do nothing.
+  const { resolvedTheme, setTheme } = useTheme();
 
   // Prevent hydration mismatch
   useEffect(() => {
@@ -18,11 +22,11 @@ export default function ThemeToggle() {
 
   return (
     <button
-      onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+      onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
       className="p-2 rounded-lg bg-light hover:bg-gray-100 dark:bg-charcoal dark:hover:bg-gray-800 transition-all duration-300 ml-2"
       aria-label="Toggle theme"
     >
-      {theme === "dark" ? (
+      {resolvedTheme === "dark" ? (
         // Sun icon for dark mode
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -30,7 +34,7 @@ export default function ThemeToggle() {
           viewBox="0 0 24 24"
           strokeWidth={1.5}
           stroke="currentColor"
-          className="w-6 h-6 text-margarita hover:text-teal transition-colors"
+          className="w-6 h-6 text-margarita dark:text-margarita-dark hover:text-teal dark:hover:text-teal-dark transition-colors"
         >
           <path
             strokeLinecap="round"
@@ -46,7 +50,7 @@ export default function ThemeToggle() {
           viewBox="0 0 24 24"
           strokeWidth={1.5}
           stroke="currentColor"
-          className="w-6 h-6 text-margarita hover:text-teal transition-colors"
+          className="w-6 h-6 text-margarita dark:text-margarita-dark hover:text-teal dark:hover:text-teal-dark transition-colors"
         >
           <path
             strokeLinecap="round"

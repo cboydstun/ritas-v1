@@ -45,13 +45,15 @@ export default function MapSection() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {SERVICE_AREA_REGIONS.map((region) => (
                 <div key={region}>
-                  <h4 className="font-semibold text-teal mb-3">{region}</h4>
+                  <h4 className="font-semibold text-teal dark:text-teal-dark mb-3">
+                    {region}
+                  </h4>
                   <ul className="space-y-2 text-charcoal/80 dark:text-white/80">
                     {serviceAreasByRegion(region).map((area) => (
                       <li key={area.slug}>
                         <Link
                           href={`/service-area/${area.slug}`}
-                          className="hover:text-margarita transition-colors"
+                          className="hover:text-margarita dark:hover:text-margarita-dark transition-colors"
                         >
                           {area.name}
                         </Link>

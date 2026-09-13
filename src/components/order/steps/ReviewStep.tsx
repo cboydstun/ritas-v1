@@ -410,7 +410,7 @@ export default function ReviewStep({
             )}
           </div>
           {/* TABC / BYOB reminder */}
-          <p className="text-xs text-charcoal/50 dark:text-white/40 italic mt-2">
+          <p className="text-xs text-charcoal/70 dark:text-white/60 italic mt-2">
             🚫 Alcohol not included — Texas TABC prohibits us from providing it.
             Add your own (max 1.75L per tank) if desired. Please drink
             responsibly.
@@ -535,7 +535,7 @@ export default function ReviewStep({
               are billed anything, and one in a $100 ZIP unable to tell why they
               are billed more than the surcharge they were quoted. */}
           {distanceSurcharge > 0 && (
-            <p className="pl-4 text-xs text-charcoal/60 dark:text-white/60">
+            <p className="pl-4 text-xs text-charcoal/70 dark:text-white/60">
               ${formatPrice(deliveryBaseFee)} delivery &amp; setup + $
               {formatPrice(distanceSurcharge)} distance surcharge
             </p>
@@ -551,7 +551,7 @@ export default function ReviewStep({
           <p className="text-charcoal/70 dark:text-white/70">
             Sales Tax ({pct(taxRate)}): ${formatPrice(salesTax)}
           </p>
-          <p className="text-charcoal/60 dark:text-white/60 text-sm">
+          <p className="text-charcoal/70 dark:text-white/60 text-sm">
             Cash Price (no card fee): ${formatPrice(cashPrice)}
           </p>
           <p className="text-xl font-bold text-orange mb-4">
@@ -669,7 +669,7 @@ export default function ReviewStep({
               )}
             </button>
 
-            <p className="mt-3 text-xs text-charcoal/60 dark:text-white/60 text-center">
+            <p className="mt-3 text-xs text-charcoal/70 dark:text-white/60 text-center">
               🔒 No payment required now. We will contact you the day before
               your event to confirm, then send an invoice. Cash on delivery also
               accepted. All sales are final.

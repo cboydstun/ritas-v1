@@ -8,7 +8,9 @@ export default function AboutSection() {
           <div>
             <h2 className="text-4xl font-bold text-charcoal dark:text-white mb-6">
               San Antonio&apos;s Premier
-              <span className="block text-margarita">Margarita Service</span>
+              <span className="block text-margarita dark:text-margarita-dark">
+                Margarita Service
+              </span>
             </h2>
             <div className="space-y-4">
               <p className="text-lg text-charcoal/80 dark:text-white/80">
@@ -31,7 +33,7 @@ export default function AboutSection() {
                 <div className="shrink-0">
                   <div className="p-2 bg-teal/10 dark:bg-teal/20 rounded-lg">
                     <svg
-                      className="w-6 h-6 text-teal"
+                      className="w-6 h-6 text-teal dark:text-teal-dark"
                       fill="none"
                       viewBox="0 0 24 24"
                       stroke="currentColor"
@@ -59,7 +61,7 @@ export default function AboutSection() {
                 <div className="shrink-0">
                   <div className="p-2 bg-teal/10 dark:bg-teal/20 rounded-lg">
                     <svg
-                      className="w-6 h-6 text-teal"
+                      className="w-6 h-6 text-teal dark:text-teal-dark"
                       fill="none"
                       viewBox="0 0 24 24"
                       stroke="currentColor"
@@ -87,7 +89,7 @@ export default function AboutSection() {
                 <div className="shrink-0">
                   <div className="p-2 bg-teal/10 dark:bg-teal/20 rounded-lg">
                     <svg
-                      className="w-6 h-6 text-teal"
+                      className="w-6 h-6 text-teal dark:text-teal-dark"
                       fill="none"
                       viewBox="0 0 24 24"
                       stroke="currentColor"
@@ -115,7 +117,7 @@ export default function AboutSection() {
                 <div className="shrink-0">
                   <div className="p-2 bg-teal/10 dark:bg-teal/20 rounded-lg">
                     <svg
-                      className="w-6 h-6 text-teal"
+                      className="w-6 h-6 text-teal dark:text-teal-dark"
                       fill="none"
                       viewBox="0 0 24 24"
                       stroke="currentColor"

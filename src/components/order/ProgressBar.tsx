@@ -53,7 +53,7 @@ export function ProgressBar({ currentStep }: ProgressBarProps) {
             className={`text-xs md:text-sm transition-colors duration-300 ${
               currentStep === step.id
                 ? "text-orange font-medium"
-                : "text-charcoal/50 dark:text-white/50"
+                : "text-charcoal/70 dark:text-white/60"
             }`}
           >
             {step.label}

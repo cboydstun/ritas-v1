@@ -50,7 +50,7 @@ export function NavigationButtons({
         {currentStep === "extras" && (
           <button
             onClick={onNext}
-            className="text-sm text-charcoal/50 dark:text-white/50 hover:text-charcoal/70 dark:hover:text-white/70 transition-colors underline-offset-2 hover:underline"
+            className="text-sm text-charcoal/70 dark:text-white/60 hover:text-charcoal/70 dark:hover:text-white/70 transition-colors underline-offset-2 hover:underline"
           >
             Skip — no extras needed
           </button>

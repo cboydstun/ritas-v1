@@ -38,7 +38,7 @@ function SecondaryButton({ link }: { link: CtaLink }) {
   return (
     <Link
       href={link.href}
-      className="px-6 py-3 rounded-xl font-bold text-center text-margarita border-2 border-margarita hover:bg-margarita hover:text-white transition-colors"
+      className="px-6 py-3 rounded-xl font-bold text-center text-margarita dark:text-margarita-dark border-2 border-margarita dark:border-margarita-dark hover:bg-margarita dark:hover:bg-margarita-dark hover:text-white dark:hover:text-charcoal transition-colors"
     >
       {link.label}
     </Link>
@@ -54,7 +54,7 @@ export default function SectionRenderer({
       return (
         <header className="mb-12">
           {section.eyebrow && (
-            <p className="text-sm font-semibold uppercase tracking-wide text-teal mb-3">
+            <p className="text-sm font-semibold uppercase tracking-wide text-teal dark:text-teal-dark mb-3">
               {section.eyebrow}
             </p>
           )}
@@ -77,7 +77,7 @@ export default function SectionRenderer({
               {section.phoneCta && (
                 <a
                   href={BUSINESS_PHONE_HREF}
-                  className="px-6 py-3 rounded-xl font-bold text-center text-margarita border-2 border-margarita hover:bg-margarita hover:text-white transition-colors"
+                  className="px-6 py-3 rounded-xl font-bold text-center text-margarita dark:text-margarita-dark border-2 border-margarita dark:border-margarita-dark hover:bg-margarita dark:hover:bg-margarita-dark hover:text-white dark:hover:text-charcoal transition-colors"
                 >
                   Call {BUSINESS_PHONE_DISPLAY}
                 </a>
@@ -151,7 +151,7 @@ export default function SectionRenderer({
               <li key={item.href}>
                 <Link
                   href={item.href}
-                  className="inline-block px-4 py-2 rounded-lg bg-light dark:bg-charcoal/50 text-charcoal dark:text-white hover:text-margarita transition-colors"
+                  className="inline-block px-4 py-2 rounded-lg bg-light dark:bg-charcoal/50 text-charcoal dark:text-white hover:text-margarita dark:hover:text-margarita-dark transition-colors"
                 >
                   {item.label}
                 </Link>
@@ -162,7 +162,7 @@ export default function SectionRenderer({
             <p className="mt-4 text-sm">
               <Link
                 href={section.footerLink.href}
-                className="text-margarita underline hover:no-underline"
+                className="text-margarita dark:text-margarita-dark underline hover:no-underline"
               >
                 {section.footerLink.label}
               </Link>
@@ -188,7 +188,7 @@ export default function SectionRenderer({
                 <h3 className="font-semibold text-lg text-charcoal dark:text-white mb-1">
                   {pkg.name}
                 </h3>
-                <p className="text-2xl font-bold text-margarita mb-3">
+                <p className="text-2xl font-bold text-margarita dark:text-margarita-dark mb-3">
                   ${formatPrice(table.machineBasePrice(pkg.type))}
                   <span className="text-sm font-normal text-charcoal/70 dark:text-white/70">
                     {" "}
@@ -216,7 +216,7 @@ export default function SectionRenderer({
               <li key={area.slug}>
                 <Link
                   href={`/service-area/${area.slug}`}
-                  className="inline-block px-4 py-2 rounded-lg bg-light dark:bg-charcoal/50 text-charcoal dark:text-white hover:text-margarita transition-colors"
+                  className="inline-block px-4 py-2 rounded-lg bg-light dark:bg-charcoal/50 text-charcoal dark:text-white hover:text-margarita dark:hover:text-margarita-dark transition-colors"
                 >
                   {area.name}
                 </Link>
@@ -227,7 +227,7 @@ export default function SectionRenderer({
             <p className="mt-4 text-sm">
               <Link
                 href={section.footerLink.href}
-                className="text-margarita underline hover:no-underline"
+                className="text-margarita dark:text-margarita-dark underline hover:no-underline"
               >
                 {section.footerLink.label}
               </Link>

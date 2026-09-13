@@ -46,7 +46,7 @@ export default function CookieConsent(): React.ReactNode {
           out at any time — see our{" "}
           <Link
             href="/contact"
-            className="underline hover:text-margarita transition-colors"
+            className="underline hover:text-margarita dark:hover:text-margarita-dark transition-colors"
           >
             contact page
           </Link>{" "}

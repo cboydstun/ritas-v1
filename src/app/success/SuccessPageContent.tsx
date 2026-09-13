@@ -153,7 +153,7 @@ function OrderDetails() {
                       <h3 className="font-semibold text-lg text-charcoal dark:text-white mb-4">
                         🍹 Mixer &amp; Drink Preparation Guide
                       </h3>
-                      <p className="text-sm text-charcoal/60 dark:text-white/50 mb-4">
+                      <p className="text-sm text-charcoal/70 dark:text-white/60 mb-4">
                         Your machine holds <strong>{capacityL}L</strong> total
                         across {tankCount} tank{tankCount > 1 ? "s" : ""} (
                         {Math.round(capacityL / tankCount)}L per tank).
@@ -251,7 +251,7 @@ function OrderDetails() {
                   deposit required today.
                 </li>
               </ol>
-              <p className="mt-3 text-xs text-charcoal/50 dark:text-white/40 italic">
+              <p className="mt-3 text-xs text-charcoal/70 dark:text-white/60 italic">
                 All sales are final — no refunds. Please reference your Booking
                 ID in any communications with us.
               </p>

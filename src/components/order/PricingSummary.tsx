@@ -47,7 +47,7 @@ export function PricingSummary({
         </h3>
         <div className="flex items-center space-x-1">
           <svg
-            className="w-5 h-5 text-margarita"
+            className="w-5 h-5 text-margarita dark:text-margarita-dark"
             fill="currentColor"
             viewBox="0 0 20 20"
           >
@@ -63,9 +63,9 @@ export function PricingSummary({
 
       {/* Placeholder shown on date step before a machine has been chosen */}
       {currentStep === "date" && (
-        <div className="text-center py-6 text-charcoal/50 dark:text-white/50">
+        <div className="text-center py-6 text-charcoal/70 dark:text-white/60">
           <svg
-            className="w-10 h-10 mx-auto mb-3 text-margarita/40"
+            className="w-10 h-10 mx-auto mb-3 text-margarita/40 dark:text-margarita-dark/60"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -117,7 +117,7 @@ export function PricingSummary({
           {/* Rental Days */}
           {formData.rentalDate && formData.returnDate && (
             <div className="flex justify-between text-xs pt-2 border-t border-margarita/10">
-              <span className="text-charcoal/60 dark:text-white/60">
+              <span className="text-charcoal/70 dark:text-white/60">
                 × {rentalDays} day{rentalDays > 1 ? "s" : ""}
               </span>
               <span className="font-medium text-charcoal dark:text-white">
@@ -202,7 +202,7 @@ export function PricingSummary({
 
           {/* Cash Price — what the customer pays if settling in cash on delivery (no card fee) */}
           <div className="flex justify-between text-xs pt-2 border-t border-margarita/10">
-            <span className="text-charcoal/60 dark:text-white/60">
+            <span className="text-charcoal/70 dark:text-white/60">
               Cash Price (no card fee)
             </span>
             <span className="font-medium text-charcoal/80 dark:text-white/80">
@@ -224,7 +224,7 @@ export function PricingSummary({
 
       {/* Trust badge */}
       <div className="mt-4 pt-4 border-t border-margarita/10">
-        <div className="flex items-center justify-center space-x-2 text-xs text-charcoal/60 dark:text-white/60">
+        <div className="flex items-center justify-center space-x-2 text-xs text-charcoal/70 dark:text-white/60">
           <svg
             className="w-4 h-4 text-green-500"
             fill="currentColor"

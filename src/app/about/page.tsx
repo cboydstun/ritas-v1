@@ -183,7 +183,7 @@ export default function AboutPage() {
                   </p>
                 </div>
               </div>
-              <p className="text-center text-sm text-charcoal/60 dark:text-white/60 mt-6">
+              <p className="text-center text-sm text-charcoal/70 dark:text-white/60 mt-6">
                 All extras are priced per day and added to your order during
                 checkout.{" "}
                 <Link href="/pricing" className="text-orange hover:underline">

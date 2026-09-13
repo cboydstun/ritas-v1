@@ -176,7 +176,7 @@ export default function ExtrasStep({
               id={`extra-${extra.id}`}
               checked={isExtraSelected(extra.id)}
               onChange={(e) => handleExtraChange(extra, e.target.checked)}
-              className="h-5 w-5 text-margarita border-gray-300 rounded-sm focus:ring-margarita"
+              className="h-5 w-5 text-margarita border-gray-300 dark:border-gray-600 rounded-sm focus:ring-margarita"
             />
             <label
               htmlFor={`extra-${extra.id}`}
@@ -191,7 +191,7 @@ export default function ExtrasStep({
               <span className="text-sm text-charcoal/70 dark:text-white/70 w-full sm:w-auto text-center sm:text-left">
                 Quantity:
               </span>
-              <div className="flex items-center border border-gray-300 rounded-sm">
+              <div className="flex items-center border border-gray-300 dark:border-gray-600 rounded-sm">
                 <button
                   type="button"
                   onClick={() =>
@@ -200,7 +200,7 @@ export default function ExtrasStep({
                       getExtraQuantity(extra.id) - 1,
                     )
                   }
-                  className="px-3 py-2 text-gray-500 hover:text-margarita focus:outline-hidden focus:ring-2 focus:ring-margarita focus:ring-offset-1"
+                  className="px-3 py-2 text-gray-500 dark:text-gray-300 hover:text-margarita dark:hover:text-margarita-dark focus:outline-hidden focus:ring-2 focus:ring-margarita focus:ring-offset-1"
                   disabled={getExtraQuantity(extra.id) <= 1}
                   aria-label="Decrease quantity"
                 >
@@ -217,7 +217,7 @@ export default function ExtrasStep({
                       getExtraQuantity(extra.id) + 1,
                     )
                   }
-                  className="px-3 py-2 text-gray-500 hover:text-margarita focus:outline-hidden focus:ring-2 focus:ring-margarita focus:ring-offset-1"
+                  className="px-3 py-2 text-gray-500 dark:text-gray-300 hover:text-margarita dark:hover:text-margarita-dark focus:outline-hidden focus:ring-2 focus:ring-margarita focus:ring-offset-1"
                   disabled={getExtraQuantity(extra.id) >= MAX_EXTRA_QUANTITY}
                   aria-label="Increase quantity"
                 >

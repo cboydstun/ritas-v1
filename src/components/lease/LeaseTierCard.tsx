@@ -35,7 +35,7 @@ export default function LeaseTierCard({ tier }: LeaseTierCardProps) {
             / month
           </span>
         </div>
-        <p className="text-xs text-charcoal/60 dark:text-white/60 mb-4">
+        <p className="text-xs text-charcoal/70 dark:text-white/60 mb-4">
           ${formatPrice(tier.placementFee)} one-time placement fee · {termLabel}
         </p>
 
@@ -58,7 +58,7 @@ export default function LeaseTierCard({ tier }: LeaseTierCardProps) {
           ))}
         </ul>
 
-        <div className="border-t border-gray-200 dark:border-gray-700 pt-4 mb-5 space-y-1 text-xs text-charcoal/60 dark:text-white/60">
+        <div className="border-t border-gray-200 dark:border-gray-700 pt-4 mb-5 space-y-1 text-xs text-charcoal/70 dark:text-white/60">
           <p>
             <span className="font-semibold">Electrical:</span> {tier.electrical}
           </p>

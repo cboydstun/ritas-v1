@@ -28,7 +28,7 @@ export default async function SocialProofSection() {
           <div className="text-center p-2">
             {/* The real review count. This used to be `reviews.length * 8`,
                 a made-up multiplier presented to visitors as a fact. */}
-            <div className="text-2xl sm:text-4xl font-bold text-margarita mb-1 sm:mb-2">
+            <div className="text-2xl sm:text-4xl font-bold text-margarita dark:text-margarita-dark mb-1 sm:mb-2">
               {count}
             </div>
             <div className="text-sm sm:text-base text-charcoal/80 dark:text-white/80">
@@ -36,7 +36,7 @@ export default async function SocialProofSection() {
             </div>
           </div>
           <div className="text-center p-2">
-            <div className="text-2xl sm:text-4xl font-bold text-margarita mb-1 sm:mb-2">
+            <div className="text-2xl sm:text-4xl font-bold text-margarita dark:text-margarita-dark mb-1 sm:mb-2">
               {averageRating?.toFixed(1) ?? "—"}
             </div>
             <div className="text-sm sm:text-base text-charcoal/80 dark:text-white/80">
@@ -45,7 +45,7 @@ export default async function SocialProofSection() {
           </div>
           <div className="text-center p-2">
             {/* Counts 5s only. The tile said "5-Star" while filtering >= 4. */}
-            <div className="text-2xl sm:text-4xl font-bold text-margarita mb-1 sm:mb-2">
+            <div className="text-2xl sm:text-4xl font-bold text-margarita dark:text-margarita-dark mb-1 sm:mb-2">
               {fiveStarCount}
             </div>
             <div className="text-sm sm:text-base text-charcoal/80 dark:text-white/80">
@@ -53,7 +53,7 @@ export default async function SocialProofSection() {
             </div>
           </div>
           <div className="text-center p-2">
-            <div className="text-2xl sm:text-4xl font-bold text-margarita mb-1 sm:mb-2">
+            <div className="text-2xl sm:text-4xl font-bold text-margarita dark:text-margarita-dark mb-1 sm:mb-2">
               {satisfactionRate}%
             </div>
             <div className="text-sm sm:text-base text-charcoal/80 dark:text-white/80">

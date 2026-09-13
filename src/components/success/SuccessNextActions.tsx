@@ -33,21 +33,30 @@ export default function SuccessNextActions({
         <ul className="space-y-3 text-charcoal/70 dark:text-white/70">
           <li>
             📋 Read the{" "}
-            <Link href="/faq" className="text-margarita underline">
+            <Link
+              href="/faq"
+              className="text-margarita dark:text-margarita-dark underline"
+            >
               day-of FAQ
             </Link>{" "}
             — power, space, ice and how early to start freezing.
           </li>
           <li>
             📞 Anything to change? Call{" "}
-            <a href={BUSINESS_PHONE_HREF} className="text-margarita underline">
+            <a
+              href={BUSINESS_PHONE_HREF}
+              className="text-margarita dark:text-margarita-dark underline"
+            >
               {BUSINESS_PHONE_DISPLAY}
             </a>{" "}
             and quote booking <strong>{bookingId}</strong>.
           </li>
           <li>
             🏢 Running a bar, restaurant or venue?{" "}
-            <Link href="/long-term-lease" className="text-margarita underline">
+            <Link
+              href="/long-term-lease"
+              className="text-margarita dark:text-margarita-dark underline"
+            >
               Long-term leases
             </Link>{" "}
             start at a fraction of the event rate.

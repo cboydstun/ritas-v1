@@ -443,7 +443,7 @@ export default async function PricingPage() {
 
                   <h4 className="text-lg font-semibold text-charcoal dark:text-white mb-4">
                     Mixer Options{" "}
-                    <span className="text-sm font-normal text-charcoal/60 dark:text-white/60">
+                    <span className="text-sm font-normal text-charcoal/70 dark:text-white/60">
                       (per tank, per day)
                     </span>
                   </h4>
@@ -455,7 +455,7 @@ export default async function PricingPage() {
                         </span>{" "}
                         ${formatPrice(table.mixerPrice("non-alcoholic"))}/day
                       </p>
-                      <p className="text-xs text-charcoal/50 dark:text-white/50 mb-2">
+                      <p className="text-xs text-charcoal/70 dark:text-white/60 mb-2">
                         {mixerDetails["non-alcoholic"].description}
                       </p>
                       <p>
@@ -464,7 +464,7 @@ export default async function PricingPage() {
                         </span>{" "}
                         ${formatPrice(table.mixerPrice("margarita"))}/day
                       </p>
-                      <p className="text-xs text-charcoal/50 dark:text-white/50">
+                      <p className="text-xs text-charcoal/70 dark:text-white/60">
                         {mixerDetails["margarita"].description}
                       </p>
                     </div>
@@ -475,7 +475,7 @@ export default async function PricingPage() {
                         </span>{" "}
                         ${formatPrice(table.mixerPrice("pina-colada"))}/day
                       </p>
-                      <p className="text-xs text-charcoal/50 dark:text-white/50 mb-2">
+                      <p className="text-xs text-charcoal/70 dark:text-white/60 mb-2">
                         {mixerDetails["pina-colada"].description}
                       </p>
                       <p>
@@ -485,7 +485,7 @@ export default async function PricingPage() {
                         ${formatPrice(table.mixerPrice("strawberry-daiquiri"))}
                         /day
                       </p>
-                      <p className="text-xs text-charcoal/50 dark:text-white/50">
+                      <p className="text-xs text-charcoal/70 dark:text-white/60">
                         {mixerDetails["strawberry-daiquiri"].description}
                       </p>
                     </div>
@@ -569,7 +569,7 @@ export default async function PricingPage() {
                           ${formatPrice(item.price)}/day
                         </span>
                         {item.allowQuantity && (
-                          <span className="text-xs text-charcoal/50 dark:text-white/50 bg-margarita/10 px-2 py-1 rounded-full">
+                          <span className="text-xs text-charcoal/70 dark:text-white/60 bg-margarita/10 px-2 py-1 rounded-full">
                             Quantity available
                           </span>
                         )}
@@ -597,7 +597,7 @@ export default async function PricingPage() {
                 <div className="space-y-4">
                   <div className="flex items-start">
                     <svg
-                      className="w-6 h-6 text-margarita mr-3 shrink-0 mt-1"
+                      className="w-6 h-6 text-margarita dark:text-margarita-dark mr-3 shrink-0 mt-1"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -621,7 +621,7 @@ export default async function PricingPage() {
                   </div>
                   <div className="flex items-start">
                     <svg
-                      className="w-6 h-6 text-margarita mr-3 shrink-0 mt-1"
+                      className="w-6 h-6 text-margarita dark:text-margarita-dark mr-3 shrink-0 mt-1"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -644,7 +644,7 @@ export default async function PricingPage() {
                   </div>
                   <div className="flex items-start">
                     <svg
-                      className="w-6 h-6 text-margarita mr-3 shrink-0 mt-1"
+                      className="w-6 h-6 text-margarita dark:text-margarita-dark mr-3 shrink-0 mt-1"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -670,7 +670,7 @@ export default async function PricingPage() {
                 <div className="space-y-4">
                   <div className="flex items-start">
                     <svg
-                      className="w-6 h-6 text-margarita mr-3 shrink-0 mt-1"
+                      className="w-6 h-6 text-margarita dark:text-margarita-dark mr-3 shrink-0 mt-1"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -693,7 +693,7 @@ export default async function PricingPage() {
                   </div>
                   <div className="flex items-start">
                     <svg
-                      className="w-6 h-6 text-margarita mr-3 shrink-0 mt-1"
+                      className="w-6 h-6 text-margarita dark:text-margarita-dark mr-3 shrink-0 mt-1"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -717,7 +717,7 @@ export default async function PricingPage() {
                   </div>
                   <div className="flex items-start">
                     <svg
-                      className="w-6 h-6 text-margarita mr-3 shrink-0 mt-1"
+                      className="w-6 h-6 text-margarita dark:text-margarita-dark mr-3 shrink-0 mt-1"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"

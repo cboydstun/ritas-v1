@@ -13,6 +13,12 @@
      for dark mode: on white it is 2.04:1 and fails badly. */
   --color-margarita-dark: #8ec63f;
   --color-teal: #026b62;
+  /* Same trap as the brand green, one shade over: #026b62 is 6.4:1 on white
+     but only 1.97:1 on --color-charcoal. Anywhere the teal is text or an icon
+     on the dark surface — the footer headings are on every page — use this
+     instead, which is 6.79:1 on charcoal. Dark mode only: on white it is
+     1.86:1 and is unreadable. */
+  --color-teal-dark: #2dd4bf;
   --color-orange: #ff9f40;
   --color-pink: #ff6f91;
   --color-light: #f7f7f7;

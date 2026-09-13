@@ -360,7 +360,10 @@ export default function LeaseInquiryForm({ tiers }: LeaseInquiryFormProps) {
 
       <div>
         <label htmlFor="message" className={labelClassName}>
-          Message <span className="text-charcoal/50">(optional)</span>
+          Message{" "}
+          <span className="text-charcoal/70 dark:text-white/60">
+            (optional)
+          </span>
         </label>
         <textarea
           id="message"

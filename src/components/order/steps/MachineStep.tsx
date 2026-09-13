@@ -426,13 +426,13 @@ export default function MachineStep({
         {/* Progress dots */}
         <div className="flex justify-center space-x-2 mt-4">
           <div
-            className={`w-3 h-3 rounded-full ${currentSubStep >= MachineSubStep.MachineType ? "bg-margarita" : "bg-gray-300"}`}
+            className={`w-3 h-3 rounded-full ${currentSubStep >= MachineSubStep.MachineType ? "bg-margarita" : "bg-gray-300 dark:bg-gray-600"}`}
           />
           <div
-            className={`w-3 h-3 rounded-full ${currentSubStep >= MachineSubStep.Mixer ? "bg-margarita" : "bg-gray-300"}`}
+            className={`w-3 h-3 rounded-full ${currentSubStep >= MachineSubStep.Mixer ? "bg-margarita" : "bg-gray-300 dark:bg-gray-600"}`}
           />
           <div
-            className={`w-3 h-3 rounded-full ${currentSubStep >= MachineSubStep.NextButton ? "bg-margarita" : "bg-gray-300"}`}
+            className={`w-3 h-3 rounded-full ${currentSubStep >= MachineSubStep.NextButton ? "bg-margarita" : "bg-gray-300 dark:bg-gray-600"}`}
           />
         </div>
       </div>
@@ -541,10 +541,10 @@ export default function MachineStep({
           <div
             role="status"
             aria-live="polite"
-            className="flex items-center space-x-2 text-sm text-charcoal/60 dark:text-white/60 px-4 py-3"
+            className="flex items-center space-x-2 text-sm text-charcoal/70 dark:text-white/60 px-4 py-3"
           >
             <svg
-              className="animate-spin h-4 w-4 text-margarita"
+              className="animate-spin h-4 w-4 text-margarita dark:text-margarita-dark"
               xmlns="http://www.w3.org/2000/svg"
               fill="none"
               viewBox="0 0 24 24"

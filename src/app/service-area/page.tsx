@@ -59,9 +59,12 @@ export default function ServiceAreaIndexPage() {
 
       <section className="max-w-5xl mx-auto px-4 py-16">
         <nav aria-label="Breadcrumb" className="mb-6">
-          <ol className="flex gap-2 text-sm text-charcoal/60 dark:text-white/60">
+          <ol className="flex gap-2 text-sm text-charcoal/70 dark:text-white/60">
             <li>
-              <Link href="/" className="hover:text-margarita underline">
+              <Link
+                href="/"
+                className="hover:text-margarita dark:hover:text-margarita-dark underline"
+              >
                 Home
               </Link>
             </li>
@@ -79,7 +82,10 @@ export default function ServiceAreaIndexPage() {
           every order pays plus a distance surcharge that every ZIP we serve
           sets for itself, both quoted at checkout before you book. Pick your
           area below for delivery notes and pricing, or{" "}
-          <a href={BUSINESS_PHONE_HREF} className="text-margarita underline">
+          <a
+            href={BUSINESS_PHONE_HREF}
+            className="text-margarita dark:text-margarita-dark underline"
+          >
             call {BUSINESS_PHONE_DISPLAY}
           </a>{" "}
           if you are just outside it — we can often still help.
@@ -101,7 +107,7 @@ export default function ServiceAreaIndexPage() {
                       <span className="font-medium text-charcoal dark:text-white">
                         {area.name}
                       </span>
-                      <span className="block text-sm text-charcoal/60 dark:text-white/60 mt-1">
+                      <span className="block text-sm text-charcoal/70 dark:text-white/60 mt-1">
                         {area.blurb}
                       </span>
                     </Link>
@@ -112,7 +118,7 @@ export default function ServiceAreaIndexPage() {
           ))}
         </div>
 
-        <p className="mt-12 text-sm text-charcoal/60 dark:text-white/60">
+        <p className="mt-12 text-sm text-charcoal/70 dark:text-white/60">
           {SERVICE_AREAS.length} areas covered, and growing.
         </p>
       </section>

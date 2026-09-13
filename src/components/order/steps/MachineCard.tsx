@@ -61,7 +61,7 @@ export default function MachineCard({
       </h3>
 
       {guestRange && (
-        <p className="text-xs text-charcoal/60 dark:text-white/60 mt-1">
+        <p className="text-xs text-charcoal/70 dark:text-white/60 mt-1">
           {guestRange.min}–{guestRange.max} guests
         </p>
       )}
@@ -70,9 +70,9 @@ export default function MachineCard({
         {description}
       </p>
 
-      <p className="text-margarita font-bold text-sm mt-2">
+      <p className="text-margarita dark:text-margarita-dark font-bold text-sm mt-2">
         ${basePrice.toFixed(2)}
-        <span className="text-xs font-normal text-charcoal/50 dark:text-white/50">
+        <span className="text-xs font-normal text-charcoal/70 dark:text-white/60">
           /day
         </span>
       </p>

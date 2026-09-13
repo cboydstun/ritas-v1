@@ -19,7 +19,7 @@ export default function Footer() {
 
           {/* Quick Links */}
           <div>
-            <h4 className="text-lg font-semibold text-teal mb-4">
+            <h4 className="text-lg font-semibold text-teal dark:text-teal-dark mb-4">
               Quick Links
             </h4>
             <ul className="space-y-2">
@@ -94,7 +94,9 @@ export default function Footer() {
 
           {/* Contact Info */}
           <div>
-            <h4 className="text-lg font-semibold text-teal mb-4">Contact Us</h4>
+            <h4 className="text-lg font-semibold text-teal dark:text-teal-dark mb-4">
+              Contact Us
+            </h4>
             <ul className="space-y-2 text-charcoal dark:text-white/80">
               <li>San Antonio, TX</li>
               <li>

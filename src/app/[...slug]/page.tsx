@@ -100,9 +100,12 @@ function Breadcrumbs({ page }: { page: LandingPageRecord }) {
 
   return (
     <nav aria-label="Breadcrumb" className="mb-6">
-      <ol className="flex flex-wrap gap-2 text-sm text-charcoal/60 dark:text-white/60">
+      <ol className="flex flex-wrap gap-2 text-sm text-charcoal/70 dark:text-white/60">
         <li>
-          <Link href="/" className="hover:text-margarita underline">
+          <Link
+            href="/"
+            className="hover:text-margarita dark:hover:text-margarita-dark underline"
+          >
             Home
           </Link>
         </li>
@@ -114,7 +117,7 @@ function Breadcrumbs({ page }: { page: LandingPageRecord }) {
             ) : (
               <Link
                 href={crumb.path}
-                className="hover:text-margarita underline"
+                className="hover:text-margarita dark:hover:text-margarita-dark underline"
               >
                 {crumb.name}
               </Link>
