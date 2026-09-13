@@ -1,5 +1,11 @@
 import React from "react";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import {
+  render,
+  screen,
+  fireEvent,
+  waitFor,
+  act,
+} from "@testing-library/react";
 import "@testing-library/jest-dom";
 import ReviewStep from "../ReviewStep";
 import { trackEvent } from "@/lib/analytics";
@@ -500,14 +506,70 @@ describe("ReviewStep — PayPal", () => {
         );
       });
 
+      // Asserted against the alert, not the page: the static Payment
+      // Information paragraph also says "we will invoice you", so a bare text
+      // match passes whether or not the handler ever ran.
       it("points the buyer at the invoice path on an SDK error", async () => {
         await renderConfigured();
         await paypalHandlers.createOrder!();
 
-        paypalHandlers.onError!(new Error("popup blocked"));
+        await act(async () => {
+          paypalHandlers.onError!(new Error("popup blocked"));
+        });
 
         await waitFor(() =>
-          expect(screen.getByText(/we will invoice you/i)).toBeInTheDocument(),
+          expect(screen.getByRole("alert")).toHaveTextContent(
+            /Something went wrong with PayPal/i,
+          ),
+        );
+      });
+
+      // The SDK routes a createOrder rejection to onError a tick later, so the
+      // generic copy used to overwrite the reason the server actually gave and
+      // the customer never learned which refusal they had hit.
+      it("keeps the server's reason when the SDK reports the same failure", async () => {
+        (global.fetch as jest.Mock).mockResolvedValueOnce({
+          ok: false,
+          json: async () => ({
+            message:
+              "Online payment is temporarily unavailable. You can still book now and we will invoice you.",
+          }),
+        });
+        await renderConfigured();
+
+        const thrown = await paypalHandlers.createOrder!().catch((e) => e);
+        await act(async () => {
+          paypalHandlers.onError!(thrown as Error);
+        });
+
+        expect(screen.getByRole("alert")).toHaveTextContent(
+          /Online payment is temporarily unavailable/i,
+        );
+        expect(screen.getByRole("alert")).not.toHaveTextContent(
+          /Something went wrong with PayPal/i,
+        );
+      });
+
+      // A later, unrelated SDK failure must still be able to speak.
+      it("speaks again on a fresh SDK error after an earlier refusal", async () => {
+        (global.fetch as jest.Mock).mockResolvedValueOnce({
+          ok: false,
+          json: async () => ({
+            message: "All single tank machines are booked",
+          }),
+        });
+        await renderConfigured();
+
+        const thrown = await paypalHandlers.createOrder!().catch((e) => e);
+        await act(async () => {
+          paypalHandlers.onError!(thrown as Error);
+        });
+        await act(async () => {
+          paypalHandlers.onError!(new Error("popup blocked"));
+        });
+
+        expect(screen.getByRole("alert")).toHaveTextContent(
+          /Something went wrong with PayPal/i,
         );
       });
     });

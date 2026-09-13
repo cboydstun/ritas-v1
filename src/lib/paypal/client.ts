@@ -81,7 +81,19 @@ export function resetPayPalTokenCache(): void {
   cachedToken = null;
 }
 
-/** The `issue` and `debug_id` out of a PayPal error body, if it has them. */
+/**
+ * The `issue` and `debug_id` out of a PayPal error body, if it has them.
+ *
+ * PayPal speaks **two** error shapes. Orders v2 answers with `details[0].issue`
+ * / `name` / `debug_id`; the OAuth token endpoint answers with
+ * `{ error, error_description }` and none of those. Reading only the first
+ * shape made every authentication failure log as `issue: undefined`, which is
+ * the difference between "PayPal said no" and "invalid_client".
+ *
+ * `error_description` is deliberately left out: it is a prose sentence that
+ * adds nothing the code does not, and the rule that a PayPal response body
+ * never reaches a log still holds.
+ */
 function describeFailure(body: unknown): { issue?: string; debugId?: string } {
   if (!body || typeof body !== "object") return {};
   const record = body as Record<string, unknown>;
@@ -100,7 +112,9 @@ function describeFailure(body: unknown): { issue?: string; debugId?: string } {
       ? fromDetails
       : typeof record.name === "string"
         ? record.name
-        : undefined;
+        : typeof record.error === "string"
+          ? record.error
+          : undefined;
 
   return { issue, debugId };
 }

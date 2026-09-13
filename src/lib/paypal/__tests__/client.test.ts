@@ -136,6 +136,10 @@ describe("PayPal client", () => {
       expect(fetchMock).not.toHaveBeenCalled();
     });
 
+    // The OAuth endpoint answers `{ error, error_description }` and none of
+    // the Orders fields, so reading only the Orders shape logged every bad
+    // credential as `issue: undefined` — which cannot be told apart from any
+    // other refusal.
     it("reports an authentication failure as a PayPalError", async () => {
       fetchMock.mockResolvedValueOnce(
         jsonResponse({ error: "invalid_client", debug_id: "dbg-1" }, 401),
@@ -144,8 +148,45 @@ describe("PayPal client", () => {
       await expect(getPayPalOrder("ORDER-1")).rejects.toMatchObject({
         name: "PayPalError",
         status: 401,
+        issue: "invalid_client",
         debugId: "dbg-1",
       });
+    });
+
+    // A real OAuth failure carries no debug_id at all; the code is the only
+    // thing that names it.
+    it("names the OAuth failure when PayPal sends no debug id", async () => {
+      fetchMock.mockResolvedValueOnce(
+        jsonResponse(
+          {
+            error: "invalid_client",
+            error_description: "Client Authentication failed",
+          },
+          401,
+        ),
+      );
+
+      await expect(getPayPalOrder("ORDER-1")).rejects.toMatchObject({
+        status: 401,
+        issue: "invalid_client",
+        debugId: undefined,
+      });
+    });
+
+    // The prose half is not a diagnostic and must not reach a log.
+    it("never carries the OAuth error_description", async () => {
+      fetchMock.mockResolvedValueOnce(
+        jsonResponse(
+          { error: "invalid_client", error_description: "Client Auth failed" },
+          401,
+        ),
+      );
+
+      const error = await getPayPalOrder("ORDER-1").catch((e) => e);
+
+      expect(JSON.stringify({ ...error, message: error.message })).not.toMatch(
+        /Client Auth failed/,
+      );
     });
 
     it("rejects when PayPal answers 200 with no token", async () => {
@@ -277,6 +318,28 @@ describe("PayPal client", () => {
         issue: ORDER_ALREADY_CAPTURED,
         debugId: "dbg-3",
         status: 422,
+      });
+    });
+
+    // Orders v2 can carry both; its own fields are the specific ones.
+    it("prefers the Orders issue over an OAuth-style error code", async () => {
+      fetchMock
+        .mockResolvedValueOnce(
+          jsonResponse({ access_token: "tok", expires_in: 3600 }),
+        )
+        .mockResolvedValueOnce(
+          jsonResponse(
+            {
+              error: "invalid_request",
+              name: "UNPROCESSABLE_ENTITY",
+              details: [{ issue: "INSTRUMENT_DECLINED" }],
+            },
+            422,
+          ),
+        );
+
+      await expect(getPayPalOrder("ORDER-1")).rejects.toMatchObject({
+        issue: "INSTRUMENT_DECLINED",
       });
     });
 

@@ -82,6 +82,16 @@ export default function ReviewStep({
   const heldBookingId = useRef<string | null>(null);
   const heldOrderId = useRef<string | null>(null);
 
+  // The message this attempt already put on screen, if any.
+  //
+  // `createOrder` rejecting is routed to `onError` by the SDK, so the specific
+  // reason — "All single tank machines are booked", "Online payment is
+  // temporarily unavailable…" — was being overwritten a tick later by the
+  // generic PayPal copy, and the customer never saw which of the two it was.
+  // The generic message is for an SDK-level failure with nothing on screen,
+  // which is the only case that leaves us with nothing better to say.
+  const shownFailure = useRef<string | null>(null);
+
   const {
     basePrice,
     mixerPrice,
@@ -243,12 +253,14 @@ export default function ReviewStep({
     // a programmatic click — and this checkbox is the only consent artefact
     // the booking has.
     if (!agreedToTerms) {
-      setSubmitError("Please agree to the terms and conditions");
+      shownFailure.current = "Please agree to the terms and conditions";
+      setSubmitError(shownFailure.current);
       throw new Error("Terms not accepted");
     }
 
     paypalFlowActive.current = true;
     setPaypalBusy(true);
+    shownFailure.current = null;
     setSubmitError(null);
 
     try {
@@ -290,11 +302,11 @@ export default function ReviewStep({
       // second time is harmless.
       paypalFlowActive.current = false;
       setPaypalBusy(false);
-      setSubmitError(
+      shownFailure.current =
         error instanceof Error
           ? error.message
-          : "We could not start the payment. Please try again.",
-      );
+          : "We could not start the payment. Please try again.";
+      setSubmitError(shownFailure.current);
       throw error;
     }
   };
@@ -354,6 +366,7 @@ export default function ReviewStep({
   const handleCancelPayPal = () => {
     paypalFlowActive.current = false;
     setPaypalBusy(false);
+    shownFailure.current = null;
     void releaseHold();
   };
 
@@ -361,12 +374,16 @@ export default function ReviewStep({
     console.error("PayPal error:", error);
     paypalFlowActive.current = false;
     setPaypalBusy(false);
-    // "Terms not accepted" already has its own message on screen.
-    if (error.message !== "Terms not accepted") {
+    // Only speak when this attempt has nothing on screen already. The reason
+    // `createOrder` refused — an unavailable machine, an unusable credential,
+    // an unticked terms box — is always more use to the customer than "went
+    // wrong", and the SDK delivers that rejection here a tick after we set it.
+    if (!shownFailure.current) {
       setSubmitError(
         "Something went wrong with PayPal. You can book now and we will invoice you instead.",
       );
     }
+    shownFailure.current = null;
     void releaseHold();
   };
 
