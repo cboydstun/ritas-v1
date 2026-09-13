@@ -544,13 +544,26 @@ The three PayPal routes, all under `src/app/api/v1/paypal/`:
 
   Both PayPal routes log a failure through **`payPalErrorDetail()`**
   (`status`, `issue`, `debug_id`, never the response body). `safeErrorSummary`
-  alone reduces a `PayPalError` to `{ name: 'PayPalError' }`: production ran
-  with an 11-character `PAYPAL_CLIENT_ID` against an 80-character
-  `NEXT_PUBLIC_PAYPAL_CLIENT_ID`, and identifying that plain `invalid_client`
-  401 took pulling the production secrets and calling PayPal by hand.
-  `warnOnClientIdMismatch()` now names it on the first request — one PayPal app
-  has one client id, so the two variables must hold the same string. It logs
-  lengths, never values, and is a **warning and never a gate**.
+  alone reduces a `PayPalError` to `{ name: 'PayPalError' }` — which says only
+  that PayPal said no, and is the whole of what production recorded when
+  checkout first failed there. That is why a real outage had to be chased
+  through the credentials instead of read out of the log.
+
+  `warnOnClientIdMismatch()` is the cheap companion check: one PayPal app has
+  one client id, but `NEXT_PUBLIC_PAYPAL_CLIENT_ID` is inlined at **build**
+  time while the server pair is read per request, so the two can diverge
+  across a deploy and fail every call with a 401 while the buttons still
+  render. It logs lengths, never values, and is a **warning and never a gate**.
+
+  **`vercel env pull` cannot verify any of this.** A variable flagged
+  _Sensitive_ comes back as the literal string `[ENCRYPTED]` — 11 characters,
+  identical for every such variable. Six of this project's production
+  variables read that way, `ADMIN_PASSWORD_HASH` and `CRON_SECRET` among them.
+  Authenticating to PayPal with that placeholder returns a perfectly genuine
+  `401 invalid_client`, which is a fact about the placeholder and not about
+  the stored credential. A pulled value equal to `[ENCRYPTED]` is **no
+  evidence at all**; the only honest check is the error PayPal returns to the
+  deployed route.
 
 - **`capture-order`** takes `{ orderId }` and **never an amount**. Before any
   PayPal call it refuses an already-paid booking (idempotent, returns the same

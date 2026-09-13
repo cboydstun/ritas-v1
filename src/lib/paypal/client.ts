@@ -343,13 +343,19 @@ export function resetPayPalClientIdWarning(): void {
  * One PayPal app has one client id, so the value inlined into the browser
  * bundle and the value this server authenticates with must be the same string.
  *
- * They were not: production carried an 80-character public id and an
- * 11-character server id, and every `create-order` died on a PayPal 401 that
- * logged as `{ name: 'PayPalError' }`. This line names that in the log on the
- * first request instead.
+ * They can silently diverge, because the public one is inlined at **build**
+ * time and the server pair is read at request time — so a redeploy can carry
+ * a new bundle against old credentials, or the reverse. A mismatch fails
+ * every call with a PayPal 401 and looks from the browser exactly like a
+ * working button, so it is worth one line in the log.
  *
  * A warning and never a gate — a deployment that supplies the public id only
  * at build time must not lose checkout over a log line.
+ *
+ * Do not try to confirm a mismatch with `vercel env pull`: a variable flagged
+ * **Sensitive** comes back as the literal string `[ENCRYPTED]`, which is 11
+ * characters and is not the credential. Reading two of those as a real value
+ * is how an 11-character client id got mistaken for the cause of an outage.
  */
 export function warnOnClientIdMismatch(): void {
   if (clientIdMismatchWarned) return;
