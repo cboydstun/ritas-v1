@@ -3,6 +3,8 @@ import { Rental } from "@/models/rental";
 import { Settings } from "@/models/settings";
 import { STALE_HOLD_MINUTES, isMachineAvailable } from "@/lib/inventory";
 import { sendBookingNotifications } from "@/lib/booking/notify";
+import { schedulePartnerEvent } from "@/lib/partner/send";
+import type { PartnerRentalLike } from "@/lib/partner/payload";
 import { safeErrorSummary } from "@/lib/safe-error";
 import {
   INSTRUMENT_DECLINED,
@@ -209,6 +211,30 @@ async function claimAndNotify(
       // there is no discrepancy on the settled path.
       ...(amountMatches ? {} : { capturedAmount: recordedAmount }),
     },
+  });
+
+  // bounce-v3 has not seen this booking before: the PayPal hold was written as
+  // `pending`, which is never emitted, so the shared calendar learns about it
+  // only once money has actually moved. `order.created`, not an update.
+  //
+  // The totals are the rebuilt ones, which pin `finalTotal` to the STORED
+  // price — the same reason the amount check above does. Rebuilding from
+  // today's settings would send a figure nobody was quoted.
+  schedulePartnerEvent({
+    event: "order.created",
+    partnerOrderId: String(won._id),
+    bookingId: won.bookingId,
+    rental: won as unknown as PartnerRentalLike,
+    totals: rebuildTotals(won, settings),
+    resolvedMixers: won.selectedMixers ?? [],
+    mixerLabel: (id: string) =>
+      settings?.mixers?.[id]?.label ??
+      mixerDetails[id as keyof typeof mixerDetails]?.label ??
+      id,
+    status: settled ? "confirmed" : "pending_payment",
+    paymentStatus: settled ? "completed" : "pending",
+    paymentMethod: "paypal",
+    capturedAmount: recordedAmount,
   });
 
   return {

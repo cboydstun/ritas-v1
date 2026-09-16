@@ -3,15 +3,21 @@
  */
 import { GET } from "../route";
 import { releaseStaleHolds } from "@/lib/inventory";
+import { sweepOutbox } from "@/lib/partner/send";
 
 jest.mock("@/lib/inventory", () => ({
   releaseStaleHolds: jest.fn(),
   STALE_HOLD_MINUTES: 120,
 }));
 
+jest.mock("@/lib/partner/send", () => ({
+  sweepOutbox: jest.fn(),
+}));
+
 const mockRelease = releaseStaleHolds as jest.MockedFunction<
   typeof releaseStaleHolds
 >;
+const mockSweep = sweepOutbox as jest.MockedFunction<typeof sweepOutbox>;
 
 const get = (authorization?: string) =>
   GET(
@@ -26,6 +32,7 @@ describe("GET /api/cron/release-holds", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockRelease.mockResolvedValue(3);
+    mockSweep.mockResolvedValue(0);
     process.env.CRON_SECRET = "s3cret";
   });
 
@@ -40,7 +47,28 @@ describe("GET /api/cron/release-holds", () => {
     await expect(response.json()).resolves.toEqual({
       released: 3,
       olderThanMinutes: 120,
+      partnerEventsDelivered: 0,
     });
+  });
+
+  // The daily floor under the outbox. Every booking request also sweeps a few
+  // rows, but a quiet week with bounce-v3 down would otherwise leave an order
+  // off the shared calendar indefinitely.
+  it("sweeps the partner outbox and reports what it delivered", async () => {
+    mockSweep.mockResolvedValue(2);
+
+    const response = await get("Bearer s3cret");
+
+    expect(mockSweep).toHaveBeenCalled();
+    await expect(response.json()).resolves.toMatchObject({
+      partnerEventsDelivered: 2,
+    });
+  });
+
+  it("does not sweep a request it refused", async () => {
+    await get("Bearer nope");
+
+    expect(mockSweep).not.toHaveBeenCalled();
   });
 
   it.each([

@@ -3,6 +3,8 @@ import { safeErrorSummary } from "@/lib/safe-error";
 import { guardPublicWrite } from "@/lib/api-guard";
 import { createBooking } from "@/lib/booking/createBooking";
 import { sendBookingNotifications } from "@/lib/booking/notify";
+import { schedulePartnerEvent, schedulePartnerSweep } from "@/lib/partner/send";
+import type { PartnerRentalLike } from "@/lib/partner/payload";
 
 /**
  * The public customer checkout. Takes the booking and collects no money —
@@ -48,6 +50,26 @@ export async function POST(request: Request) {
       resolvedMixers: result.resolvedMixers,
       payment: { paid: false },
     });
+
+    // The shared depot's calendar. Scheduled rather than awaited: the booking
+    // is committed and the customer is waiting, and bounce-v3 being slow or
+    // down must not slow down or fail a checkout that has already succeeded.
+    schedulePartnerEvent({
+      event: "order.created",
+      partnerOrderId: result.rentalId,
+      bookingId: result.bookingId,
+      // `createBooking` fills `selectedExtras` from the catalog, so these are
+      // full ExtraItems; `RentalLike` only describes the two fields the
+      // notification templates read.
+      rental: result.rental as PartnerRentalLike,
+      totals: result.totals,
+      resolvedMixers: result.resolvedMixers,
+      mixerLabel: result.mixerLabel,
+      status: "pending_payment",
+      paymentStatus: "pending",
+      paymentMethod: "invoice",
+    });
+    schedulePartnerSweep();
 
     return NextResponse.json({
       success: true,

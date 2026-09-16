@@ -1,6 +1,13 @@
 import { NextResponse } from "next/server";
 import { releaseStaleHolds, STALE_HOLD_MINUTES } from "@/lib/inventory";
 import { timingSafeEquals } from "@/lib/timing-safe";
+import { sweepOutbox } from "@/lib/partner/send";
+
+/**
+ * Higher than the opportunistic per-request sweep: this runs once a day and is
+ * the only pass that happens when the site is quiet.
+ */
+const PARTNER_SWEEP_CRON_LIMIT = 100;
 
 /**
  * Flips expired abandoned `pending` holds to cancelled. Submitted bookings
@@ -31,9 +38,19 @@ export async function GET(request: Request) {
 
   try {
     const released = await releaseStaleHolds();
+
+    // The outbox's floor. Every booking request also sweeps a few rows, so
+    // under any traffic at all recovery is minutes — but a quiet week with
+    // bounce-v3 down would otherwise leave an order off the shared calendar
+    // indefinitely. Awaited rather than scheduled: nothing is waiting on this
+    // response, and a cron that returns before its work is done is a cron that
+    // reports success it has not earned.
+    const partnerEventsDelivered = await sweepOutbox(PARTNER_SWEEP_CRON_LIMIT);
+
     return NextResponse.json({
       released,
       olderThanMinutes: STALE_HOLD_MINUTES,
+      partnerEventsDelivered,
     });
   } catch (error) {
     console.error("Error releasing stale holds:", error);
