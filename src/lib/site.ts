@@ -23,8 +23,8 @@ export const BUSINESS_ID = `${SITE_URL}/#business`;
  * JSON-LD, and a number that disagrees with itself across those is worse than
  * one that is merely hard to change.
  */
-export const BUSINESS_PHONE_E164 = "+15122100194";
-export const BUSINESS_PHONE_DISPLAY = "(512) 210-0194";
+export const BUSINESS_PHONE_E164 = "+12102936120";
+export const BUSINESS_PHONE_DISPLAY = "(210) 293-6120";
 export const BUSINESS_PHONE_HREF = `tel:${BUSINESS_PHONE_E164}`;
 
 /**

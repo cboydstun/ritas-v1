@@ -163,7 +163,7 @@ export default function ContactForm() {
           onChange={handleChange}
           required
           className={inputClassName}
-          placeholder="(512) 210-0194"
+          placeholder="(210) 555-0123"
         />
       </div>
       <div>

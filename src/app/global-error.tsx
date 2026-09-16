@@ -1,5 +1,7 @@
 "use client";
 
+import { BUSINESS_PHONE_DISPLAY } from "@/lib/site";
+
 /**
  * Last-resort boundary for a throw in the root layout, where `error.tsx`
  * cannot help because the layout that renders it is the thing that failed.
@@ -39,7 +41,8 @@ export default function GlobalError({
           </h1>
           <p style={{ margin: "1rem 0 1.5rem" }}>
             Sorry — the page could not be loaded. You can try again, or call us
-            on (512) 210-0194 and we will take your booking over the phone.
+            on {BUSINESS_PHONE_DISPLAY} and we will take your booking over the
+            phone.
           </p>
           <button
             onClick={reset}

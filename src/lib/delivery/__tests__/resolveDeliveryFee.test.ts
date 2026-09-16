@@ -1,3 +1,4 @@
+import { BUSINESS_PHONE_DISPLAY } from "@/lib/site";
 import {
   UNSERVICED_ZIP_CODE,
   resolveDeliveryFee,
@@ -28,7 +29,7 @@ describe("resolveDeliveryFee", () => {
     expect(result.ok).toBe(false);
     if (result.ok) throw new Error("expected a refusal");
     expect(result.code).toBe(UNSERVICED_ZIP_CODE);
-    expect(result.error).toMatch(/\(512\) 210-0194/);
+    expect(result.error).toContain(BUSINESS_PHONE_DISPLAY);
   });
 
   it("refuses a listed-but-unpriced ZIP", () => {

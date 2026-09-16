@@ -9,6 +9,7 @@ import {
   type BookingNotificationInput,
 } from "../notify";
 import type { OrderTotals } from "@/components/order/utils";
+import { BUSINESS_PHONE_HREF } from "@/lib/site";
 
 jest.mock("resend", () => {
   const send = jest.fn().mockResolvedValue({ data: {}, error: null });
@@ -117,6 +118,12 @@ describe("sendBookingNotifications", () => {
   afterEach(() => {
     process.env = ORIGINAL_ENV;
     jest.restoreAllMocks();
+  });
+
+  it("gives the customer the business number to call", async () => {
+    await sendBookingNotifications(input());
+
+    expect(lastEmailHtml()).toContain(`href="${BUSINESS_PHONE_HREF}"`);
   });
 
   describe("paid, clearing and unpaid copy", () => {
@@ -399,6 +406,7 @@ describe("sendPaymentFailedNotification", () => {
     expect(html).toContain("could not be completed");
     expect(html).toContain("no money has been taken");
     expect(html).toContain("BOOKID1234");
+    expect(html).toContain(`href="${BUSINESS_PHONE_HREF}"`);
     // Must not read as either of the other two states.
     expect(html).not.toContain("Paid in Full");
     expect(html).not.toContain("we will send you an invoice");

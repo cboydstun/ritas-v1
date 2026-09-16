@@ -1,7 +1,14 @@
 import { Metadata } from "next";
 import ContactForm from "@/components/contact/ContactForm";
 import BookingCTA from "@/components/BookingCTA";
-import { BUSINESS_ID, SITE_URL, breadcrumbJsonLd } from "@/lib/site";
+import {
+  BUSINESS_ID,
+  BUSINESS_PHONE_DISPLAY,
+  BUSINESS_PHONE_E164,
+  BUSINESS_PHONE_HREF,
+  SITE_URL,
+  breadcrumbJsonLd,
+} from "@/lib/site";
 
 // Add JSON-LD structured data for contact page
 const jsonLd = {
@@ -18,7 +25,7 @@ const jsonLd = {
     "@id": BUSINESS_ID,
     name: "SATX Ritas Rentals",
     image: `${SITE_URL}/og-image.jpg`,
-    telephone: "+1-512-210-0194",
+    telephone: BUSINESS_PHONE_E164,
     email: "satxbounce@gmail.com",
     openingHoursSpecification: [
       {
@@ -206,10 +213,10 @@ export default function ContactPage() {
                         Phone
                       </h3>
                       <a
-                        href="tel:+15122100194"
+                        href={BUSINESS_PHONE_HREF}
                         className="text-charcoal/80 dark:text-white/80 hover:text-orange transition-colors"
                       >
-                        (512) 210-0194
+                        {BUSINESS_PHONE_DISPLAY}
                       </a>
                     </div>
                   </div>

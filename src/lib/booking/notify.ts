@@ -3,6 +3,7 @@ import { Resend } from "resend";
 import { mixerDetails } from "@/lib/rental-data";
 import { formatPrice } from "@/lib/pricing";
 import { safeErrorSummary } from "@/lib/safe-error";
+import { BUSINESS_PHONE_DISPLAY, BUSINESS_PHONE_HREF } from "@/lib/site";
 import { escapeHtml } from "@/lib/validation";
 import { withTimeout, NOTIFICATION_TIMEOUT_MS } from "@/lib/with-timeout";
 import type { OrderTotals } from "@/components/order/utils";
@@ -439,7 +440,7 @@ export async function sendBookingNotifications(
           ${paymentInfoHtml}
 
           <p style="font-size: 16px; background-color: #fff; padding: 15px; border-radius: 6px; margin: 20px 0; border: 1px solid #e2e8f0;">
-            If you have any questions or need to make changes to your booking, please don't hesitate to contact us.
+            If you have any questions or need to make changes to your booking, please don't hesitate to contact us at <a href="${BUSINESS_PHONE_HREF}">${BUSINESS_PHONE_DISPLAY}</a>.
             Please reference your Booking ID <strong>${bookingId}</strong> in any communications.
           </p>
 
@@ -575,7 +576,7 @@ export async function sendPaymentFailedNotification(input: {
               <h3 style="margin: 0 0 10px 0; color: #991b1b;">What this means</h3>
               <p style="margin: 0; color: #991b1b; font-weight: 500;">
                 Your machine is no longer reserved for ${escapeHtml(rental.rentalDate)}. If you still want it,
-                please book again or call us and we will take it over the phone — we will do our best to hold the date.
+                please book again or call us at <a href="${BUSINESS_PHONE_HREF}">${BUSINESS_PHONE_DISPLAY}</a> and we will take it over the phone — we will do our best to hold the date.
               </p>
             </div>
             <p>

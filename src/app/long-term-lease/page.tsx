@@ -4,7 +4,13 @@ import LeaseTierCard from "@/components/lease/LeaseTierCard";
 import LeaseInquiryForm from "@/components/lease/LeaseInquiryForm";
 import { mergeLeaseTiers } from "@/lib/lease-data";
 import { getPublicSettings } from "@/lib/public-settings";
-import { SITE_URL, breadcrumbJsonLd } from "@/lib/site";
+import {
+  BUSINESS_PHONE_DISPLAY,
+  BUSINESS_PHONE_E164,
+  BUSINESS_PHONE_HREF,
+  SITE_URL,
+  breadcrumbJsonLd,
+} from "@/lib/site";
 
 const jsonLd = {
   "@context": "https://schema.org",
@@ -21,7 +27,7 @@ const jsonLd = {
     "@type": "Organization",
     name: "SATX Ritas Rentals",
     url: SITE_URL,
-    telephone: "+1-512-210-0194",
+    telephone: BUSINESS_PHONE_E164,
     email: "satxbounce@gmail.com",
     address: {
       "@type": "PostalAddress",
@@ -197,10 +203,10 @@ export default async function LongTermLeasePage() {
                 Ready to lease? Talk to our team.
               </p>
               <a
-                href="tel:+15122100194"
+                href={BUSINESS_PHONE_HREF}
                 className="inline-block px-8 py-3 bg-linear-to-r from-margarita to-teal text-white rounded-lg hover:shadow-lg hover:shadow-margarita/30 transform hover:-translate-y-1 transition-all duration-300 font-semibold"
               >
-                📞 Call (512) 210-0194
+                📞 Call {BUSINESS_PHONE_DISPLAY}
               </a>
               {docPdf && (
                 <a
