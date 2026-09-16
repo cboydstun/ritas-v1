@@ -24,6 +24,8 @@ import type { OrderFormData } from "@/components/order/types";
 import { spanInDays } from "@/lib/dates";
 import mongoose from "mongoose";
 import { guardAdminWrite } from "@/lib/api-guard";
+import { schedulePartnerEvent } from "@/lib/partner/send";
+import type { PartnerRentalLike } from "@/lib/partner/payload";
 
 /**
  * Fields an admin may change on an existing order.
@@ -80,6 +82,21 @@ export async function GET(request: Request, context: RouteParams) {
     if (!rental) {
       return NextResponse.json({ message: "Order not found" }, { status: 404 });
     }
+
+    // No totals: this deliberately carries no money at all. The receiver leaves
+    // the stored envelope alone when items and totals are absent, which is what
+    // stops a status flip re-pricing a months-old booking at today's settings —
+    // the same bug this route's own conditional repricing exists to avoid.
+    schedulePartnerEvent({
+      event:
+        rental.status === "cancelled" ? "order.cancelled" : "order.updated",
+      partnerOrderId: String(rental._id),
+      bookingId: rental.bookingId,
+      rental: rental as unknown as PartnerRentalLike,
+      status: rental.status,
+      paymentStatus: rental.payment?.status ?? "pending",
+      paymentMethod: rental.paypalOrderId ? "paypal" : "invoice",
+    });
 
     return NextResponse.json(rental);
   } catch (error) {
@@ -401,6 +418,19 @@ export async function DELETE(request: Request, context: RouteParams) {
     if (!rental) {
       return NextResponse.json({ message: "Order not found" }, { status: 404 });
     }
+
+    // A delete here is a cancellation there, never a delete. bounce-v3's copy is
+    // a record of a real booking that occupied the truck, and the books have to
+    // keep it.
+    schedulePartnerEvent({
+      event: "order.cancelled",
+      partnerOrderId: String(rental._id),
+      bookingId: rental.bookingId,
+      rental: rental as unknown as PartnerRentalLike,
+      status: "cancelled",
+      paymentStatus: rental.payment?.status ?? "pending",
+      paymentMethod: rental.paypalOrderId ? "paypal" : "invoice",
+    });
 
     return NextResponse.json(
       { message: "Order deleted successfully" },

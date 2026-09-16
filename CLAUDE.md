@@ -710,6 +710,94 @@ Server-side "is this date in the past" checks go through `todayLocalIso()` in `s
 
 `/api/save-booking` also re-runs `validateDeliveryTime` and the service-area gate — `resolveDeliveryFee()`, which replaced `isBexarCountyZipCode` — server-side. Both rules were browser-only, so a direct POST could book a 03:00 delivery to any ZIP in the country.
 
+### Partner Orders (bounce-v3)
+
+Both businesses run out of **one depot, with one truck and one crew**, so a
+margarita booking is a real claim on the same day's capacity. Orders are pushed
+to bounce-v3, which mirrors them into its own `Order` collection under a new
+`source: "partner"` — so its admin list, its calendar and its revenue rollups
+cover both businesses with no new UI. The push is **one-way**; nothing comes
+back.
+
+`PARTNER_WEBHOOK_URL` + `PARTNER_WEBHOOK_SECRET` unset ships the feature dark:
+no outbox rows, no requests, checkout byte-identical. Same contract the PayPal
+variables carry. The secret is deliberately **not** bounce-v3's
+`WEBHOOK_SHARED_SECRET`, which PartyPad holds — that endpoint writes orders
+carrying a caller-supplied total, so sharing the string would hand PartyPad that
+capability and couple two partners' key rotations together.
+
+**Emitted on:** submit (`/api/save-booking`), a settled PayPal capture
+(`settleCapturedBooking`, so the PayPal webhook's browser-died path is covered
+for free), admin create, any admin edit, an admin delete (as a **cancellation** —
+their copy is a record of a booking that occupied the truck), and the PayPal
+webhook's capture-denied and refunded branches.
+
+**`pending` holds are never emitted.** bounce-v3 learns about a booking only
+once it is submitted or paid, so an abandoned checkout is invisible to it and
+the stale-hold reaper has nothing to report.
+
+**Delivery is durable, because a booking that reaches the customer's inbox but
+never reaches the shared calendar is how the crew ends up double-committed on a
+Saturday.** `OutboundEvent` (`src/models/outboundEvent.ts`, collection
+`outbound_events`) is written in the same request that commits the booking;
+delivery is attempted after the response via `after()`, and anything still
+`pending` is retried — from `/api/cron/release-holds`, and opportunistically on
+the next booking, the same belt-and-braces `createBooking` already applies to
+`releaseStaleHolds`. The opportunistic sweep is what makes recovery minutes
+rather than a day: this project is on the **Hobby plan**, where no cron may run
+more often than daily. The `eventId` is minted once and reused on every
+attempt — that is what the receiver dedupes on, and re-minting per attempt is
+the defect in bounce-v3's own PartyPad receiver.
+
+A 2xx **and a 409** both count as delivered; 409 is the receiver saying it
+already has the event. Any other 4xx is terminal — the payload is frozen, so
+retrying it forever would burn the receiver's consecutive-failure budget over a
+message it can never accept.
+
+**A status change carries no money at all.** `buildStatusPayload` omits items
+and totals, and bounce-v3 leaves the stored envelope alone when both are
+absent. Rebuilding totals for a months-old booking would price it at today's
+`Settings` — the exact bug the admin `PUT` route's conditional repricing exists
+to avoid.
+
+**The money mapping is the part that must be exactly right.** bounce-v3's
+`computeOrderTotals` taxes the processing fee the same way we do, so the two
+agree — but **its `subtotal` is not ours**: it includes the delivery fee _and_
+the processing fee, and ours includes neither. Supplying all nine money fields
+is what keeps its money-envelope hook out of its own branch, so it re-prices
+nothing.
+
+**Add-on money travels as one aggregate line, not per extra.** This is not
+presentation. `computeOrderTotal` prices an extra by looking its **id** up in
+the catalog and drops an id the catalog no longer knows, so a line built from
+the stored `extra.price` disagrees with the total the moment an admin retires an
+add-on between a booking being taken and its payment being captured — and the
+receiver rejects the whole event over the difference, so the order never reaches
+the shared calendar and nothing says why. Each extra still appears **by name at
+zero**, because the crew loading the truck needs to know what the booking
+bought. Mixers ride at zero for the mirror-image reason: they are already inside
+`perDayRate`. A multi-day machine goes as `quantity: days, unitPrice: per-day
+rate` — bounce-v3's item hook silently rewrites `totalPrice` to
+`quantity × unitPrice`, and its receiver refuses a payload where the two
+disagree.
+
+**The seam between the two apps is tested in exactly one place**, and it has to
+be: each side's own tests can only check its own arithmetic.
+`src/lib/partner/__tests__/contract-fixtures.test.ts` generates payloads from
+the real builder; `bounce-v3/src/services/__tests__/partnerOrderContract.test.ts`
+runs them through the real receiver and asserts the stored total is the figure
+we quoted. Building that check is what caught the add-on defect above. Its first
+version used add-on ids the catalog did not know, so every `extrasTotal` was
+zero and it passed while exercising nothing — hence the guard that at least one
+case carries a priced add-on.
+
+`lib/mongodb` and the outbox model are imported **lazily** inside
+`src/lib/partner/send.ts`. A top-level import would take down the cron route and
+`capturePayPalBooking` at load time — in the CI build against an unreachable
+database, and in every route test that does not think it is touching Mongo. The
+event id uses `crypto.randomUUID` rather than `nanoid` for the same reason:
+nanoid is ESM-only and would break those route tests on load.
+
 ### Public API Hardening
 
 All four public write routes (`/api/save-booking`, `/api/v1/contacts`, `/api/v1/lease-inquiries`, `/api/v1/analytics/fingerprint`) go through `guardPublicWrite()` in `src/lib/api-guard.ts`, which applies a per-IP fixed-window rate limit and a body-size cap before parsing JSON. The limiter (`src/lib/rate-limit.ts`) uses Upstash Redis when it is configured and falls back to per-instance memory otherwise. It accepts **either** `UPSTASH_REDIS_REST_URL`/`_TOKEN` (Upstash's own names, for a hand-configured deployment) **or** `KV_REST_API_URL`/`_TOKEN` (what the Vercel Marketplace integration injects). Reading only the first meant the integration could be provisioned, connected and billed while every request silently used the memory limiter — invisible, because the fallback works. Do not duplicate the values under both names; rotating the resource's token in Vercel should flow through without a second edit. Each route then parses through a zod schema and builds its Mongo document from an explicit field list — never `Model.create(body)`.
@@ -921,6 +1009,8 @@ Global shared types live in `src/types/index.ts` (`MachineType`, `MixerType`, `P
 - `src/lib/booking/notify.ts` — `sendBookingNotifications()`. Twilio + Resend, a three-way paid / clearing / unpaid copy branch. Plus `sendPaymentFailedNotification()` for a capture that never cleared, and `sendOperatorSms()` / `settleOperatorSms()` for events only the operator needs. **Never throws** — the rental is already committed when any of them runs
 - `src/lib/booking/capturePayPalBooking.ts` — `capturePayPalBooking()` and `settleCapturedBooking()`. The capture pipeline, shared by the capture route and the webhook. Returns a discriminated result, never a `NextResponse`
 - `src/lib/paypal/client.ts` — `createPayPalOrder()`, `capturePayPalOrder()`, `getPayPalOrder()`, `firstCapture()`, `paypalConfigured()`. No SDK; `PAYPAL_API_BASE` is live and hard-coded
+- `src/lib/partner/payload.ts` — `buildOrderPayload()`, `buildStatusPayload()`, `buildLineItems()`. The wire contract with bounce-v3. **Zod-free and mongoose-free on purpose**
+- `src/lib/partner/send.ts` — `schedulePartnerEvent()`, `schedulePartnerSweep()`, `sweepOutbox()`, `partnerWebhookConfigured()`. HMAC signing, the outbox, and the retry ladder. Imports Mongo lazily
 - `src/lib/analytics.ts` — `trackEvent()`, the only sanctioned path to `window.gtag`; `pushDataLayer()` / `pushDataLayerThen()` for GTM, and `LEAD_VALUES` / `ANALYTICS_CURRENCY`
 - `src/lib/enhanced-conversions.ts` — `hashUserData()`. Browser-side SHA-256 of email/phone for Google Ads enhanced conversions. Never throws, returns `undefined` on consent denial or an insecure origin
 - `src/lib/site.ts` — `SITE_URL`, `BUSINESS_ID`, the business phone constants, and `breadcrumbJsonLd()`
@@ -954,6 +1044,12 @@ KV_REST_API_URL, KV_REST_API_TOKEN                 (shared rate-limit store; set
                                                     Upstash Marketplace integration. Falls back
                                                     to per-instance memory when absent. The
                                                     UPSTASH_REDIS_REST_* names also work.)
+PARTNER_WEBHOOK_URL, PARTNER_WEBHOOK_SECRET        (optional. Pushes orders to
+                                                    bounce-v3 so the shared depot has one
+                                                    calendar. Both unset ships the feature
+                                                    dark. NOT bounce-v3's
+                                                    WEBHOOK_SHARED_SECRET, which PartyPad
+                                                    holds.)
 NEXT_PUBLIC_GOOGLE_REVIEW_URL   (optional; unset hides the review CTA on /success)
 ```
 

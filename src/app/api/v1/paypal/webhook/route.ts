@@ -7,6 +7,8 @@ import {
   capturePayPalBooking,
   settleCapturedBooking,
 } from "@/lib/booking/capturePayPalBooking";
+import { schedulePartnerEvent } from "@/lib/partner/send";
+import type { PartnerRentalLike } from "@/lib/partner/payload";
 import {
   sendOperatorSms,
   sendPaymentFailedNotification,
@@ -246,6 +248,18 @@ async function handleCaptureDenied(event: WebhookEvent) {
     transactionId: captureId,
   });
 
+  // The unit is back on sale here, so the shared calendar has to hear about it
+  // or the crew keeps a slot reserved for a booking that no longer exists.
+  schedulePartnerEvent({
+    event: "order.cancelled",
+    partnerOrderId: String(released._id),
+    bookingId: released.bookingId,
+    rental: released as unknown as PartnerRentalLike,
+    status: "cancelled",
+    paymentStatus: "failed",
+    paymentMethod: "paypal",
+  });
+
   console.log("PAYPAL_WEBHOOK_CAPTURE_DENIED", {
     bookingId: released.bookingId,
   });
@@ -282,6 +296,19 @@ async function handleRefunded(event: WebhookEvent) {
       `The booking status is unchanged — cancel it in the admin if the rental is off.`,
   );
   await settleOperatorSms(sms);
+
+  // `order.updated`, never a cancellation — the rental status is deliberately
+  // untouched here, and a refund on a booking that is still going ahead must
+  // not take it off the shared calendar either.
+  schedulePartnerEvent({
+    event: "order.updated",
+    partnerOrderId: String(refunded._id),
+    bookingId: refunded.bookingId,
+    rental: refunded as unknown as PartnerRentalLike,
+    status: refunded.status,
+    paymentStatus: "refunded",
+    paymentMethod: "paypal",
+  });
 
   console.log("PAYPAL_WEBHOOK_REFUND_RECORDED", {
     bookingId: refunded.bookingId,

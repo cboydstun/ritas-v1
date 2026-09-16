@@ -21,6 +21,9 @@ import type { OrderFormData } from "@/components/order/types";
 import { nanoid } from "nanoid";
 import { adminListLimit, adminListHeaders } from "@/lib/admin-list";
 import { guardAdminWrite } from "@/lib/api-guard";
+import { mixerDetails } from "@/lib/rental-data";
+import { schedulePartnerEvent } from "@/lib/partner/send";
+import type { PartnerRentalLike } from "@/lib/partner/payload";
 
 /** Fields an admin may set when creating an order by hand. */
 const CREATABLE_ORDER_FIELDS = [
@@ -241,6 +244,24 @@ export async function POST(request: Request) {
 
     const rental = new Rental(doc);
     const savedRental = await rental.save();
+
+    // Phone bookings belong on the shared calendar too — they are the same
+    // truck on the same day as anything taken through the wizard.
+    schedulePartnerEvent({
+      event: "order.created",
+      partnerOrderId: String(savedRental._id),
+      bookingId: savedRental.bookingId,
+      rental: savedRental as unknown as PartnerRentalLike,
+      totals,
+      resolvedMixers,
+      mixerLabel: (id: string) =>
+        settingsDoc?.mixers?.[id]?.label ??
+        mixerDetails[id as keyof typeof mixerDetails]?.label ??
+        id,
+      status: savedRental.status,
+      paymentStatus: savedRental.payment?.status ?? "pending",
+      paymentMethod: "invoice",
+    });
 
     return NextResponse.json(savedRental, { status: 201 });
   } catch (error) {
