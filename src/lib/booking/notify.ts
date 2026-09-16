@@ -472,3 +472,130 @@ export async function sendBookingNotifications(
     }
   }
 }
+
+/**
+ * One operator SMS, fire-and-log.
+ *
+ * The operator is the only party some events concern — a refund issued from
+ * the PayPal dashboard changes nothing the customer needs to hear about, but
+ * it must not pass unseen either. **Never throws**: every caller runs after a
+ * write that stands regardless.
+ *
+ * Returns the in-flight promise rather than awaiting it, so a caller sending
+ * an email as well can overlap the two instead of serialising two full
+ * timeout windows.
+ */
+export function sendOperatorSms(body: string): Promise<unknown> | null {
+  const accountSid = process.env.TWILIO_ACCOUNT_SID;
+  const authToken = process.env.TWILIO_AUTH_TOKEN;
+  const fromPhone = process.env.TWILIO_PHONE_NUMBER;
+  const toPhone = process.env.USER_PHONE_NUMBER;
+  if (!accountSid || !authToken || !fromPhone || !toPhone) return null;
+
+  try {
+    // Inside the try: twilio() throws synchronously on a malformed SID.
+    const twilioClient = twilio(accountSid, authToken);
+    return withTimeout(
+      twilioClient.messages.create({ body, from: fromPhone, to: toPhone }),
+      NOTIFICATION_TIMEOUT_MS,
+      "Twilio",
+    );
+  } catch (smsError) {
+    console.error("Error sending operator SMS:", safeErrorSummary(smsError));
+    return null;
+  }
+}
+
+/** Await an operator SMS started earlier, swallowing and logging a failure. */
+export async function settleOperatorSms(
+  inFlight: Promise<unknown> | null,
+): Promise<void> {
+  if (!inFlight) return;
+  try {
+    await inFlight;
+  } catch (smsError) {
+    console.error("Error sending operator SMS:", safeErrorSummary(smsError));
+  }
+}
+
+/**
+ * Tell both sides that a payment PayPal was clearing has failed.
+ *
+ * This is not one of `BookingPayment`'s three states: no money arrived, and
+ * the booking has been released. Its email has no line items to print — it is
+ * a retraction, not a confirmation — so folding it into
+ * `sendBookingNotifications` would bend that function's shape around a case
+ * that shares none of its body.
+ *
+ * It exists because the customer is holding an email that says their payment
+ * is clearing. Cancelling the booking without saying so would take their date
+ * away and tell them nothing, and they would find out on the day.
+ *
+ * **Never throws**, for the same reason its neighbour does not: the rental has
+ * already been updated by the time this runs and stands either way.
+ */
+export async function sendPaymentFailedNotification(input: {
+  rental: RentalLike;
+  bookingId: string;
+  transactionId: string;
+}): Promise<void> {
+  const { rental, bookingId, transactionId } = input;
+
+  const smsInFlight = sendOperatorSms(
+    `⚠️ PAYMENT FAILED - BOOKING RELEASED\n` +
+      `Booking ID: ${bookingId}\n` +
+      `Date: ${rental.rentalDate} ${formatDeliveryTime(rental.rentalTime)}\n` +
+      `Machine: ${rental.machineType}\n` +
+      `Customer: ${rental.customer.name} ${rental.customer.phone}\n` +
+      `Txn: ${transactionId}\n` +
+      `PayPal could not clear this payment. The unit is back on sale and the customer has been emailed.`,
+  );
+
+  try {
+    // Inside the try: the Resend constructor throws when RESEND_API_KEY is
+    // unset, before any promise exists to reject.
+    const resend = new Resend(process.env.RESEND_API_KEY);
+    await withTimeout(
+      resend.emails.send({
+        from: "SATX Ritas Rentals <bookings@satxritas.com>",
+        to: [rental.customer.email],
+        bcc: ["satxbounce@gmail.com"],
+        subject:
+          "SATX Ritas Margarita Rentals - Payment Could Not Be Completed",
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #2b6cb0;">We could not complete your payment</h2>
+            <p>Hi ${escapeHtml(rental.customer.name)},</p>
+            <p>
+              We let you know earlier that PayPal was still clearing your payment for booking
+              <strong>${escapeHtml(bookingId)}</strong>. PayPal has now told us it could not be completed,
+              so <strong>no money has been taken</strong> and the booking has been released.
+            </p>
+            <div style="background-color: #fef2f2; border: 1px solid #fecaca; padding: 15px; border-radius: 6px; margin: 20px 0;">
+              <h3 style="margin: 0 0 10px 0; color: #991b1b;">What this means</h3>
+              <p style="margin: 0; color: #991b1b; font-weight: 500;">
+                Your machine is no longer reserved for ${escapeHtml(rental.rentalDate)}. If you still want it,
+                please book again or call us and we will take it over the phone — we will do our best to hold the date.
+              </p>
+            </div>
+            <p>
+              Booking reference: <strong>${escapeHtml(bookingId)}</strong><br />
+              Requested date: ${escapeHtml(rental.rentalDate)}
+            </p>
+            <p>We are sorry for the trouble.</p>
+            <p style="color: #666; font-size: 14px;">SATX Ritas Margarita Rentals</p>
+          </div>
+        `,
+      }),
+      NOTIFICATION_TIMEOUT_MS,
+      "Resend",
+    );
+  } catch (emailError) {
+    console.error(
+      "Error sending payment-failed email:",
+      safeErrorSummary(emailError),
+    );
+  }
+
+  await settleOperatorSms(smsInFlight);
+}

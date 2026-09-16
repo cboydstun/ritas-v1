@@ -5,6 +5,7 @@ import {
   formatDeliveryTime,
   pct,
   sendBookingNotifications,
+  sendPaymentFailedNotification,
   type BookingNotificationInput,
 } from "../notify";
 import type { OrderTotals } from "@/components/order/utils";
@@ -363,6 +364,84 @@ describe("sendBookingNotifications", () => {
       expect(twilioMock.__create).not.toHaveBeenCalled();
       expect(resendMock.__send).toHaveBeenCalled();
     });
+  });
+});
+
+describe("sendPaymentFailedNotification", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    process.env = {
+      ...ORIGINAL_ENV,
+      TWILIO_ACCOUNT_SID: "sid",
+      TWILIO_AUTH_TOKEN: "token",
+      TWILIO_PHONE_NUMBER: "+15125550000",
+      USER_PHONE_NUMBER: "+15125550001",
+      RESEND_API_KEY: "re_test",
+    };
+    jest.spyOn(console, "error").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    process.env = ORIGINAL_ENV;
+    jest.restoreAllMocks();
+  });
+
+  // The customer is holding an email that says their payment is clearing.
+  // Cancelling in silence takes their date away and tells them nothing.
+  it("tells the customer the payment failed and the booking is released", async () => {
+    await sendPaymentFailedNotification({
+      rental: input().rental,
+      bookingId: "BOOKID1234",
+      transactionId: "CAP999",
+    });
+
+    const html = lastEmailHtml();
+    expect(html).toContain("could not be completed");
+    expect(html).toContain("no money has been taken");
+    expect(html).toContain("BOOKID1234");
+    // Must not read as either of the other two states.
+    expect(html).not.toContain("Paid in Full");
+    expect(html).not.toContain("we will send you an invoice");
+  });
+
+  it("tells the operator the unit is back on sale", async () => {
+    await sendPaymentFailedNotification({
+      rental: input().rental,
+      bookingId: "BOOKID1234",
+      transactionId: "CAP999",
+    });
+
+    expect(lastSmsBody()).toContain("PAYMENT FAILED - BOOKING RELEASED");
+    expect(lastSmsBody()).toContain("CAP999");
+  });
+
+  it("escapes customer-supplied values", async () => {
+    const rental = input().rental;
+    rental.customer.name = '<script>alert("x")</script>';
+
+    await sendPaymentFailedNotification({
+      rental,
+      bookingId: "BOOKID1234",
+      transactionId: "CAP999",
+    });
+
+    expect(lastEmailHtml()).not.toContain("<script>");
+    expect(lastEmailHtml()).toContain("&lt;script&gt;");
+  });
+
+  // Same contract as its neighbour: the rental is already updated when this
+  // runs, so an escape here would report a failure that did not happen.
+  it("never throws when a channel fails", async () => {
+    resendMock.__send.mockRejectedValueOnce(new Error("resend down"));
+    twilioMock.__create.mockRejectedValueOnce(new Error("twilio down"));
+
+    await expect(
+      sendPaymentFailedNotification({
+        rental: input().rental,
+        bookingId: "BOOKID1234",
+        transactionId: "CAP999",
+      }),
+    ).resolves.toBeUndefined();
   });
 });
 

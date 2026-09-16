@@ -99,7 +99,13 @@ So a machine type is bookable while units remain, not simply because one rental 
 
 A third option, `tieBreakId`, settles the same-millisecond case. `createdAt` comes from `default: Date.now`, so two requests constructed in the same tick each fell outside the other's `$lt` cutoff and both survived, putting inventory one over. The id comparison decides which of the two counts as having been there first.
 
-**Only `pending` expires.** `releaseStaleHolds()` cancels `pending` holds older than `STALE_HOLD_MINUTES` (120); it runs from the `/api/cron/release-holds` Vercel cron (see `vercel.json`, guarded by `CRON_SECRET`) and again at the top of `/api/save-booking` as a safety net. `pending_payment` is the status a _submitted_ booking carries — the customer has a confirmation email and is invoiced out of band — and nothing promotes it to `confirmed` except a manual admin edit. Reaping it cancelled every real booking two hours after it was placed and put the machine back on sale. Do not add it back to either the reaper or the query-time cutoff.
+**Only `pending` expires.** `releaseStaleHolds()` cancels `pending` holds older than `STALE_HOLD_MINUTES` (120); it runs from the `/api/cron/release-holds` Vercel cron (see `vercel.json`, guarded by `PAYPAL_WEBHOOK_ID                                  (the webhook's id from the PayPal
+                                                    dashboard, what its signature is
+                                                    verified against. Unset ships the
+                                                    webhook dark. Injected at deploy
+                                                    time like the rest, so a change
+                                                    needs a redeploy.)
+CRON_SECRET`) and again at the top of `/api/save-booking` as a safety net. `pending_payment` is the status a _submitted_ booking carries — the customer has a confirmation email and is invoiced out of band — and nothing promotes it to `confirmed` except a manual admin edit. Reaping it cancelled every real booking two hours after it was placed and put the machine back on sale. Do not add it back to either the reaper or the query-time cutoff.
 
 **`pending` now means exactly one thing: a PayPal window is open.** It is
 written only by `POST /api/v1/paypal/create-order`, so `STALE_HOLD_MINUTES` has
@@ -596,12 +602,14 @@ The three PayPal routes, all under `src/app/api/v1/paypal/`:
   returns `{ bookingId, settled, amount }`. `ReviewStep` passes those through
   to `buildSuccessUrl`, which flags the third state as `clearing=1`, and
   reports the captured amount as the conversion value. **Nothing promotes a
-  `PENDING` capture to `confirmed`** — that still needs the webhook below, but
-  the customer and the operator now both know to expect it.
+  `PENDING` capture to `confirmed`** from this route — that is the webhook's
+  job, below.
 
 - **`release-hold`** hands the machine back on cancel. Keyed on the unguessable
   `paypalOrderId` and filtered to an unpaid `pending` row, so it can never
   delete someone else's booking.
+- **`webhook`** is PayPal's side of the conversation, and the only channel that
+  works when the buyer's browser is gone. See **The webhook** below.
 
 **One cart, one hold.** `createOrder` fires on every button click and there are
 three buttons, so the browser keeps the `bookingId` and sends it as
@@ -620,12 +628,63 @@ scope with a 60s skew and a clear-and-retry-once on 401. Orders carry
 `user_action: "PAY_NOW"`. Log the `debug_id`, never the response body, which
 can echo payer identifiers.
 
-**Known gap, deliberate:** a browser that dies between PayPal approval and our
-capture call, and an eCheck capture PayPal later settles, which nothing
-promotes. No money moves, the hold is reaped, the buyer sees a limbo entry
-in PayPal. Closing it needs a `CHECKOUT.ORDER.APPROVED` webhook with signature
-verification, which is its own piece of work. Refunds are done in the PayPal
-dashboard; the admin UI is not involved.
+### The webhook
+
+`POST /api/v1/paypal/webhook` closes the two gaps only PayPal can report: an
+approval whose capture call never arrived because the browser died, and an
+eCheck or risk-reviewed capture that settles days later. Neither has any other
+channel.
+
+**The signature check is the entire authentication.** The route is public and
+PayPal carries no secret of ours, so `verifyWebhookSignature()` runs before any
+read, capture or write — anything claiming a payment settled is hostile until
+PayPal confirms it sent the message. `PAYPAL_WEBHOOK_ID` unset ships it dark
+(503, so PayPal retries once configured).
+
+**A verification that throws is not a verification that says no**, and
+conflating them silently discards real paid-order notifications during a
+credential blip. `verifyWebhookSignature` returns `false` only for an explicit
+non-`SUCCESS` status; a transport failure throws, and the route answers 503 so
+PayPal redelivers. A missing transmission header is a refusal without a round
+trip.
+
+Four event types; everything else is logged and answered **200**, because
+PayPal retries a non-2xx for days and a type we will never handle is not a
+failure:
+
+- **`CHECKOUT.ORDER.APPROVED`** → `capturePayPalBooking()`, the same function
+  the customer-facing route calls, so every pre-flight refusal applies. The one
+  that matters: an expired hold whose machine has since gone is **not**
+  captured, or the webhook takes money for a unit already sold to someone else.
+- **`PAYMENT.CAPTURE.COMPLETED`** → the eCheck promotion, via
+  `settleCapturedBooking()`. It must **not** capture again — the money was
+  taken when the capture was made — which is why that half is separable. The
+  **stored price** is still what the amount is checked against.
+- **`PAYMENT.CAPTURE.DENIED`** → no money arrived: `payment.status: "failed"`,
+  the rental `cancelled` so the unit goes back on sale, an operator SMS, **and
+  a customer email**. They are holding an email that says the payment is
+  clearing; taking their date away in silence is the worse failure.
+- **`PAYMENT.CAPTURE.REFUNDED`** → **recorded, never acted on.**
+  `payment.status: "refunded"` and an operator SMS, with `status` deliberately
+  untouched: a partial refund, or a goodwill gesture on a rental still going
+  ahead, must not put the machine back on sale behind the operator's back.
+  Issuing a refund is still dashboard-only.
+
+**Idempotency has no event store, deliberately.** Every path is filtered on the
+status it expects to find — the already-paid early return absorbs a repeated
+`APPROVED`, and the conditional claim (`"payment.status": { $ne: "completed" }`)
+absorbs a repeated `COMPLETED` — so a redelivery matches nothing and notifies
+nobody twice. A processed-event collection would be a second source of truth
+for a question the claim already answers.
+
+**`src/lib/booking/capturePayPalBooking.ts` owns the whole capture pipeline**,
+extracted from the route the same way `createBooking` was extracted from
+`/api/save-booking`, because the webhook needs identical answers to "should we
+take this money". It returns a discriminated result and never a
+`NextResponse`. `capture-order/__tests__/route.test.ts` passing **unchanged**
+is what proves that extraction was inert — treat any edit it needs as evidence
+the behaviour moved. `PAYPAL_CAPTURE_ORPHANED` is logged inside
+`settleCapturedBooking`, the only scope that knows a capture happened.
 
 `/api/save-booking` never trusts the request body for money:
 
@@ -859,7 +918,8 @@ Global shared types live in `src/types/index.ts` (`MachineType`, `MixerType`, `P
 - `src/lib/landing-audit.ts` — `auditLandingPage()`, `sectionsToHtml()`. Same contract
 - `src/lib/landing-jsonld.ts` — `buildServiceJsonLd()`, `buildWebPageJsonLd()`, `buildFaqJsonLd()`
 - `src/lib/booking/createBooking.ts` — the whole customer booking pipeline, shared by `/api/save-booking` and the PayPal create-order route. Owns the zod parse; returns a discriminated result and never a `NextResponse`
-- `src/lib/booking/notify.ts` — `sendBookingNotifications()`. Twilio + Resend, a three-way paid / clearing / unpaid copy branch. **Never throws** — the rental is already committed when it runs
+- `src/lib/booking/notify.ts` — `sendBookingNotifications()`. Twilio + Resend, a three-way paid / clearing / unpaid copy branch. Plus `sendPaymentFailedNotification()` for a capture that never cleared, and `sendOperatorSms()` / `settleOperatorSms()` for events only the operator needs. **Never throws** — the rental is already committed when any of them runs
+- `src/lib/booking/capturePayPalBooking.ts` — `capturePayPalBooking()` and `settleCapturedBooking()`. The capture pipeline, shared by the capture route and the webhook. Returns a discriminated result, never a `NextResponse`
 - `src/lib/paypal/client.ts` — `createPayPalOrder()`, `capturePayPalOrder()`, `getPayPalOrder()`, `firstCapture()`, `paypalConfigured()`. No SDK; `PAYPAL_API_BASE` is live and hard-coded
 - `src/lib/analytics.ts` — `trackEvent()`, the only sanctioned path to `window.gtag`; `pushDataLayer()` / `pushDataLayerThen()` for GTM, and `LEAD_VALUES` / `ANALYTICS_CURRENCY`
 - `src/lib/enhanced-conversions.ts` — `hashUserData()`. Browser-side SHA-256 of email/phone for Google Ads enhanced conversions. Never throws, returns `undefined` on consent denial or an insecure origin

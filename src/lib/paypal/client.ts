@@ -309,6 +309,64 @@ export function firstCapture(order: PayPalOrder): PayPalCapture | null {
   return order.purchase_units?.[0]?.payments?.captures?.[0] ?? null;
 }
 
+/** True when the webhook id is present. Unset ships the webhook dark. */
+export function paypalWebhookConfigured(): boolean {
+  return Boolean(process.env.PAYPAL_WEBHOOK_ID);
+}
+
+/** The five transmission headers PayPal signs a webhook delivery with. */
+const TRANSMISSION_HEADERS = [
+  "paypal-auth-algo",
+  "paypal-cert-url",
+  "paypal-transmission-id",
+  "paypal-transmission-sig",
+  "paypal-transmission-time",
+] as const;
+
+/**
+ * Ask PayPal whether it really sent this event.
+ *
+ * The endpoint is the whole of the webhook's authentication: the route is
+ * public and unauthenticated, so anything that reaches it claiming a payment
+ * settled is hostile until PayPal says otherwise.
+ *
+ * **Returns `false` only for an explicit refusal.** A transport failure — our
+ * own credential rejected, a timeout, a PayPal 5xx — throws instead, because
+ * not knowing whether an event is genuine is a different answer from knowing
+ * it is not. Collapsing the two would silently discard real paid-order
+ * notifications during a credential blip, with a 401 in PayPal's delivery log
+ * as the only trace.
+ *
+ * A missing header is a refusal rather than an `undefined` sent to PayPal: an
+ * incomplete set cannot verify, and asking is a wasted round trip.
+ */
+export async function verifyWebhookSignature(
+  headers: Headers,
+  event: unknown,
+): Promise<boolean> {
+  const transmission: Record<string, string> = {};
+  for (const name of TRANSMISSION_HEADERS) {
+    const value = headers.get(name);
+    if (!value) return false;
+    // `paypal-auth-algo` → `auth_algo`, which is what the API field is called.
+    transmission[name.replace(/^paypal-/, "").replace(/-/g, "_")] = value;
+  }
+
+  const body = await paypalFetch<{ verification_status?: string }>(
+    "/v1/notifications/verify-webhook-signature",
+    {
+      method: "POST",
+      body: {
+        ...transmission,
+        webhook_id: process.env.PAYPAL_WEBHOOK_ID,
+        webhook_event: event,
+      },
+    },
+  );
+
+  return body?.verification_status === "SUCCESS";
+}
+
 /**
  * The loggable half of a PayPal failure.
  *

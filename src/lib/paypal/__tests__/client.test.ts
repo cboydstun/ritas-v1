@@ -11,6 +11,8 @@ import {
   getPayPalOrder,
   isPayPalAuthFailure,
   paypalConfigured,
+  paypalWebhookConfigured,
+  verifyWebhookSignature,
   payPalErrorDetail,
   resetPayPalClientIdWarning,
   resetPayPalTokenCache,
@@ -384,6 +386,88 @@ describe("PayPal client", () => {
         status: 504,
         issue: undefined,
       });
+    });
+  });
+
+  describe("verifyWebhookSignature", () => {
+    const signedHeaders = () =>
+      new Headers({
+        "paypal-auth-algo": "SHA256withRSA",
+        "paypal-cert-url": "https://api.paypal.com/cert.pem",
+        "paypal-transmission-id": "tx-1",
+        "paypal-transmission-sig": "sig-1",
+        "paypal-transmission-time": "2026-09-16T02:10:24Z",
+      });
+
+    beforeEach(() => {
+      process.env.PAYPAL_WEBHOOK_ID = "WH-CONFIG-1";
+    });
+
+    it("needs the webhook id to be configured", () => {
+      expect(paypalWebhookConfigured()).toBe(true);
+      delete process.env.PAYPAL_WEBHOOK_ID;
+      expect(paypalWebhookConfigured()).toBe(false);
+    });
+
+    it("sends the five transmission headers and the webhook id", async () => {
+      fetchMock
+        .mockResolvedValueOnce(tokenResponse())
+        .mockResolvedValueOnce(
+          jsonResponse({ verification_status: "SUCCESS" }),
+        );
+
+      await verifyWebhookSignature(signedHeaders(), { id: "WH-1" });
+
+      expect(fetchMock.mock.calls[1][0]).toBe(
+        `${PAYPAL_API_BASE}/v1/notifications/verify-webhook-signature`,
+      );
+      // Header names arrive snake_cased, which is what the API field names are.
+      expect(bodyOf(1)).toEqual({
+        auth_algo: "SHA256withRSA",
+        cert_url: "https://api.paypal.com/cert.pem",
+        transmission_id: "tx-1",
+        transmission_sig: "sig-1",
+        transmission_time: "2026-09-16T02:10:24Z",
+        webhook_id: "WH-CONFIG-1",
+        webhook_event: { id: "WH-1" },
+      });
+    });
+
+    it("is true only for an explicit SUCCESS", async () => {
+      fetchMock
+        .mockResolvedValueOnce(tokenResponse())
+        .mockResolvedValueOnce(
+          jsonResponse({ verification_status: "FAILURE" }),
+        );
+
+      await expect(
+        verifyWebhookSignature(signedHeaders(), { id: "WH-1" }),
+      ).resolves.toBe(false);
+    });
+
+    // An incomplete set cannot verify, so asking is a wasted round trip — and
+    // sending `undefined` for a header would be asking PayPal a malformed
+    // question.
+    it("refuses a missing header without calling PayPal", async () => {
+      const headers = signedHeaders();
+      headers.delete("paypal-transmission-sig");
+
+      await expect(
+        verifyWebhookSignature(headers, { id: "WH-1" }),
+      ).resolves.toBe(false);
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    // Not knowing is a different answer from knowing it is fake. Swallowing
+    // this into `false` would silently discard real paid-order notifications.
+    it("throws rather than returning false when the call fails", async () => {
+      fetchMock
+        .mockResolvedValueOnce(tokenResponse())
+        .mockResolvedValueOnce(jsonResponse({ name: "INTERNAL" }, 500));
+
+      await expect(
+        verifyWebhookSignature(signedHeaders(), { id: "WH-1" }),
+      ).rejects.toBeInstanceOf(PayPalError);
     });
   });
 
