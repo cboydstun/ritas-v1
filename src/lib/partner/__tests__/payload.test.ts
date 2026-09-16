@@ -108,10 +108,10 @@ describe("the money envelope bounce-v3 will store", () => {
       form({
         selectedExtras: [
           {
-            id: "cups-100",
-            name: "Cups (100)",
+            id: "table-chairs",
+            name: "Table & Chairs Set",
             description: "",
-            price: 15,
+            price: 19.95,
             quantity: 2,
             allowQuantity: true,
           },
@@ -160,19 +160,18 @@ describe("line items", () => {
       form({
         selectedExtras: [
           {
-            id: "cups-100",
-            name: "Cups (100)",
+            id: "table-chairs",
+            name: "Table & Chairs Set",
             description: "",
-            price: 15,
+            price: 19.95,
             quantity: 3,
             allowQuantity: true,
           },
           {
-            id: "salt-rimmer",
-            name: "Salt Rimmer",
+            id: "cotton-candy",
+            name: "Cotton Candy Machine",
             description: "",
-            price: 10,
-            pricingType: "flat",
+            price: 49.95,
           },
         ],
       }),
@@ -185,12 +184,9 @@ describe("line items", () => {
     }
   });
 
-  it("carries the add-on money as one aggregate line", () => {
-    // Not per extra. `computeOrderTotal` prices an extra by looking its **id**
-    // up in the catalog and drops an id the catalog no longer knows, so a line
-    // built from the stored `extra.price` disagrees with the total the moment
-    // an admin deletes an extra from Settings. The receiver rejects the whole
-    // event over that difference.
+  it("prices each add-on on its own line", () => {
+    // What a native bounce order looks like, and what the crew needs: a table
+    // is distinguishable from a popcorn machine on the packing list.
     const data = form({
       selectedExtras: [
         {
@@ -205,16 +201,55 @@ describe("line items", () => {
     });
     const { totals, payload } = payloadFor(data);
     const items = payload.data.order.items!;
-    const aggregate = items.find((i) => i.sku === "add-ons");
 
     expect(totals.extrasTotal).toBeGreaterThan(0);
-    expect(aggregate).toBeDefined();
-    expect(aggregate!.totalPrice).toBe(totals.extrasTotal);
+    expect(items.some((i) => i.sku === "add-ons")).toBe(false);
 
-    // The extra still appears by name, at zero, so the crew knows what to load.
-    const detail = items.find((i) => i.sku === "table-chairs")!;
-    expect(detail.totalPrice).toBe(0);
-    expect(detail.name).toBe("Table & Chairs Set");
+    const line = items.find((i) => i.sku === "table-chairs")!;
+    expect(line.name).toBe("Table & Chairs Set");
+    expect(line.unitPrice).toBe(19.95);
+    expect(line.totalPrice).toBeCloseTo(totals.extrasTotal, 2);
+  });
+
+  it("collapses to an aggregate line when the catalog has moved on", () => {
+    // The guard those per-line prices need. `computeOrderTotal` prices an extra
+    // by looking its **id** up in the catalog and drops one the catalog no
+    // longer knows, so a line built from the stored price disagrees with the
+    // authoritative total the moment an admin retires an add-on. The receiver
+    // refuses the whole event over that difference, which loses the order from
+    // the shared calendar with nothing saying why.
+    jest.spyOn(console, "warn").mockImplementation(() => {});
+
+    const data = form({
+      selectedExtras: [
+        {
+          id: "table-chairs",
+          name: "Table & Chairs Set",
+          description: "",
+          price: 19.95,
+          quantity: 1,
+        },
+        {
+          id: "an-extra-nobody-sells-any-more",
+          name: "Retired Add-on",
+          description: "",
+          price: 250,
+          quantity: 1,
+        },
+      ],
+    });
+    const { totals, payload } = payloadFor(data);
+    const items = payload.data.order.items!;
+
+    const aggregate = items.find((i) => i.sku === "add-ons")!;
+    expect(aggregate).toBeDefined();
+    expect(aggregate.totalPrice).toBe(totals.extrasTotal);
+
+    // Both add-ons still appear by name, at zero, so the packing list survives.
+    expect(items.find((i) => i.sku === "table-chairs")!.totalPrice).toBe(0);
+    expect(
+      items.find((i) => i.sku === "an-extra-nobody-sells-any-more")!.totalPrice,
+    ).toBe(0);
   });
 
   it("emits no add-ons line when there are none", () => {

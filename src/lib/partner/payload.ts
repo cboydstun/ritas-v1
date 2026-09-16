@@ -1,4 +1,5 @@
 import { roundCurrency } from "@/lib/money";
+import { MAX_EXTRA_QUANTITY } from "@/lib/extras-catalog";
 import type { OrderTotals } from "@/components/order/utils";
 import type { ExtraItem } from "@/components/order/types";
 
@@ -137,17 +138,13 @@ const MACHINE_LABELS: Record<string, string> = {
  * `quantity: days, unitPrice: per-day rate`, never one line at a multiplied
  * price.
  *
- * **Only two lines carry money: the machine, and the add-ons in aggregate.**
- * Everything else rides at zero. This is not a presentation choice — it is the
- * only way the lines are guaranteed to sum to `rentalSubtotal` without this
- * module growing a second opinion about what an extra costs.
- * `computeOrderTotal` prices each extra by looking its **id** up in the
- * catalog, ignoring whatever `price` the stored item carries, and drops an id
- * the catalog no longer knows. A line built from `extra.price` therefore
- * disagrees with the total the moment an admin deletes an extra from Settings
- * between a booking being taken and its payment being captured — and the
- * receiver rejects the whole event over the difference, so the order never
- * reaches the shared calendar and nothing anywhere says why.
+ * **Add-ons are priced individually, with a guard.** That is the shape a
+ * native bounce order has, and the crew needs to see a table apart from a
+ * popcorn machine. But `computeOrderTotal` prices an extra by looking its
+ * **id** up in the catalog and drops an id the catalog no longer knows, so
+ * per-line prices can disagree with the authoritative total the moment an
+ * admin retires an add-on. When they do, the lines collapse to one aggregate
+ * line rather than ship a payload the receiver will refuse outright.
  *
  * Mixers ride at zero for the same reason in reverse: they are already inside
  * `perDayRate`, so pricing them again would double-charge. Both they and the
@@ -187,25 +184,64 @@ export function buildLineItems(
     });
   }
 
-  for (const extra of rental.selectedExtras ?? []) {
-    const quantity = Math.max(1, Math.floor(Number(extra.quantity) || 1));
-    items.push({
-      kind: "extra",
-      sku: extra.id,
-      name: extra.name,
-      description:
-        quantity > 1
-          ? `Quantity ${quantity}. Priced in the add-ons line.`
-          : "Priced in the add-ons line.",
-      quantity: 1,
-      unitPrice: 0,
-      totalPrice: 0,
-    });
+  // Add-ons, one line each, priced the way `computeOrderTotal` prices them:
+  // per-day unless the catalog entry says flat, and clamped to the same
+  // ceiling. Named and priced individually because the crew loading the truck
+  // needs to see a table apart from a popcorn machine, and because that is the
+  // shape a native bounce order has.
+  const extraLines: PartnerLineItem[] = (rental.selectedExtras ?? []).map(
+    (extra) => {
+      const perDay = extra.pricingType !== "flat";
+      const quantity = Math.min(
+        MAX_EXTRA_QUANTITY,
+        Math.max(1, Math.floor(Number(extra.quantity) || 1)),
+      );
+      const units = perDay ? quantity * days : quantity;
+
+      return {
+        kind: "extra" as const,
+        sku: extra.id,
+        name: extra.name,
+        description:
+          perDay && days > 1 ? `${quantity} x ${days} days` : undefined,
+        quantity: units,
+        unitPrice: extra.price,
+        totalPrice: roundCurrency(extra.price * units),
+      };
+    },
+  );
+
+  // The guard those individual prices need.
+  //
+  // `computeOrderTotal` prices an extra by looking its **id** up in the
+  // catalog, ignoring the `price` on the stored item, and drops an id the
+  // catalog no longer knows. So the moment an admin retires an add-on between
+  // a booking being taken and its payment captured, these lines and the
+  // authoritative total disagree — and the receiver refuses the whole event
+  // over the difference, which loses the order from the shared calendar with
+  // nothing anywhere saying why.
+  //
+  // When they disagree, fall back to one aggregate line carrying the
+  // authoritative figure. The add-ons still appear by name at zero, so the
+  // crew keeps the packing list; only the per-line prices are given up.
+  const extrasLineTotal = roundCurrency(
+    extraLines.reduce((sum, line) => sum + line.totalPrice, 0),
+  );
+
+  if (Math.abs(extrasLineTotal - totals.extrasTotal) <= 0.01) {
+    items.push(...extraLines);
+    return items;
   }
 
-  // The add-ons money, as one line, taken straight from the authoritative
-  // total. Emitted only when there is some: a zero line would read as an
-  // add-on nobody ordered.
+  console.warn("PARTNER_EXTRAS_PRICE_MISMATCH", {
+    lines: extrasLineTotal,
+    authoritative: totals.extrasTotal,
+  });
+
+  for (const line of extraLines) {
+    items.push({ ...line, quantity: 1, unitPrice: 0, totalPrice: 0 });
+  }
+
   if (totals.extrasTotal > 0) {
     items.push({
       kind: "extra",
