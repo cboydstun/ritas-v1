@@ -253,7 +253,7 @@ export default function LeaseInquiryForm({ tiers }: LeaseInquiryFormProps) {
           onChange={handleChange}
           required
           className={inputClassName}
-          placeholder="(512) 210-0194"
+          placeholder="(210) 555-0123"
         />
       </div>
 

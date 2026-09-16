@@ -4,7 +4,7 @@ import SocialProofSection from "@/components/home/SocialProofSection";
 import AboutSection from "@/components/home/AboutSection";
 import MapSection from "@/components/home/MapSection";
 import BookingCTA from "@/components/BookingCTA";
-import { BUSINESS_ID, SITE_URL } from "@/lib/site";
+import { BUSINESS_ID, BUSINESS_PHONE_E164, SITE_URL } from "@/lib/site";
 import { getReviewSummary, type ReviewSummary } from "@/lib/reviews";
 
 // Add JSON-LD structured data for LocalBusiness
@@ -19,7 +19,7 @@ const baseJsonLd = {
   // two pages described two different businesses to Google.
   "@id": BUSINESS_ID,
   url: SITE_URL,
-  telephone: "+1-512-210-0194",
+  telephone: BUSINESS_PHONE_E164,
   email: "satxbounce@gmail.com",
   priceRange: "$$",
   address: {

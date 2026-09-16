@@ -1,3 +1,4 @@
+import { BUSINESS_PHONE_DISPLAY } from "@/lib/site";
 import {
   customFeeFor,
   fiveDigitZip,
@@ -141,7 +142,7 @@ describe("getDeliveryZoneInfo", () => {
     expect(info.zone).toBe("not-supported");
     expect(info.fee).toBe(0);
     expect(info.message).toContain("78999");
-    expect(info.message).toMatch(/\(512\) 210-0194/);
+    expect(info.message).toContain(BUSINESS_PHONE_DISPLAY);
   });
 
   it("asks for a valid ZIP before one has been typed", () => {

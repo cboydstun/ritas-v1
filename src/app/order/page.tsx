@@ -8,7 +8,12 @@ import {
   type PricingOverrides,
 } from "@/lib/pricing";
 import { getPublicSettingsSafe } from "@/lib/public-settings";
-import { BUSINESS_ID, SITE_URL, breadcrumbJsonLd } from "@/lib/site";
+import {
+  BUSINESS_ID,
+  BUSINESS_PHONE_E164,
+  SITE_URL,
+  breadcrumbJsonLd,
+} from "@/lib/site";
 
 const PAGE_TITLE =
   "Book Now | SATX Ritas Rentals - Frozen Drink Machine Rentals";
@@ -47,7 +52,7 @@ function buildJsonLd(overrides: PricingOverrides, priceValidUntil: string) {
       name: "SATX Ritas Rentals",
       url: SITE_URL,
       image: `${SITE_URL}/og-image.jpg`,
-      telephone: "+1-512-210-0194",
+      telephone: BUSINESS_PHONE_E164,
       email: "satxbounce@gmail.com",
       priceRange: "$$",
       address: {

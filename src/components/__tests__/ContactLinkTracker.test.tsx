@@ -39,11 +39,11 @@ describe("ContactLinkTracker", () => {
   });
 
   it("tracks a phone click", () => {
-    clickLink("tel:+15122100194");
+    clickLink("tel:+12102936120");
 
     expect(trackEventMock).toHaveBeenCalledWith("contact_click", {
       method: "phone",
-      link_url: "tel:+15122100194",
+      link_url: "tel:+12102936120",
       value: LEAD_VALUES.phone_call,
       currency: ANALYTICS_CURRENCY,
     });
@@ -80,7 +80,7 @@ describe("ContactLinkTracker", () => {
 
   // The Google Ads phone-lead conversion fires off this push, not off gtag.
   it("mirrors a phone click to the dataLayer", () => {
-    clickLink("tel:+15122100194");
+    clickLink("tel:+12102936120");
 
     expect(pushDataLayerMock).toHaveBeenCalledWith("contact_click", {
       method: "phone",
@@ -157,7 +157,7 @@ describe("ContactLinkTracker", () => {
 
   it("fires when the click lands on a child of the anchor", () => {
     const anchor = document.createElement("a");
-    anchor.setAttribute("href", "tel:+15122100194");
+    anchor.setAttribute("href", "tel:+12102936120");
     const span = document.createElement("span");
     span.textContent = "Call us";
     anchor.appendChild(span);
