@@ -13,8 +13,10 @@ describe("ReviewStep", () => {
     price: 149.95,
     rentalDate: "2025-04-15",
     rentalTime: "12:00",
+    rentalTimePreference: "specific" as const,
     returnDate: "2025-04-16",
     returnTime: "12:00",
+    returnTimePreference: "specific" as const,
     customer: {
       name: "Test User",
       email: "test@example.com",

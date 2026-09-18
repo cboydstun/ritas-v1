@@ -86,8 +86,9 @@ describe("validateDeliveryTime with custom window boundaries", () => {
     expect(validateDeliveryTime("17:01", 9, 17)).toBe(false);
   });
 
-  it("still returns true for ANY regardless of window", () => {
-    expect(validateDeliveryTime("ANY", 9, 17)).toBe(true);
+  it("refuses the retired ANY sentinel and an empty time", () => {
+    expect(validateDeliveryTime("ANY", 9, 17)).toBe(false);
+    expect(validateDeliveryTime("", 9, 17)).toBe(false);
   });
 });
 
@@ -102,9 +103,11 @@ describe("computeOrderTotal with settings overrides", () => {
     // Flexible on both legs, so the figures below — the QuickBooks reference
     // invoice among them — carry no specific-time charge. That charge has its
     // own block further down.
-    rentalTime: "ANY",
+    rentalTime: "10:00",
+    rentalTimePreference: "flexible",
     returnDate: "2025-06-02",
-    returnTime: "ANY",
+    returnTime: "16:00",
+    returnTimePreference: "flexible",
     customer: {
       name: "Test",
       email: "test@example.com",
@@ -205,8 +208,8 @@ describe("computeOrderTotal with settings overrides", () => {
   describe("specific-time charge", () => {
     const pinned: OrderFormData = {
       ...baseFormData,
-      rentalTime: "10:00",
-      returnTime: "16:00",
+      rentalTimePreference: "specific",
+      returnTimePreference: "specific",
     };
 
     it("charges nothing when both legs are flexible", () => {
@@ -216,9 +219,27 @@ describe("computeOrderTotal with settings overrides", () => {
     it("defaults to $25 per pinned leg", () => {
       expect(computeOrderTotal(pinned).specificTimeCharge).toBe(50);
       expect(
-        computeOrderTotal({ ...baseFormData, returnTime: "16:00" })
+        computeOrderTotal({ ...baseFormData, returnTimePreference: "specific" })
           .specificTimeCharge,
       ).toBe(25);
+    });
+
+    it("charges by preference, not by whether a time is named", () => {
+      // Both legs of baseFormData carry clock times and are flexible.
+      expect(baseFormData.rentalTime).toBe("10:00");
+      expect(computeOrderTotal(baseFormData).specificTimeCharge).toBe(0);
+    });
+
+    it("prices a legacy order the way it was sold", () => {
+      // No stored preference: a clock time was specific, "ANY" flexible.
+      const legacy = {
+        ...baseFormData,
+        rentalTime: "10:00",
+        rentalTimePreference: undefined,
+        returnTime: "ANY",
+        returnTimePreference: undefined,
+      };
+      expect(computeOrderTotal(legacy).specificTimeCharge).toBe(25);
     });
 
     it("lands in the subtotal, so it is marked up and taxed like bounce-v3", () => {
@@ -430,9 +451,11 @@ describe("computeOrderTotal cent rounding", () => {
     rentalDate: "2026-06-15",
     // Flexible, so no specific-time charge moves the 489.50 subtotal off the
     // half-cent this block exists to exercise.
-    rentalTime: "ANY",
+    rentalTime: "10:00",
+    rentalTimePreference: "flexible",
     returnDate: "2026-06-17",
-    returnTime: "ANY",
+    returnTime: "10:00",
+    returnTimePreference: "flexible",
     customer: {
       name: "Test",
       email: "test@example.com",
@@ -472,8 +495,10 @@ describe("computeOrderTotal extra-quantity ceiling", () => {
       price: 0,
       rentalDate: "2026-06-15",
       rentalTime: "10:00",
+      rentalTimePreference: "specific",
       returnDate: "2026-06-15",
       returnTime: "10:00",
+      returnTimePreference: "specific",
       customer: {
         name: "Test",
         email: "test@example.com",

@@ -34,8 +34,10 @@ const validRental = () => ({
   selectedExtras: [{ id: "table-chairs", quantity: 2 }],
   rentalDate: todayLocalIso(),
   rentalTime: "10:00",
+  rentalTimePreference: "flexible",
   returnDate: todayLocalIso(),
   returnTime: "18:00",
+  returnTimePreference: "specific",
   customer: {
     name: "Test Customer",
     email: "test@example.com",
@@ -117,14 +119,26 @@ describe("rentalDataSchema", () => {
     }
   });
 
-  it("accepts the ANY delivery-time sentinel", () => {
-    const result = rentalDataSchema.safeParse({
-      ...validRental(),
-      rentalTime: "ANY",
-      returnTime: "ANY",
-    });
+  it("refuses the retired ANY sentinel on either leg", () => {
+    for (const leg of ["rentalTime", "returnTime"]) {
+      const result = rentalDataSchema.safeParse({
+        ...validRental(),
+        [leg]: "ANY",
+      });
+      expect(result.success).toBe(false);
+    }
+  });
 
-    expect(result.success).toBe(true);
+  it("requires a preference on each leg, and only flexible or specific", () => {
+    for (const leg of ["rentalTimePreference", "returnTimePreference"]) {
+      expect(
+        rentalDataSchema.safeParse({ ...validRental(), [leg]: undefined })
+          .success,
+      ).toBe(false);
+      expect(
+        rentalDataSchema.safeParse({ ...validRental(), [leg]: "any" }).success,
+      ).toBe(false);
+    }
   });
 
   it("rejects more mixers than the machine has tanks", () => {

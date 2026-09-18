@@ -10,7 +10,7 @@ import {
   buildAnalyticsItems,
 } from "../utils";
 import { buildExtrasCatalog } from "@/lib/extras-catalog";
-import { formatDeliveryTime } from "@/lib/specific-time-charge";
+import { formatLegTime } from "@/lib/specific-time-charge";
 import { trackEvent, pushDataLayerThen } from "@/lib/analytics";
 import { hashUserData } from "@/lib/enhanced-conversions";
 
@@ -219,8 +219,10 @@ export default function ReviewStep({
     })),
     rentalDate: formData.rentalDate,
     rentalTime: formData.rentalTime,
+    rentalTimePreference: formData.rentalTimePreference,
     returnDate: formData.returnDate,
     returnTime: formData.returnTime,
+    returnTimePreference: formData.returnTimePreference,
     customer: formData.customer,
     notes: formData.notes,
   });
@@ -719,12 +721,30 @@ export default function ReviewStep({
           <p className="text-charcoal/70 dark:text-white/70">
             Delivery:{" "}
             {new Date(formData.rentalDate + "T12:00:00").toLocaleDateString()}{" "}
-            at {formatDeliveryTime(formData.rentalTime)}
+            {formatLegTime(
+              "delivery",
+              formData.rentalTime,
+              formData.rentalTimePreference,
+            )}{" "}
+            (
+            {formData.rentalTimePreference === "specific"
+              ? "specific time"
+              : "flexible"}
+            )
           </p>
           <p className="text-charcoal/70 dark:text-white/70">
             Pick Up:{" "}
             {new Date(formData.returnDate + "T12:00:00").toLocaleDateString()}{" "}
-            at {formatDeliveryTime(formData.returnTime)}
+            {formatLegTime(
+              "pickup",
+              formData.returnTime,
+              formData.returnTimePreference,
+            )}{" "}
+            (
+            {formData.returnTimePreference === "specific"
+              ? "specific time"
+              : "flexible"}
+            )
           </p>
         </div>
 

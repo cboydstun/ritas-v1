@@ -13,7 +13,7 @@ import {
 import { resolveDeliveryFee } from "@/lib/delivery/resolveDeliveryFee";
 import { minimumForZip, minimumOrderError } from "@/lib/delivery/tierMinimums";
 import type { DeliverySettings } from "@/lib/delivery/zones";
-import type { OrderFormData } from "@/components/order/types";
+import type { PricedOrder } from "@/components/order/utils";
 import {
   resolveSelectedExtras,
   resolveSelectedMixers,
@@ -272,6 +272,10 @@ export async function createBooking(
       // "flexible" and would bill $0 for a leg the browser quoted as pinned.
       rentalTime: rentalData.rentalTime,
       returnTime: rentalData.returnTime,
+      // The preferences decide which legs are charged; the times alone no
+      // longer say.
+      rentalTimePreference: rentalData.rentalTimePreference,
+      returnTimePreference: rentalData.returnTimePreference,
       // The surcharge is resolved from this ZIP inside `computeOrderTotal`.
       // Omitting the customer here would leave it with no ZIP to price and
       // silently deliver for $0.
@@ -279,7 +283,7 @@ export async function createBooking(
       // The service discount was retired from the product. It is applied by
       // hand at invoicing time for legacy cases and is never client-settable.
       isServiceDiscount: false,
-    } as OrderFormData,
+    } as PricedOrder,
     overrides,
   );
 
@@ -337,8 +341,10 @@ export async function createBooking(
     existing.price = finalTotal;
     existing.rentalDate = rentalData.rentalDate;
     existing.rentalTime = rentalData.rentalTime;
+    existing.rentalTimePreference = rentalData.rentalTimePreference;
     existing.returnDate = rentalData.returnDate;
     existing.returnTime = rentalData.returnTime;
+    existing.returnTimePreference = rentalData.returnTimePreference;
     existing.customer = customer;
     existing.notes = rentalData.notes;
     existing.payment = {
@@ -377,8 +383,10 @@ export async function createBooking(
     price: finalTotal,
     rentalDate: rentalData.rentalDate,
     rentalTime: rentalData.rentalTime,
+    rentalTimePreference: rentalData.rentalTimePreference,
     returnDate: rentalData.returnDate,
     returnTime: rentalData.returnTime,
+    returnTimePreference: rentalData.returnTimePreference,
     customer,
     notes: rentalData.notes,
     isServiceDiscount: false,

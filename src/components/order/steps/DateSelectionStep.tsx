@@ -4,11 +4,11 @@ import { format, addDays, startOfDay, parseISO } from "date-fns";
 import { StepProps, labelClassName, inputClassName } from "../types";
 import {
   DEFAULT_SPECIFIC_TIME_FEE,
-  FLEXIBLE_TIME,
   formatDeliveryTime,
-  isSpecificTime,
+  formatLegTime,
   resolveSpecificTimeCharge,
   specificTimeFeeNote,
+  type TimePreference,
 } from "@/lib/specific-time-charge";
 // v10 moved the stylesheet out of dist/; the old path still resolves through
 // a fallback in the package exports map, but this is the documented one.
@@ -36,21 +36,30 @@ function generateTimeOptions(startHour: number, endHour: number) {
 
 type LegField = "rentalTime" | "returnTime";
 
+const PREFERENCE_FIELD = {
+  rentalTime: "rentalTimePreference",
+  returnTime: "returnTimePreference",
+} as const satisfies Record<LegField, string>;
+
 const LEG_COPY: Record<
   LegField,
-  { legend: string; flexibleBlurb: (window: string) => string; noun: string }
+  {
+    legend: string;
+    noun: string;
+    flexibleBlurb: (time: string) => string;
+  }
 > = {
   rentalTime: {
-    legend: "Delivery time",
-    flexibleBlurb: (window) =>
-      `We'll deliver during our ${window} window and have it set up before your event starts.`,
+    legend: "Preferred delivery time",
     noun: "delivery",
+    flexibleBlurb: (time) =>
+      `We'll arrive at or before ${time}, so the machine is ready when your party starts.`,
   },
   returnTime: {
-    legend: "Pickup time",
-    flexibleBlurb: (window) =>
-      `We'll pick up during our ${window} window on your pickup date.`,
+    legend: "Preferred pickup time",
     noun: "pickup",
+    flexibleBlurb: (time) =>
+      `We'll pick up at or after ${time}, so you keep it as long as your party needs it.`,
   },
 };
 
@@ -58,55 +67,81 @@ const cardClassName =
   "flex cursor-pointer gap-3 rounded-lg border-2 border-charcoal/15 dark:border-white/20 p-4 transition-colors has-checked:border-margarita has-checked:bg-margarita/10 dark:has-checked:border-margarita-dark dark:has-checked:bg-margarita/20 has-focus-visible:ring-2 has-focus-visible:ring-margarita";
 
 /**
- * One leg — delivery or pickup — as two cards: flexible (free) or a specific
- * clock time (charged). Ported from bounce-v3's `StepTimeLeg`.
+ * One leg — delivery or pickup: a required preferred time, then how firm it
+ * is. Flexible (free) means delivery at or before that time and pickup at or
+ * after it; specific (charged) means exactly then. Ported from bounce-v3's
+ * `StepTimeLeg`, whose shape this now matches: a clock time plus a stored
+ * preference. There is no "any time" — the crew always knows when the
+ * customer needs the machine.
  *
- * The preference is not a field of its own: a flexible leg is the stored time
- * `"ANY"`, so choosing a card writes the time directly. The fee shown comes
- * from the same `Settings.fees` figure `computeOrderTotal` prices with.
+ * The fee shown comes from the same `Settings.fees` figure
+ * `computeOrderTotal` prices with.
  */
 function TimeLeg({
   field,
   value,
+  preference,
   fee,
-  windowLabel,
   timeOptions,
   onChange,
 }: {
   field: LegField;
   value: string;
+  preference: TimePreference;
   fee: number;
-  windowLabel: string;
   timeOptions: { value: string; label: string }[];
   onChange: (name: string, value: string) => void;
 }) {
   const copy = LEG_COPY[field];
-  const specific = isSpecificTime(value);
-  const radioName = `${field}Preference`;
+  const preferenceField = PREFERENCE_FIELD[field];
+  const timeLabel = value ? formatDeliveryTime(value) : "your preferred time";
 
   return (
     <fieldset className="space-y-3">
       <legend className={labelClassName}>{copy.legend}</legend>
 
+      <div>
+        <label htmlFor={field} className="sr-only">
+          {copy.legend}
+        </label>
+        <select
+          id={field}
+          name={field}
+          value={value}
+          required
+          onChange={(e) => onChange(field, e.target.value)}
+          className={inputClassName}
+        >
+          <option value="" disabled>
+            Choose a time…
+          </option>
+          {timeOptions.map(({ value: v, label }) => (
+            <option key={v} value={v}>
+              {label}
+            </option>
+          ))}
+        </select>
+      </div>
+
       <label className={cardClassName}>
         <input
           type="radio"
-          name={radioName}
-          checked={!specific}
-          onChange={() => onChange(field, FLEXIBLE_TIME)}
+          name={preferenceField}
+          checked={preference !== "specific"}
+          onChange={() => onChange(preferenceField, "flexible")}
           className="mt-1 accent-margarita"
         />
         <span>
           <span className="flex flex-wrap items-baseline justify-between gap-x-2">
             <span className="font-semibold text-charcoal dark:text-white">
-              Any time
+              Flexible
             </span>
             <span className="text-sm font-medium text-margarita dark:text-margarita-dark">
               Free
             </span>
           </span>
           <span className="block text-sm text-charcoal/70 dark:text-white/70">
-            {copy.flexibleBlurb(windowLabel)}
+            {copy.flexibleBlurb(timeLabel)}
           </span>
         </span>
       </label>
@@ -114,10 +149,9 @@ function TimeLeg({
       <label className={cardClassName}>
         <input
           type="radio"
-          name={radioName}
-          checked={specific}
-          // The window's first hour, which is always a valid option.
-          onChange={() => onChange(field, timeOptions[0]?.value ?? "")}
+          name={preferenceField}
+          checked={preference === "specific"}
+          onChange={() => onChange(preferenceField, "specific")}
           className="mt-1 accent-margarita"
         />
         <span>
@@ -130,31 +164,10 @@ function TimeLeg({
             </span>
           </span>
           <span className="block text-sm text-charcoal/70 dark:text-white/70">
-            We plan our day around your exact {copy.noun} time.
+            {`We'll plan our day around arriving at exactly ${timeLabel} for your ${copy.noun}.`}
           </span>
         </span>
       </label>
-
-      {specific && (
-        <div>
-          <label htmlFor={field} className="sr-only">
-            {`Choose a ${copy.noun} time`}
-          </label>
-          <select
-            id={field}
-            name={field}
-            value={value}
-            onChange={(e) => onChange(field, e.target.value)}
-            className={inputClassName}
-          >
-            {timeOptions.map(({ value: v, label }) => (
-              <option key={v} value={v}>
-                {label}
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
     </fieldset>
   );
 }
@@ -172,12 +185,11 @@ export default function DateSelectionStep({
     deliveryWindowStartHour,
     deliveryWindowEndHour,
   );
-  const windowLabel = `${formatHour(deliveryWindowStartHour)} – ${formatHour(
-    deliveryWindowEndHour,
-  )}`;
   const specificTimeCharge = resolveSpecificTimeCharge({
     rentalTime: formData.rentalTime,
     returnTime: formData.returnTime,
+    rentalTimePreference: formData.rentalTimePreference,
+    returnTimePreference: formData.returnTimePreference,
     specificDeliveryTimeFee,
     specificPickupTimeFee,
   });
@@ -276,8 +288,8 @@ export default function DateSelectionStep({
               <TimeLeg
                 field="rentalTime"
                 value={formData.rentalTime}
+                preference={formData.rentalTimePreference}
                 fee={specificDeliveryTimeFee}
-                windowLabel={windowLabel}
                 timeOptions={timeOptions}
                 onChange={(name, value) =>
                   onInputChange(createSyntheticEvent(name, value))
@@ -286,8 +298,8 @@ export default function DateSelectionStep({
               <TimeLeg
                 field="returnTime"
                 value={formData.returnTime}
+                preference={formData.returnTimePreference}
                 fee={specificPickupTimeFee}
-                windowLabel={windowLabel}
                 timeOptions={timeOptions}
                 onChange={(name, value) =>
                   onInputChange(createSyntheticEvent(name, value))
@@ -312,8 +324,12 @@ export default function DateSelectionStep({
                     📍 Delivery:
                   </span>
                   <span className="font-medium text-charcoal dark:text-white">
-                    {format(range.from, "EEEE, MMMM d, yyyy")} at{" "}
-                    {formatDeliveryTime(formData.rentalTime)}
+                    {format(range.from, "EEEE, MMMM d, yyyy")}{" "}
+                    {formatLegTime(
+                      "delivery",
+                      formData.rentalTime,
+                      formData.rentalTimePreference,
+                    )}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
@@ -321,8 +337,12 @@ export default function DateSelectionStep({
                     📍 Pickup:
                   </span>
                   <span className="font-medium text-charcoal dark:text-white">
-                    {format(range.to, "EEEE, MMMM d, yyyy")} at{" "}
-                    {formatDeliveryTime(formData.returnTime)}
+                    {format(range.to, "EEEE, MMMM d, yyyy")}{" "}
+                    {formatLegTime(
+                      "pickup",
+                      formData.returnTime,
+                      formData.returnTimePreference,
+                    )}
                   </span>
                 </div>
               </div>

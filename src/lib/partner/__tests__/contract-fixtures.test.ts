@@ -60,10 +60,31 @@ function form(o: Partial<OrderFormData> = {}): OrderFormData {
 
 const CASES: Array<[string, OrderFormData, number]> = [
   ["single day, no extras", form({ returnDate: "2026-10-04" }), 0],
-  // Every other case pins both legs, so each carries the $50 specific-time
-  // charge. This one proves the flexible shape crosses the seam too.
+  // Every other case carries clock times and no stored preference — the
+  // legacy reading, so each is specific on both legs and carries the $50
+  // specific-time charge. These three prove the other shapes cross the seam.
   [
-    "flexible times, no specific-time charge",
+    "flexible legs with preferred clock times, no specific-time charge",
+    form({
+      rentalTime: "14:00",
+      rentalTimePreference: "flexible",
+      returnTime: "18:00",
+      returnTimePreference: "flexible",
+    }),
+    0,
+  ],
+  [
+    "flexible delivery, specific pickup",
+    form({
+      rentalTime: "14:00",
+      rentalTimePreference: "flexible",
+      returnTime: "18:00",
+      returnTimePreference: "specific",
+    }),
+    0,
+  ],
+  [
+    "legacy flexible times (ANY), no specific-time charge",
     form({ rentalTime: "ANY", returnTime: "ANY" }),
     0,
   ],

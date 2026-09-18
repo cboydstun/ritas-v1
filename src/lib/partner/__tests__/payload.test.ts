@@ -114,6 +114,36 @@ describe("the money envelope bounce-v3 will store", () => {
     ).toBeLessThanOrEqual(CENT);
   });
 
+  it("sends a flexible leg as its preferred clock time plus the preference", () => {
+    const { payload } = payloadFor(
+      form({
+        rentalTime: "14:00",
+        rentalTimePreference: "flexible",
+        returnTime: "18:00",
+        returnTimePreference: "specific",
+      }),
+    );
+    expect(payload.data.order.rental).toMatchObject({
+      startTime: "14:00",
+      startTimePreference: "flexible",
+      endTime: "18:00",
+      endTimePreference: "specific",
+    });
+    expect(payload.data.order.totals!.specificTimeCharge).toBe(25);
+  });
+
+  it("sends a legacy ANY leg unchanged, labelled flexible", () => {
+    const { payload } = payloadFor(
+      form({ rentalTime: "ANY", returnTime: "ANY" }),
+    );
+    expect(payload.data.order.rental).toMatchObject({
+      startTime: "ANY",
+      startTimePreference: "flexible",
+      endTime: "ANY",
+      endTimePreference: "flexible",
+    });
+  });
+
   it("sends a zero specific-time charge for a flexible booking", () => {
     const { payload } = payloadFor(
       form({ rentalTime: "ANY", returnTime: "ANY" }),
@@ -354,8 +384,10 @@ describe("the envelope", () => {
     expect(order.rental).toEqual({
       startDate: "2026-10-04",
       startTime: "11:00",
+      startTimePreference: "specific",
       endDate: "2026-10-06",
       endTime: "11:00",
+      endTimePreference: "specific",
     });
     expect(order.customer.email).toBe("jane@example.com");
     expect(order.customer.address.zipCode).toBe("78209");

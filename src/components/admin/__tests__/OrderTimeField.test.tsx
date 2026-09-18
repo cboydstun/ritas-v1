@@ -2,58 +2,86 @@ import "@testing-library/jest-dom";
 import { useState } from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { OrderTimeField } from "../OrderTimeField";
+import type { TimePreference } from "@/lib/specific-time-charge";
 
 function Harness({
   initial,
-  onChange,
+  initialPreference,
+  onChange = jest.fn(),
+  onPreferenceChange = jest.fn(),
 }: {
   initial: string;
-  onChange: (v: string) => void;
+  initialPreference?: TimePreference;
+  onChange?: (v: string) => void;
+  onPreferenceChange?: (p: TimePreference) => void;
 }) {
   const [value, setValue] = useState(initial);
+  const [preference, setPreference] = useState(initialPreference);
   return (
     <OrderTimeField
       id="t"
       label="Rental Time"
       value={value}
+      preference={preference}
       onChange={(v) => {
         onChange(v);
         setValue(v);
+      }}
+      onPreferenceChange={(p) => {
+        onPreferenceChange(p);
+        setPreference(p);
       }}
     />
   );
 }
 
 describe("OrderTimeField", () => {
-  it("shows a stored ANY as ticked, with the time input disabled", () => {
-    render(<Harness initial="ANY" onChange={jest.fn()} />);
+  it("always requires a clock time", () => {
+    render(<Harness initial="14:00" initialPreference="flexible" />);
 
-    expect(screen.getByRole("checkbox", { name: /any time/i })).toBeChecked();
-    expect(screen.getByLabelText("Rental Time")).toBeDisabled();
-  });
-
-  it("shows a clock time as pinned and required", () => {
-    render(<Harness initial="14:00" onChange={jest.fn()} />);
-
-    expect(
-      screen.getByRole("checkbox", { name: /any time/i }),
-    ).not.toBeChecked();
     const input = screen.getByLabelText("Rental Time");
     expect(input).toHaveValue("14:00");
     expect(input).toBeRequired();
+    expect(input).toBeEnabled();
+    expect(screen.getByRole("radio", { name: /flexible/i })).toBeChecked();
   });
 
-  it("ticking writes ANY; unticking clears the time for the admin to pick", () => {
+  it("shows a stored specific preference", () => {
+    render(<Harness initial="14:00" initialPreference="specific" />);
+
+    expect(screen.getByRole("radio", { name: /specific/i })).toBeChecked();
+  });
+
+  it("shows a legacy ANY as flexible with an empty, required time", () => {
+    render(<Harness initial="ANY" />);
+
+    expect(screen.getByRole("radio", { name: /flexible/i })).toBeChecked();
+    const input = screen.getByLabelText("Rental Time");
+    expect(input).toHaveValue("");
+    expect(input).toBeRequired();
+  });
+
+  it("shows a legacy clock time with no preference as specific, as it was priced", () => {
+    render(<Harness initial="09:00" />);
+
+    expect(screen.getByRole("radio", { name: /specific/i })).toBeChecked();
+  });
+
+  it("writes the preference without touching the time", () => {
     const onChange = jest.fn();
-    render(<Harness initial="14:00" onChange={onChange} />);
-    const box = screen.getByRole("checkbox", { name: /any time/i });
+    const onPreferenceChange = jest.fn();
+    render(
+      <Harness
+        initial="14:00"
+        initialPreference="flexible"
+        onChange={onChange}
+        onPreferenceChange={onPreferenceChange}
+      />,
+    );
 
-    fireEvent.click(box);
-    expect(onChange).toHaveBeenLastCalledWith("ANY");
-
-    fireEvent.click(box);
-    expect(onChange).toHaveBeenLastCalledWith("");
-    expect(screen.getByLabelText("Rental Time")).toBeEnabled();
-    expect(screen.getByLabelText("Rental Time")).toBeRequired();
+    fireEvent.click(screen.getByRole("radio", { name: /specific/i }));
+    expect(onPreferenceChange).toHaveBeenLastCalledWith("specific");
+    expect(onChange).not.toHaveBeenCalled();
+    expect(screen.getByLabelText("Rental Time")).toHaveValue("14:00");
   });
 });

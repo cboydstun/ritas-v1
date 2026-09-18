@@ -71,7 +71,7 @@ The single source of truth for all order totals is `computeOrderTotal()` in `src
 - `perDayRate = basePrice + mixerPrice`
 - `rentalDays = calculateRentalDays(rentalDate, returnDate)` — a `Math.max(1, …)` clamp over `spanInDays()` from `src/lib/dates.ts`, which diffs **UTC** calendar dates. Do not reintroduce a millisecond diff of local-midnight `Date`s: a DST fall-back day is 25 hours, which billed one night as two. There is one implementation now; it used to exist twice, with the comment recording that bug on only one copy.
 - `subtotal = perDayRate × rentalDays + deliveryFee + extrasTotal + specificTimeCharge` (machine rate is per-day; `deliveryFee` is a **flat base fee plus the destination ZIP's distance surcharge**, resolved once by `deliveryChargeFor()` — see **Delivery Zones** below; each extra is per-day unless its catalog entry says `pricingType: "flat"`)
-- `specificTimeCharge = resolveSpecificTimeCharge()` (`src/lib/specific-time-charge.ts`, ported from bounce-v3) — `Settings.fees.specificDeliveryTimeFee` if `rentalTime` is a clock time, plus `specificPickupTimeFee` if `returnTime` is; $25 each by default, flat per leg, never per day. **There is no preference field: a flexible leg is the stored time `"ANY"`**, and the charge is recomputed from the times, never stored. It sits inside `subtotal` (so it is marked up and taxed, as in bounce-v3) and **outside `rentalSubtotal`**, like the distance surcharge. **Every `computeOrderTotal` caller must pass `rentalTime`/`returnTime`** — an absent time reads as flexible, and the server routes all hand-picked their fields without them, which billed $0 for a leg the browser quoted at $25. The admin modals use `OrderTimeField` because `<input type="time">` cannot express `"ANY"`; the partner payload sends the charge in `totals.specificTimeCharge` and inside bounce's `subtotal`
+- `specificTimeCharge = resolveSpecificTimeCharge()` (`src/lib/specific-time-charge.ts`, ported from bounce-v3) — `Settings.fees.specificDeliveryTimeFee` if the delivery leg is **specific**, plus `specificPickupTimeFee` if the pickup leg is; $25 each by default, flat per leg, never per day. **Every leg carries a required preferred clock time and a stored preference** (`rentalTimePreference` / `returnTimePreference`, `"flexible" | "specific"` — bounce-v3's shape). Flexible is free and means delivery **at or before** the time, pickup **at or after** it; specific is exactly then. There is no "any time" option any more: `rentalDataSchema` refuses `"ANY"` and a missing preference with a 400, and the order draft is at version 2 so a v1 draft carrying `"ANY"` is discarded. **Legacy orders** stored no preference and wrote a flexible leg as `"ANY"`; `legPreference()` is the one reader for them (`"ANY"` ⇒ flexible, clock time ⇒ specific — how they were sold), so they price and display unchanged. The charge is recomputed from the preferences, never stored. It sits inside `subtotal` (so it is marked up and taxed, as in bounce-v3) and **outside `rentalSubtotal`**, like the distance surcharge. **Every `computeOrderTotal` caller must pass `rentalTimePreference`/`returnTimePreference`** (and the times, for legacy derivation). They are required keys on `PricedOrder`, but the server callers build their input with `as PricedOrder`, which a missing key survives — the server routes once hand-picked their fields without the times and billed $0 for a leg the browser quoted at $25. Flipping a preference is a pricing edit on the admin `PUT`. The admin modals use `OrderTimeField` (a required time plus a Flexible/Specific radio; a legacy `"ANY"` shows an empty required input so the office names a real time on the next edit); the partner payload sends the charge in `totals.specificTimeCharge` and inside bounce's `subtotal`
 - `serviceDiscountAmount = subtotal × discountRate` — **retired**. No UI sets it and no server route accepts it from a request body; the field survives only for legacy bookings.
 - `discountedSubtotal = subtotal − serviceDiscountAmount`
 
@@ -733,12 +733,17 @@ for free), admin create, any admin edit, an admin delete (as a **cancellation** 
 their copy is a record of a booking that occupied the truck), and the PayPal
 webhook's capture-denied and refunded branches.
 
-**A flexible leg travels as the time `"ANY"`**, the same sentinel the order
-stores. bounce-v3's receiver turns it into its own shape — `*TimePreference:
-"flexible"` plus checkout's default clock time — and must never store the
-sentinel: copied through, it reached PartyPad's export as an unparseable end
-time, which became `Date.now()`, and PartyPad refused BB-2026-1050 with "Event
-end time must be after start time". The fixture case existed here a release
+**A leg travels as its clock time plus `startTimePreference` /
+`endTimePreference`**, the same two facts the order stores. bounce-v3's
+receiver stores them as sent. **The receiver deploys first**: one that
+predates the fields reads any clock time as specific, so every flexible leg
+would reach the shared calendar mislabelled (money is unaffected — totals travel
+explicitly). A legacy order still sends its `"ANY"` sentinel, labelled
+flexible; bounce-v3 turns that into `*TimePreference: "flexible"` plus
+checkout's default clock time and must never store the sentinel: copied
+through, it reached PartyPad's export as an unparseable end time, which became
+`Date.now()`, and PartyPad refused BB-2026-1050 with "Event end time must be
+after start time". The fixture case existed here a release
 before bounce-v3's copy of the fixtures was refreshed, which is the gap it
 slipped through — **regenerate and copy the fixtures whenever a case is added.**
 

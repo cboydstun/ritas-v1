@@ -1,6 +1,7 @@
 import { MixerType } from "@/lib/rental-data";
 // Type-only, so the cycle with ./utils is erased at compile time.
 import type { SettingsOverrides } from "./utils";
+import type { TimePreference } from "@/lib/specific-time-charge";
 
 export type OrderStep = "date" | "machine" | "details" | "extras" | "review";
 
@@ -23,8 +24,10 @@ export interface OrderFormData {
   price: number;
   rentalDate: string;
   rentalTime: string;
+  rentalTimePreference: TimePreference;
   returnDate: string;
   returnTime: string;
+  returnTimePreference: TimePreference;
   customer: {
     name: string;
     email: string;

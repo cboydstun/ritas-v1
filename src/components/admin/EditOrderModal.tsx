@@ -2,6 +2,7 @@
 
 import { MargaritaRental, MachineType, MixerType } from "@/types/index";
 import { OrderTimeField } from "./OrderTimeField";
+import { legPreference } from "@/lib/specific-time-charge";
 import { machinePackages, mixerDetails } from "@/lib/rental-data";
 import { isMixerType } from "@/types/machine";
 import { useState } from "react";
@@ -40,8 +41,18 @@ export default function EditOrderModal({
     ),
     rentalDate: order.rentalDate,
     rentalTime: order.rentalTime,
+    // A legacy order stored no preference; resolve it from the time so the
+    // radio shows what the order was priced as.
+    rentalTimePreference: legPreference(
+      order.rentalTime,
+      order.rentalTimePreference,
+    ),
     returnDate: order.returnDate,
     returnTime: order.returnTime,
+    returnTimePreference: legPreference(
+      order.returnTime,
+      order.returnTimePreference,
+    ),
     customer: {
       name: order.customer.name,
       email: order.customer.email,
@@ -67,8 +78,10 @@ export default function EditOrderModal({
       selectedMixers: formData.selectedMixers,
       rentalDate: formData.rentalDate,
       rentalTime: formData.rentalTime,
+      rentalTimePreference: formData.rentalTimePreference,
       returnDate: formData.returnDate,
       returnTime: formData.returnTime,
+      returnTimePreference: formData.returnTimePreference,
       customer: formData.customer,
     };
 
@@ -234,7 +247,11 @@ export default function EditOrderModal({
                   id="edit-order-rental-time"
                   label="Rental Time"
                   value={formData.rentalTime}
+                  preference={formData.rentalTimePreference}
                   onChange={(v) => setFormData({ ...formData, rentalTime: v })}
+                  onPreferenceChange={(p) =>
+                    setFormData({ ...formData, rentalTimePreference: p })
+                  }
                 />
                 <div>
                   <label
@@ -260,7 +277,11 @@ export default function EditOrderModal({
                   id="edit-order-return-time"
                   label="Return Time"
                   value={formData.returnTime}
+                  preference={formData.returnTimePreference}
                   onChange={(v) => setFormData({ ...formData, returnTime: v })}
+                  onPreferenceChange={(p) =>
+                    setFormData({ ...formData, returnTimePreference: p })
+                  }
                 />
               </div>
             </div>

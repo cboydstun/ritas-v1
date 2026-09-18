@@ -88,8 +88,10 @@ const validRental = (overrides: Record<string, unknown> = {}) => ({
   selectedExtras: [],
   rentalDate: futureDate(10),
   rentalTime: "12:00",
+  rentalTimePreference: "specific",
   returnDate: futureDate(11),
   returnTime: "12:00",
+  returnTimePreference: "specific",
   customer: {
     name: "Sam Rivera",
     email: "sam@example.com",
@@ -156,15 +158,34 @@ describe("POST /api/save-booking", () => {
       expect(doc.price).toBe((doc.payment as { amount: number }).amount);
     });
 
-    it("charges the specific-time fee for a pinned leg, and nothing for ANY", async () => {
+    it("charges the specific-time fee for a specific leg, and nothing for a flexible one", async () => {
       // The browser prices this from the same function; if the server dropped
-      // the times on the way in it would bill $0 for a leg quoted at $25.
-      await post(validRental({ rentalTime: "ANY", returnTime: "ANY" }));
+      // the preferences on the way in it would bill $0 for a leg quoted at $25.
+      // Both legs name a clock time either way — only the preference differs.
+      await post(
+        validRental({
+          rentalTimePreference: "flexible",
+          returnTimePreference: "flexible",
+        }),
+      );
       const flexible = lastSaved().price as number;
-      await post(validRental({ rentalTime: "12:00", returnTime: "ANY" }));
+      expect(lastSaved().rentalTime).toBe("12:00");
+      expect(lastSaved().rentalTimePreference).toBe("flexible");
+      await post(
+        validRental({
+          rentalTimePreference: "specific",
+          returnTimePreference: "flexible",
+        }),
+      );
       const oneLeg = lastSaved().price as number;
-      await post(validRental({ rentalTime: "12:00", returnTime: "12:00" }));
+      await post(
+        validRental({
+          rentalTimePreference: "specific",
+          returnTimePreference: "specific",
+        }),
+      );
       const bothLegs = lastSaved().price as number;
+      expect(lastSaved().returnTimePreference).toBe("specific");
 
       // $25 in the subtotal, marked up 3% and taxed 8.25% on top.
       expect(oneLeg - flexible).toBeCloseTo(25 * 1.03 * 1.0825, 1);
@@ -347,12 +368,20 @@ describe("POST /api/save-booking", () => {
       expect((await response.json()).message).toMatch(/Pickup time/);
     });
 
-    it("accepts ANY, which is what the form submits by default", async () => {
+    it("refuses the retired ANY sentinel — every leg names a time now", async () => {
       const response = await post(
         validRental({ rentalTime: "ANY", returnTime: "ANY" }),
       );
 
-      expect(response.status).toBe(200);
+      expect(response.status).toBe(400);
+    });
+
+    it("refuses a booking with no time preference", async () => {
+      const response = await post(
+        validRental({ rentalTimePreference: undefined }),
+      );
+
+      expect(response.status).toBe(400);
     });
 
     it("rejects a delivery address in a ZIP nobody has priced", async () => {

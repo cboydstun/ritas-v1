@@ -37,8 +37,10 @@ const formData: OrderFormData = {
   price: 149.95,
   rentalDate: "2026-09-01",
   rentalTime: "12:00",
+  rentalTimePreference: "specific",
   returnDate: "2026-09-02",
   returnTime: "12:00",
+  returnTimePreference: "specific",
   customer: {
     name: "Sam Rivera",
     email: "sam@example.com",

@@ -468,6 +468,68 @@ describe("admin order routes", () => {
       expect(pinned.price).toBeCloseTo(flexible.price + 25 * 1.03 * 1.0825, 1);
     });
 
+    it("reprices when an edit flips a leg's preference", async () => {
+      (Rental.findById as jest.Mock).mockReturnValue({
+        lean: jest.fn().mockResolvedValue(
+          existingOrder({
+            rentalTime: "10:00",
+            rentalTimePreference: "flexible",
+            returnTime: "16:00",
+            returnTimePreference: "flexible",
+          }),
+        ),
+      });
+      const response = await put({ rentalTimePreference: "specific" });
+
+      expect(response.status).toBe(200);
+      const [, update] = (Rental.findByIdAndUpdate as jest.Mock).mock.calls[0];
+      expect(update.rentalTimePreference).toBe("specific");
+      expect(update.price).toBeGreaterThan(0);
+    });
+
+    it("refuses a preference that is neither flexible nor specific", async () => {
+      const response = await put({ returnTimePreference: "any" });
+      expect(response.status).toBe(400);
+      expect(Rental.findByIdAndUpdate).not.toHaveBeenCalled();
+    });
+
+    it("stores the preference the office chose, and charges by it", async () => {
+      await post(
+        validOrder({
+          rentalTimePreference: "flexible",
+          returnTimePreference: "flexible",
+        }),
+      );
+      const flexible = lastCreated();
+      expect(flexible.rentalTime).toBe("12:00");
+      expect(flexible.rentalTimePreference).toBe("flexible");
+      await post(
+        validOrder({
+          rentalTimePreference: "specific",
+          returnTimePreference: "flexible",
+        }),
+      );
+      const specific = lastCreated();
+
+      expect(specific.price as number).toBeCloseTo(
+        (flexible.price as number) + 25 * 1.03 * 1.0825,
+        1,
+      );
+    });
+
+    it("stores a derived preference when an API caller sends none", async () => {
+      await post(validOrder({ returnTime: "ANY" }));
+      expect(lastCreated().rentalTimePreference).toBe("specific");
+      expect(lastCreated().returnTimePreference).toBe("flexible");
+    });
+
+    it("refuses a created order with an invalid preference", async () => {
+      const response = await post(
+        validOrder({ rentalTimePreference: "whenever" }),
+      );
+      expect(response.status).toBe(400);
+    });
+
     it("charges the admin-created order for a pinned time too", async () => {
       await post(validOrder({ rentalTime: "ANY", returnTime: "ANY" }));
       const flexible = lastCreated().price as number;

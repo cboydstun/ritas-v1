@@ -12,9 +12,11 @@ function baseForm(overrides: Partial<OrderFormData> = {}): OrderFormData {
     selectedExtras: [],
     price: 0,
     rentalDate: "2099-06-01",
-    rentalTime: "ANY",
+    rentalTime: "",
+    rentalTimePreference: "flexible",
     returnDate: "2099-06-02",
-    returnTime: "ANY",
+    returnTime: "",
+    returnTimePreference: "flexible",
     customer: {
       name: "",
       email: "",
@@ -62,16 +64,55 @@ const deliveryLeg = () => screen.getByRole("group", { name: /delivery time/i });
 const pickupLeg = () => screen.getByRole("group", { name: /pickup time/i });
 
 describe("DateSelectionStep time legs", () => {
-  it("starts both legs on the free flexible option with no time dropdown", () => {
+  it("asks for a preferred time on both legs, with no time chosen yet", () => {
+    render(<Harness />);
+
+    for (const leg of [deliveryLeg(), pickupLeg()]) {
+      const select = within(leg).getByRole("combobox");
+      expect(select).toHaveValue("");
+      expect(select).toBeRequired();
+    }
+  });
+
+  it("offers no 'any time' choice anywhere", () => {
     render(<Harness />);
 
     expect(
-      within(deliveryLeg()).getByRole("radio", { name: /any time/i }),
+      screen.queryByRole("radio", { name: /any time/i }),
+    ).not.toBeInTheDocument();
+    for (const leg of [deliveryLeg(), pickupLeg()]) {
+      expect(
+        within(within(leg).getByRole("combobox")).queryByRole("option", {
+          name: /any/i,
+        }),
+      ).not.toBeInTheDocument();
+    }
+  });
+
+  it("starts both legs on the free flexible option", () => {
+    render(<Harness />);
+
+    expect(
+      within(deliveryLeg()).getByRole("radio", { name: /flexible.*free/i }),
     ).toBeChecked();
     expect(
-      within(pickupLeg()).getByRole("radio", { name: /any time/i }),
+      within(pickupLeg()).getByRole("radio", { name: /flexible.*free/i }),
     ).toBeChecked();
-    expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
+  });
+
+  it("explains flexible as at-or-before delivery and at-or-after pickup", () => {
+    render(
+      <Harness
+        initial={baseForm({ rentalTime: "14:00", returnTime: "18:00" })}
+      />,
+    );
+
+    expect(
+      within(deliveryLeg()).getByText(/at or before 2:00 PM/),
+    ).toBeInTheDocument();
+    expect(
+      within(pickupLeg()).getByText(/at or after 6:00 PM/),
+    ).toBeInTheDocument();
   });
 
   it("labels the specific option with the fee from props", () => {
@@ -99,41 +140,19 @@ describe("DateSelectionStep time legs", () => {
     ).toBeInTheDocument();
   });
 
-  it("choosing a specific time writes a clock time and shows the dropdown for that leg only", () => {
+  it("choosing the dropdown writes the time only", () => {
     const onChange = jest.fn();
     render(<Harness onChange={onChange} />);
-
-    fireEvent.click(
-      within(deliveryLeg()).getByRole("radio", { name: /specific time/i }),
-    );
-
-    expect(onChange).toHaveBeenLastCalledWith("rentalTime", "08:00");
-    const select = within(deliveryLeg()).getByRole("combobox");
-    expect(select).toHaveValue("08:00");
-    // No "any time" choice inside the dropdown — that is the other card.
-    expect(
-      within(select).queryByRole("option", { name: /any/i }),
-    ).not.toBeInTheDocument();
-    expect(within(pickupLeg()).queryByRole("combobox")).not.toBeInTheDocument();
-  });
-
-  it("changing the dropdown writes the chosen time", () => {
-    const onChange = jest.fn();
-    render(
-      <Harness
-        onChange={onChange}
-        initial={baseForm({ returnTime: "10:00" })}
-      />,
-    );
 
     fireEvent.change(within(pickupLeg()).getByRole("combobox"), {
       target: { value: "15:00" },
     });
 
     expect(onChange).toHaveBeenLastCalledWith("returnTime", "15:00");
+    expect(onChange).toHaveBeenCalledTimes(1);
   });
 
-  it("choosing any time again writes ANY and hides the dropdown", () => {
+  it("choosing a card writes that leg's preference and keeps the time", () => {
     const onChange = jest.fn();
     render(
       <Harness
@@ -143,19 +162,32 @@ describe("DateSelectionStep time legs", () => {
     );
 
     fireEvent.click(
-      within(deliveryLeg()).getByRole("radio", { name: /any time/i }),
+      within(deliveryLeg()).getByRole("radio", { name: /specific time/i }),
     );
+    expect(onChange).toHaveBeenLastCalledWith(
+      "rentalTimePreference",
+      "specific",
+    );
+    expect(within(deliveryLeg()).getByRole("combobox")).toHaveValue("11:00");
 
-    expect(onChange).toHaveBeenLastCalledWith("rentalTime", "ANY");
-    expect(
-      within(deliveryLeg()).queryByRole("combobox"),
-    ).not.toBeInTheDocument();
+    fireEvent.click(
+      within(deliveryLeg()).getByRole("radio", { name: /flexible/i }),
+    );
+    expect(onChange).toHaveBeenLastCalledWith(
+      "rentalTimePreference",
+      "flexible",
+    );
   });
 
-  it("totals the pinned legs in the summary", () => {
+  it("totals the specific legs in the summary", () => {
     render(
       <Harness
-        initial={baseForm({ rentalTime: "11:00", returnTime: "15:00" })}
+        initial={baseForm({
+          rentalTime: "11:00",
+          rentalTimePreference: "specific",
+          returnTime: "15:00",
+          returnTimePreference: "specific",
+        })}
         specificDeliveryTimeFee={25}
         specificPickupTimeFee={25}
       />,
@@ -166,11 +198,16 @@ describe("DateSelectionStep time legs", () => {
     expect(screen.getByText(/at 3:00 PM/)).toBeInTheDocument();
   });
 
-  it("shows no fee line when both legs are flexible", () => {
-    render(<Harness />);
+  it("shows no fee line when both legs are flexible, and says by/from", () => {
+    render(
+      <Harness
+        initial={baseForm({ rentalTime: "11:00", returnTime: "15:00" })}
+      />,
+    );
 
     expect(screen.queryByText(/specific-time fee/i)).not.toBeInTheDocument();
-    expect(screen.getAllByText(/at any time/i)).toHaveLength(2);
+    expect(screen.getByText(/by 11:00 AM/)).toBeInTheDocument();
+    expect(screen.getByText(/from 3:00 PM/)).toBeInTheDocument();
   });
 
   it("hides the time legs until a delivery date is picked", () => {

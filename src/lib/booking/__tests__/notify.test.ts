@@ -300,11 +300,30 @@ describe("sendBookingNotifications", () => {
     });
 
     it("renders the rental times readably, never the ANY sentinel", async () => {
+      // No stored preference: a legacy order, read the legacy way — a clock
+      // time was specific, "ANY" was flexible.
       await sendBookingNotifications(input());
       const html = lastEmailHtml();
-      expect(html).toContain("2026-07-04 at 2:00 PM");
+      expect(html).toContain("2026-07-04 at 2:00 PM (specific)");
       expect(html).toContain("2026-07-05 at Any Time");
       expect(html).not.toContain("at ANY");
+    });
+
+    it("tells the customer which promise each leg carries", async () => {
+      await sendBookingNotifications(
+        input({
+          rental: {
+            ...input().rental,
+            rentalTime: "14:00",
+            rentalTimePreference: "flexible",
+            returnTime: "18:00",
+            returnTimePreference: "flexible",
+          },
+        }),
+      );
+      const html = lastEmailHtml();
+      expect(html).toContain("Delivery: 2026-07-04 by 2:00 PM (flexible)");
+      expect(html).toContain("Pickup: 2026-07-05 from 6:00 PM (flexible)");
     });
 
     it("pluralises the rate line only for a multi-day rental", async () => {

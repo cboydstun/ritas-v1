@@ -68,8 +68,10 @@ const validRental = () => ({
   selectedExtras: [],
   rentalDate: futureDate(10),
   rentalTime: "12:00",
+  rentalTimePreference: "specific",
   returnDate: futureDate(11),
   returnTime: "12:00",
+  returnTimePreference: "specific",
   customer: {
     name: "Sam Rivera",
     email: "sam@example.com",

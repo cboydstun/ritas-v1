@@ -2,6 +2,7 @@ import { roundCurrency } from "@/lib/money";
 import { MAX_EXTRA_QUANTITY } from "@/lib/extras-catalog";
 import type { OrderTotals } from "@/components/order/utils";
 import type { ExtraItem } from "@/components/order/types";
+import { legPreference, type TimePreference } from "@/lib/specific-time-charge";
 
 /**
  * The wire contract for an order pushed to bounce-v3.
@@ -69,13 +70,21 @@ export interface PartnerOrderPayload {
       notes?: string;
       rental: {
         startDate: string;
-        /** HH:mm, or "ANY" for a flexible leg. bounce-v3 maps "ANY" to its own
-         * flexible preference plus a default clock time; it must never store
-         * the sentinel, which PartyPad cannot parse. */
+        /** HH:mm — the customer's preferred delivery time. A legacy order
+         * may still carry "ANY"; bounce-v3 maps that to its own flexible
+         * preference plus a default clock time and must never store the
+         * sentinel, which PartyPad cannot parse. */
         startTime: string;
+        /** How firm `startTime` is: flexible is at or before it, specific is
+         * exactly then. Optional on the wire so a receiver that predates it
+         * still accepts the payload — but that receiver reads any clock time
+         * as specific, which is why bounce-v3 deploys first. */
+        startTimePreference?: TimePreference;
         endDate: string;
-        /** HH:mm, or "ANY" — see `startTime`. */
+        /** HH:mm (or legacy "ANY") — see `startTime`. */
         endTime: string;
+        /** Flexible is at or after `endTime`; specific is exactly then. */
+        endTimePreference?: TimePreference;
       };
       customer: {
         name: string;
@@ -107,8 +116,10 @@ export interface PartnerRentalLike {
   machineType: string;
   rentalDate: string;
   rentalTime: string;
+  rentalTimePreference?: string;
   returnDate: string;
   returnTime: string;
+  returnTimePreference?: string;
   notes?: string;
   selectedExtras?: ExtraItem[];
   customer: {
@@ -360,8 +371,16 @@ function envelope(input: BaseInput): PartnerOrderPayload {
         rental: {
           startDate: input.rental.rentalDate,
           startTime: input.rental.rentalTime,
+          startTimePreference: legPreference(
+            input.rental.rentalTime,
+            input.rental.rentalTimePreference,
+          ),
           endDate: input.rental.returnDate,
           endTime: input.rental.returnTime,
+          endTimePreference: legPreference(
+            input.rental.returnTime,
+            input.rental.returnTimePreference,
+          ),
         },
         customer: {
           name: input.rental.customer.name,

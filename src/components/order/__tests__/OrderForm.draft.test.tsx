@@ -34,7 +34,7 @@ jest.mock("next/image", () => ({
 
 const DRAFT_KEY = "satx-ritas-order-draft";
 /** Must track `DRAFT_VERSION` in OrderForm.tsx — a mismatch discards the draft. */
-const DRAFT_VERSION = 1;
+const DRAFT_VERSION = 2;
 
 /** A draft far enough in the future that it is never stale. */
 const futureDate = (days: number): string => {
@@ -58,9 +58,11 @@ const writeDraft = (
         selectedExtras: [],
         price: 0,
         rentalDate: futureDate(7),
-        rentalTime: "ANY",
+        rentalTime: "12:00",
+        rentalTimePreference: "flexible",
         returnDate: futureDate(8),
-        returnTime: "ANY",
+        returnTime: "16:00",
+        returnTimePreference: "specific",
         customer: {
           name: "Sam Rivera",
           email: "sam@example.com",
@@ -181,6 +183,45 @@ describe("OrderForm draft restore", () => {
       expect(draft.formData?.rentalDate).toBe("");
       expect(draft.formData?.returnDate).toBe("");
     });
+  });
+
+  it("discards a v1 draft, which can carry the retired ANY time", async () => {
+    localStorage.setItem(
+      DRAFT_KEY,
+      JSON.stringify({
+        version: 1,
+        formData: {
+          machineType: "double",
+          rentalTime: "ANY",
+          returnTime: "ANY",
+          customer: { name: "Sam Rivera" },
+        },
+        step: "review",
+      }),
+    );
+
+    render(<OrderForm />);
+
+    expect(await stepCounter(1)).toBeInTheDocument();
+  });
+
+  it("sends a draft with no usable time back to the date step", async () => {
+    writeDraft({ rentalTime: "ANY" }, "review");
+
+    render(<OrderForm />);
+
+    expect(await stepCounter(1)).toBeInTheDocument();
+  });
+
+  it("does not restore a preference that is not flexible or specific", async () => {
+    writeDraft({ returnTimePreference: "whenever" }, "extras");
+
+    render(<OrderForm />);
+
+    expect(await stepCounter(4)).toBeInTheDocument();
+    const saved = JSON.parse(localStorage.getItem(DRAFT_KEY) ?? "{}");
+    expect(saved.formData.returnTimePreference).toBe("flexible");
+    expect(saved.formData.rentalTimePreference).toBe("flexible");
   });
 
   it("keeps a future rental date and the step the visitor left off on", async () => {

@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { MachineType } from "@/types";
 import { LEASE_BUSINESS_TYPES, LEASE_TERMS } from "@/lib/lease-data";
+import { TIME_PREFERENCES } from "@/lib/specific-time-charge";
 import {
   todayLocalIso,
   spanInDays,
@@ -86,10 +87,17 @@ export const dateStringSchema = z
     );
   }, "Not a valid calendar date");
 
-/** HH:MM, or the "ANY" sentinel the delivery-window picker uses. */
+/** HH:MM, or the legacy "ANY" sentinel older orders stored for a flexible leg. */
 export const timeStringSchema = z
   .string()
   .regex(/^(ANY|([01]\d|2[0-3]):[0-5]\d)$/, "Invalid time");
+
+/** HH:MM only — what checkout accepts now that every leg names a time. */
+export const clockTimeSchema = z
+  .string()
+  .regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Invalid time");
+
+export const timePreferenceSchema = z.enum(TIME_PREFERENCES);
 
 // Re-exported from `@/lib/dates` so client components can reach them without
 // pulling zod into the browser bundle. Server code may import from either.
@@ -138,9 +146,14 @@ export const rentalDataSchema = z
     selectedMixers: z.array(mixerIdSchema).max(3).default([]),
     selectedExtras: z.array(selectedExtraSchema).max(20).default([]),
     rentalDate: dateStringSchema,
-    rentalTime: timeStringSchema,
+    // A real clock time on both legs, always: the customer names a preferred
+    // time and separately says how firm it is. "ANY" survives only on legacy
+    // orders, which never come back through this schema.
+    rentalTime: clockTimeSchema,
+    rentalTimePreference: timePreferenceSchema,
     returnDate: dateStringSchema,
-    returnTime: timeStringSchema,
+    returnTime: clockTimeSchema,
+    returnTimePreference: timePreferenceSchema,
     customer: customerSchema,
     notes: z.string().trim().max(1000).default(""),
   })

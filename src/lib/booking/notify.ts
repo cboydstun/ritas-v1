@@ -7,7 +7,22 @@ import { BUSINESS_PHONE_DISPLAY, BUSINESS_PHONE_HREF } from "@/lib/site";
 import { escapeHtml } from "@/lib/validation";
 import { withTimeout, NOTIFICATION_TIMEOUT_MS } from "@/lib/with-timeout";
 import type { OrderTotals } from "@/components/order/utils";
-import { formatDeliveryTime } from "@/lib/specific-time-charge";
+import {
+  formatDeliveryTime,
+  formatLegTime,
+  legPreference,
+} from "@/lib/specific-time-charge";
+
+/** "by 2:00 PM (flexible)" / "at 2:00 PM (specific)"; legacy "ANY" reads "at Any Time". */
+function legLine(
+  leg: "delivery" | "pickup",
+  time: string,
+  preference: string | undefined,
+): string {
+  const shown = formatLegTime(leg, time, preference);
+  if (shown === "Any Time") return `at ${shown}`;
+  return `${shown} (${legPreference(time, preference)})`;
+}
 
 /**
  * The subset of a persisted rental the notifications read.
@@ -21,8 +36,11 @@ export interface RentalLike {
   capacity: number;
   rentalDate: string;
   rentalTime: string;
+  /** Absent on legacy orders; `formatLegTime` derives it from the time. */
+  rentalTimePreference?: string;
   returnDate: string;
   returnTime: string;
+  returnTimePreference?: string;
   selectedExtras?: { name: string; quantity?: number }[];
   customer: {
     name: string;
@@ -151,7 +169,13 @@ export async function sendBookingNotifications(
         day: "numeric",
       });
 
-      const formattedTime = formatDeliveryTime(rental.rentalTime);
+      // "by 2:00 PM" (flexible) or "at 2:00 PM" (specific): the crew needs to
+      // know which promise it is driving to.
+      const formattedTime = legLine(
+        "delivery",
+        rental.rentalTime,
+        rental.rentalTimePreference,
+      );
 
       // Prepare extras text if any
       const extrasText =
@@ -192,6 +216,7 @@ export async function sendBookingNotifications(
             `Booking ID: ${bookingId}\n` +
             `Date: ${formattedDate}\n` +
             `Time: ${formattedTime}\n` +
+            `Pickup: ${rental.returnDate} ${legLine("pickup", rental.returnTime, rental.returnTimePreference)}\n` +
             `Address: ${rental.customer.address.street}, ${rental.customer.address.city}, ${rental.customer.address.state} ${rental.customer.address.zipCode}\n` +
             `Machine: ${rental.machineType}\n` +
             `Mixers: ${resolvedMixers.map(mixerLabel).join(", ") || "None"}\n` +
@@ -387,8 +412,8 @@ export async function sendBookingNotifications(
           <div style="background-color: #fff; padding: 15px; border-radius: 6px; margin: 20px 0; border: 1px solid #e2e8f0;">
             <p style="margin: 0 0 10px 0;"><strong style="color: #2b6cb0;">Rental Details:</strong></p>
             <ul style="list-style-type: none; padding: 0; margin: 0;">
-              <li style="margin-bottom: 8px;">🗓 Rental Date: ${rental.rentalDate} at ${formatDeliveryTime(rental.rentalTime)}</li>
-              <li style="margin-bottom: 8px;">🗓 Return Date: ${rental.returnDate} at ${formatDeliveryTime(rental.returnTime)}</li>
+              <li style="margin-bottom: 8px;">🗓 Delivery: ${rental.rentalDate} ${legLine("delivery", rental.rentalTime, rental.rentalTimePreference)}</li>
+              <li style="margin-bottom: 8px;">🗓 Pickup: ${rental.returnDate} ${legLine("pickup", rental.returnTime, rental.returnTimePreference)}</li>
               <li style="margin-bottom: 8px;">🍹 Selected Mixers: ${
                 selectedMixers.length > 0
                   ? selectedMixers
@@ -543,7 +568,7 @@ export async function sendPaymentFailedNotification(input: {
   const smsInFlight = sendOperatorSms(
     `⚠️ PAYMENT FAILED - BOOKING RELEASED\n` +
       `Booking ID: ${bookingId}\n` +
-      `Date: ${rental.rentalDate} ${formatDeliveryTime(rental.rentalTime)}\n` +
+      `Date: ${rental.rentalDate} ${legLine("delivery", rental.rentalTime, rental.rentalTimePreference)}\n` +
       `Machine: ${rental.machineType}\n` +
       `Customer: ${rental.customer.name} ${rental.customer.phone}\n` +
       `Txn: ${transactionId}\n` +

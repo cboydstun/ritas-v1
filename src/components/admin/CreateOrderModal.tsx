@@ -11,7 +11,7 @@ import {
   computeOrderTotal,
   type SettingsOverrides,
 } from "@/components/order/utils";
-import type { OrderFormData } from "@/components/order/types";
+import type { PricedOrder } from "@/components/order/utils";
 import { useModalFocus } from "@/hooks/useModalFocus";
 
 interface CreateOrderModalProps {
@@ -31,8 +31,10 @@ export default function CreateOrderModal({ onClose }: CreateOrderModalProps) {
     price: machinePackages[0].basePrice, // Default to the base price of the first machine package
     rentalDate: "",
     rentalTime: "",
+    rentalTimePreference: "flexible",
     returnDate: "",
     returnTime: "",
+    returnTimePreference: "flexible",
     customer: {
       name: "",
       email: "",
@@ -98,6 +100,8 @@ export default function CreateOrderModal({ onClose }: CreateOrderModalProps) {
         // different specific-time charge from the one stored.
         rentalTime: formData.rentalTime ?? "",
         returnTime: formData.returnTime ?? "",
+        rentalTimePreference: formData.rentalTimePreference,
+        returnTimePreference: formData.returnTimePreference,
         // The customer, and therefore the ZIP, has to be handed over.
         // `computeOrderTotal` resolves the distance surcharge from
         // `formData.customer.address.zipCode`; omitting it left this preview
@@ -107,7 +111,7 @@ export default function CreateOrderModal({ onClose }: CreateOrderModalProps) {
         // billed $120.
         customer: formData.customer,
         isServiceDiscount: false,
-      } as OrderFormData,
+      } as PricedOrder,
       settings ?? undefined,
     );
 
@@ -538,7 +542,11 @@ export default function CreateOrderModal({ onClose }: CreateOrderModalProps) {
                   id="create-order-rental-time"
                   label="Rental Time *"
                   value={formData.rentalTime}
+                  preference={formData.rentalTimePreference}
                   onChange={(v) => setFormData({ ...formData, rentalTime: v })}
+                  onPreferenceChange={(p) =>
+                    setFormData({ ...formData, rentalTimePreference: p })
+                  }
                 />
                 <div>
                   <label
@@ -565,7 +573,11 @@ export default function CreateOrderModal({ onClose }: CreateOrderModalProps) {
                   id="create-order-return-time"
                   label="Return Time *"
                   value={formData.returnTime}
+                  preference={formData.returnTimePreference}
                   onChange={(v) => setFormData({ ...formData, returnTime: v })}
+                  onPreferenceChange={(p) =>
+                    setFormData({ ...formData, returnTimePreference: p })
+                  }
                 />
               </div>
             </div>

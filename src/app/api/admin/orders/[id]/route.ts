@@ -21,6 +21,11 @@ import {
   type SettingsOverrides,
 } from "@/components/order/utils";
 import type { OrderFormData } from "@/components/order/types";
+import type { PricedOrder } from "@/components/order/utils";
+import {
+  isTimePreference,
+  type TimePreference,
+} from "@/lib/specific-time-charge";
 import { spanInDays } from "@/lib/dates";
 import mongoose from "mongoose";
 import { guardAdminWrite } from "@/lib/api-guard";
@@ -46,8 +51,10 @@ const EDITABLE_ORDER_FIELDS = [
   "selectedExtras",
   "rentalDate",
   "rentalTime",
+  "rentalTimePreference",
   "returnDate",
   "returnTime",
+  "returnTimePreference",
   "customer",
   "notes",
   "status",
@@ -134,6 +141,18 @@ export async function PUT(request: Request, context: RouteParams) {
       update.capacity = MACHINE_CAPACITY[update.machineType];
     }
 
+    for (const field of [
+      "rentalTimePreference",
+      "returnTimePreference",
+    ] as const) {
+      if (update[field] !== undefined && !isTimePreference(update[field])) {
+        return NextResponse.json(
+          { message: `Invalid ${field}` },
+          { status: 400 },
+        );
+      }
+    }
+
     const existing = await Rental.findById(id).lean();
     if (!existing) {
       return NextResponse.json({ message: "Order not found" }, { status: 404 });
@@ -150,6 +169,8 @@ export async function PUT(request: Request, context: RouteParams) {
       returnDate: string;
       rentalTime?: string;
       returnTime?: string;
+      rentalTimePreference?: TimePreference;
+      returnTimePreference?: TimePreference;
       status?: string;
     };
 
@@ -252,10 +273,13 @@ export async function PUT(request: Request, context: RouteParams) {
       "selectedExtras",
       "rentalDate",
       "returnDate",
-      // A pinned delivery or pickup time carries a charge, so moving a leg
-      // between "ANY" and a clock time is a pricing change.
+      // A specific delivery or pickup time carries a charge, so flipping a
+      // leg's preference is a pricing change. The times stay listed because a
+      // legacy order with no stored preference derives one from its time.
       "rentalTime",
       "returnTime",
+      "rentalTimePreference",
+      "returnTimePreference",
     ] as const;
     // The surcharge now rides on the delivery ZIP, so moving an order to a
     // different one is a pricing change. Checked as "the ZIP actually differs"
@@ -317,6 +341,8 @@ export async function PUT(request: Request, context: RouteParams) {
           // flexible and a pinned leg would reprice at $0.
           rentalTime: merged.rentalTime,
           returnTime: merged.returnTime,
+          rentalTimePreference: merged.rentalTimePreference,
+          returnTimePreference: merged.returnTimePreference,
           isServiceDiscount: false,
           // The surcharge is resolved from this ZIP. Omitting the customer
           // would leave `computeOrderTotal` with nothing to price against and
@@ -324,7 +350,7 @@ export async function PUT(request: Request, context: RouteParams) {
           customer: (
             merged as unknown as { customer?: OrderFormData["customer"] }
           ).customer,
-        } as OrderFormData,
+        } as PricedOrder,
         overrides,
       );
 

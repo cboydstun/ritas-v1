@@ -22,7 +22,7 @@ import {
   computeOrderTotal,
   type SettingsOverrides,
 } from "@/components/order/utils";
-import type { OrderFormData } from "@/components/order/types";
+import type { PricedOrder } from "@/components/order/utils";
 import type { DeliverySettings } from "@/lib/delivery/zones";
 import type { MachineType } from "@/types";
 
@@ -417,9 +417,11 @@ function rebuildTotals(
       // specific-time charge against a stored price that includes one.
       rentalTime: rental.rentalTime,
       returnTime: rental.returnTime,
+      rentalTimePreference: rental.rentalTimePreference,
+      returnTimePreference: rental.returnTimePreference,
       customer: rental.customer,
       isServiceDiscount: false,
-    } as OrderFormData,
+    } as PricedOrder,
     overrides,
   );
   // The stored price is what was charged, so it is what the email must say.

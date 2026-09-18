@@ -92,8 +92,9 @@ export const validateDeliveryTime = (
   startHour: number = 8,
   endHour: number = 18,
 ): boolean => {
-  if (time === "ANY") return true;
-  if (!time) return false;
+  // No "ANY" pass-through: every leg names a preferred time now. The legacy
+  // sentinel is refused here, and so at checkout (`createBooking`) too.
+  if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(time ?? "")) return false;
   const [hours, minutes] = time.split(":").map(Number);
   const timeInMinutes = hours * 60 + minutes;
   const minTimeInMinutes = startHour * 60;
@@ -111,6 +112,7 @@ import { calculatePrice } from "@/lib/pricing";
 import {
   DEFAULT_SPECIFIC_TIME_FEE,
   resolveSpecificTimeCharge,
+  type TimePreference,
 } from "@/lib/specific-time-charge";
 import { OrderFormData, type ExtraItem } from "./types";
 
@@ -160,8 +162,8 @@ export interface OrderTotals {
   /** The ZIP's own portion of `deliveryFee`. Zero is a real answer. */
   distanceSurcharge: number;
   /**
-   * The fee for delivery and/or pickup pinned to a clock time. Zero when both
-   * legs are `"ANY"`. Inside `subtotal`, outside `rentalSubtotal`.
+   * The fee for delivery and/or pickup pinned to an exact time. Zero when both
+   * legs are flexible. Inside `subtotal`, outside `rentalSubtotal`.
    */
   specificTimeCharge: number;
   perDayRate: number;
@@ -188,8 +190,22 @@ export interface OrderTotals {
   finalTotal: number;
 }
 
+/**
+ * What `computeOrderTotal` reads. The time preferences are required keys but
+ * may be `undefined`: a legacy order stored none, and `legPreference()` derives
+ * one from its time. Requiring the key is what makes a caller that forgot them
+ * a type error rather than a leg silently priced as flexible.
+ */
+export type PricedOrder = Omit<
+  OrderFormData,
+  "rentalTimePreference" | "returnTimePreference"
+> & {
+  rentalTimePreference: TimePreference | undefined;
+  returnTimePreference: TimePreference | undefined;
+};
+
 export function computeOrderTotal(
-  formData: OrderFormData,
+  formData: PricedOrder,
   settings?: SettingsOverrides,
 ): OrderTotals {
   // Delivery is two terms, summed in exactly one place (`deliveryChargeFor`):
@@ -264,6 +280,8 @@ export function computeOrderTotal(
     resolveSpecificTimeCharge({
       rentalTime: formData.rentalTime,
       returnTime: formData.returnTime,
+      rentalTimePreference: formData.rentalTimePreference,
+      returnTimePreference: formData.returnTimePreference,
       specificDeliveryTimeFee:
         settings?.fees?.specificDeliveryTimeFee ?? DEFAULT_SPECIFIC_TIME_FEE,
       specificPickupTimeFee:

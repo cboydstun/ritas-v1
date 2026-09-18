@@ -1,3 +1,6 @@
+import type { TimePreference } from "@/lib/specific-time-charge";
+
+export type { TimePreference };
 export type MachineType = "single" | "double" | "triple";
 export type MixerType =
   "non-alcoholic" | "margarita" | "pina-colada" | "strawberry-daiquiri";
@@ -43,8 +46,12 @@ export interface MargaritaRental {
   price: number;
   rentalDate: string;
   rentalTime: string;
+  /** Absent on orders taken before preferences were stored — read through
+   * `legPreference()`. */
+  rentalTimePreference?: TimePreference;
   returnDate: string;
   returnTime: string;
+  returnTimePreference?: TimePreference;
   customer: Customer;
   payment?: Payment;
   status: RentalStatus;

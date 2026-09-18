@@ -13,7 +13,10 @@ import {
 } from "./types";
 import { buildExtrasCatalog, buildMixerCatalog } from "@/lib/extras-catalog";
 import { todayLocalIso } from "@/lib/dates";
-import { DEFAULT_SPECIFIC_TIME_FEE } from "@/lib/specific-time-charge";
+import {
+  DEFAULT_SPECIFIC_TIME_FEE,
+  isTimePreference,
+} from "@/lib/specific-time-charge";
 import {
   getNextDay,
   validateDeliveryTime,
@@ -32,8 +35,14 @@ import { PricingSummary } from "./PricingSummary";
 // localStorage key for draft persistence
 const DRAFT_KEY = "satx-ritas-order-draft";
 
-/** Bumped whenever the draft shape changes; a mismatch discards the draft. */
-const DRAFT_VERSION = 1;
+/**
+ * Bumped whenever the draft shape changes; a mismatch discards the draft.
+ * 2: times are always a clock time plus a stored preference — a v1 draft can
+ * carry the retired "ANY" sentinel, which checkout now refuses.
+ */
+const DRAFT_VERSION = 2;
+
+const CLOCK_TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 /**
  * The one place a machine type coming from outside the app is checked.
@@ -182,9 +191,13 @@ export default function OrderForm() {
     selectedExtras: [],
     price: calculatePrice(initialMachineType, initialSelectedMixers).total,
     rentalDate: "",
-    rentalTime: "ANY",
+    // No default time: the customer must name a preferred one for each leg.
+    // Flexible is the default firmness, and the free one.
+    rentalTime: "",
+    rentalTimePreference: "flexible",
     returnDate: "",
-    returnTime: "ANY",
+    returnTime: "",
+    returnTimePreference: "flexible",
     customer: {
       name: "",
       email: "",
@@ -281,6 +294,23 @@ export default function OrderForm() {
           // before /api/save-booking answered "Rental date cannot be in the
           // past" — after firing availability checks for dates in the past.
           let step = isOrderStep(parsed.step) ? parsed.step : "date";
+
+          // The preferences price the order through `computeOrderTotal`, and
+          // the times reach checkout, which refuses anything but a clock time.
+          // An unchecked value here is a total the server will not charge, or
+          // a 400 at the very last step.
+          for (const pref of [
+            "rentalTimePreference",
+            "returnTimePreference",
+          ] as const) {
+            if (!isTimePreference(merged[pref])) merged[pref] = "flexible";
+          }
+          for (const time of ["rentalTime", "returnTime"] as const) {
+            if (!CLOCK_TIME.test(String(merged[time] ?? ""))) {
+              merged[time] = "";
+              step = "date";
+            }
+          }
           if (merged.rentalDate && merged.rentalDate < todayLocalIso()) {
             merged.rentalDate = "";
             merged.returnDate = "";
@@ -499,7 +529,7 @@ export default function OrderForm() {
         return;
       }
       if (!formData.rentalTime) {
-        setError("Please select a delivery time");
+        setError("Please choose a preferred delivery time");
         return;
       }
       if (
@@ -521,7 +551,7 @@ export default function OrderForm() {
         return;
       }
       if (!formData.returnTime) {
-        setError("Please select a pick up time");
+        setError("Please choose a preferred pickup time");
         return;
       }
       if (

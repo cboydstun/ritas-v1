@@ -16,9 +16,11 @@ const makeFormData = (): OrderFormData => ({
   selectedExtras: [],
   price: 100,
   rentalDate: "",
-  rentalTime: "ANY",
+  rentalTime: "12:00",
+  rentalTimePreference: "flexible",
   returnDate: "",
-  returnTime: "ANY",
+  returnTime: "16:00",
+  returnTimePreference: "flexible",
   customer: {
     name: "",
     email: "",

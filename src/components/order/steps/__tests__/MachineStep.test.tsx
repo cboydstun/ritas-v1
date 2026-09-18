@@ -33,8 +33,10 @@ const createMockFormData = (
   price: 124.95,
   rentalDate: "",
   rentalTime: "12:00",
+  rentalTimePreference: "specific",
   returnDate: "",
   returnTime: "12:00",
+  returnTimePreference: "specific",
   customer: {
     name: "",
     email: "",

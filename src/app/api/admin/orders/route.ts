@@ -18,6 +18,8 @@ import {
   type SettingsOverrides,
 } from "@/components/order/utils";
 import type { OrderFormData } from "@/components/order/types";
+import type { PricedOrder } from "@/components/order/utils";
+import { isTimePreference, legPreference } from "@/lib/specific-time-charge";
 import { nanoid } from "nanoid";
 import { adminListLimit, adminListHeaders } from "@/lib/admin-list";
 import { guardAdminWrite } from "@/lib/api-guard";
@@ -32,8 +34,10 @@ const CREATABLE_ORDER_FIELDS = [
   "selectedExtras",
   "rentalDate",
   "rentalTime",
+  "rentalTimePreference",
   "returnDate",
   "returnTime",
+  "returnTimePreference",
   "customer",
   "notes",
   "status",
@@ -132,6 +136,25 @@ export async function POST(request: Request) {
     const capacity = MACHINE_CAPACITY[doc.machineType];
     doc.capacity = capacity;
 
+    // Stored explicitly on every new order, so nothing downstream has to
+    // derive it. An omitted preference resolves the legacy way — a clock time
+    // is specific — which is what an API caller predating the field meant.
+    for (const [timeField, prefField] of [
+      ["rentalTime", "rentalTimePreference"],
+      ["returnTime", "returnTimePreference"],
+    ] as const) {
+      if (doc[prefField] !== undefined && !isTimePreference(doc[prefField])) {
+        return NextResponse.json(
+          { message: `Invalid ${prefField}` },
+          { status: 400 },
+        );
+      }
+      doc[prefField] = legPreference(
+        doc[timeField] as string | undefined,
+        doc[prefField] as string | undefined,
+      );
+    }
+
     // Dates were previously passed through unvalidated and defaulted to ""
     // for the price computation, so a missing or malformed date silently
     // priced as a single rental day before Mongoose's `required` fired.
@@ -214,13 +237,15 @@ export async function POST(request: Request) {
         // flexible and the office would never bill a pinned leg.
         rentalTime: doc.rentalTime,
         returnTime: doc.returnTime,
+        rentalTimePreference: doc.rentalTimePreference,
+        returnTimePreference: doc.returnTimePreference,
         isServiceDiscount: false,
         // The surcharge is resolved from this ZIP. Omitting the customer would
         // leave `computeOrderTotal` with nothing to price against and silently
         // deliver for $0.
         customer: (doc as unknown as { customer?: OrderFormData["customer"] })
           .customer,
-      } as OrderFormData,
+      } as PricedOrder,
       {
         // An admin order is priced per ZIP like any other. The office is exempt
         // from the *refusal* of an unpriced ZIP and from the order minimum — it

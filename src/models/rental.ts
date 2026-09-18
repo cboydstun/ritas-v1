@@ -1,6 +1,10 @@
 import mongoose from "mongoose";
 import { MachineType, PaymentStatus, RentalStatus } from "@/types";
 import { ExtraItem } from "@/components/order/types";
+import {
+  TIME_PREFERENCES,
+  type TimePreference,
+} from "@/lib/specific-time-charge";
 
 /** Tank count per machine type — duplicated from validation.ts to keep the
  *  model free of any dependency on the request-validation layer. */
@@ -131,6 +135,12 @@ const rentalSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    // Optional so an order taken before preferences were stored still
+    // validates; `legPreference()` derives one from its "ANY"/clock time.
+    rentalTimePreference: {
+      type: String,
+      enum: TIME_PREFERENCES,
+    },
     returnDate: {
       type: String,
       required: true,
@@ -138,6 +148,10 @@ const rentalSchema = new mongoose.Schema(
     returnTime: {
       type: String,
       required: true,
+    },
+    returnTimePreference: {
+      type: String,
+      enum: TIME_PREFERENCES,
     },
     customer: {
       type: customerSchema,
@@ -244,8 +258,10 @@ export type RentalDocument = mongoose.Document & {
   price: number;
   rentalDate: string;
   rentalTime: string;
+  rentalTimePreference?: TimePreference;
   returnDate: string;
   returnTime: string;
+  returnTimePreference?: TimePreference;
   customer: {
     name: string;
     email: string;
