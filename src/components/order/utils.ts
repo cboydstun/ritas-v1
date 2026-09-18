@@ -108,6 +108,10 @@ export const validateDeliveryTime = (
 // ---------------------------------------------------------------------------
 
 import { calculatePrice } from "@/lib/pricing";
+import {
+  DEFAULT_SPECIFIC_TIME_FEE,
+  resolveSpecificTimeCharge,
+} from "@/lib/specific-time-charge";
 import { OrderFormData, type ExtraItem } from "./types";
 
 export interface SettingsOverrides {
@@ -123,6 +127,10 @@ export interface SettingsOverrides {
     deliveryFee?: number;
     /** What a ZIP with no fee band falls back to. See `minimumForZip`. */
     minOrderAmount?: number;
+    /** Charged when delivery is pinned to a clock time. See `@/lib/specific-time-charge`. */
+    specificDeliveryTimeFee?: number;
+    /** Charged when pickup is pinned to a clock time. */
+    specificPickupTimeFee?: number;
   };
   /** Per-ZIP surcharges and the zone geography. The only price there is. */
   deliveryZones?: DeliverySettings;
@@ -151,11 +159,17 @@ export interface OrderTotals {
   deliveryBaseFee: number;
   /** The ZIP's own portion of `deliveryFee`. Zero is a real answer. */
   distanceSurcharge: number;
+  /**
+   * The fee for delivery and/or pickup pinned to a clock time. Zero when both
+   * legs are `"ANY"`. Inside `subtotal`, outside `rentalSubtotal`.
+   */
+  specificTimeCharge: number;
   perDayRate: number;
   rentalDays: number;
   extrasTotal: number;
   /**
-   * Machine rate x days, plus extras. **Excludes the distance surcharge.**
+   * Machine rate x days, plus extras. **Excludes the distance surcharge and
+   * the specific-time charge.**
    *
    * This is what an order minimum is measured against. The surcharge is the
    * cost the minimum exists to cover, so it must not be what clears it — a $92
@@ -244,12 +258,31 @@ export function computeOrderTotal(
     }, 0),
   );
 
-  // What the order minimum is measured against: rentals only, no surcharge.
+  // Flat per pinned leg, never per day: it prices a fixed point in the crew's
+  // day, which a three-day rental books no more of than a one-day one.
+  const specificTimeCharge = roundCurrency(
+    resolveSpecificTimeCharge({
+      rentalTime: formData.rentalTime,
+      returnTime: formData.returnTime,
+      specificDeliveryTimeFee:
+        settings?.fees?.specificDeliveryTimeFee ?? DEFAULT_SPECIFIC_TIME_FEE,
+      specificPickupTimeFee:
+        settings?.fees?.specificPickupTimeFee ?? DEFAULT_SPECIFIC_TIME_FEE,
+    }),
+  );
+
+  // What the order minimum is measured against: rentals only. Neither the
+  // distance surcharge nor the specific-time charge may be what clears it.
   const rentalSubtotal = roundCurrency(perDayRate * rentalDays + extrasTotal);
 
-  // Subtotal = machine rate × days + delivery + extras
+  // Subtotal = machine rate × days + delivery + extras + specific-time charge.
+  // Inside the subtotal, so it is marked up by the processing fee and taxed,
+  // exactly as bounce-v3's `computeOrderTotals` does with the same charge.
   const subtotal = roundCurrency(
-    perDayRate * rentalDays + priceBreakdown.deliveryFee + extrasTotal,
+    perDayRate * rentalDays +
+      priceBreakdown.deliveryFee +
+      extrasTotal +
+      specificTimeCharge,
   );
 
   const discountRate = settings?.fees?.serviceDiscountRate ?? 0.1;
@@ -287,6 +320,7 @@ export function computeOrderTotal(
     // none of it is a distance surcharge.
     deliveryBaseFee: deliveryCharge?.baseFee ?? priceBreakdown.deliveryFee,
     distanceSurcharge: deliveryCharge?.distanceSurcharge ?? 0,
+    specificTimeCharge,
     perDayRate,
     rentalDays,
     extrasTotal,

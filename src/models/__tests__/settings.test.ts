@@ -3,6 +3,7 @@
  */
 import { describe, it, expect } from "@jest/globals";
 import { Settings } from "@/models/settings";
+import { DEFAULT_SPECIFIC_TIME_FEE } from "@/lib/specific-time-charge";
 
 describe("Settings Model", () => {
   describe("Schema defaults", () => {
@@ -17,6 +18,21 @@ describe("Settings Model", () => {
       expect(doc.fees.salesTaxRate).toBe(0.0825);
       expect(doc.fees.processingFeeRate).toBe(0.03);
       expect(doc.fees.serviceDiscountRate).toBe(0.1);
+    });
+
+    it("defaults the specific-time fees to the pricing module's figure", () => {
+      const doc = new Settings({});
+      // Kept equal by hand, the same way DEFAULT_INVENTORY mirrors the
+      // inventory defaults — this test is what stops the two drifting.
+      expect(doc.fees.specificDeliveryTimeFee).toBe(DEFAULT_SPECIFIC_TIME_FEE);
+      expect(doc.fees.specificPickupTimeFee).toBe(DEFAULT_SPECIFIC_TIME_FEE);
+    });
+
+    it("refuses a negative specific-time fee", async () => {
+      const doc = new Settings({ fees: { specificPickupTimeFee: -5 } });
+      await expect(doc.validate()).rejects.toThrow(
+        "specificPickupTimeFee cannot be negative",
+      );
     });
 
     it("applies default machine base prices when machines are omitted", () => {

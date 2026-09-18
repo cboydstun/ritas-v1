@@ -107,7 +107,7 @@ describe("rentalSubtotal excludes the distance surcharge", () => {
   );
 
   it.each(CARTS)(
-    "%s: subtotal is exactly rentalSubtotal plus the whole delivery charge",
+    "%s: subtotal is exactly rentalSubtotal plus the whole delivery charge and the time charge",
     (_label, base) => {
       const far = computeOrderTotal(
         {
@@ -124,7 +124,11 @@ describe("rentalSubtotal excludes the distance surcharge", () => {
       expect(far.distanceSurcharge).toBe(75);
       expect(far.deliveryBaseFee).toBe(20);
       expect(far.deliveryFee).toBe(95);
-      expect(far.subtotal).toBeCloseTo(far.rentalSubtotal + 95, 2);
+      // Both legs are pinned to 12:00, so the $25-per-leg specific-time
+      // charge is the third term — and, like the surcharge, it sits outside
+      // rentalSubtotal.
+      expect(far.specificTimeCharge).toBe(50);
+      expect(far.subtotal).toBeCloseTo(far.rentalSubtotal + 95 + 50, 2);
     },
   );
 });

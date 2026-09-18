@@ -268,6 +268,10 @@ export async function createBooking(
       selectedExtras,
       rentalDate: rentalData.rentalDate,
       returnDate: rentalData.returnDate,
+      // The times price the specific-time charge. Omitting them reads as
+      // "flexible" and would bill $0 for a leg the browser quoted as pinned.
+      rentalTime: rentalData.rentalTime,
+      returnTime: rentalData.returnTime,
       // The surcharge is resolved from this ZIP inside `computeOrderTotal`.
       // Omitting the customer here would leave it with no ZIP to price and
       // silently deliver for $0.

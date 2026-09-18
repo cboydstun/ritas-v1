@@ -7,6 +7,7 @@ import { BUSINESS_PHONE_DISPLAY, BUSINESS_PHONE_HREF } from "@/lib/site";
 import { escapeHtml } from "@/lib/validation";
 import { withTimeout, NOTIFICATION_TIMEOUT_MS } from "@/lib/with-timeout";
 import type { OrderTotals } from "@/components/order/utils";
+import { formatDeliveryTime } from "@/lib/specific-time-charge";
 
 /**
  * The subset of a persisted rental the notifications read.
@@ -75,21 +76,9 @@ export interface BookingNotificationInput {
 export const pct = (rate: number): string =>
   `${Number((rate * 100).toFixed(4))}%`;
 
-/**
- * "14:00" → "2:00 PM". The delivery-window picker defaults to the "ANY"
- * sentinel, which the old formatter fed to parseInt and rendered as the
- * nonsense "12:undefined AM" in every operator SMS.
- */
-export function formatDeliveryTime(time: string): string {
-  if (!time || time === "ANY") return "Any Time";
-
-  const [hourPart, minutePart] = time.split(":");
-  const hour24 = parseInt(hourPart, 10);
-  if (!Number.isFinite(hour24) || !minutePart) return "Any Time";
-
-  const hour12 = hour24 % 12 || 12;
-  return `${hour12}:${minutePart} ${hour24 >= 12 ? "PM" : "AM"}`;
-}
+// Lives in the browser-safe pricing module so the order form renders times
+// with the same function the SMS and email do.
+export { formatDeliveryTime };
 
 /**
  * Operator SMS and customer confirmation email for a booking that has already
@@ -119,6 +108,7 @@ export async function sendBookingNotifications(
     basePrice,
     mixerPrice,
     deliveryFee,
+    specificTimeCharge,
     perDayRate,
     rentalDays,
     extrasTotal: emailExtrasTotal,
@@ -311,6 +301,14 @@ export async function sendBookingNotifications(
             <td style="padding: 5px 0; color: #555;">Delivery &amp; Setup:</td>
             <td style="padding: 5px 0; text-align: right;">$${formatPrice(deliveryFee)}</td>
           </tr>
+          ${
+            specificTimeCharge > 0
+              ? `<tr>
+            <td style="padding: 5px 0; color: #555;">Specific Delivery/Pickup Time:</td>
+            <td style="padding: 5px 0; text-align: right;">$${formatPrice(specificTimeCharge)}</td>
+          </tr>`
+              : ""
+          }
           <tr style="border-top: 1px solid #e2e8f0;">
             <td style="padding: 5px 0; color: #555;">Subtotal:</td>
             <td style="padding: 5px 0; text-align: right;">$${formatPrice(emailSubtotal)}</td>
@@ -389,8 +387,8 @@ export async function sendBookingNotifications(
           <div style="background-color: #fff; padding: 15px; border-radius: 6px; margin: 20px 0; border: 1px solid #e2e8f0;">
             <p style="margin: 0 0 10px 0;"><strong style="color: #2b6cb0;">Rental Details:</strong></p>
             <ul style="list-style-type: none; padding: 0; margin: 0;">
-              <li style="margin-bottom: 8px;">🗓 Rental Date: ${rental.rentalDate} at ${rental.rentalTime}</li>
-              <li style="margin-bottom: 8px;">🗓 Return Date: ${rental.returnDate} at ${rental.returnTime}</li>
+              <li style="margin-bottom: 8px;">🗓 Rental Date: ${rental.rentalDate} at ${formatDeliveryTime(rental.rentalTime)}</li>
+              <li style="margin-bottom: 8px;">🗓 Return Date: ${rental.returnDate} at ${formatDeliveryTime(rental.returnTime)}</li>
               <li style="margin-bottom: 8px;">🍹 Selected Mixers: ${
                 selectedMixers.length > 0
                   ? selectedMixers

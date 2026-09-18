@@ -71,6 +71,10 @@ export interface StepProps {
   deliveryWindowStartHour?: number;
   /** Delivery window end hour (0–23), defaults to 18 */
   deliveryWindowEndHour?: number;
+  /** Charge for pinning delivery to a clock time; `Settings.fees`, defaults to $25 */
+  specificDeliveryTimeFee?: number;
+  /** Charge for pinning pickup to a clock time; `Settings.fees`, defaults to $25 */
+  specificPickupTimeFee?: number;
   /** Dynamic mixer list from settings; falls back to rental-data defaults when absent */
   mixers?: Array<{
     id: string;

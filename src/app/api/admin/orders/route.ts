@@ -210,6 +210,10 @@ export async function POST(request: Request) {
         selectedExtras: resolvedExtras,
         rentalDate: rentalDate.data,
         returnDate: returnDate.data,
+        // The times price the specific-time charge; omitted, they read as
+        // flexible and the office would never bill a pinned leg.
+        rentalTime: doc.rentalTime,
+        returnTime: doc.returnTime,
         isServiceDiscount: false,
         // The surcharge is resolved from this ZIP. Omitting the customer would
         // leave `computeOrderTotal` with nothing to price against and silently

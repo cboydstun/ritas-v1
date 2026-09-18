@@ -49,6 +49,20 @@ const settingsSchema = new mongoose.Schema(
         default: 0,
         min: [0, "minOrderAmount cannot be negative"],
       },
+      // What pinning delivery or pickup to a clock time costs, per leg. A
+      // flexible leg (stored as "ANY") is free. See
+      // `@/lib/specific-time-charge`, whose DEFAULT_SPECIFIC_TIME_FEE these
+      // defaults must match.
+      specificDeliveryTimeFee: {
+        type: Number,
+        default: 25,
+        min: [0, "specificDeliveryTimeFee cannot be negative"],
+      },
+      specificPickupTimeFee: {
+        type: Number,
+        default: 25,
+        min: [0, "specificPickupTimeFee cannot be negative"],
+      },
     },
     machines: {
       single: {
@@ -271,6 +285,8 @@ export type SettingsDocument = mongoose.Document & {
     processingFeeRate: number;
     serviceDiscountRate: number;
     minOrderAmount: number;
+    specificDeliveryTimeFee: number;
+    specificPickupTimeFee: number;
   };
   machines: {
     single: { basePrice: number; inventory: number };

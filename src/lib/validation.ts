@@ -386,6 +386,9 @@ export const settingsUpdateSchema = z
         // admin field either. The documented fallback could only be changed by
         // writing Mongo by hand. `0` stays the default and means "no floor".
         minOrderAmount: moneySchema,
+        // Per-leg charge for a delivery or pickup pinned to a clock time.
+        specificDeliveryTimeFee: moneySchema,
+        specificPickupTimeFee: moneySchema,
       })
       .partial(),
     machines: z

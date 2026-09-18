@@ -99,9 +99,12 @@ describe("computeOrderTotal with settings overrides", () => {
     selectedExtras: [],
     price: 0,
     rentalDate: "2025-06-01",
-    rentalTime: "10:00",
+    // Flexible on both legs, so the figures below — the QuickBooks reference
+    // invoice among them — carry no specific-time charge. That charge has its
+    // own block further down.
+    rentalTime: "ANY",
     returnDate: "2025-06-02",
-    returnTime: "10:00",
+    returnTime: "ANY",
     customer: {
       name: "Test",
       email: "test@example.com",
@@ -197,6 +200,60 @@ describe("computeOrderTotal with settings overrides", () => {
     expect(result.salesTax).toBeCloseTo(30.99, 2);
     expect(result.cashPrice).toBeCloseTo(394.79, 2);
     expect(result.finalTotal).toBeCloseTo(406.63, 2);
+  });
+
+  describe("specific-time charge", () => {
+    const pinned: OrderFormData = {
+      ...baseFormData,
+      rentalTime: "10:00",
+      returnTime: "16:00",
+    };
+
+    it("charges nothing when both legs are flexible", () => {
+      expect(computeOrderTotal(baseFormData).specificTimeCharge).toBe(0);
+    });
+
+    it("defaults to $25 per pinned leg", () => {
+      expect(computeOrderTotal(pinned).specificTimeCharge).toBe(50);
+      expect(
+        computeOrderTotal({ ...baseFormData, returnTime: "16:00" })
+          .specificTimeCharge,
+      ).toBe(25);
+    });
+
+    it("lands in the subtotal, so it is marked up and taxed like bounce-v3", () => {
+      const result = computeOrderTotal(pinned);
+      // subtotal = 124.95 + 20 + 50 = 194.95
+      // processingFee = 194.95 * 0.03 = 5.85
+      // salesTax = (194.95 + 5.85) * 0.0825 = 16.57
+      expect(result.subtotal).toBeCloseTo(194.95, 2);
+      expect(result.processingFee).toBeCloseTo(5.85, 2);
+      expect(result.salesTax).toBeCloseTo(16.57, 2);
+      expect(result.finalTotal).toBeCloseTo(217.37, 2);
+    });
+
+    it("is not what clears an order minimum", () => {
+      expect(computeOrderTotal(pinned).rentalSubtotal).toBe(
+        computeOrderTotal(baseFormData).rentalSubtotal,
+      );
+    });
+
+    it("is flat per leg, not per rental day", () => {
+      const threeDays = computeOrderTotal({
+        ...pinned,
+        returnDate: "2025-06-04",
+      });
+      expect(threeDays.rentalDays).toBe(3);
+      expect(threeDays.specificTimeCharge).toBe(50);
+    });
+
+    it("reads each leg's fee from settings", () => {
+      const result = computeOrderTotal(pinned, {
+        fees: { specificDeliveryTimeFee: 10, specificPickupTimeFee: 0 },
+      });
+      expect(result.specificTimeCharge).toBe(10);
+      expect(result.subtotal).toBeCloseTo(154.95, 2);
+    });
   });
 
   describe("extras pricing comes from the catalog, not the payload", () => {
@@ -371,9 +428,11 @@ describe("computeOrderTotal cent rounding", () => {
     ],
     price: 0,
     rentalDate: "2026-06-15",
-    rentalTime: "10:00",
+    // Flexible, so no specific-time charge moves the 489.50 subtotal off the
+    // half-cent this block exists to exercise.
+    rentalTime: "ANY",
     returnDate: "2026-06-17",
-    returnTime: "10:00",
+    returnTime: "ANY",
     customer: {
       name: "Test",
       email: "test@example.com",

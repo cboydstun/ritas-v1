@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { OrderTimeField } from "./OrderTimeField";
 import { MargaritaRental, MachineType, MixerType } from "@/types/index";
 import { machinePackages, mixerDetails } from "@/lib/rental-data";
 import { extraItems } from "@/components/order/types";
@@ -93,6 +94,10 @@ export default function CreateOrderModal({ onClose }: CreateOrderModalProps) {
         selectedExtras: formData.selectedExtras ?? [],
         rentalDate: formData.rentalDate ?? "",
         returnDate: formData.returnDate ?? "",
+        // Priced exactly as the route prices them, or the preview quotes a
+        // different specific-time charge from the one stored.
+        rentalTime: formData.rentalTime ?? "",
+        returnTime: formData.returnTime ?? "",
         // The customer, and therefore the ZIP, has to be handed over.
         // `computeOrderTotal` resolves the distance surcharge from
         // `formData.customer.address.zipCode`; omitting it left this preview
@@ -529,27 +534,12 @@ export default function CreateOrderModal({ onClose }: CreateOrderModalProps) {
                     className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-xs"
                   />
                 </div>
-                <div>
-                  <label
-                    htmlFor="create-order-rental-time"
-                    className="block text-sm font-medium text-gray-700 dark:text-gray-300"
-                  >
-                    Rental Time *
-                  </label>
-                  <input
-                    id="create-order-rental-time"
-                    type="time"
-                    value={formData.rentalTime}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        rentalTime: e.target.value,
-                      })
-                    }
-                    required
-                    className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-xs"
-                  />
-                </div>
+                <OrderTimeField
+                  id="create-order-rental-time"
+                  label="Rental Time *"
+                  value={formData.rentalTime}
+                  onChange={(v) => setFormData({ ...formData, rentalTime: v })}
+                />
                 <div>
                   <label
                     htmlFor="create-order-return-date"
@@ -571,27 +561,12 @@ export default function CreateOrderModal({ onClose }: CreateOrderModalProps) {
                     className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-xs"
                   />
                 </div>
-                <div>
-                  <label
-                    htmlFor="create-order-return-time"
-                    className="block text-sm font-medium text-gray-700 dark:text-gray-300"
-                  >
-                    Return Time *
-                  </label>
-                  <input
-                    id="create-order-return-time"
-                    type="time"
-                    value={formData.returnTime}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        returnTime: e.target.value,
-                      })
-                    }
-                    required
-                    className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-xs"
-                  />
-                </div>
+                <OrderTimeField
+                  id="create-order-return-time"
+                  label="Return Time *"
+                  value={formData.returnTime}
+                  onChange={(v) => setFormData({ ...formData, returnTime: v })}
+                />
               </div>
             </div>
 

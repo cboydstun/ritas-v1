@@ -70,7 +70,8 @@ The single source of truth for all order totals is `computeOrderTotal()` in `src
 
 - `perDayRate = basePrice + mixerPrice`
 - `rentalDays = calculateRentalDays(rentalDate, returnDate)` — a `Math.max(1, …)` clamp over `spanInDays()` from `src/lib/dates.ts`, which diffs **UTC** calendar dates. Do not reintroduce a millisecond diff of local-midnight `Date`s: a DST fall-back day is 25 hours, which billed one night as two. There is one implementation now; it used to exist twice, with the comment recording that bug on only one copy.
-- `subtotal = perDayRate × rentalDays + deliveryFee + extrasTotal` (machine rate is per-day; `deliveryFee` is a **flat base fee plus the destination ZIP's distance surcharge**, resolved once by `deliveryChargeFor()` — see **Delivery Zones** below; each extra is per-day unless its catalog entry says `pricingType: "flat"`)
+- `subtotal = perDayRate × rentalDays + deliveryFee + extrasTotal + specificTimeCharge` (machine rate is per-day; `deliveryFee` is a **flat base fee plus the destination ZIP's distance surcharge**, resolved once by `deliveryChargeFor()` — see **Delivery Zones** below; each extra is per-day unless its catalog entry says `pricingType: "flat"`)
+- `specificTimeCharge = resolveSpecificTimeCharge()` (`src/lib/specific-time-charge.ts`, ported from bounce-v3) — `Settings.fees.specificDeliveryTimeFee` if `rentalTime` is a clock time, plus `specificPickupTimeFee` if `returnTime` is; $25 each by default, flat per leg, never per day. **There is no preference field: a flexible leg is the stored time `"ANY"`**, and the charge is recomputed from the times, never stored. It sits inside `subtotal` (so it is marked up and taxed, as in bounce-v3) and **outside `rentalSubtotal`**, like the distance surcharge. **Every `computeOrderTotal` caller must pass `rentalTime`/`returnTime`** — an absent time reads as flexible, and the server routes all hand-picked their fields without them, which billed $0 for a leg the browser quoted at $25. The admin modals use `OrderTimeField` because `<input type="time">` cannot express `"ANY"`; the partner payload sends the charge in `totals.specificTimeCharge` and inside bounce's `subtotal`
 - `serviceDiscountAmount = subtotal × discountRate` — **retired**. No UI sets it and no server route accepts it from a request body; the field survives only for legacy bookings.
 - `discountedSubtotal = subtotal − serviceDiscountAmount`
 
@@ -762,8 +763,8 @@ to avoid.
 
 **The money mapping is the part that must be exactly right.** bounce-v3's
 `computeOrderTotals` taxes the processing fee the same way we do, so the two
-agree — but **its `subtotal` is not ours**: it includes the delivery fee _and_
-the processing fee, and ours includes neither. Supplying all nine money fields
+agree — but **its `subtotal` is not ours**: it includes the processing fee and ours does
+not. Both include the delivery fee and the specific-time charge. Supplying all nine money fields
 is what keeps its money-envelope hook out of its own branch, so it re-prices
 nothing.
 
@@ -812,7 +813,7 @@ Triggered after a booking, contact submission, or lease inquiry: SMS via Twilio 
 
 The `Settings` model (`src/models/settings.ts`) stores **one singleton document keyed `{ key: "global" }`** — always query it with that filter. It holds runtime overrides for:
 
-- `fees` — `deliveryFee` (legacy flat, the answer only when no `deliveryZones` exist), `salesTaxRate`, `processingFeeRate`, `serviceDiscountRate`, `minOrderAmount`
+- `fees` — `deliveryFee` (legacy flat, the answer only when no `deliveryZones` exist), `salesTaxRate`, `processingFeeRate`, `serviceDiscountRate`, `minOrderAmount`, `specificDeliveryTimeFee` / `specificPickupTimeFee` (default $25, must match `DEFAULT_SPECIFIC_TIME_FEE`)
 - `machines.{single,double,triple}` — `basePrice` **and** `inventory` (drives availability, see above)
 - `mixers` / `extras` / `leaseTiers` — `Schema.Types.Mixed` maps with schema-level defaults
 - `operations` — `deliveryWindowStartHour` / `EndHour`, guarded by a `pre("validate")` hook requiring end > start
@@ -985,6 +986,7 @@ Global shared types live in `src/types/index.ts` (`MachineType`, `MixerType`, `P
 - `src/lib/extras-catalog.ts` — `buildExtrasCatalog()`, `resolveSelectedExtras()` (authoritative add-on pricing)
 - `src/lib/validation.ts` — zod request schemas, `MACHINE_CAPACITY`, `escapeHtml()`
 - `src/lib/dates.ts` — `todayLocalIso()`, `spanInDays()`, the shared field regexes. **Zod-free on purpose**
+- `src/lib/specific-time-charge.ts` — `resolveSpecificTimeCharge()`, `isSpecificTime()`, `formatDeliveryTime()`. The per-leg charge for a pinned delivery/pickup time. **Zod-free** — the order form imports it
 - `src/lib/money.ts` — `roundCurrency()`, decimal half-up. The one rounding rule for money; re-exported from `components/order/utils.ts`, which cannot own it without a cycle through `lib/delivery`
 - `src/lib/delivery/zones.ts` — `resolveZipFee()`, `customFeeFor()`, `getDeliveryFee()`, `getDeliveryZoneInfo()`. The ZIP → fee ladder
 - `src/lib/delivery/deliveryCharge.ts` — `deliveryChargeFor()`, `DEFAULT_BASE_DELIVERY_FEE`. **The only place the base-fee-plus-surcharge rule lives**; nothing downstream would catch the browser and the server disagreeing about it

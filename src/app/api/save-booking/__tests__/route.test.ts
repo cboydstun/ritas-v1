@@ -156,6 +156,21 @@ describe("POST /api/save-booking", () => {
       expect(doc.price).toBe((doc.payment as { amount: number }).amount);
     });
 
+    it("charges the specific-time fee for a pinned leg, and nothing for ANY", async () => {
+      // The browser prices this from the same function; if the server dropped
+      // the times on the way in it would bill $0 for a leg quoted at $25.
+      await post(validRental({ rentalTime: "ANY", returnTime: "ANY" }));
+      const flexible = lastSaved().price as number;
+      await post(validRental({ rentalTime: "12:00", returnTime: "ANY" }));
+      const oneLeg = lastSaved().price as number;
+      await post(validRental({ rentalTime: "12:00", returnTime: "12:00" }));
+      const bothLegs = lastSaved().price as number;
+
+      // $25 in the subtotal, marked up 3% and taxed 8.25% on top.
+      expect(oneLeg - flexible).toBeCloseTo(25 * 1.03 * 1.0825, 1);
+      expect(bothLegs - flexible).toBeCloseTo(50 * 1.03 * 1.0825, 1);
+    });
+
     it("derives capacity from machineType rather than the request body", async () => {
       const response = await post(
         validRental({ machineType: "triple", capacity: 15 }),

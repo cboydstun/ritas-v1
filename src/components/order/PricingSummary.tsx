@@ -18,6 +18,7 @@ export function PricingSummary({
     basePrice,
     mixerPrice,
     deliveryFee,
+    specificTimeCharge,
     perDayRate,
     rentalDays,
     serviceDiscountAmount,
@@ -171,6 +172,18 @@ export function PricingSummary({
               ${formatPrice(deliveryFee)}
             </span>
           </div>
+
+          {/* Specific-time charge — only when a leg is pinned to the clock */}
+          {specificTimeCharge > 0 && (
+            <div className="flex justify-between">
+              <span className="text-charcoal/70 dark:text-white/70">
+                Specific Delivery/Pickup Time
+              </span>
+              <span className="font-medium text-charcoal dark:text-white">
+                ${formatPrice(specificTimeCharge)}
+              </span>
+            </div>
+          )}
 
           {/* Service Discount */}
           {formData.isServiceDiscount && (

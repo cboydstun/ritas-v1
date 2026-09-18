@@ -372,6 +372,30 @@ describe("PUT serialises the fee map", () => {
     expect(update.fees).toEqual({ minOrderAmount: 125 });
   });
 
+  it("accepts the specific-time fees", async () => {
+    (Settings.findOneAndUpdate as jest.Mock).mockResolvedValue({
+      toObject: () => ({ key: "global", fees: {} }),
+    });
+
+    const response = await put({
+      fees: { specificDeliveryTimeFee: 30, specificPickupTimeFee: 0 },
+    });
+
+    expect(response.status).toBe(200);
+    const [, update] = (Settings.findOneAndUpdate as jest.Mock).mock.calls[0];
+    expect(update.fees).toEqual({
+      specificDeliveryTimeFee: 30,
+      specificPickupTimeFee: 0,
+    });
+  });
+
+  it("refuses a negative specific-time fee", async () => {
+    const response = await put({ fees: { specificDeliveryTimeFee: -1 } });
+
+    expect(response.status).toBe(400);
+    expect(Settings.findOneAndUpdate).not.toHaveBeenCalled();
+  });
+
   it("refuses a negative minimum order amount", async () => {
     const response = await put({ fees: { minOrderAmount: -1 } });
 

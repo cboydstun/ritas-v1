@@ -13,6 +13,7 @@ import {
 } from "./types";
 import { buildExtrasCatalog, buildMixerCatalog } from "@/lib/extras-catalog";
 import { todayLocalIso } from "@/lib/dates";
+import { DEFAULT_SPECIFIC_TIME_FEE } from "@/lib/specific-time-charge";
 import {
   getNextDay,
   validateDeliveryTime,
@@ -145,6 +146,12 @@ export default function OrderForm() {
     settings?.operations?.deliveryWindowStartHour ?? 8;
   const deliveryWindowEndHour =
     settings?.operations?.deliveryWindowEndHour ?? 18;
+  // The same figures computeOrderTotal prices with, so the card label and the
+  // sidebar total cannot disagree.
+  const specificDeliveryTimeFee =
+    settings?.fees?.specificDeliveryTimeFee ?? DEFAULT_SPECIFIC_TIME_FEE;
+  const specificPickupTimeFee =
+    settings?.fees?.specificPickupTimeFee ?? DEFAULT_SPECIFIC_TIME_FEE;
 
   // Get initial machine type and mixer from URL once.
   // If URL params are present (e.g. clicking "Book Now" from the pricing page)
@@ -705,6 +712,8 @@ export default function OrderForm() {
                     error={error}
                     deliveryWindowStartHour={deliveryWindowStartHour}
                     deliveryWindowEndHour={deliveryWindowEndHour}
+                    specificDeliveryTimeFee={specificDeliveryTimeFee}
+                    specificPickupTimeFee={specificPickupTimeFee}
                   />
                 )}
 

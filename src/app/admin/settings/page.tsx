@@ -30,6 +30,8 @@ interface SettingsData {
     processingFeeRate: number;
     serviceDiscountRate: number;
     minOrderAmount: number;
+    specificDeliveryTimeFee: number;
+    specificPickupTimeFee: number;
   };
   machines: {
     single: { basePrice: number; inventory: number };
@@ -64,6 +66,8 @@ const defaultSettings: SettingsData = {
     processingFeeRate: 0.03,
     serviceDiscountRate: 0.1,
     minOrderAmount: 0,
+    specificDeliveryTimeFee: 25,
+    specificPickupTimeFee: 25,
   },
   machines: {
     single: { basePrice: 124.95, inventory: 3 },
@@ -537,6 +541,31 @@ export default function SettingsPage() {
               }))
             }
             step="5"
+          />
+          {/* Charged per leg when the customer pins that leg to a clock time
+              on the order form. "Any time" is always free. 0 turns a leg's
+              charge off. */}
+          <NumberInput
+            label="Specific Delivery Time Fee ($)"
+            value={settings.fees.specificDeliveryTimeFee}
+            onChange={(v) =>
+              setSettings((s) => ({
+                ...s,
+                fees: { ...s.fees, specificDeliveryTimeFee: v },
+              }))
+            }
+            step="1"
+          />
+          <NumberInput
+            label="Specific Pickup Time Fee ($)"
+            value={settings.fees.specificPickupTimeFee}
+            onChange={(v) =>
+              setSettings((s) => ({
+                ...s,
+                fees: { ...s.fees, specificPickupTimeFee: v },
+              }))
+            }
+            step="1"
           />
         </SectionCard>
 

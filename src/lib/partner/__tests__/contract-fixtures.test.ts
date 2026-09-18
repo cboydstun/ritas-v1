@@ -59,6 +59,13 @@ function form(o: Partial<OrderFormData> = {}): OrderFormData {
 
 const CASES: Array<[string, OrderFormData, number]> = [
   ["single day, no extras", form({ returnDate: "2026-10-04" }), 0],
+  // Every other case pins both legs, so each carries the $50 specific-time
+  // charge. This one proves the flexible shape crosses the seam too.
+  [
+    "flexible times, no specific-time charge",
+    form({ rentalTime: "ANY", returnTime: "ANY" }),
+    0,
+  ],
   ["three days", form({ returnDate: "2026-10-07" }), 0],
   [
     "per-day extra qty 3 over 3 days",
@@ -160,6 +167,18 @@ describe("the contract fixtures", () => {
     );
 
     expect(priced.length).toBeGreaterThan(0);
+  });
+
+  it("covers both a pinned and a flexible booking", () => {
+    // Same guard, for the specific-time charge: a fixture set where every
+    // case carried zero would pass bounce's subtotal check without testing
+    // that it counts the charge.
+    const charges = build().map(
+      (c) => c.payload.data.order.totals!.specificTimeCharge,
+    );
+
+    expect(charges.some((c) => c > 0)).toBe(true);
+    expect(charges).toContain(0);
   });
 
   it("emits self-consistent money for every case", () => {

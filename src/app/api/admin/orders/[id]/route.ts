@@ -148,6 +148,8 @@ export async function PUT(request: Request, context: RouteParams) {
       selectedExtras: unknown;
       rentalDate: string;
       returnDate: string;
+      rentalTime?: string;
+      returnTime?: string;
       status?: string;
     };
 
@@ -250,6 +252,10 @@ export async function PUT(request: Request, context: RouteParams) {
       "selectedExtras",
       "rentalDate",
       "returnDate",
+      // A pinned delivery or pickup time carries a charge, so moving a leg
+      // between "ANY" and a clock time is a pricing change.
+      "rentalTime",
+      "returnTime",
     ] as const;
     // The surcharge now rides on the delivery ZIP, so moving an order to a
     // different one is a pricing change. Checked as "the ZIP actually differs"
@@ -307,6 +313,10 @@ export async function PUT(request: Request, context: RouteParams) {
           selectedExtras: resolvedExtras,
           rentalDate: rentalDate.data,
           returnDate: returnDate.data,
+          // The times price the specific-time charge; omitted, they read as
+          // flexible and a pinned leg would reprice at $0.
+          rentalTime: merged.rentalTime,
+          returnTime: merged.returnTime,
           isServiceDiscount: false,
           // The surcharge is resolved from this ZIP. Omitting the customer
           // would leave `computeOrderTotal` with nothing to price against and

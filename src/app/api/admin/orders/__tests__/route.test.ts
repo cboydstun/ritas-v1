@@ -110,7 +110,9 @@ const existingOrder = (overrides: Record<string, unknown> = {}) => ({
   selectedMixers: ["margarita"],
   selectedExtras: [],
   rentalDate: futureDate(10),
+  rentalTime: "ANY",
   returnDate: futureDate(11),
+  returnTime: "ANY",
   status: "pending_payment",
   customer: {
     name: "Sam Rivera",
@@ -445,6 +447,34 @@ describe("admin order routes", () => {
       const [, update] = (Rental.findByIdAndUpdate as jest.Mock).mock.calls[0];
       expect(update.price).toBeGreaterThan(0);
       expect(update["payment.amount"]).toBe(update.price);
+    });
+
+    it("reprices when an edit pins a leg to a clock time", async () => {
+      await put({ rentalTime: "10:00" });
+      const [, pinned] = (Rental.findByIdAndUpdate as jest.Mock).mock.calls[0];
+
+      jest.clearAllMocks();
+      (Rental.findByIdAndUpdate as jest.Mock).mockReturnValue({
+        select: jest.fn().mockResolvedValue({ _id: VALID_ID }),
+      });
+      (Rental.findById as jest.Mock).mockReturnValue({
+        lean: jest.fn().mockResolvedValue(existingOrder()),
+      });
+      await put({ rentalTime: "ANY" });
+      const [, flexible] = (Rental.findByIdAndUpdate as jest.Mock).mock
+        .calls[0];
+
+      // $25 in the subtotal, marked up 3% and taxed 8.25% on top.
+      expect(pinned.price).toBeCloseTo(flexible.price + 25 * 1.03 * 1.0825, 1);
+    });
+
+    it("charges the admin-created order for a pinned time too", async () => {
+      await post(validOrder({ rentalTime: "ANY", returnTime: "ANY" }));
+      const flexible = lastCreated().price as number;
+      await post(validOrder({ rentalTime: "10:00", returnTime: "ANY" }));
+      const pinned = lastCreated().price as number;
+
+      expect(pinned).toBeGreaterThan(flexible);
     });
 
     // The dotted `payment.amount` $set on an order with no payment

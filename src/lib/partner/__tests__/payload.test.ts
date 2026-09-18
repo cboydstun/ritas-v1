@@ -95,6 +95,32 @@ describe("the money envelope bounce-v3 will store", () => {
     ).toBeLessThanOrEqual(CENT);
   });
 
+  it("carries the specific-time charge inside bounce's subtotal", () => {
+    // Both legs pinned: $25 each. bounce-v3's receiver refuses a payload whose
+    // subtotal is not items + delivery + specific-time + processing.
+    const { totals, payload } = payloadFor(form());
+    const t = payload.data.order.totals!;
+
+    expect(totals.specificTimeCharge).toBe(50);
+    expect(t.specificTimeCharge).toBe(50);
+    expect(
+      Math.abs(
+        t.itemsTotal +
+          t.deliveryFee +
+          t.specificTimeCharge +
+          t.processingFee -
+          t.subtotal,
+      ),
+    ).toBeLessThanOrEqual(CENT);
+  });
+
+  it("sends a zero specific-time charge for a flexible booking", () => {
+    const { payload } = payloadFor(
+      form({ rentalTime: "ANY", returnTime: "ANY" }),
+    );
+    expect(payload.data.order.totals!.specificTimeCharge).toBe(0);
+  });
+
   it("preserves our finalTotal exactly", () => {
     // The whole point of the mirror: bounce-v3 re-prices nothing, so the
     // number it stores must be the number the customer was quoted.

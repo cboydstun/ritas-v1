@@ -52,6 +52,7 @@ const totals = (over: Partial<OrderTotals> = {}): OrderTotals =>
     deliveryFee: 20,
     deliveryBaseFee: 20,
     distanceSurcharge: 0,
+    specificTimeCharge: 0,
     perDayRate: 144.9,
     rentalDays: 1,
     extrasTotal: 0,
@@ -285,6 +286,25 @@ describe("sendBookingNotifications", () => {
       // Quantity 1 is implicit and must not be rendered.
       expect(lastEmailHtml()).toContain("Cups</li>");
       expect(lastEmailHtml()).toContain("Party Extras:");
+    });
+
+    it("itemises the specific-time charge only when there is one", async () => {
+      await sendBookingNotifications(input());
+      expect(lastEmailHtml()).not.toContain("Specific Delivery/Pickup Time");
+
+      await sendBookingNotifications(
+        input({ totals: totals({ specificTimeCharge: 25 }) }),
+      );
+      expect(lastEmailHtml()).toContain("Specific Delivery/Pickup Time:");
+      expect(lastEmailHtml()).toContain("$25.00");
+    });
+
+    it("renders the rental times readably, never the ANY sentinel", async () => {
+      await sendBookingNotifications(input());
+      const html = lastEmailHtml();
+      expect(html).toContain("2026-07-04 at 2:00 PM");
+      expect(html).toContain("2026-07-05 at Any Time");
+      expect(html).not.toContain("at ANY");
     });
 
     it("pluralises the rate line only for a multi-day rental", async () => {

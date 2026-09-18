@@ -10,6 +10,7 @@ import {
   buildAnalyticsItems,
 } from "../utils";
 import { buildExtrasCatalog } from "@/lib/extras-catalog";
+import { formatDeliveryTime } from "@/lib/specific-time-charge";
 import { trackEvent, pushDataLayerThen } from "@/lib/analytics";
 import { hashUserData } from "@/lib/enhanced-conversions";
 
@@ -98,9 +99,11 @@ export default function ReviewStep({
     deliveryFee,
     deliveryBaseFee,
     distanceSurcharge,
+    specificTimeCharge,
     perDayRate,
     rentalDays,
     extrasTotal,
+    subtotal,
     salesTax,
     processingFee,
     cashPrice,
@@ -716,12 +719,12 @@ export default function ReviewStep({
           <p className="text-charcoal/70 dark:text-white/70">
             Delivery:{" "}
             {new Date(formData.rentalDate + "T12:00:00").toLocaleDateString()}{" "}
-            at {formData.rentalTime}
+            at {formatDeliveryTime(formData.rentalTime)}
           </p>
           <p className="text-charcoal/70 dark:text-white/70">
             Pick Up:{" "}
             {new Date(formData.returnDate + "T12:00:00").toLocaleDateString()}{" "}
-            at {formData.returnTime}
+            at {formatDeliveryTime(formData.returnTime)}
           </p>
         </div>
 
@@ -787,9 +790,15 @@ export default function ReviewStep({
               {formatPrice(distanceSurcharge)} distance surcharge
             </p>
           )}
+          {specificTimeCharge > 0 && (
+            <p className="text-charcoal/70 dark:text-white/70">
+              Specific Delivery/Pickup Time: ${formatPrice(specificTimeCharge)}
+            </p>
+          )}
+          {/* The computed subtotal, not a re-derived sum: a hand-added figure
+              here is what silently drops the next term added to the total. */}
           <p className="text-charcoal/70 dark:text-white/70">
-            Subtotal: $
-            {formatPrice(perDayRate * rentalDays + deliveryFee + extrasTotal)}
+            Subtotal: ${formatPrice(subtotal)}
           </p>
           <p className="text-charcoal/70 dark:text-white/70">
             Processing Fee ({pct(processingRate)}): $

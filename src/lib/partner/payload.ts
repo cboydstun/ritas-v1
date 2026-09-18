@@ -263,7 +263,9 @@ export function buildLineItems(
  * The one thing to get right: **bounce's `subtotal` is not ours**. Its
  * `computeOrderTotals` defines subtotal as items + delivery + specific-time
  * charge + processing fee, where ours excludes the processing fee. Everything
- * else lines up exactly, because bounce taxes the processing fee too.
+ * else lines up exactly, because bounce taxes the processing fee too — and
+ * marks up and taxes the specific-time charge the same way we do, since that
+ * rule was ported from there (`@/lib/specific-time-charge`).
  *
  * `itemsTotal` is the sum of the lines actually emitted rather than
  * `rentalSubtotal`, so the receiver's line-sum check is exact instead of within
@@ -280,7 +282,10 @@ export function buildTotals(
     items.reduce((sum, item) => sum + item.totalPrice, 0),
   );
   const subtotal = roundCurrency(
-    itemsTotal + totals.deliveryFee + totals.processingFee,
+    itemsTotal +
+      totals.deliveryFee +
+      totals.specificTimeCharge +
+      totals.processingFee,
   );
   const totalAmount = totals.finalTotal;
   const depositAmount = roundCurrency(Math.min(capturedAmount, totalAmount));
@@ -290,9 +295,9 @@ export function buildTotals(
     itemsTotal,
     deliveryFee: totals.deliveryFee,
     deliveryBaseFee: totals.deliveryBaseFee,
-    // We have no such line. Sent explicitly rather than omitted: a field the
-    // receiver finds unset is one its money hook would fill for itself.
-    specificTimeCharge: 0,
+    // Sent explicitly even at zero: a field the receiver finds unset is one
+    // its money hook would fill for itself.
+    specificTimeCharge: totals.specificTimeCharge,
     // The service discount is retired; it survives only on legacy bookings.
     discountAmount: totals.serviceDiscountAmount,
     processingFee: totals.processingFee,

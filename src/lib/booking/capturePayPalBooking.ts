@@ -413,6 +413,10 @@ function rebuildTotals(
       selectedExtras: rental.selectedExtras ?? [],
       rentalDate: rental.rentalDate,
       returnDate: rental.returnDate,
+      // Without the times the email and partner payload would itemise no
+      // specific-time charge against a stored price that includes one.
+      rentalTime: rental.rentalTime,
+      returnTime: rental.returnTime,
       customer: rental.customer,
       isServiceDiscount: false,
     } as OrderFormData,
