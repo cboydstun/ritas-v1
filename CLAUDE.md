@@ -733,6 +733,15 @@ for free), admin create, any admin edit, an admin delete (as a **cancellation** 
 their copy is a record of a booking that occupied the truck), and the PayPal
 webhook's capture-denied and refunded branches.
 
+**A flexible leg travels as the time `"ANY"`**, the same sentinel the order
+stores. bounce-v3's receiver turns it into its own shape — `*TimePreference:
+"flexible"` plus checkout's default clock time — and must never store the
+sentinel: copied through, it reached PartyPad's export as an unparseable end
+time, which became `Date.now()`, and PartyPad refused BB-2026-1050 with "Event
+end time must be after start time". The fixture case existed here a release
+before bounce-v3's copy of the fixtures was refreshed, which is the gap it
+slipped through — **regenerate and copy the fixtures whenever a case is added.**
+
 **`pending` holds are never emitted.** bounce-v3 learns about a booking only
 once it is submitted or paid, so an abandoned checkout is invisible to it and
 the stale-hold reaper has nothing to report.

@@ -69,8 +69,12 @@ export interface PartnerOrderPayload {
       notes?: string;
       rental: {
         startDate: string;
+        /** HH:mm, or "ANY" for a flexible leg. bounce-v3 maps "ANY" to its own
+         * flexible preference plus a default clock time; it must never store
+         * the sentinel, which PartyPad cannot parse. */
         startTime: string;
         endDate: string;
+        /** HH:mm, or "ANY" — see `startTime`. */
         endTime: string;
       };
       customer: {

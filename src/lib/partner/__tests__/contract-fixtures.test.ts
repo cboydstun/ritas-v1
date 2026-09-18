@@ -25,6 +25,7 @@
 import fs from "fs";
 import { buildOrderPayload } from "@/lib/partner/payload";
 import { computeOrderTotal } from "@/components/order/utils";
+import { mixerDetails } from "@/lib/rental-data";
 import type { OrderFormData } from "@/components/order/types";
 
 const OUT = process.env.XCHECK_OUT;
@@ -145,7 +146,11 @@ function build() {
         rental: data,
         totals,
         resolvedMixers: data.selectedMixers,
-        mixerLabel: (id) => `Mix ${id}`,
+        // The label production uses (createBooking's, minus the Settings
+        // override). A stub here once shipped "Mix margarita" into the fixture
+        // file, which bounce-v3's vocabulary check rightly refuses.
+        mixerLabel: (id) =>
+          mixerDetails[id as keyof typeof mixerDetails]?.label ?? id,
         status: captured > 0 ? "confirmed" : "pending_payment",
         paymentStatus: captured > 0 ? "completed" : "pending",
         paymentMethod: captured > 0 ? "paypal" : "invoice",
