@@ -202,6 +202,7 @@ export default function OrderForm() {
       name: "",
       email: "",
       phone: "",
+      smsConsent: false,
       address: {
         street: "",
         city: "",
@@ -470,14 +471,17 @@ export default function OrderForm() {
       return;
     }
 
-    // Handle other customer fields
+    // Handle other customer fields. The SMS opt-in is the one checkbox among
+    // them, and a checkbox's `value` is "on" whether or not it is ticked.
     if (name.startsWith("customer.")) {
       const field = name.split(".")[1];
+      const target = e.target as HTMLInputElement;
+      const fieldValue = target.type === "checkbox" ? target.checked : value;
       setFormData((prev: OrderFormData) => ({
         ...prev,
         customer: {
           ...prev.customer,
-          [field]: value,
+          [field]: fieldValue,
         },
       }));
       return;

@@ -25,6 +25,7 @@ import {
 } from "@/lib/validation";
 import type { RentalStatus } from "@/types";
 import type { RentalLike } from "@/lib/booking/notify";
+import { SMS_CONSENT_VERSION } from "@/lib/sms-consent";
 
 /**
  * The status a booking is written with.
@@ -316,10 +317,23 @@ export async function createBooking(
   };
   // ─────────────────────────────────────────────────────────────────────
 
+  // The version and time are the server's, never the request's: they record
+  // which copy this build rendered and when the booking that carried the tick
+  // arrived. An unticked box stores nothing but `false`.
+  const smsConsent =
+    rentalData.customer.smsConsent === true
+      ? {
+          smsConsent: true,
+          smsConsentVersion: SMS_CONSENT_VERSION,
+          smsConsentAt: new Date(),
+        }
+      : { smsConsent: false };
+
   const customer = {
     name: rentalData.customer.name,
     email: rentalData.customer.email,
     phone: rentalData.customer.phone,
+    ...smsConsent,
     address: {
       street: rentalData.customer.address.street,
       city: rentalData.customer.address.city,

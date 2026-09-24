@@ -158,6 +158,20 @@ export async function PUT(request: Request, context: RouteParams) {
       return NextResponse.json({ message: "Order not found" }, { status: 404 });
     }
 
+    // `customer` is replaced wholesale, and the office edit form knows nothing
+    // of SMS consent. Carry the customer's own opt-in record across, so fixing
+    // a typo in a name does not erase the proof of consent.
+    if (update.customer && typeof update.customer === "object") {
+      const stored = (existing as { customer?: Record<string, unknown> })
+        .customer;
+      const consent = Object.fromEntries(
+        ["smsConsent", "smsConsentVersion", "smsConsentAt"]
+          .filter((key) => stored?.[key] !== undefined)
+          .map((key) => [key, stored![key]]),
+      );
+      update.customer = { ...(update.customer as object), ...consent };
+    }
+
     // The edit is applied to a copy first, so availability and price are
     // judged against what the order will actually become.
     const merged = { ...existing, ...update } as unknown as {

@@ -90,6 +90,12 @@ export interface PartnerOrderPayload {
         name: string;
         email: string;
         phone?: string;
+        /** SMS opt-in, sent only when given. bounce-v3 sends the texts and
+         * reads an absent value as no consent. */
+        smsConsent?: true;
+        smsConsentVersion?: string;
+        /** ISO 8601. */
+        smsConsentAt?: string;
         address: {
           street?: string;
           city?: string;
@@ -126,6 +132,9 @@ export interface PartnerRentalLike {
     name: string;
     email: string;
     phone?: string;
+    smsConsent?: boolean;
+    smsConsentVersion?: string;
+    smsConsentAt?: Date | string;
     address?: {
       street?: string;
       city?: string;
@@ -386,6 +395,7 @@ function envelope(input: BaseInput): PartnerOrderPayload {
           name: input.rental.customer.name,
           email: input.rental.customer.email,
           phone: input.rental.customer.phone,
+          ...consentFields(input.rental.customer),
           address: {
             street: input.rental.customer.address?.street,
             city: input.rental.customer.address?.city,
@@ -436,4 +446,27 @@ export function buildOrderPayload(
  */
 export function buildStatusPayload(input: BaseInput): PartnerOrderPayload {
   return envelope(input);
+}
+
+/**
+ * The consent fields for the payload: present only when the customer ticked
+ * the box, so an unticked booking reads on the other side exactly as a booking
+ * from a build that predates the checkbox.
+ */
+function consentFields(
+  customer: PartnerRentalLike["customer"],
+): Pick<
+  PartnerOrderPayload["data"]["order"]["customer"],
+  "smsConsent" | "smsConsentVersion" | "smsConsentAt"
+> {
+  if (customer.smsConsent !== true) return {};
+  const at = customer.smsConsentAt
+    ? new Date(customer.smsConsentAt)
+    : undefined;
+  return {
+    smsConsent: true,
+    smsConsentVersion: customer.smsConsentVersion,
+    smsConsentAt:
+      at && !Number.isNaN(at.getTime()) ? at.toISOString() : undefined,
+  };
 }

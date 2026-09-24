@@ -393,6 +393,29 @@ describe("the envelope", () => {
     expect(order.customer.address.zipCode).toBe("78209");
     expect(order.partnerBookingId).toBe("AB3XY9");
   });
+
+  it("carries SMS consent only when the customer gave it", () => {
+    // bounce-v3 sends the texts, and reads an absent value as no consent.
+    const without = payloadFor(form()).payload.data.order.customer;
+    expect(without).not.toHaveProperty("smsConsent");
+    expect(without).not.toHaveProperty("smsConsentAt");
+
+    const data = form();
+    const withConsent = payloadFor({
+      ...data,
+      customer: {
+        ...data.customer,
+        smsConsent: true,
+        smsConsentVersion: "ritas-2026-09-v1",
+        smsConsentAt: new Date("2026-09-24T15:00:00.000Z"),
+      },
+    } as OrderFormData).payload.data.order.customer;
+    expect(withConsent).toMatchObject({
+      smsConsent: true,
+      smsConsentVersion: "ritas-2026-09-v1",
+      smsConsentAt: "2026-09-24T15:00:00.000Z",
+    });
+  });
 });
 
 describe("a status-only event", () => {

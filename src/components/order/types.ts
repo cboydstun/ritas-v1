@@ -32,6 +32,9 @@ export interface OrderFormData {
     name: string;
     email: string;
     phone: string;
+    /** Optional SMS opt-in, never required to book. Absent on drafts saved
+     * before the checkbox existed. */
+    smsConsent?: boolean;
     address: {
       street: string;
       city: string;

@@ -172,6 +172,42 @@ describe("updating an order", () => {
   });
 });
 
+describe("editing the customer", () => {
+  it("keeps the customer's SMS opt-in when the office edits their details", async () => {
+    // The edit form sends `customer` whole and knows nothing of consent, so a
+    // typo fix used to erase the record of it.
+    const consent = {
+      smsConsent: true,
+      smsConsentVersion: "ritas-2026-09-v1",
+      smsConsentAt: new Date("2026-09-24T15:00:00.000Z"),
+    };
+    const stored = order();
+    const existing = {
+      ...stored,
+      customer: { ...stored.customer, ...consent },
+    };
+    (Rental.findById as jest.Mock).mockReturnValue({
+      lean: jest.fn().mockResolvedValue(existing),
+    });
+    (Rental.findByIdAndUpdate as jest.Mock).mockReturnValue({
+      select: jest.fn().mockResolvedValue(existing),
+    });
+
+    await PUT(
+      new Request(`http://localhost/api/admin/orders/${ID}`, {
+        method: "PUT",
+        body: JSON.stringify({
+          customer: { ...stored.customer, name: "Test Renamed" },
+        }),
+      }),
+      params,
+    );
+
+    const update = (Rental.findByIdAndUpdate as jest.Mock).mock.calls[0][1];
+    expect(update.customer).toMatchObject({ name: "Test Renamed", ...consent });
+  });
+});
+
 describe("deleting an order", () => {
   it("emits order.cancelled, never a delete", async () => {
     // bounce-v3's copy is a record of a booking that occupied the truck; the

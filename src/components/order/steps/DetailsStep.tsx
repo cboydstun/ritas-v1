@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { StepProps, inputClassName, labelClassName } from "../types";
 import { validateZipCode, isServicedZipCode } from "../utils";
 import DeliveryFeeNotice from "../DeliveryFeeNotice";
+import { SMS_CONSENT_SENDER, SMS_CONSENT_VERSION } from "@/lib/sms-consent";
 
 export default function DetailsStep({
   formData,
@@ -250,6 +251,38 @@ export default function DetailsStep({
             pattern="\(\d{3}\)-\d{3}-\d{4}"
             maxLength={14}
           />
+        </div>
+
+        {/*
+          Optional and unbundled: never tied to the terms, never blocks the
+          form ("consent is not a condition of purchase"). The CTIA disclosures
+          sit in the label itself so a carrier reviewer sees them attached to
+          the box. The sender is SATX Bounce, which sends these texts — see
+          `@/lib/sms-consent`.
+        */}
+        <div className="md:col-span-2 flex items-start gap-3 rounded-lg border border-charcoal/15 dark:border-white/15 p-4">
+          <input
+            type="checkbox"
+            id="customer-sms-consent"
+            name="customer.smsConsent"
+            checked={formData.customer.smsConsent === true}
+            onChange={onInputChange}
+            data-consent-version={SMS_CONSENT_VERSION}
+            className="mt-1 h-4 w-4 shrink-0"
+          />
+          <label
+            htmlFor="customer-sms-consent"
+            className="text-sm text-charcoal/80 dark:text-white/80"
+          >
+            I agree to receive SMS text messages from {SMS_CONSENT_SENDER}
+            {formData.customer.phone
+              ? ` at ${formData.customer.phone}`
+              : ""}{" "}
+            regarding my orders, appointments, account updates, and customer
+            service communications. Message frequency varies. Message and data
+            rates may apply. Reply STOP to opt out, HELP for help. Consent is
+            not a condition of purchase.
+          </label>
         </div>
 
         <div className="md:col-span-2">

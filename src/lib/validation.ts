@@ -118,6 +118,9 @@ const customerSchema = z.object({
     .regex(EMAIL_PATTERN, "Invalid email address")
     .max(200),
   phone: z.string().trim().regex(PHONE_PATTERN, "Invalid phone number"),
+  // Only the boolean crosses the wire. The server stamps the consent version
+  // and time itself (see `createBooking`), so neither can be forged.
+  smsConsent: z.boolean().optional(),
   address: addressSchema,
 });
 

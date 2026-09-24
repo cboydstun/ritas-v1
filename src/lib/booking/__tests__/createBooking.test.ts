@@ -5,6 +5,7 @@ import { createBooking } from "../createBooking";
 import { Rental } from "@/models/rental";
 import { isMachineAvailable, releaseStaleHolds } from "@/lib/inventory";
 import { Settings } from "@/models/settings";
+import { SMS_CONSENT_VERSION } from "@/lib/sms-consent";
 
 jest.mock("@/lib/mongodb", () => ({
   __esModule: true,
@@ -141,6 +142,37 @@ describe("createBooking", () => {
 
       expect(result.ok).toBe(true);
       expect(lastSaved().status).toBe("pending");
+    });
+  });
+
+  describe("SMS consent", () => {
+    // bounce-v3 sends the texts from its own number and treats the version and
+    // time as its audit trail, so they must come from this server.
+    it("stamps the version and time itself when the box is ticked", async () => {
+      await createBooking(
+        validRental({
+          customer: {
+            ...validRental().customer,
+            smsConsent: true,
+            smsConsentVersion: "forged",
+          },
+        }),
+        { status: "pending_payment" },
+      );
+
+      const customer = lastSaved().customer as Record<string, unknown>;
+      expect(customer.smsConsent).toBe(true);
+      expect(customer.smsConsentVersion).toBe(SMS_CONSENT_VERSION);
+      expect(customer.smsConsentAt).toBeInstanceOf(Date);
+    });
+
+    it("stores no consent when the box is not ticked", async () => {
+      await createBooking(validRental(), { status: "pending_payment" });
+
+      const customer = lastSaved().customer as Record<string, unknown>;
+      expect(customer.smsConsent).toBe(false);
+      expect(customer.smsConsentVersion).toBeUndefined();
+      expect(customer.smsConsentAt).toBeUndefined();
     });
   });
 

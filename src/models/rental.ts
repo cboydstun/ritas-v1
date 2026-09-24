@@ -25,6 +25,11 @@ const customerSchema = new mongoose.Schema({
   name: { type: String, required: true },
   email: { type: String, required: true },
   phone: { type: String, required: true },
+  // SMS opt-in (TCPA/A2P). Optional, never a condition of booking. Stamped by
+  // the server from the checkbox; forwarded to bounce-v3, which sends the texts.
+  smsConsent: { type: Boolean, default: false },
+  smsConsentVersion: { type: String },
+  smsConsentAt: { type: Date },
   address: { type: addressSchema, required: true },
 });
 
