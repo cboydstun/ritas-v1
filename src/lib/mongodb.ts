@@ -44,10 +44,25 @@ async function dbConnect() {
       return global.mongoose.conn;
     }
 
-    // Set up connection options
+    // Set up connection options.
+    //
+    // The cluster is an Atlas M0 (500-connection cap) shared with bounce-v3
+    // and several other apps, and every pool option is charged PER
+    // REPLICA-SET MEMBER (3 nodes), not per client. With only the defaults
+    // this app could hold up to 100 sockets per node per warm instance and
+    // never closed an idle one (maxIdleTimeMS 0), which is what pushed the
+    // cluster to 97% of its cap on 2026-10-25. Values mirror bounce-v3's
+    // src/lib/db/mongoose.ts, which documents the reasoning in full.
     const opts = {
       bufferCommands: true,
       dbName: dbName,
+      minPoolSize: 0, // no permanent sockets; idle pools drain to zero
+      maxPoolSize: 10,
+      maxIdleTimeMS: 10000, // reap a socket ~10s after its last use
+      waitQueueTimeoutMS: 5000, // fail fast instead of hanging to maxDuration
+      serverSelectionTimeoutMS: 5000,
+      // Sent in the handshake so this app is identifiable in Atlas.
+      appName: `ritas-v1-${process.env.VERCEL_ENV ?? process.env.NODE_ENV ?? "local"}`,
     };
 
     // Create the connection promise
